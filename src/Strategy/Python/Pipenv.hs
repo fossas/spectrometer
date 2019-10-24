@@ -24,6 +24,7 @@ import Prologue
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import           Polysemy
+import           Polysemy.Error hiding (catch)
 import           Polysemy.Input
 import           Polysemy.State
 import           Polysemy.Output
@@ -35,7 +36,6 @@ import           Effect.ReadFS
 import qualified Graph as G
 import           Types
 
-import           Polysemy.Error hiding (catch)
 import Diagnostics
 
 discover :: Discover
