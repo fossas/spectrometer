@@ -35,6 +35,9 @@ import           Effect.ReadFS
 import qualified Graph as G
 import           Types
 
+import           Polysemy.Error hiding (catch)
+import Diagnostics
+
 discover :: Discover
 discover = Discover
   { discoverName = "pipenv"
@@ -71,7 +74,7 @@ strategyWithCmd = Strategy
 strategyNoCmd :: Strategy BasicFileOpts
 strategyNoCmd = Strategy
   { strategyName = "python-pipfile"
-  , strategyAnalyze = \opts -> analyzeNoCmd & fileInputJson (targetFile opts)
+  , strategyAnalyze = \opts -> analyzeNoCmd & (fileInputJson :: (Members '[ReadFS, Error CLIErr] r) => Path b File -> InterpreterFor (Input PipfileLock) r) (targetFile opts)
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete
