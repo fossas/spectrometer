@@ -1,0 +1,6 @@
+# Cabal build artifacts
+dist-newstyle
+dist
+
+# Visual Studio Code local preferences
+.vscode
