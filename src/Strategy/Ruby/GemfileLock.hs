@@ -42,7 +42,7 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "gemfile-lock"
-  , strategyAnalyze = \opts -> analyze & fileInputParser gemfileLockParser (targetFile opts)
+  , strategyAnalyze = analyze
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete
@@ -77,11 +77,12 @@ data DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Member (Input [Section]) r => Sem r G.Graph
-analyze = buildGraph <$> input
+analyze :: Member [ReadFS] BasicFileOpts -> Sem r G.Graph
+analyze = undefined
 
 buildGraph :: [Section] -> G.Graph
 buildGraph = undefined
+
 gemfileLockParser :: Parser [Section]
 -- gemfileLockParser = concat <$> 
 --                   ((dependenciesSectionParser 
@@ -110,13 +111,14 @@ findSections = many (try gitSectionParser <|> try gemSectionParser <|> try pathS
 
 emptySection :: Parser Section
 emptySection = do 
-      emptyLine <- ignoredTemp
+      emptyLine <- restOfLine
       _ <- eol
       pure $ UnknownSection emptyLine
       
-ignoredTemp :: Parser Text
-ignoredTemp = takeWhileP (Just "ignored") (not . isEndLine)
+restOfLine :: Parser Text
+restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
 
+-- ignore content until the end of the line
 ignored :: Parser ()
 ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
 
@@ -181,13 +183,6 @@ gemSectionParser = L.nonIndented scn (L.indentBlock scn p)
                   Left y -> fail $ T.unpack $ "could not parse GEM section: " <> y
 
 
-dependenciesSectionParser :: Parser Section
-dependenciesSectionParser = L.nonIndented scn (L.indentBlock scn p)
-                  where
-                        p = do
-                              _ <- chunk "DEPENDENCIES"
-                              pure $ L.IndentMany Nothing (\a -> pure $ DependencySection a ) findDependency
-
 -- dependenciesSectionParser :: Parser Section
 -- dependenciesSectionParser = do
 --      git <- chunk "DEPENDENCIES"
@@ -231,7 +226,7 @@ propertyParser = do
             textValue :: Parser RawField
             textValue = do
                   _ <- chunk " "
-                  value <- takeWhileP (Just "value") (not . isEndLine)
+                  value <- restOfLine
                   pure $ RawText value
 
 specPropertyParser :: Parser (Text, RawField)
@@ -276,6 +271,7 @@ lexeme = L.lexeme sc
 findDep :: Parser Text
 findDep = lexeme (takeWhile1P (Just "dep") (\a -> not $ C.isSpace a))
 
+
 findVersion :: Parser Text
 findVersion = do
       _ <- char '('
@@ -284,35 +280,15 @@ findVersion = do
       pure result
 
 
+dependenciesSectionParser :: Parser Section
+dependenciesSectionParser = L.nonIndented scn (L.indentBlock scn p)
+                  where
+                        p = do
+                              _ <- chunk "DEPENDENCIES"
+                              pure $ L.IndentMany Nothing (\a -> pure $ DependencySection a ) findDependency
+
 findDependency :: Parser DirectDep
 findDependency = do
       dep <- findDep
       _ <- ignored
       pure $ DirectDep dep
-      
-      where 
-        -- ignore content until the end of the line
-      ignored :: Parser ()
-      ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
-
-      findDep :: Parser Text
-      findDep = takeWhileP (Just "dep") (\a -> a /= ' ')
-
-
-findDependencies :: Parser [DirectDep]
-findDependencies = line `sepBy` eol
-  where
-  -- ignore content until the end of the line
-  ignored :: Parser ()
-  ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
-
-  findDep :: Parser Text
-  findDep = takeWhileP (Just "dep") (\a -> a /= ' ')
-
-  -- TODO: we can case split / sum-type this for better analysis
-  line :: Parser DirectDep
-  line = do
-    _ <- chunk "  "
-    dep <- findDep
-    _ <- ignored
-    pure $ DirectDep dep
