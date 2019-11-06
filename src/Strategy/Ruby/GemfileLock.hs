@@ -82,7 +82,14 @@ analyze = buildGraph <$> input
 
 buildGraph :: [Section] -> G.Graph
 buildGraph = undefined
-
+gemfileLockParser :: Parser [Section]
+-- gemfileLockParser = concat <$> 
+--                   ((dependenciesSectionParser 
+--                   <|> gitSectionParser 
+--                   <|> pathSectionParser
+--                   <|> gemsSectionParser
+--                   <|> ignoredLine) `sepBy` eol) <* eof
+gemfileLockParser = undefined
 -- Parse Gemfile
 -- 1. Find top level(?) deps with their remote location, and transitive deps
 -- 2. Associate the transitive deps to one another once we get all deps.
@@ -99,21 +106,19 @@ buildGraph = undefined
 type Parser = Parsec Void Text
 
 findSections :: Parser [Section]
-findSections = many (gitSectionParser <|> gemSectionParser <|> pathSectionParser) <* eof
-
+findSections = many (try gitSectionParser <|> try gemSectionParser <|> try pathSectionParser <|> try dependenciesSectionParser <|> emptySection) <* eof
 
 emptySection :: Parser Section
-emptySection = do
-      miss <- ignoredLine1
-      pure $ UnknownSection miss
-
-ignoredLine1 :: Parser Text
-ignoredLine1 = do
-      x <- ignoredTemp
-      pure $ x
+emptySection = do 
+      emptyLine <- ignoredTemp
+      _ <- eol
+      pure $ UnknownSection emptyLine
       
 ignoredTemp :: Parser Text
 ignoredTemp = takeWhileP (Just "ignored") (not . isEndLine)
+
+ignored :: Parser ()
+ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
 
 gitSectionParser :: Parser Section
 gitSectionParser = L.nonIndented scn (L.indentBlock scn p)
@@ -138,7 +143,7 @@ gitSectionParser = L.nonIndented scn (L.indentBlock scn p)
 
 
 pathSectionParser :: Parser Section
-pathSectionParser = L.indentBlock scn p
+pathSectionParser = L.nonIndented scn (L.indentBlock scn p)
       where 
          p = do
             _ <- chunk "PATH"
@@ -157,7 +162,7 @@ pathSectionParser = L.indentBlock scn p
                   Left y -> fail $ T.unpack $ "could not parse PATH section: " <> y
 
 gemSectionParser :: Parser Section
-gemSectionParser = L.indentBlock scn p
+gemSectionParser = L.nonIndented scn (L.indentBlock scn p)
       where 
          p = do
             _ <- chunk "GEM"
@@ -174,6 +179,21 @@ gemSectionParser = L.indentBlock scn p
             in case result of
                   Right x -> pure x
                   Left y -> fail $ T.unpack $ "could not parse GEM section: " <> y
+
+
+dependenciesSectionParser :: Parser Section
+dependenciesSectionParser = L.nonIndented scn (L.indentBlock scn p)
+                  where
+                        p = do
+                              _ <- chunk "DEPENDENCIES"
+                              pure $ L.IndentMany Nothing (\a -> pure $ DependencySection a ) findDependency
+
+-- dependenciesSectionParser :: Parser Section
+-- dependenciesSectionParser = do
+--      git <- chunk "DEPENDENCIES"
+--      _ <- eol
+--      dependencies <- findDependencies
+--      pure $ DependencySection dependencies
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe (Right a) = Just a
@@ -263,24 +283,21 @@ findVersion = do
       _ <- char ')'
       pure result
 
-ignored :: Parser ()
-ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
 
-gemfileLockParser :: Parser [Section]
--- gemfileLockParser = concat <$> 
---                   ((dependenciesSectionParser 
---                   <|> gitSectionParser 
---                   <|> pathSectionParser
---                   <|> gemsSectionParser
---                   <|> ignoredLine) `sepBy` eol) <* eof
-gemfileLockParser = undefined
+findDependency :: Parser DirectDep
+findDependency = do
+      dep <- findDep
+      _ <- ignored
+      pure $ DirectDep dep
+      
+      where 
+        -- ignore content until the end of the line
+      ignored :: Parser ()
+      ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
 
-dependenciesSectionParser :: Parser Section
-dependenciesSectionParser = do
-     git <- chunk "DEPENDENCIES"
-     _ <- eol
-     dependencies <- findDependencies
-     pure $ DependencySection dependencies
+      findDep :: Parser Text
+      findDep = takeWhileP (Just "dep") (\a -> a /= ' ')
+
 
 findDependencies :: Parser [DirectDep]
 findDependencies = line `sepBy` eol
