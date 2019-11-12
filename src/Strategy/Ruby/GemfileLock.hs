@@ -42,7 +42,7 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "gemfile-lock"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts -> analyze & fileInputParser findSections (targetFile opts)
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete
@@ -77,32 +77,79 @@ data DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Member [ReadFS] BasicFileOpts -> Sem r G.Graph
-analyze = undefined
+analyze :: Member (Input [Section]) r => Sem r G.Graph
+analyze = do 
+      sectionList <- input
+      pure $ buildGraph sectionList
 
 buildGraph :: [Section] -> G.Graph
-buildGraph = undefined
+buildGraph sections = traceShowId $ run $ evalGraphBuilder G.empty $ do
+      let depMap = buildNodes sections
+      otherMap <- traverse addNode depMap
+      buildEdges sections otherMap
+      buildDirect sections otherMap
+      
 
-gemfileLockParser :: Parser [Section]
--- gemfileLockParser = concat <$> 
---                   ((dependenciesSectionParser 
---                   <|> gitSectionParser 
---                   <|> pathSectionParser
---                   <|> gemsSectionParser
---                   <|> ignoredLine) `sepBy` eol) <* eof
-gemfileLockParser = undefined
+buildNodes :: [Section] -> Map Text G.Dependency
+buildNodes sections = M.fromList $ concatMap depsFromSection sections
+
+depsFromSection :: Section-> [(Text, G.Dependency)]
+depsFromSection (GitSection _ _ _ specs) = map (\a -> (specName a, depFromSpec a)) specs 
+depsFromSection (GemSection _ specs) = map (\a -> (specName a, depFromSpec a)) specs 
+depsFromSection (PathSection _ specs) = map (\a -> (specName a, depFromSpec a)) specs 
+depsFromSection _ = []
+      
+depFromSpec :: Spec -> G.Dependency
+depFromSpec x = G.Dependency G.GemType (specName x) (Just $ G.CEq $ specVersion x) [] M.empty
+
+-- Populate the dependencies with their deep deps
+buildEdges :: Member GraphBuilder r => [Section] -> Map Text G.DepRef -> Sem r ()
+buildEdges sections map = traverse_ (buildSectionEdges map) sections
+
+buildSectionEdges :: Member GraphBuilder r => Map Text G.DepRef -> Section -> Sem r ()
+buildSectionEdges map (GitSection _ _ _ specs) = addSpecsEdges specs map
+buildSectionEdges map (GemSection _ specs) = addSpecsEdges specs map
+buildSectionEdges map (PathSection _ specs) = addSpecsEdges specs map
+buildSectionEdges _ _ = pure ()
+
+addSpecsEdges :: Member GraphBuilder r => [Spec] -> Map Text G.DepRef -> Sem r ()
+addSpecsEdges (x : xs) map = do
+      addSpecEdges map (specName x) (specDeps x)
+      addSpecsEdges xs map
+addSpecsEdges [] _ = pure ()
+
+addSpecEdges :: Member GraphBuilder r => Map Text G.DepRef -> Text -> [SpecDep] -> Sem r ()
+addSpecEdges map parent (x : xs) = do
+      let refs = do
+            parentRef <- M.lookup parent map
+            childRef <- M.lookup (depName x) map
+            Just (parentRef, childRef)
+      case refs of
+            Just (parentRef, childRef) -> addEdge parentRef childRef 
+            Nothing -> pure ()
+      addSpecEdges map parent xs
+addSpecEdges _ _ [] = pure ()
+      
+
+-- New Work here that finds direct deps from the direct section only.
+buildDirect :: Member GraphBuilder r => [Section] -> Map Text G.DepRef -> Sem r ()
+buildDirect sections depMap = traverse_ (directDepsFromSection depMap) sections
+
+
+directDepsFromSection :: Member GraphBuilder r =>  Map Text G.DepRef -> Section -> Sem r ()
+directDepsFromSection dependencyNameMap (DependencySection specs)  = traverse_ (addDirectDep dependencyNameMap) specs
+directDepsFromSection _ _ = pure ()
+
+addDirectDep :: Member GraphBuilder r =>  Map Text G.DepRef -> DirectDep -> Sem r ()
+addDirectDep depMap x = do
+      case M.lookup (directName x) depMap of
+            Just directRef -> addDirect directRef
+            Nothing -> pure ()
+
 -- Parse Gemfile
 -- 1. Find top level(?) deps with their remote location, and transitive deps
 -- 2. Associate the transitive deps to one another once we get all deps.
 -- 3. Make DEPENDENCIES block all direct deps and reference them to the previously discovered deps
-
-
--- data GemfileDep = GemfileDep
---   { depName    :: Text
---   , depVersion :: Text
---   , depLocations :: []
---   , depDependencies :: [GemfileDep]
---   } deriving (Eq, Ord, Show, Generic)
 
 type Parser = Parsec Void Text
 
@@ -181,14 +228,6 @@ gemSectionParser = L.nonIndented scn (L.indentBlock scn p)
             in case result of
                   Right x -> pure x
                   Left y -> fail $ T.unpack $ "could not parse GEM section: " <> y
-
-
--- dependenciesSectionParser :: Parser Section
--- dependenciesSectionParser = do
---      git <- chunk "DEPENDENCIES"
---      _ <- eol
---      dependencies <- findDependencies
---      pure $ DependencySection dependencies
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe (Right a) = Just a
