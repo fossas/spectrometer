@@ -6,7 +6,7 @@ module Strategy.Ruby.GemfileLock
   , configure
   ) where
 
-import Prologue hiding (many, some)
+import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -35,8 +35,7 @@ discover = Discover
 discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   for_ files $ \f ->
-    when (fileName f == "Gemfile.lock") $ do
-      output (configure f)
+    when (fileName f == "Gemfile.lock") $ output (configure f)
   walkContinue
 
 strategy :: Strategy BasicFileOpts
@@ -69,26 +68,23 @@ data Spec = Spec
       , specDeps :: [SpecDep]
       } deriving (Eq, Ord, Show, Generic)
 
-data SpecDep = SpecDep
+newtype SpecDep = SpecDep
       { depName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-data DirectDep = DirectDep
+newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
 analyze :: Member (Input [Section]) r => Sem r G.Graph
-analyze = do 
-      sectionList <- input
-      pure $ buildGraph sectionList
+analyze = buildGraph <$> input
 
 buildGraph :: [Section] -> G.Graph
-buildGraph sections = traceShowId $ run $ evalGraphBuilder G.empty $ do
+buildGraph sections = run $ evalGraphBuilder G.empty $ do
       let depMap = buildNodes sections
-      otherMap <- traverse addNode depMap
-      buildEdges sections otherMap
-      buildDirect sections otherMap
-      
+      nodeMap <- traverse addNode depMap
+      buildEdges sections nodeMap
+      buildDirect sections nodeMap
 
 buildNodes :: [Section] -> Map Text G.Dependency
 buildNodes sections = M.fromList $ concatMap depsFromSection sections
@@ -104,52 +100,42 @@ depFromSpec x = G.Dependency G.GemType (specName x) (Just $ G.CEq $ specVersion 
 
 -- Populate the dependencies with their deep deps
 buildEdges :: Member GraphBuilder r => [Section] -> Map Text G.DepRef -> Sem r ()
-buildEdges sections map = traverse_ (buildSectionEdges map) sections
+buildEdges sections depGraph = traverse_ (buildSectionEdges depGraph) sections
 
 buildSectionEdges :: Member GraphBuilder r => Map Text G.DepRef -> Section -> Sem r ()
-buildSectionEdges map (GitSection _ _ _ specs) = addSpecsEdges specs map
-buildSectionEdges map (GemSection _ specs) = addSpecsEdges specs map
-buildSectionEdges map (PathSection _ specs) = addSpecsEdges specs map
+buildSectionEdges depGraph (GitSection _ _ _ specs) = buildSpecsEdges specs depGraph
+buildSectionEdges depGraph (GemSection _ specs) = buildSpecsEdges specs depGraph
+buildSectionEdges depGraph (PathSection _ specs) = buildSpecsEdges specs depGraph
 buildSectionEdges _ _ = pure ()
 
-addSpecsEdges :: Member GraphBuilder r => [Spec] -> Map Text G.DepRef -> Sem r ()
-addSpecsEdges (x : xs) map = do
-      addSpecEdges map (specName x) (specDeps x)
-      addSpecsEdges xs map
-addSpecsEdges [] _ = pure ()
+buildSpecsEdges :: Member GraphBuilder r => [Spec] -> Map Text G.DepRef -> Sem r ()
+buildSpecsEdges specs depGraph = traverse_ (buildSpecEdges depGraph) specs
 
-addSpecEdges :: Member GraphBuilder r => Map Text G.DepRef -> Text -> [SpecDep] -> Sem r ()
-addSpecEdges map parent (x : xs) = do
+buildSpecEdges :: Member GraphBuilder r => Map Text G.DepRef -> Spec -> Sem r ()
+buildSpecEdges depMap (Spec _ name children) = traverse_ (buildSpecDepEdge depMap name) children
+
+buildSpecDepEdge :: Member GraphBuilder r => Map Text G.DepRef -> Text -> SpecDep -> Sem r ()
+buildSpecDepEdge depMap name dep = do
       let refs = do
-            parentRef <- M.lookup parent map
-            childRef <- M.lookup (depName x) map
+            parentRef <- M.lookup name depMap
+            childRef <- M.lookup (depName dep) depMap
             Just (parentRef, childRef)
       case refs of
             Just (parentRef, childRef) -> addEdge parentRef childRef 
             Nothing -> pure ()
-      addSpecEdges map parent xs
-addSpecEdges _ _ [] = pure ()
-      
 
--- New Work here that finds direct deps from the direct section only.
 buildDirect :: Member GraphBuilder r => [Section] -> Map Text G.DepRef -> Sem r ()
 buildDirect sections depMap = traverse_ (directDepsFromSection depMap) sections
-
 
 directDepsFromSection :: Member GraphBuilder r =>  Map Text G.DepRef -> Section -> Sem r ()
 directDepsFromSection dependencyNameMap (DependencySection specs)  = traverse_ (addDirectDep dependencyNameMap) specs
 directDepsFromSection _ _ = pure ()
 
 addDirectDep :: Member GraphBuilder r =>  Map Text G.DepRef -> DirectDep -> Sem r ()
-addDirectDep depMap x = do
+addDirectDep depMap x = 
       case M.lookup (directName x) depMap of
             Just directRef -> addDirect directRef
             Nothing -> pure ()
-
--- Parse Gemfile
--- 1. Find top level(?) deps with their remote location, and transitive deps
--- 2. Associate the transitive deps to one another once we get all deps.
--- 3. Make DEPENDENCIES block all direct deps and reference them to the previously discovered deps
 
 type Parser = Parsec Void Text
 
@@ -174,7 +160,7 @@ gitSectionParser = L.nonIndented scn (L.indentBlock scn p)
       where 
          p = do
             _ <- chunk "GIT"
-            pure $ L.IndentMany Nothing (propertiesToGitSection) (try propertyParser <|> specPropertyParser)
+            pure $ L.IndentMany Nothing propertiesToGitSection (try propertyParser <|> specPropertyParser)
          propertiesToGitSection :: [(Text, RawField)] -> Parser Section
          propertiesToGitSection properties = 
             let propertyMap = M.fromList properties
@@ -196,7 +182,7 @@ pathSectionParser = L.nonIndented scn (L.indentBlock scn p)
       where 
          p = do
             _ <- chunk "PATH"
-            pure $ L.IndentMany Nothing (propertiesToPathSection) (try propertyParser <|> specPropertyParser)
+            pure $ L.IndentMany Nothing propertiesToPathSection (try propertyParser <|> specPropertyParser)
          propertiesToPathSection :: [(Text, RawField)] -> Parser Section
          propertiesToPathSection properties = 
             let propertyMap = M.fromList properties
@@ -215,7 +201,7 @@ gemSectionParser = L.nonIndented scn (L.indentBlock scn p)
       where 
          p = do
             _ <- chunk "GEM"
-            pure $ L.IndentMany Nothing (propertiesToGemSection) (try propertyParser <|> specPropertyParser)
+            pure $ L.IndentMany Nothing propertiesToGemSection (try propertyParser <|> specPropertyParser)
          propertiesToGemSection :: [(Text, RawField)] -> Parser Section
          propertiesToGemSection properties = 
             let propertyMap = M.fromList properties
@@ -256,17 +242,16 @@ propertyParser = do
       remote <- findFieldName
       _ <- chunk ":"
       value <- textValue
-      pure $ (remote, value)
+      pure (remote, value)
 
       where 
             findFieldName :: Parser Text
-            findFieldName = takeWhileP (Just "field name") (\a -> a /= ':')
+            findFieldName = takeWhileP (Just "field name") (/= ':')
 
             textValue :: Parser RawField
             textValue = do
                   _ <- chunk " "
-                  value <- restOfLine
-                  pure $ RawText value
+                  RawText <$> restOfLine
 
 specPropertyParser :: Parser (Text, RawField)
 specPropertyParser = L.indentBlock scn p
@@ -277,20 +262,20 @@ specPropertyParser = L.indentBlock scn p
             pure $ L.IndentMany Nothing (\a -> pure (remote, RawSpecs a)) specParser
             
       findFieldName :: Parser Text
-      findFieldName = takeWhileP (Just "field name") (\a -> a /= ':')
+      findFieldName = takeWhileP (Just "field name") (/= ':')
 
 isEndLine :: Char -> Bool
 isEndLine '\n' = True
 isEndLine '\r' = True
 isEndLine _    = False
 
-specParser :: Parser (Spec)
+specParser :: Parser Spec
 specParser = L.indentBlock scn p 
   where
     p = do
       name <- findDep
       version <- findVersion
-      return (L.IndentMany Nothing (\a -> pure $ Spec version name a) specDepParser)
+      return (L.IndentMany Nothing (\specs -> pure $ Spec version name specs) specDepParser)
 
 specDepParser :: Parser SpecDep
 specDepParser = do
@@ -308,13 +293,12 @@ lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
 
 findDep :: Parser Text
-findDep = lexeme (takeWhile1P (Just "dep") (\a -> not $ C.isSpace a))
-
+findDep = lexeme (takeWhile1P (Just "dep") (not . C.isSpace))
 
 findVersion :: Parser Text
 findVersion = do
       _ <- char '('
-      result <- lexeme (takeWhileP (Just "version") (\a -> a /= ')'))
+      result <- lexeme (takeWhileP (Just "version") (/= ')'))
       _ <- char ')'
       pure result
 
@@ -324,7 +308,7 @@ dependenciesSectionParser = L.nonIndented scn (L.indentBlock scn p)
                   where
                         p = do
                               _ <- chunk "DEPENDENCIES"
-                              pure $ L.IndentMany Nothing (\a -> pure $ DependencySection a ) findDependency
+                              pure $ L.IndentMany Nothing (\deps -> pure $ DependencySection deps) findDependency
 
 findDependency :: Parser DirectDep
 findDependency = do
