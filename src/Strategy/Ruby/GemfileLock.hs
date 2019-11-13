@@ -4,6 +4,12 @@ module Strategy.Ruby.GemfileLock
   , strategy
   , analyze
   , configure
+  , findSections
+
+  , Spec(..)
+  , SpecDep(..)
+  , DirectDep(..)
+  , Section(..)
   ) where
 
 import Prologue
