@@ -7,10 +7,14 @@ module Effect.Exec
   , Command(..)
   , AllowErr(..)
 
+  , execParser
+  , execJson
+
   , execInputParser
   , execInputJson
 
   , execToIO
+  , execConst
   , module System.Exit
   ) where
 
@@ -69,24 +73,32 @@ exec :: Member Exec r => Path Rel Dir -> Command -> [String] -> Sem r (Either [C
 
 type Parser = Parsec Void Text
 
+-- | Parse the stdout of a command
+execParser :: Members '[Exec, Error CLIErr] r => Parser a -> Path Rel Dir -> Command -> [String] -> Sem r a
+execParser parser dir cmd args = do
+  stdout <- execThrow dir cmd args
+  case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
+    Left err -> throw (CommandParseError "" (T.pack (errorBundlePretty err))) -- TODO: command name
+    Right a -> pure a
+
+-- | Parse the JSON stdout of a command
+execJson :: (FromJSON a, Members '[Exec, Error CLIErr] r) => Path Rel Dir -> Command -> [String] -> Sem r a
+execJson dir cmd args = do
+  stdout <- execThrow dir cmd args
+  case eitherDecode stdout of
+    Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
+    Right a -> pure a
+
 -- | Interpret an 'Input' effect by parsing stdout of a command
 execInputParser :: Members '[Exec, Error CLIErr] r => Parser i -> Path Rel Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
 execInputParser parser dir cmd args = interpret $ \case
-  Input -> do
-    stdout <- execThrow dir cmd args
-    case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
-      Left err -> throw (CommandParseError "" (T.pack (errorBundlePretty err))) -- TODO: command name
-      Right a -> pure a
+  Input -> execParser parser dir cmd args
 {-# INLINE execInputParser #-}
 
 -- | Interpret an 'Input' effect by parsing JSON stdout of a command
 execInputJson :: (FromJSON i, Members '[Exec, Error CLIErr] r) => Path Rel Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
 execInputJson dir cmd args = interpret $ \case
-  Input -> do
-    stdout <- execThrow dir cmd args
-    case eitherDecode stdout of
-      Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
-      Right a -> pure a
+  Input -> execJson dir cmd args
 {-# INLINE execInputJson #-}
 
 -- | A variant of 'exec' that throws a 'CLIErr' when the command returns a non-zero exit code
@@ -98,12 +110,23 @@ execThrow dir cmd args = do
     Right stdout -> pure stdout
 {-# INLINE execThrow #-}
 
+-- | Interpret an Exec effect by running commands
 execToIO :: Member (Embed IO) r => Sem (Exec ': r) a -> Sem r a
 execToIO = interpret $ \case
   Exec dir cmd args -> do
     absolute <- makeAbsolute dir
     -- TODO: disgusting/unreadable
-    let runCmd :: String -> ExceptT [CmdFailure] IO BL.ByteString
+    -- We use `ExceptT [CmdFailure] IO Stdout` here because it has the Alternative instance we want.
+    --
+    -- In particular: when all of the commands fail, we want to have descriptions of all of the
+    -- CmdFailures, so we can produce better error messages.
+    --
+    -- A Command can have many `cmdNames`. ["./gradlew", "gradle"] is one such example.
+    -- Each of them will be attempted successively until one succeeds
+    --
+    -- This is the behavior of `asum` with ExceptT: it'll run all of the ExceptT actions in the list, combining
+    -- errors. When it finds a successful result, it'll return that instead of the accumulated errors
+    let runCmd :: String -> ExceptT [CmdFailure] IO Stdout
         runCmd cmdName = ExceptT $ handle (\(e :: IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
           (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdBaseArgs cmd <> args)))
           case (exitcode, cmdAllowErr cmd) of
@@ -117,3 +140,8 @@ execToIO = interpret $ \case
     embed $ runExceptT $ asum (map runCmd (cmdNames cmd))
 {-# INLINE execToIO #-}
 
+-- | Interpret an Exec effect by providing a mock return value
+execConst :: Either [CmdFailure] Stdout -> Sem (Exec ': r) a -> Sem r a
+execConst out = interpret $ \case
+  Exec{} -> pure out
+{-# INLINE execConst #-}
