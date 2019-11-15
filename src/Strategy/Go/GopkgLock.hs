@@ -78,13 +78,31 @@ analyze BasicFileOpts{..} = do
   case Toml.decode golockCodec contents of
     Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
     Right golock -> do
-      let graph = buildGraph (lockProjects golock)
-      fillInTransitive (parent targetFile) graph
-        `catch` (\(_ :: ExecErr) -> pure graph)
+      let (incompleteGraph, mapping) = buildGraph (lockProjects golock)
 
-buildGraph :: [Project] -> G.Graph
-buildGraph projects = unfold projects (const []) toDependency
+      graph <- fillInTransitive mapping (parent targetFile) incompleteGraph `catch` (\(_ :: ExecErr) -> pure incompleteGraph)
+
+      pure graph
+
+type PackageName = Text
+
+buildGraph :: [Project] -> (G.Graph, Map PackageName G.DepRef)
+buildGraph projects = run . runGraphBuilder G.empty $ do
+  (assocs, _) <- runOutputList $ traverse addProject projects
+
+  let mapping :: Map PackageName G.DepRef
+      mapping = M.fromList assocs
+
+  pure mapping
+
   where
+
+  addProject :: Members '[GraphBuilder, Output (Text, G.DepRef)] r => Project -> Sem r ()
+  addProject project = do
+    ref <- addNode (toDependency project)
+    addDirect ref
+    output (projectName project, ref)
+
   toDependency Project{..} =
     G.Dependency { dependencyType = G.GoType
                  , dependencyName = projectName

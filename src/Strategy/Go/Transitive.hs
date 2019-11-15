@@ -7,10 +7,11 @@ import Prologue
 
 import           Control.Applicative (many)
 import qualified Data.Attoparsec.ByteString as A
+import           Data.Aeson.Internal (iparse)
 import           Data.Aeson.Parser
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map.Strict as M
-import qualified Data.Sequence as S
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import           Polysemy
 import           Polysemy.Error
@@ -37,7 +38,7 @@ data Package = Package
 
 data Module = Module
   { modPath    :: Text
-  , modVersion :: Text
+  , modVersion :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
 instance FromJSON Package where
@@ -49,8 +50,8 @@ instance FromJSON Package where
 
 instance FromJSON Module where
   parseJSON = withObject "Module" $ \obj ->
-    Module <$> obj .: "Path"
-           <*> obj .: "Version"
+    Module <$> obj .:  "Path"
+           <*> obj .:? "Version"
 
 -- `go list -json` is dumb: it outputs a bunch of raw json objects:
 --     {
@@ -63,7 +64,10 @@ instance FromJSON Module where
 -- json objects, wrapping them into `[Value]`, then decoding `[Value]`
 -- into `[a]`
 decodeMany :: FromJSON a => BL.ByteString -> Maybe [a]
-decodeMany = decodeWith parser fromJSON
+--decodeMany = decodeWith parser fromJSON
+decodeMany input = case eitherDecodeWith parser (iparse parseJSON) input of
+    Left err -> traceShow err Nothing
+    Right a -> pure a
   where
   -- skipSpace is lifted from Data.Aeson.Parser.Internal
   skipSpace = A.skipWhile $ \w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09
@@ -72,21 +76,12 @@ decodeMany = decodeWith parser fromJSON
     (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
     pure (Array (V.fromList objects))
 
--- FIXME: holy bad code, batman. this tightly couples the graph representation to our implementation.
--- this needs to be fixed, probably by replacing `unfold` at the callsites with something that
--- can produce `Map Text G.DepRef`
-graphToDepMap :: G.Graph -> Map Text G.DepRef
-graphToDepMap = S.foldrWithIndex (\ix dep acc -> M.insert (G.dependencyName dep) (G.DepRef ix) acc) M.empty . G.graphDeps
-
-fillInTransitive :: Members '[Error ExecErr, Exec] r => Path Rel Dir -> G.Graph -> Sem r G.Graph
-fillInTransitive dir graph = evalGraphBuilder graph $ runState depMap $ do -- TODO: void????
+fillInTransitive :: Members '[Error ExecErr, Exec] r => Map Text G.DepRef -> Path Rel Dir -> G.Graph -> Sem r G.Graph
+fillInTransitive depMap dir graph = evalGraphBuilder graph $ runState depMap $ do -- TODO: void????
   goListOutput <- execThrow dir goListCmd []
   case decodeMany goListOutput of
     Nothing -> throw (CommandParseError "" "couldn't parse output of `go list -json all`") -- TODO: command name??
     Just (packages :: [Package]) -> M.traverseWithKey (fillInSingle (indexBy packageImportPath packages)) =<< get
-
-  where
-  depMap = graphToDepMap graph
 
 fillInSingle :: forall r. Members '[GraphBuilder, State (Map Text G.DepRef)] r => Map Text Package -> Text -> G.DepRef -> Sem r ()
 fillInSingle packages name parentRef = do
@@ -131,7 +126,7 @@ toDependency package =
     Just gomod -> G.Dependency
       { dependencyType = G.GoType
       , dependencyName = modPath gomod
-      , dependencyVersion = Just (G.CEq (modVersion gomod))
+      , dependencyVersion = (G.CEq . last . T.splitOn "-" . T.replace "+incompatible" "") <$> modVersion gomod
       , dependencyLocations = []
       , dependencyTags = M.empty
       }

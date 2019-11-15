@@ -3,6 +3,7 @@ module Strategy.Go.Gomod
   , strategy
   , analyze
   , configure
+  , buildGraph
 
   , Gomod(..)
   , Statement(..)
@@ -16,16 +17,19 @@ import Prologue hiding ((<?>))
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import           Polysemy
-import           Polysemy.Input
+import           Polysemy.Error
 import           Polysemy.Output
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
+import           Diagnostics
 import           Discovery.Walk
+import           Effect.Exec
 import           Effect.GraphBuilder
 import           Effect.ReadFS
 import qualified Graph as G
+import           Strategy.Go.Transitive
 import           Types
 
 discover :: Discover
@@ -45,8 +49,7 @@ discover' = walk $ \_ _ files ->
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "golang-gomod"
-  , strategyAnalyze = \opts ->
-      analyze & fileInputParser gomodParser (targetFile opts)
+  , strategyAnalyze = analyze
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
@@ -72,9 +75,6 @@ data Require = Require
   { reqPackage :: PackageName
   , reqVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
-
-analyze :: Member (Input Gomod) r => Sem r G.Graph
-analyze = buildGraph <$> input
 
 type Parser = Parsec Void Text
 
@@ -193,9 +193,35 @@ resolve gomod = map resolveReplace (modRequires gomod)
   where
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
-buildGraph :: Gomod -> G.Graph
-buildGraph gomod = unfold (resolve gomod) (const []) toDependency
+analyze :: Members '[Error ReadFSErr, Error ExecErr, ReadFS, Exec] r => BasicFileOpts -> Sem r G.Graph
+analyze opts = do
+  gomod <- readContentsParser gomodParser (targetFile opts)
+
+  let (incompleteGraph, mapping) = buildGraph gomod
+
+  graph <- fillInTransitive mapping (parent (targetFile opts)) incompleteGraph `catch` (\(_ :: ExecErr) -> pure incompleteGraph)
+
+  pure graph
+
+buildGraph :: Gomod -> (G.Graph, Map PackageName G.DepRef)
+buildGraph gomod = run . runGraphBuilder G.empty $ do
+  let resolved = resolve gomod
+
+  (assocs, _) <- runOutputList $ traverse addRequire resolved
+
+  let mapping :: Map PackageName G.DepRef
+      mapping = M.fromList assocs
+
+  pure mapping
+
   where
+
+  addRequire :: Members '[GraphBuilder, Output (PackageName, G.DepRef)] r => Require -> Sem r ()
+  addRequire require = do
+    ref <- addNode (toDependency require)
+    addDirect ref
+    output (reqPackage require, ref)
+
   toVersion :: Text -> Text
   toVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
 

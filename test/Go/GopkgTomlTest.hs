@@ -130,6 +130,6 @@ spec_buildGraph :: Spec
 spec_buildGraph = do
   describe "buildGraph" $
     it "should produce expected output" $ do
-      let result = buildGraph gopkg
+      let result = fst (buildGraph gopkg)
 
       result `shouldBe` expected

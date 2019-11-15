@@ -1,5 +1,5 @@
 module Go.GomodTest
-  ( spec_analyze
+  ( spec_buildGraph
   , spec_parse
   ) where
 
@@ -56,13 +56,11 @@ expected = run . evalGraphBuilder G.empty $ do
   addDirect ref2
   addDirect ref3
 
-spec_analyze :: Spec
-spec_analyze =
-  describe "analyze" $
+spec_buildGraph :: Spec
+spec_buildGraph =
+  describe "buildGraph" $
     it "should produce expected output" $ do
-      let result = analyze
-            & runInputConst @Gomod gomod
-            & run
+      let result = fst (buildGraph gomod)
 
       result `shouldBe` expected
 

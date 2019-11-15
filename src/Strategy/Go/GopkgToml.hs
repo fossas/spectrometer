@@ -86,16 +86,38 @@ analyze BasicFileOpts{..} = do
   case Toml.decode gopkgCodec contents of
     Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
     Right gopkg -> do
-      let graph = buildGraph gopkg
-      fillInTransitive (parent targetFile) graph
-        `catch` (\(_ :: ExecErr) -> pure graph)
+      let (incompleteGraph, mapping) = buildGraph gopkg
 
-buildGraph :: Gopkg -> G.Graph
-buildGraph gopkg = unfold direct (const []) toDependency
+      graph <- fillInTransitive mapping (parent targetFile) incompleteGraph `catch` (\(_ :: ExecErr) -> pure incompleteGraph)
+
+      pure graph
+
+type PackageName = Text
+
+buildGraph :: Gopkg -> (G.Graph, Map PackageName G.DepRef)
+buildGraph gopkg = run . runGraphBuilder G.empty $ do
+  --unfold direct (const []) toDependency
+  let constraints :: Map Text PkgConstraint
+      constraints = resolve gopkg
+
+  (assocs, _) <- runOutputList $ M.traverseWithKey addPkgConstraint constraints
+
+  let mapping :: Map PackageName G.DepRef
+      mapping = M.fromList assocs
+
+  pure mapping
+
   where
-  direct = M.toList (resolve gopkg)
 
-  toDependency (name, PkgConstraint{..}) =
+  addPkgConstraint :: Members '[GraphBuilder, Output (PackageName, G.DepRef)] r => Text -> PkgConstraint -> Sem r ()
+  addPkgConstraint name constraint = do
+    ref <- addNode (toDependency name constraint)
+    addDirect ref
+    output (name, ref)
+
+  --direct = M.toList (resolve gopkg)
+
+  toDependency name PkgConstraint{..} =
     G.Dependency { dependencyType = G.GoType
                  , dependencyName = name
                  , dependencyVersion = G.CEq <$> (constraintVersion <|> constraintBranch <|> constraintRevision)

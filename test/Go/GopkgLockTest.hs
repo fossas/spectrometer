@@ -98,6 +98,6 @@ spec_buildGraph :: Spec
 spec_buildGraph = do
   describe "buildGraph" $
     it "should produce expected output" $ do
-      let result = buildGraph projects
+      let result = fst (buildGraph projects)
 
       result `shouldBe` expected

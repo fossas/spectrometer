@@ -75,13 +75,31 @@ analyze BasicDirOpts{..} = do
           [package, version] -> Just (Require package version)
           _ -> Nothing
 
-  let graph = buildGraph requires
-  fillInTransitive targetDir graph
-    `catch` (\(_ :: ExecErr) -> pure graph)
+  let (incompleteGraph, mapping) = buildGraph requires
 
-buildGraph :: [Require] -> G.Graph
-buildGraph requires = unfold requires (const []) toDependency
+  graph <- fillInTransitive mapping targetDir incompleteGraph `catch` (\(_ :: ExecErr) -> pure incompleteGraph)
+
+  pure graph
+
+type PackageName = Text
+
+buildGraph :: [Require] -> (G.Graph, Map PackageName G.DepRef)
+buildGraph requires = run . runGraphBuilder G.empty $ do
+  (assocs, _) <- runOutputList $ traverse addRequire requires
+
+  let mapping :: Map PackageName G.DepRef
+      mapping = M.fromList assocs
+
+  pure mapping
+
   where
+
+  addRequire :: Members '[GraphBuilder, Output (PackageName, G.DepRef)] r => Require -> Sem r ()
+  addRequire require = do
+    ref <- addNode (toDependency require)
+    addDirect ref
+    output (reqPackage require, ref)
+
   toVersion :: Text -> Text
   toVersion = last . T.splitOn "-"
 
