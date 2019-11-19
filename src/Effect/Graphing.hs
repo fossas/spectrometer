@@ -132,6 +132,6 @@ runGraphing = fmap (\(amap, (lbls, (directs, a))) -> (amap, lbls, directs, a))
                 . runState @(Map ty (Set lbl)) M.empty
                 . runState @(Set ty) S.empty
                 . reinterpret3 (\case
-  Direct v -> modify (S.insert v)
+  Direct v -> modify (S.insert v) *> modify (AM.overlay (AM.vertex v))
   Edge v1 v2 -> modify (AM.overlay (AM.edge v1 v2))
   Label v lbl -> modify (M.insertWith (<>) v (S.singleton lbl)))

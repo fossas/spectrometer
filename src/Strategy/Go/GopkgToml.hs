@@ -7,6 +7,7 @@ module Strategy.Go.GopkgToml
   , Gopkg(..)
   , PkgConstraint(..)
 
+  , analyze
   , buildGraph
   )
   where
