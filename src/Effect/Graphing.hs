@@ -31,7 +31,7 @@
 -- other package tags, we need a way to capture those details, or "labels". We
 -- have a type family, 'PkgLabel', that encodes this behavior:
 --
--- > instance PkgLabel GolangPackage = GolangLabel
+-- > type instance PkgLabel GolangPackage = GolangLabel
 -- >
 -- > data GolangLabel = GolangLabelVersion Text | GolangLabelLocation Text
 --
