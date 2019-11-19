@@ -102,6 +102,7 @@ library
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
     Strategy.Go.Transitive
+    Strategy.Go.Types
     Strategy.Gradle
     Strategy.Node.YarnLock
     Strategy.NpmList

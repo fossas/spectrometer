@@ -1,9 +1,10 @@
 module Strategy.Go.Transitive
   ( fillInTransitive
+  , fillInTransitive'
   )
   where
 
-import Prologue
+import Prologue hiding (empty)
 
 import           Control.Applicative (many)
 import qualified Data.Attoparsec.ByteString as A
@@ -21,6 +22,7 @@ import           Diagnostics
 import           Effect.Exec
 import           Effect.GraphBuilder
 import qualified Graph as G
+import           Strategy.Go.Types
 
 goListCmd :: Command
 goListCmd = Command
@@ -75,6 +77,37 @@ decodeMany input = case eitherDecodeWith parser (iparse parseJSON) input of
   parser = do
     (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
     pure (Array (V.fromList objects))
+
+
+doItTransitive :: Member (Graphing GolangPackage) r => Map Text Package -> Sem r ()
+doItTransitive = void . M.traverseWithKey go
+  where
+  go :: Member (Graphing GolangPackage) r => Text -> Package -> Sem r ()
+  go name package = unless (packageSystem package == Just True) $ do
+    let -- when a gomod field is present, use that for the package import path
+        -- otherwise use the top-level package import path
+        name :: Text
+        name = fromMaybe (packageImportPath package) (modPath <$> packageModule package)
+
+        pkg :: GolangPackage
+        pkg = GolangPackage name
+
+    traverse_ (traverse_ (\dep -> edgeg pkg (GolangPackage dep))) (packageImports package)
+
+    -- when we have a gomod, and that gomod has a version, add label for version
+    case modVersion =<< packageModule package of
+      Nothing -> pure ()
+      Just ver -> labelg pkg (GolangVersion (fixVersion ver))
+
+
+fillInTransitive' :: Members '[Error ExecErr, Exec, Graphing GolangPackage] r => Path Rel Dir -> Sem r ()
+fillInTransitive' dir = do
+  goListOutput <- execThrow dir goListCmd []
+  case decodeMany goListOutput of
+    Nothing -> throw (CommandParseError "" "couldn't parse output of `go list -json all`") -- TODO: command name??
+    -- TODO: packageImportPath might be different from modPath. does this matter?
+    Just (packages :: [Package]) -> doItTransitive $ indexBy packageImportPath packages
+
 
 fillInTransitive :: Members '[Error ExecErr, Exec] r => Map Text G.DepRef -> Path Rel Dir -> G.Graph -> Sem r G.Graph
 fillInTransitive depMap dir graph = evalGraphBuilder graph $ runState depMap $ do -- TODO: void????
