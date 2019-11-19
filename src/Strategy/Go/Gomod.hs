@@ -19,7 +19,7 @@ import qualified Data.Text as T
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
-import           Text.Megaparsec
+import           Text.Megaparsec hiding (label)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
@@ -27,6 +27,7 @@ import           Diagnostics
 import           Discovery.Walk
 import qualified Effect.Error as E
 import           Effect.Exec
+import           Effect.Graphing
 import           Effect.ReadFS
 import qualified Graph as G
 import           Strategy.Go.Transitive
@@ -212,8 +213,8 @@ buildGraph = traverse_ go . resolve
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
 
-    directg pkg
-    labelg pkg (mkGolangVersion reqVersion)
+    direct pkg
+    label pkg (mkGolangVersion reqVersion)
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts

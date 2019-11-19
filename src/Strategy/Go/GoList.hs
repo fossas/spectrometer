@@ -22,6 +22,7 @@ import           Diagnostics
 import           Discovery.Walk
 import qualified Effect.Error as E
 import           Effect.Exec
+import           Effect.Graphing
 import qualified Graph as G
 import           Strategy.Go.Transitive (fillInTransitive)
 import           Strategy.Go.Types
@@ -83,14 +84,13 @@ analyze BasicDirOpts{..} = graphingToGraph @GolangPackage golangPackageToDepende
 
 buildGraph :: Member (Graphing GolangPackage) r => [Require] -> Sem r ()
 buildGraph = traverse_ go
-
   where
 
   go :: Member (Graphing GolangPackage) r => Require -> Sem r ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
-    directg pkg
-    labelg pkg (mkGolangVersion reqVersion)
+    direct pkg
+    label pkg (mkGolangVersion reqVersion)
 
 configure :: Path Rel Dir -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicDirOpts

@@ -93,6 +93,7 @@ library
     Effect.Error
     Effect.Exec
     Effect.GraphBuilder
+    Effect.Graphing
     Effect.Logger
     Effect.ReadFS
     Graph

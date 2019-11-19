@@ -24,6 +24,7 @@ import           Diagnostics
 import           Discovery.Walk
 import qualified Effect.Error as E
 import           Effect.Exec
+import           Effect.Graphing
 import           Effect.ReadFS
 import qualified Graph as G
 import           Strategy.Go.Transitive (fillInTransitive)
@@ -99,14 +100,14 @@ buildGraph = void . M.traverseWithKey go . resolve
   go name PkgConstraint{..} = do
     let pkg = mkGolangPackage name
 
-    directg pkg
+    direct pkg
 
     -- label version when it exists
-    traverse_ (labelg pkg . mkGolangVersion)
+    traverse_ (label pkg . mkGolangVersion)
               (constraintVersion <|> constraintBranch <|> constraintRevision)
 
     -- label location when it exists
-    traverse_ (labelg pkg . GolangLabelLocation) constraintSource
+    traverse_ (label pkg . GolangLabelLocation) constraintSource
 
 -- TODO: handling version constraints
 resolve :: Gopkg -> Map Text PkgConstraint -- Map Package (Maybe Version)

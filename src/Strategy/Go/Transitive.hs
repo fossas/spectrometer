@@ -17,6 +17,7 @@ import           Polysemy.Error
 
 import           Diagnostics
 import           Effect.Exec
+import           Effect.Graphing
 import           Strategy.Go.Types
 
 goListCmd :: Command
@@ -61,7 +62,7 @@ instance FromJSON Module where
 -- json objects, wrapping them into `[Value]`, then decoding `[Value]`
 -- into `[a]`
 decodeMany :: FromJSON a => BL.ByteString -> Either (JSONPath, String) [a]
-decodeMany input = eitherDecodeWith parser (iparse parseJSON) input
+decodeMany = eitherDecodeWith parser (iparse parseJSON)
   where
   -- skipSpace is lifted from Data.Aeson.Parser.Internal
   skipSpace = A.skipWhile $ \w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09
@@ -79,17 +80,17 @@ graphTransitive = void . traverse_ go
     let -- when a gomod field is present, use that for the package import path
         -- otherwise use the top-level package import path
         path :: Text
-        path = fromMaybe (packageImportPath package) (modPath <$> packageModule package)
+        path = maybe (packageImportPath package) modPath (packageModule package)
 
         pkg :: GolangPackage
         pkg = mkGolangPackage path
 
-    traverse_ (traverse_ (\dep -> edgeg pkg (mkGolangPackage dep))) (packageImports package)
+    traverse_ (traverse_ (edge pkg . mkGolangPackage)) (packageImports package)
 
     -- when we have a gomod, and that gomod has a version, add label for version
     case modVersion =<< packageModule package of
       Nothing -> pure ()
-      Just ver -> labelg pkg (mkGolangVersion ver)
+      Just ver -> label pkg (mkGolangVersion ver)
 
 
 fillInTransitive :: Members '[Error ExecErr, Exec, Graphing GolangPackage] r => Path Rel Dir -> Sem r ()

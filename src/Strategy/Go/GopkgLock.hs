@@ -22,6 +22,7 @@ import           Diagnostics
 import           Discovery.Walk
 import qualified Effect.Error as E
 import           Effect.Exec
+import           Effect.Graphing
 import           Effect.ReadFS
 import qualified Graph as G
 import           Strategy.Go.Transitive (fillInTransitive)
@@ -61,7 +62,7 @@ projectCodec = Project
   <*> Toml.dioptional (Toml.text "source") .= projectSource
   <*> Toml.text "revision" .= projectRevision
 
-data GoLock = GoLock
+newtype GoLock = GoLock
   { lockProjects :: [Project]
   } deriving (Eq, Ord, Show, Generic)
 
@@ -90,11 +91,11 @@ buildGraph = void . traverse_ go
   go Project{..} = do
     let pkg = mkGolangPackage projectName
 
-    directg pkg
-    labelg pkg (mkGolangVersion projectRevision)
+    direct pkg
+    label pkg (mkGolangVersion projectRevision)
 
     -- label location when it exists
-    traverse_ (labelg pkg . GolangLabelLocation) projectSource
+    traverse_ (label pkg . GolangLabelLocation) projectSource
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts
