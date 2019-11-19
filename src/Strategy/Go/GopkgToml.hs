@@ -83,7 +83,7 @@ data PkgConstraint = PkgConstraint
   deriving (Eq, Ord, Show, Generic)
 
 analyze :: Members '[ReadFS, Exec, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r G.Graph
-analyze BasicFileOpts{..} = graphingToGraph @GolangPackage golangPackageToDependency $ do
+analyze BasicFileOpts{..} = graphingGolang $ do
   contents <- readContentsText targetFile
   case Toml.decode gopkgCodec contents of
     Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))

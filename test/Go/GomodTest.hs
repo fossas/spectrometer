@@ -10,11 +10,10 @@ import qualified Data.Text.IO as TIO
 import           Polysemy
 import           Text.Megaparsec
 
-import           Effect.Graphing
 import           Effect.GraphBuilder
 import qualified Graph as G
 import           Strategy.Go.Gomod
-import           Strategy.Go.Types (golangPackageToDependency)
+import           Strategy.Go.Types (graphingGolang)
 
 import Test.Hspec.Megaparsec
 import Test.Tasty.Hspec
@@ -61,7 +60,7 @@ spec_gomodBuildGraph :: Spec
 spec_gomodBuildGraph =
   describe "buildGraph" $
     it "should produce expected output" $ do
-      let result = buildGraph gomod & graphingToGraph golangPackageToDependency & run
+      let result = buildGraph gomod & graphingGolang & run
 
       result `shouldBe` expected
 

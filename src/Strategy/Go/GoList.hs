@@ -64,7 +64,7 @@ golistCmd = Command
   }
 
 analyze :: Members '[Error ExecErr, Exec] r => BasicDirOpts -> Sem r G.Graph
-analyze BasicDirOpts{..} = graphingToGraph @GolangPackage golangPackageToDependency $ do
+analyze BasicDirOpts{..} = graphingGolang $ do
   stdout <- execThrow targetDir golistCmd []
 
   let gomodLines = drop 1 (T.lines (decodeUtf8 (BL.toStrict stdout))) -- the first line is our package

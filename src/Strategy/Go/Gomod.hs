@@ -196,7 +196,7 @@ resolve gomod = map resolveReplace (modRequires gomod)
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
 analyze :: Members '[Error ReadFSErr, Error ExecErr, ReadFS, Exec] r => BasicFileOpts -> Sem r G.Graph
-analyze BasicFileOpts{..} = graphingToGraph @GolangPackage golangPackageToDependency $ do
+analyze BasicFileOpts{..} = graphingGolang $ do
   gomod <- readContentsParser gomodParser targetFile
 
   buildGraph gomod

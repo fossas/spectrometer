@@ -3,7 +3,8 @@ module Strategy.Go.Types
   , mkGolangPackage
   , GolangLabel(GolangLabelLocation) -- don't export GolangLabelVersion; export the smart constructor instead
   , mkGolangVersion
-  , golangPackageToDependency
+
+  , graphingGolang
   )
   where
 
@@ -11,6 +12,7 @@ import Prologue hiding (parent)
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import           Polysemy
 
 import           Effect.Graphing
 import qualified Graph as G
@@ -32,6 +34,10 @@ data GolangLabel =
 -- | Smart constructor for GolangLabelVersion. Applies 'fixVersion' to the value
 mkGolangVersion :: Text -> PkgLabel GolangPackage
 mkGolangVersion = GolangLabelVersion . fixVersion
+
+-- | Monomorphic interpreter for @Graphing GolangPackage@ into a @G.Graph@
+graphingGolang :: Sem (Graphing GolangPackage ': r) a -> Sem r G.Graph
+graphingGolang = graphingToGraph golangPackageToDependency
 
 golangPackageToDependency :: GolangPackage -> Set GolangLabel -> G.Dependency
 golangPackageToDependency pkg = foldr applyLabel start

@@ -14,12 +14,11 @@ import           Polysemy.Error
 
 import           Diagnostics
 import           Effect.Exec
-import           Effect.Graphing
 import           Effect.GraphBuilder
 import           Effect.ReadFS
 import qualified Graph as G
 import           Strategy.Go.GopkgLock
-import           Strategy.Go.Types (golangPackageToDependency)
+import           Strategy.Go.Types (graphingGolang)
 import           Types (BasicFileOpts(..))
 
 import Test.Tasty.Hspec
@@ -100,6 +99,6 @@ spec_buildGraph :: Spec
 spec_buildGraph = do
   describe "buildGraph" $
     it "should produce expected output" $ do
-      let result = buildGraph projects & graphingToGraph golangPackageToDependency & run
+      let result = buildGraph projects & graphingGolang & run
 
       result `shouldBe` expected
