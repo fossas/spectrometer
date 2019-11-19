@@ -12,8 +12,6 @@ module Strategy.Go.GopkgLock
 
 import Prologue hiding ((.=))
 
-import qualified Data.Map.Strict as M
-import           Data.Maybe (maybeToList)
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
@@ -22,11 +20,12 @@ import qualified Toml
 
 import           Diagnostics
 import           Discovery.Walk
+import qualified Effect.Error as E
 import           Effect.Exec
 import           Effect.ReadFS
-import           Effect.GraphBuilder
 import qualified Graph as G
 import           Strategy.Go.Transitive (fillInTransitive)
+import           Strategy.Go.Types
 import           Types
 
 discover :: Discover
@@ -73,43 +72,29 @@ data Project = Project
   } deriving (Eq, Ord, Show, Generic)
 
 analyze :: Members '[Exec, ReadFS, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r G.Graph
-analyze BasicFileOpts{..} = do
+analyze BasicFileOpts{..} = graphingToGraph @GolangPackage golangPackageToDependency $ do
   contents <- readContentsText targetFile
   case Toml.decode golockCodec contents of
     Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
     Right golock -> do
-      let (incompleteGraph, mapping) = buildGraph (lockProjects golock)
+      buildGraph (lockProjects golock)
 
-      graph <- fillInTransitive mapping (parent targetFile) incompleteGraph `catch` (\(_ :: ExecErr) -> pure incompleteGraph)
+      -- TODO: logging/etc
+      _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+      pure ()
 
-      pure graph
-
-type PackageName = Text
-
-buildGraph :: [Project] -> (G.Graph, Map PackageName G.DepRef)
-buildGraph projects = run . runGraphBuilder G.empty $ do
-  (assocs, _) <- runOutputList $ traverse addProject projects
-
-  let mapping :: Map PackageName G.DepRef
-      mapping = M.fromList assocs
-
-  pure mapping
-
+buildGraph :: Member (Graphing GolangPackage) r => [Project] -> Sem r ()
+buildGraph = void . traverse_ go
   where
+  go :: Member (Graphing GolangPackage) r => Project -> Sem r ()
+  go Project{..} = do
+    let pkg = mkGolangPackage projectName
 
-  addProject :: Members '[GraphBuilder, Output (Text, G.DepRef)] r => Project -> Sem r ()
-  addProject project = do
-    ref <- addNode (toDependency project)
-    addDirect ref
-    output (projectName project, ref)
+    directg pkg
+    labelg pkg (mkGolangVersion projectRevision)
 
-  toDependency Project{..} =
-    G.Dependency { dependencyType = G.GoType
-                 , dependencyName = projectName
-                 , dependencyVersion = Just (G.CEq projectRevision)
-                 , dependencyLocations = maybeToList projectSource
-                 , dependencyTags = M.empty
-                 }
+    -- label location when it exists
+    traverse_ (labelg pkg . GolangLabelLocation) projectSource
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts

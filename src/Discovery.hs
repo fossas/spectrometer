@@ -61,9 +61,9 @@ strategyGroups =
       [ SomeStrategy BundleShow.strategy
       ]
   , StrategyGroup "golang"
-      --[ SomeStrategy GoList.strategy
-      --, SomeStrategy Gomod.strategy
-      --, SomeStrategy GopkgLock.strategy
-      [ SomeStrategy GopkgToml.strategy
+      [ SomeStrategy GoList.strategy
+      , SomeStrategy Gomod.strategy
+      , SomeStrategy GopkgLock.strategy
+      , SomeStrategy GopkgToml.strategy
       ]
   ]

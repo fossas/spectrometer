@@ -14,7 +14,6 @@ module Strategy.Go.GopkgToml
 import Prologue hiding ((.=), empty)
 
 import qualified Data.Map.Strict as M
-import           Data.Maybe (maybeToList)
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
@@ -23,12 +22,11 @@ import qualified Toml
 
 import           Diagnostics
 import           Discovery.Walk
-import           Effect.Error (try)
+import qualified Effect.Error as E
 import           Effect.Exec
 import           Effect.ReadFS
-import           Effect.GraphBuilder
 import qualified Graph as G
-import           Strategy.Go.Transitive
+import           Strategy.Go.Transitive (fillInTransitive)
 import           Strategy.Go.Types
 import           Types
 
@@ -49,7 +47,7 @@ discover' = walk $ \_ _ files ->
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "golang-gopkgtoml"
-  , strategyAnalyze = analyze'
+  , strategyAnalyze = analyze
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
@@ -82,106 +80,33 @@ data PkgConstraint = PkgConstraint
   }
   deriving (Eq, Ord, Show, Generic)
 
-{-
 analyze :: Members '[ReadFS, Exec, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r G.Graph
-analyze BasicFileOpts{..} = do
+analyze BasicFileOpts{..} = graphingToGraph @GolangPackage golangPackageToDependency $ do
   contents <- readContentsText targetFile
   case Toml.decode gopkgCodec contents of
     Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
     Right gopkg -> do
-      let (incompleteGraph, mapping) = buildGraph gopkg
-
-      graph <- fillInTransitive mapping (parent targetFile) incompleteGraph `catch` (\(_ :: ExecErr) -> pure incompleteGraph)
-
-      pure graph
--}
-
-type PackageName = Text
-
-analyze' :: Members '[ReadFS, Exec, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r G.Graph
-analyze' BasicFileOpts{..} = evalGraphBuilder G.empty $ graphingToGraphBuilder @GolangPackage toDependency $ do
-  contents <- readContentsText targetFile
-  case Toml.decode gopkgCodec contents of
-    Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
-    Right gopkg -> do
-      doIt gopkg
+      buildGraph gopkg
 
       -- TODO: logging/etc
-      _ <- try @ExecErr (fillInTransitive' (parent targetFile))
+      _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
       pure ()
 
-  where
-  -- TODO: labels
-  toDependency pkg labels = G.Dependency
-    { dependencyType = G.GoType
-    , dependencyName = goImportPath pkg
-    , dependencyVersion = Nothing
-    , dependencyLocations = []
-    , dependencyTags = M.empty
-    }
-
--- TODO: direct deps
-doIt :: Member (Graphing GolangPackage) r => Gopkg -> Sem r ()
-doIt = void . M.traverseWithKey go . resolve
+buildGraph :: Member (Graphing GolangPackage) r => Gopkg -> Sem r ()
+buildGraph = void . M.traverseWithKey go . resolve
   where
   go :: Member (Graphing GolangPackage) r => Text -> PkgConstraint -> Sem r ()
   go name PkgConstraint{..} = do
-    let pkg = GolangPackage name
+    let pkg = mkGolangPackage name
 
     directg pkg
 
     -- label version when it exists
-    traverse_ (labelg pkg . GolangVersion . fixVersion)
+    traverse_ (labelg pkg . mkGolangVersion)
               (constraintVersion <|> constraintBranch <|> constraintRevision)
 
     -- label location when it exists
-    traverse_ (labelg pkg . GolangLocation) constraintSource
-
-{-
-toAdjacencyMap :: Gopkg -> AdjacencyMap GolangPackage
-toAdjacencyMap = foldr f empty . M.toList . resolve
-  where
-  f :: (Text, PkgConstraint) -> AdjacencyMap GolangPackage -> AdjacencyMap GolangPackage
-  f = overlay . vertex . toVertex
-
-  toVertex :: (Text, PkgConstraint) -> GolangPackage
-  toVertex (name, PkgConstraint{..}) =
-    GolangPackage { goName = name
-                  , goVersion = constraintVersion <|> constraintBranch <|> constraintRevision
-                  , goLocation = constraintSource
-                  }
--}
-
-buildGraph :: Gopkg -> (G.Graph, Map PackageName G.DepRef)
-buildGraph gopkg = run . runGraphBuilder G.empty $ do
-  --unfold direct (const []) toDependency
-  let constraints :: Map Text PkgConstraint
-      constraints = resolve gopkg
-
-  (assocs, _) <- runOutputList $ M.traverseWithKey addPkgConstraint constraints
-
-  let mapping :: Map PackageName G.DepRef
-      mapping = M.fromList assocs
-
-  pure mapping
-
-  where
-
-  addPkgConstraint :: Members '[GraphBuilder, Output (PackageName, G.DepRef)] r => Text -> PkgConstraint -> Sem r ()
-  addPkgConstraint name constraint = do
-    ref <- addNode (toDependency name constraint)
-    addDirect ref
-    output (name, ref)
-
-  --direct = M.toList (resolve gopkg)
-
-  toDependency name PkgConstraint{..} =
-    G.Dependency { dependencyType = G.GoType
-                 , dependencyName = name
-                 , dependencyVersion = G.CEq <$> (constraintVersion <|> constraintBranch <|> constraintRevision)
-                 , dependencyLocations = maybeToList constraintSource
-                 , dependencyTags = M.empty
-                 }
+    traverse_ (labelg pkg . GolangLabelLocation) constraintSource
 
 -- TODO: handling version constraints
 resolve :: Gopkg -> Map Text PkgConstraint -- Map Package (Maybe Version)

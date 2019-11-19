@@ -25,11 +25,12 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import           Diagnostics
 import           Discovery.Walk
+import qualified Effect.Error as E
 import           Effect.Exec
-import           Effect.GraphBuilder
 import           Effect.ReadFS
 import qualified Graph as G
 import           Strategy.Go.Transitive
+import           Strategy.Go.Types
 import           Types
 
 discover :: Discover
@@ -194,44 +195,25 @@ resolve gomod = map resolveReplace (modRequires gomod)
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
 analyze :: Members '[Error ReadFSErr, Error ExecErr, ReadFS, Exec] r => BasicFileOpts -> Sem r G.Graph
-analyze opts = do
-  gomod <- readContentsParser gomodParser (targetFile opts)
+analyze BasicFileOpts{..} = graphingToGraph @GolangPackage golangPackageToDependency $ do
+  gomod <- readContentsParser gomodParser targetFile
 
-  let (incompleteGraph, mapping) = buildGraph gomod
+  buildGraph gomod
 
-  graph <- fillInTransitive mapping (parent (targetFile opts)) incompleteGraph `catch` (\(_ :: ExecErr) -> pure incompleteGraph)
+  -- TODO: logging/etc
+  _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+  pure ()
 
-  pure graph
-
-buildGraph :: Gomod -> (G.Graph, Map PackageName G.DepRef)
-buildGraph gomod = run . runGraphBuilder G.empty $ do
-  let resolved = resolve gomod
-
-  (assocs, _) <- runOutputList $ traverse addRequire resolved
-
-  let mapping :: Map PackageName G.DepRef
-      mapping = M.fromList assocs
-
-  pure mapping
-
+buildGraph :: Member (Graphing GolangPackage) r => Gomod -> Sem r ()
+buildGraph = traverse_ go . resolve
   where
 
-  addRequire :: Members '[GraphBuilder, Output (PackageName, G.DepRef)] r => Require -> Sem r ()
-  addRequire require = do
-    ref <- addNode (toDependency require)
-    addDirect ref
-    output (reqPackage require, ref)
+  go :: Member (Graphing GolangPackage) r => Require -> Sem r ()
+  go Require{..} = do
+    let pkg = mkGolangPackage reqPackage
 
-  toVersion :: Text -> Text
-  toVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
-
-  toDependency require = G.Dependency
-    { dependencyType = G.GoType
-    , dependencyName = reqPackage require
-    , dependencyVersion = Just (G.CEq (toVersion (reqVersion require)))
-    , dependencyLocations = []
-    , dependencyTags = M.empty
-    }
+    directg pkg
+    labelg pkg (mkGolangVersion reqVersion)
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts
