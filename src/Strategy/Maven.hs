@@ -1,6 +1,8 @@
 module Strategy.Maven
   ( discover
   , strategy
+  , analyze
+  , buildGraph
   ) where
 
 import Prologue
@@ -77,7 +79,7 @@ buildGraph PluginOutput{..} = run $ evalGraphBuilder G.empty $ do
   toDependency :: Artifact -> G.Dependency
   toDependency Artifact{..} = G.Dependency
     { dependencyType = G.MavenType
-    , dependencyName = artifactArtifactId
+    , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
     , dependencyVersion = Just (G.CEq artifactVersion)
     , dependencyLocations = []
     , dependencyTags = M.fromList $
