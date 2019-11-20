@@ -41,7 +41,7 @@
 -- need a function @ty -> Set (PkgLabel ty) -> Dependency@. This is usually a
 -- simple fold over the labels.
 --
--- This function can be passed to 'graphingToGraph' or 'runGraphingPure'
+-- This function can be passed to 'graphingToGraph' or 'runGraphing'
 --
 -- == Reachable dependencies
 --
