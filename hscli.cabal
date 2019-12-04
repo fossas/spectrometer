@@ -151,6 +151,7 @@ test-suite test
     Go.GlideLockTest
     Gradle.GradleTest
     GraphUtil
+    Node.NpmLockTest
     Python.PipListTest
     Python.PipenvTest
     Python.ReqTxtTest

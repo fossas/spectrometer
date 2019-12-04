@@ -1,7 +1,11 @@
 module Strategy.Node.NpmLock
   ( discover
   , analyze
+  , buildGraph
   , strategy
+
+  , NpmPackageJson(..)
+  , NpmDep(..)
   )
   where
 
