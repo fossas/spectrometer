@@ -118,6 +118,7 @@ library
     Strategy.Gradle
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
+    Strategy.Maven.Pom
     Strategy.Node.NpmLock
     Strategy.Node.PackageJson
     Strategy.Node.YarnLock
