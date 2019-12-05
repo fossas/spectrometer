@@ -2,6 +2,8 @@ module Strategy.Node.PackageJson
   ( discover
   , strategy
   , buildGraph
+
+  , PackageJson(..)
   ) where
 
 import Prologue
