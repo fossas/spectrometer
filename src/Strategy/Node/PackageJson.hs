@@ -13,10 +13,11 @@ import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
 
+import           DepTypes
 import           Discovery.Walk
-import           Effect.Graphing
+import           Effect.LabeledGrapher
 import           Effect.ReadFS
-import qualified Graph as G
+import           Graphing (Graphing)
 import           Types
 
 discover :: Discover
@@ -53,7 +54,7 @@ instance FromJSON PackageJson where
     PackageJson <$> obj .:? "dependencies"    .!= M.empty
                 <*> obj .:? "devDependencies" .!= M.empty
 
-analyze :: Member (Input PackageJson) r => Sem r G.Graph
+analyze :: Member (Input PackageJson) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
 -- TODO: decode version constraints
@@ -67,32 +68,32 @@ type instance PkgLabel NodePackage = NodePackageLabel
 newtype NodePackageLabel = NodePackageEnv Text
   deriving (Eq, Ord, Show, Generic)
 
-buildGraph :: PackageJson -> G.Graph
-buildGraph PackageJson{..} = run . graphingToGraph toDependency $ do
+buildGraph :: PackageJson -> Graphing Dependency
+buildGraph PackageJson{..} = run . withLabeling toDependency $ do
   _ <- M.traverseWithKey (addDep "production") packageDeps
   _ <- M.traverseWithKey (addDep "development") packageDevDeps
   pure ()
 
   where
 
-  addDep :: Member (Graphing NodePackage) r => Text -> Text -> Text -> Sem r ()
+  addDep :: Member (LabeledGrapher NodePackage) r => Text -> Text -> Text -> Sem r ()
   addDep env name constraint = do
     let pkg = NodePackage name constraint
     direct pkg
     label pkg (NodePackageEnv env)
 
-  toDependency :: NodePackage -> Set NodePackageLabel -> G.Dependency
+  toDependency :: NodePackage -> Set NodePackageLabel -> Dependency
   toDependency dep = foldr addLabel (start dep)
 
-  addLabel :: NodePackageLabel -> G.Dependency -> G.Dependency
+  addLabel :: NodePackageLabel -> Dependency -> Dependency
   addLabel (NodePackageEnv env) dep =
-    dep { G.dependencyTags = M.insertWith (++) "environment" [env] (G.dependencyTags dep) }
+    dep { dependencyTags = M.insertWith (++) "environment" [env] (dependencyTags dep) }
 
-  start :: NodePackage -> G.Dependency
-  start NodePackage{..} = G.Dependency
-    { dependencyType = G.NodeJSType
+  start :: NodePackage -> Dependency
+  start NodePackage{..} = Dependency
+    { dependencyType = NodeJSType
     , dependencyName = pkgName
-    , dependencyVersion = Just (G.CCompatible pkgConstraint)
+    , dependencyVersion = Just (CCompatible pkgConstraint)
     , dependencyLocations = []
     , dependencyTags = M.empty
     }

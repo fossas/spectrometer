@@ -6,8 +6,8 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 
-import qualified Graph as G
-import           Strategy.Node.PackageJson
+import DepTypes
+import Strategy.Node.PackageJson
 
 import GraphUtil
 import Test.Tasty.Hspec
@@ -18,20 +18,20 @@ mockInput = PackageJson
   , packageDevDeps = M.fromList [("packageTwo", "^2.0.0")]
   }
 
-packageOne :: G.Dependency
-packageOne = G.Dependency
-  { dependencyType = G.NodeJSType
+packageOne :: Dependency
+packageOne = Dependency
+  { dependencyType = NodeJSType
   , dependencyName = "packageOne"
-  , dependencyVersion = Just (G.CCompatible "^1.0.0")
+  , dependencyVersion = Just (CCompatible "^1.0.0")
   , dependencyLocations = []
   , dependencyTags = M.fromList [("environment", ["production"])]
   }
 
-packageTwo :: G.Dependency
-packageTwo = G.Dependency
-  { dependencyType = G.NodeJSType
+packageTwo :: Dependency
+packageTwo = Dependency
+  { dependencyType = NodeJSType
   , dependencyName = "packageTwo"
-  , dependencyVersion = Just (G.CCompatible "^2.0.0")
+  , dependencyVersion = Just (CCompatible "^2.0.0")
   , dependencyLocations = []
   , dependencyTags = M.fromList [("environment", ["development"])]
   }
