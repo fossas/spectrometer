@@ -6,8 +6,8 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 
-import qualified Graph as G
-import           Strategy.Node.NpmLock
+import DepTypes
+import Strategy.Node.NpmLock
 
 import GraphUtil
 import Test.Tasty.Hspec
@@ -42,29 +42,29 @@ mockInput = NpmPackageJson
     ]
   }
 
-packageOne :: G.Dependency
-packageOne = G.Dependency
-  { dependencyType = G.NodeJSType
+packageOne :: Dependency
+packageOne = Dependency
+  { dependencyType = NodeJSType
   , dependencyName = "packageOne"
-  , dependencyVersion = Just (G.CEq "1.0.0")
+  , dependencyVersion = Just (CEq "1.0.0")
   , dependencyLocations = ["https://example.com/one.tgz"]
   , dependencyTags = M.fromList [("environment", ["production"])]
   }
 
-packageTwo :: G.Dependency
-packageTwo = G.Dependency
-  { dependencyType = G.NodeJSType
+packageTwo :: Dependency
+packageTwo = Dependency
+  { dependencyType = NodeJSType
   , dependencyName = "packageTwo"
-  , dependencyVersion = Just (G.CEq "2.0.0")
+  , dependencyVersion = Just (CEq "2.0.0")
   , dependencyLocations = ["https://example.com/two.tgz"]
   , dependencyTags = M.fromList [("environment", ["development"])]
   }
 
-packageThree :: G.Dependency
-packageThree = G.Dependency
-  { dependencyType = G.NodeJSType
+packageThree :: Dependency
+packageThree = Dependency
+  { dependencyType = NodeJSType
   , dependencyName = "packageThree"
-  , dependencyVersion = Just (G.CEq "3.0.0")
+  , dependencyVersion = Just (CEq "3.0.0")
   , dependencyLocations = []
   , dependencyTags = M.fromList [("environment", ["development"])]
   }

@@ -16,10 +16,11 @@ import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
 
+import           DepTypes
 import           Discovery.Walk
-import           Effect.Graphing
+import           Effect.LabeledGrapher
 import           Effect.ReadFS
-import qualified Graph as G
+import           Graphing (Graphing)
 import           Types
 
 discover :: Discover
@@ -77,7 +78,7 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: Member (Input NpmPackageJson) r => Sem r G.Graph
+analyze :: Member (Input NpmPackageJson) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
 data NpmPackage = NpmPackage
@@ -90,17 +91,17 @@ type instance PkgLabel NpmPackage = NpmPackageLabel
 data NpmPackageLabel = NpmPackageEnv Text | NpmPackageLocation Text
   deriving (Eq, Ord, Show, Generic)
 
-buildGraph :: NpmPackageJson -> G.Graph
-buildGraph packageJson = run . graphingToGraph @NpmPackage toDependency $ do
+buildGraph :: NpmPackageJson -> Graphing Dependency
+buildGraph packageJson = run . withLabeling toDependency $ do
   _ <- M.traverseWithKey addDirect (packageDependencies packageJson)
   _ <- M.traverseWithKey addDep (packageDependencies packageJson)
   pure ()
 
   where
-  addDirect :: Member (Graphing NpmPackage) r => Text -> NpmDep -> Sem r ()
+  addDirect :: Member (LabeledGrapher NpmPackage) r => Text -> NpmDep -> Sem r ()
   addDirect name NpmDep{depVersion} = direct (NpmPackage name depVersion)
 
-  addDep :: Member (Graphing NpmPackage) r => Text -> NpmDep -> Sem r ()
+  addDep :: Member (LabeledGrapher NpmPackage) r => Text -> NpmDep -> Sem r ()
   addDep name NpmDep{..} = do
     let pkg = NpmPackage name depVersion
 
@@ -122,18 +123,18 @@ buildGraph packageJson = run . graphingToGraph @NpmPackage toDependency $ do
       Just deps ->
         void $ M.traverseWithKey addDep deps
 
-  toDependency :: NpmPackage -> Set NpmPackageLabel -> G.Dependency
+  toDependency :: NpmPackage -> Set NpmPackageLabel -> Dependency
   toDependency pkg = foldr addLabel (start pkg)
 
-  addLabel :: NpmPackageLabel -> G.Dependency -> G.Dependency
-  addLabel (NpmPackageEnv env) dep = dep { G.dependencyTags = M.insertWith (++) "environment" [env] (G.dependencyTags dep) }
-  addLabel (NpmPackageLocation loc) dep = dep { G.dependencyLocations = loc : G.dependencyLocations dep }
+  addLabel :: NpmPackageLabel -> Dependency -> Dependency
+  addLabel (NpmPackageEnv env) dep = dep { dependencyTags = M.insertWith (++) "environment" [env] (dependencyTags dep) }
+  addLabel (NpmPackageLocation loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
 
-  start :: NpmPackage -> G.Dependency
-  start NpmPackage{..} = G.Dependency
-    { dependencyType = G.NodeJSType
+  start :: NpmPackage -> Dependency
+  start NpmPackage{..} = Dependency
+    { dependencyType = NodeJSType
     , dependencyName = pkgName
-    , dependencyVersion = Just $ G.CEq pkgVersion
+    , dependencyVersion = Just $ CEq pkgVersion
     , dependencyLocations = []
     , dependencyTags = M.empty
     }
