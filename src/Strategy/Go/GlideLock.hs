@@ -19,10 +19,10 @@ import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
 
+import           DepTypes
 import           Discovery.Walk
-import           Effect.GraphBuilder
 import           Effect.ReadFS
-import qualified Graph as G
+import           Graphing (Graphing, unfold)
 import           Types
 
 discover :: Discover
@@ -48,20 +48,20 @@ strategy = Strategy
   , strategyComplete = NotComplete
   }
 
-analyze :: Member (Input GlideLockfile) r => Sem r G.Graph
+analyze :: Member (Input GlideLockfile) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-buildGraph :: GlideLockfile -> G.Graph
+buildGraph :: GlideLockfile -> Graphing Dependency
 buildGraph lockfile = unfold direct (const []) toDependency
   where
   direct = imports lockfile
   toDependency GlideDep{..}  =
-    G.Dependency { dependencyType = G.GoType
-                  , dependencyName = depName
-                  , dependencyVersion = Just (G.CEq $ T.pack (show depVersion))
-                  , dependencyLocations = []
-                  , dependencyTags = M.empty
-                  }
+    Dependency { dependencyType = GoType
+               , dependencyName = depName
+               , dependencyVersion = Just (CEq $ T.pack (show depVersion))
+               , dependencyLocations = []
+               , dependencyTags = M.empty
+               }
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts

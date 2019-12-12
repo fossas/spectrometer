@@ -5,36 +5,34 @@ module Go.GlideLockTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import qualified Data.Text.IO as TIO
+import qualified Data.ByteString as BS
+import           Data.Yaml
 import           Polysemy
 import           Polysemy.Input
-import           Text.Megaparsec
 
-import           Effect.GraphBuilder
-import qualified Graph as G
+import           DepTypes
+import           Effect.Grapher
+import           Graphing (Graphing)
 import           Strategy.Go.GlideLock
 
-import Test.Hspec.Megaparsec
 import Test.Tasty.Hspec
 
-expected :: G.Graph
-expected = run . evalGraphBuilder G.empty $ do
-  ref1 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "github.com/pkg/one"
-                        , dependencyVersion = Just (G.CEq "100")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  ref2 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "github.com/pkg/three/v3"
-                        , dependencyVersion = Just (G.CEq "300")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  addDirect ref1
-  addDirect ref2
+expected :: Graphing Dependency
+expected = run . evalGrapher $ do
+  direct $ Dependency
+               { dependencyType = GoType
+               , dependencyName = "github.com/pkg/one"
+               , dependencyVersion = Just (CEq "100")
+               , dependencyLocations = []
+               , dependencyTags = M.empty
+               }
+  direct $ Dependency
+               { dependencyType = GoType
+               , dependencyName = "github.com/pkg/three/v3"
+               , dependencyVersion = Just (CEq "300")
+               , dependencyLocations = []
+               , dependencyTags = M.empty
+               }
 
 glideLockfile :: GlideLockfile
 glideLockfile = 
@@ -56,11 +54,20 @@ glideLockfile =
 
 spec_analyze :: Spec
 spec_analyze = do
-  testFile <- runIO (TIO.readFile "test/Go/testdata/glide.lock")
+  testFile <- runIO (BS.readFile "test/Go/testdata/glide.lock")
 
-  describe "glide lock analyzer" $
+  describe "glide lock analyzer" $ do
+    let runIt inp = analyze
+          & runInputConst @GlideLockfile inp
+          & run
+
     it "produces the expected output" $ do
       let result = analyze
             & runInputConst @GlideLockfile glideLockfile
             & run
       result `shouldBe` expected
+
+    it "works end to end" $ do
+      case decodeEither' testFile of
+        Right res -> runIt res `shouldBe` expected
+        Left _ -> expectationFailure "failed to parse"
