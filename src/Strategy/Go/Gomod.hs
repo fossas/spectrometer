@@ -3,6 +3,7 @@ module Strategy.Go.Gomod
   , strategy
   , analyze
   , configure
+  , buildGraph
 
   , Gomod(..)
   , Statement(..)
@@ -15,18 +16,24 @@ import Prologue hiding ((<?>))
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
-import           Text.Megaparsec
-import           Text.Megaparsec.Char
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
+import Text.Megaparsec hiding (label)
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import           Discovery.Walk
-import           Effect.GraphBuilder
-import           Effect.ReadFS
-import qualified Graph as G
-import           Types
+import DepTypes
+import Diagnostics
+import Discovery.Walk
+import qualified Effect.Error as E
+import Effect.Exec
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Strategy.Go.Transitive
+import Strategy.Go.Types
+import Types
 
 discover :: Discover
 discover = Discover
@@ -45,8 +52,7 @@ discover' = walk $ \_ _ files ->
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "golang-gomod"
-  , strategyAnalyze = \opts ->
-      analyze & fileInputParser gomodParser (targetFile opts)
+  , strategyAnalyze = analyze
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
@@ -72,9 +78,6 @@ data Require = Require
   { reqPackage :: PackageName
   , reqVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
-
-analyze :: Member (Input Gomod) r => Sem r G.Graph
-analyze = buildGraph <$> input
 
 type Parser = Parsec Void Text
 
@@ -193,19 +196,26 @@ resolve gomod = map resolveReplace (modRequires gomod)
   where
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
-buildGraph :: Gomod -> G.Graph
-buildGraph gomod = unfold (resolve gomod) (const []) toDependency
-  where
-  toVersion :: Text -> Text
-  toVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
+analyze :: Members '[Error ReadFSErr, Error ExecErr, ReadFS, Exec] r => BasicFileOpts -> Sem r (Graphing Dependency)
+analyze BasicFileOpts{..} = graphingGolang $ do
+  gomod <- readContentsParser gomodParser targetFile
 
-  toDependency require = G.Dependency
-    { dependencyType = G.GoType
-    , dependencyName = reqPackage require
-    , dependencyVersion = Just (G.CEq (toVersion (reqVersion require)))
-    , dependencyLocations = []
-    , dependencyTags = M.empty
-    }
+  buildGraph gomod
+
+  -- TODO: logging/etc
+  _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+  pure ()
+
+buildGraph :: Member (LabeledGrapher GolangPackage) r => Gomod -> Sem r ()
+buildGraph = traverse_ go . resolve
+  where
+
+  go :: Member (LabeledGrapher GolangPackage) r => Require -> Sem r ()
+  go Require{..} = do
+    let pkg = mkGolangPackage reqPackage
+
+    direct pkg
+    label pkg (mkGolangVersion reqVersion)
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts

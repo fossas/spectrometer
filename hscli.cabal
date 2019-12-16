@@ -19,6 +19,7 @@ common lang
     FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
+    InstanceSigs
     LambdaCase
     MonadFailDesugaring
     MultiParamTypeClasses
@@ -32,6 +33,7 @@ common lang
     RecordWildCards
     ScopedTypeVariables
     StrictData
+    TupleSections
     TypeApplications
     TypeFamilies
     TypeOperators
@@ -45,12 +47,15 @@ common lang
 common deps
   build-depends:
     , aeson                        ^>=1.4.5
+    , algebraic-graphs             ^>=0.4
     , async                        ^>=2.2.2
+    , attoparsec                   ^>=0.13.2.3
     , bytestring                   ^>=0.10.8
     , containers                   ^>=0.6.0
     , file-embed                   ^>=0.0.11
     , filemanip                    ^>=0.3.6
     , filepath                     ^>=1.4.2.1
+    , git-config                   ^>=0.1.2
     , megaparsec                   ^>=7.0.5
     , modern-uri                   ^>=0.3.1
     , mtl                          ^>=2.2.2
@@ -64,8 +69,11 @@ common deps
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , text                         ^>=1.2.3
+    , time                         ^>=1.8.0.2
     , tomland                      ^>=1.2.0
     , typed-process                ^>=0.2.6
+    , unordered-containers         ^>=0.2.10
+    , vector                       ^>=0.12.0.3
     , yaml                         ^>=0.11.1
     , yarn-lock                    ^>=0.6.1
 
@@ -77,24 +85,36 @@ library
   exposed-modules:
     App
     App.Scan
+    App.Scan.Graph
+    App.Scan.GraphBuilder
+    App.Scan.GraphMangler
     App.Scan.Project
+    App.Scan.ProjectInference
     Control.Parallel
+    DepTypes
     Diagnostics
     Discovery
     Discovery.Config
     Discovery.Walk
     Effect.Error
     Effect.Exec
-    Effect.GraphBuilder
+    Effect.Grapher
+    Effect.LabeledGrapher
     Effect.Logger
     Effect.ReadFS
-    Graph
+    Graphing
+    LabeledGraphing
     Prologue
     Strategy.Go.GoList
     Strategy.Go.Gomod
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
+    Strategy.Go.GlideLock
+    Strategy.Go.Transitive
+    Strategy.Go.Types
     Strategy.Gradle
+    Strategy.Node.NpmLock
+    Strategy.Node.PackageJson
     Strategy.Node.YarnLock
     Strategy.NpmList
     Strategy.Python.PipList
@@ -130,8 +150,11 @@ test-suite test
     Go.GomodTest
     Go.GopkgLockTest
     Go.GopkgTomlTest
+    Go.GlideLockTest
     Gradle.GradleTest
     GraphUtil
+    Node.NpmLockTest
+    Node.PackageJsonTest
     Python.PipListTest
     Python.PipenvTest
     Python.ReqTxtTest

@@ -7,8 +7,11 @@ import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
+import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.NpmList as NpmList
+import qualified Strategy.Node.NpmLock as NpmLock
+import qualified Strategy.Node.PackageJson as PackageJson
 import qualified Strategy.Node.YarnLock as YarnLock
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList
@@ -27,11 +30,14 @@ discoverFuncs =
   , Gomod.discover
   , GopkgToml.discover
   , GopkgLock.discover
+  , GlideLock.discover
 
   , Gradle.discover
 
+  , NpmLock.discover
   , NpmList.discover
   , YarnLock.discover
+  , PackageJson.discover
 
   , PipList.discover
   , Pipenv.discover
@@ -51,7 +57,9 @@ strategyGroups =
       ]
   , StrategyGroup "nodejs"
       [ SomeStrategy YarnLock.strategy
+      , SomeStrategy NpmLock.strategy
       , SomeStrategy NpmList.strategy
+      , SomeStrategy PackageJson.strategy
       ]
   , StrategyGroup "python"
       [ SomeStrategy Pipenv.strategyWithCmd
@@ -69,5 +77,6 @@ strategyGroups =
       , SomeStrategy Gomod.strategy
       , SomeStrategy GopkgLock.strategy
       , SomeStrategy GopkgToml.strategy
+      , SomeStrategy GlideLock.strategy
       ]
   ]

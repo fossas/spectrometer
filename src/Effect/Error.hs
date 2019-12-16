@@ -1,5 +1,7 @@
 module Effect.Error
-  ( fromExceptionSemVia
+  ( fromExceptionSem
+  , fromExceptionSemVia
+  , try
   )
   where
 
@@ -12,6 +14,9 @@ import Polysemy.Error
 import Polysemy.Final
 
 -- TODO: taken from polysemy until they update
+fromExceptionSem :: forall e r a. (X.Exception e, Member (Error e) r, Member (Final IO) r) => Sem r a -> Sem r a
+fromExceptionSem = fromExceptionSemVia @e id
+
 fromExceptionSemVia
     :: ( X.Exception exc
        , Member (Error err) r
@@ -24,7 +29,10 @@ fromExceptionSemVia f m = do
   r <- withStrategicToFinal $ do
     m' <- runS m
     s  <- getInitialStateS
-    pure $ (fmap . fmap) Right m' `X.catch` \e -> (pure (Left e <$ s))
+    pure $ (fmap . fmap) Right m' `X.catch` \e -> pure (Left e <$ s)
   case r of
     Left e -> throw $ f e
     Right a -> pure a
+
+try :: forall e r a. Member (Error e) r => Sem r a -> Sem r (Either e a)
+try act = (Right <$> act) `catch` (pure . Left)

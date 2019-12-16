@@ -11,20 +11,23 @@ module Strategy.Go.GoList
 import Prologue hiding ((<?>))
 
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.Map.Strict as M
-import           Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
-import           Data.Text.Encoding (decodeUtf8)
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
+import Data.Text.Encoding (decodeUtf8)
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
 
-import           Diagnostics
-import           Discovery.Walk
-import           Effect.Exec
-import           Effect.GraphBuilder
-import qualified Graph as G
-import           Types
+import DepTypes
+import Diagnostics
+import Discovery.Walk
+import qualified Effect.Error as E
+import Effect.Exec
+import Effect.LabeledGrapher
+import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
+import Strategy.Go.Types
+import Types
 
 discover :: Discover
 discover = Discover
@@ -61,8 +64,8 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Error CLIErr, Exec] r => BasicDirOpts -> Sem r G.Graph
-analyze BasicDirOpts{..} = do
+analyze :: Members '[Error ExecErr, Exec] r => BasicDirOpts -> Sem r (Graphing Dependency)
+analyze BasicDirOpts{..} = graphingGolang $ do
   stdout <- execThrow targetDir golistCmd []
 
   let gomodLines = drop 1 (T.lines (decodeUtf8 (BL.toStrict stdout))) -- the first line is our package
@@ -74,21 +77,21 @@ analyze BasicDirOpts{..} = do
           [package, version] -> Just (Require package version)
           _ -> Nothing
 
-  pure (buildGraph requires)
+  buildGraph requires
 
-buildGraph :: [Require] -> G.Graph
-buildGraph requires = unfold requires (const []) toDependency
+  -- TODO: logging/etc
+  _ <- E.try @ExecErr (fillInTransitive targetDir)
+  pure ()
+
+buildGraph :: Member (LabeledGrapher GolangPackage) r => [Require] -> Sem r ()
+buildGraph = traverse_ go
   where
-  toVersion :: Text -> Text
-  toVersion = last . T.splitOn "-"
 
-  toDependency require = G.Dependency
-    { dependencyType = G.GoType
-    , dependencyName = reqPackage require
-    , dependencyVersion = Just (G.CEq (toVersion (reqVersion require)))
-    , dependencyLocations = []
-    , dependencyTags = M.empty
-    }
+  go :: Member (LabeledGrapher GolangPackage) r => Require -> Sem r ()
+  go Require{..} = do
+    let pkg = mkGolangPackage reqPackage
+    direct pkg
+    label pkg (mkGolangVersion reqVersion)
 
 configure :: Path Rel Dir -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicDirOpts
