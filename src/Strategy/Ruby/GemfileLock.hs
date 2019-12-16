@@ -162,64 +162,41 @@ ignored :: Parser ()
 ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
 
 gitSectionParser :: Parser Section
-gitSectionParser = L.nonIndented scn (L.indentBlock scn p)
-      where 
-         p = do
-            _ <- chunk "GIT"
-            pure $ L.IndentMany Nothing propertiesToGitSection (try propertyParser <|> specPropertyParser)
-         propertiesToGitSection :: [(Text, RawField)] -> Parser Section
-         propertiesToGitSection properties = 
-            let propertyMap = M.fromList properties
-                result :: Either Text Section
-                result = do
-                  remote <- lookupRawText "remote" propertyMap
-                  specs <- lookupRawSpecs "specs" propertyMap
-                  let revision = eitherToMaybe $ lookupRawText "revision" propertyMap
-                      branch = eitherToMaybe $ lookupRawText "branch" propertyMap
-                  pure $ GitSection remote revision branch specs
-            
-            in case result of
-                  Right x -> pure x
-                  Left y -> fail $ T.unpack $ "could not parse GIT section: " <> y
-
+gitSectionParser = mkSectionParser "GIT" $ \propertyMap -> do
+  remote <- lookupRawText "remote" propertyMap
+  specs <- lookupRawSpecs "specs" propertyMap
+  let revision = eitherToMaybe $ lookupRawText "revision" propertyMap
+      branch = eitherToMaybe $ lookupRawText "branch" propertyMap
+  pure $ GitSection remote revision branch specs
 
 pathSectionParser :: Parser Section
-pathSectionParser = L.nonIndented scn (L.indentBlock scn p)
-      where 
-         p = do
-            _ <- chunk "PATH"
-            pure $ L.IndentMany Nothing propertiesToPathSection (try propertyParser <|> specPropertyParser)
-         propertiesToPathSection :: [(Text, RawField)] -> Parser Section
-         propertiesToPathSection properties = 
-            let propertyMap = M.fromList properties
-                result :: Either Text Section
-                result = do
-                  remote <- lookupRawText "remote" propertyMap
-                  specs <- lookupRawSpecs "specs" propertyMap
-                  pure $ PathSection remote specs
-            
-            in case result of
-                  Right x -> pure x
-                  Left y -> fail $ T.unpack $ "could not parse PATH section: " <> y
+pathSectionParser = mkSectionParser "PATH" $ \propertyMap -> do
+  remote <- lookupRawText "remote" propertyMap
+  specs <- lookupRawSpecs "specs" propertyMap
+  pure $ PathSection remote specs
 
 gemSectionParser :: Parser Section
-gemSectionParser = L.nonIndented scn (L.indentBlock scn p)
-      where 
+gemSectionParser = mkSectionParser "GEM" $ \propertyMap -> do
+  remote <- lookupRawText "remote" propertyMap
+  specs <- lookupRawSpecs "specs" propertyMap
+  pure $ GemSection remote specs
+
+mkSectionParser :: Text -> (Map Text RawField -> Either Text Section) -> Parser Section
+mkSectionParser sectionName toSection = L.nonIndented scn (L.indentBlock scn p)
+      where
          p = do
-            _ <- chunk "GEM"
-            pure $ L.IndentMany Nothing propertiesToGemSection (try propertyParser <|> specPropertyParser)
-         propertiesToGemSection :: [(Text, RawField)] -> Parser Section
-         propertiesToGemSection properties = 
+            _ <- chunk sectionName
+            pure $ L.IndentMany Nothing propertiesToSection (try propertyParser <|> specPropertyParser)
+
+         propertiesToSection :: [(Text, RawField)] -> Parser Section
+         propertiesToSection properties =
             let propertyMap = M.fromList properties
                 result :: Either Text Section
-                result = do
-                  remote <- lookupRawText "remote" propertyMap
-                  specs <- lookupRawSpecs "specs" propertyMap
-                  pure $ GemSection remote specs
-            
+                result = toSection propertyMap
+
             in case result of
                   Right x -> pure x
-                  Left y -> fail $ T.unpack $ "could not parse GEM section: " <> y
+                  Left y -> fail $ T.unpack $ "could not parse " <> sectionName <> " section: " <> y
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe (Right a) = Just a
