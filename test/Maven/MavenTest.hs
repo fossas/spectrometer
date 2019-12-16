@@ -6,27 +6,27 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 
-import qualified Graph as G
-import           Strategy.Maven
-import           Strategy.Maven.Plugin
+import DepTypes
+import Strategy.Maven
+import Strategy.Maven.Plugin
 
 import GraphUtil
 import Test.Tasty.Hspec
 
-packageOne :: G.Dependency
-packageOne = G.Dependency
-  { dependencyType = G.MavenType
+packageOne :: Dependency
+packageOne = Dependency
+  { dependencyType = MavenType
   , dependencyName = "mygroup:packageOne"
-  , dependencyVersion = Just (G.CEq "1.0.0")
+  , dependencyVersion = Just (CEq "1.0.0")
   , dependencyLocations = []
   , dependencyTags = M.fromList [("scopes", ["compile", "test"])]
   }
 
-packageTwo :: G.Dependency
-packageTwo = G.Dependency
-  { dependencyType = G.MavenType
+packageTwo :: Dependency
+packageTwo = Dependency
+  { dependencyType = MavenType
   , dependencyName = "mygroup:packageTwo"
-  , dependencyVersion = Just (G.CEq "2.0.0")
+  , dependencyVersion = Just (CEq "2.0.0")
   , dependencyLocations = []
   , dependencyTags = M.fromList [("scopes", ["compile"]), ("optional", ["true"])]
   }

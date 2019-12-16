@@ -13,12 +13,13 @@ import           Polysemy.Error
 import           Polysemy.Output
 import           Polysemy.Resource
 
+import           DepTypes
 import           Diagnostics
 import           Discovery.Walk
 import           Effect.Exec
-import           Effect.GraphBuilder
+import           Effect.Grapher hiding (Edge)
 import           Effect.ReadFS
-import qualified Graph as G
+import           Graphing (Graphing)
 import           Strategy.Maven.Plugin
 import           Types
 
@@ -58,42 +59,44 @@ strategy = Strategy
   , strategyComplete = Complete
   }
 
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r => BasicDirOpts -> Sem r G.Graph
+analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r => BasicDirOpts -> Sem r (Graphing Dependency)
 analyze BasicDirOpts{..} = withUnpackedPlugin $ \filepath -> do
   installPlugin targetDir filepath
   execPlugin targetDir
   pluginOutput <- parsePluginOutput targetDir
   pure (buildGraph pluginOutput)
 
-buildGraph :: PluginOutput -> G.Graph
-buildGraph PluginOutput{..} = run $ evalGraphBuilder G.empty $ do
+buildGraph :: PluginOutput -> Graphing Dependency
+buildGraph PluginOutput{..} = run $ evalGrapher $ do
   let byNumeric :: Map Int Artifact
       byNumeric = indexBy artifactNumericId outArtifacts
 
-  (refsByNumeric :: Map Int G.DepRef) <- traverse (addNode . toDependency) byNumeric
+  let depsByNumeric :: Map Int Dependency
+      depsByNumeric = M.map toDependency byNumeric
 
-  traverse_ (visitEdge refsByNumeric) outEdges
+  traverse_ (visitEdge depsByNumeric) outEdges
 
   where
 
-  toDependency :: Artifact -> G.Dependency
-  toDependency Artifact{..} = G.Dependency
-    { dependencyType = G.MavenType
+  toDependency :: Artifact -> Dependency
+  toDependency Artifact{..} = Dependency
+    { dependencyType = MavenType
     , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
-    , dependencyVersion = Just (G.CEq artifactVersion)
+    , dependencyVersion = Just (CEq artifactVersion)
     , dependencyLocations = []
     , dependencyTags = M.fromList $
       [("scopes", artifactScopes)] ++
       [("optional", ["true"]) | artifactOptional]
     }
 
+  visitEdge :: Member (Grapher Dependency) r => Map Int Dependency -> Edge -> Sem r ()
   visitEdge refsByNumeric Edge{..} = do
     let refs = do
           parentRef <- M.lookup edgeFrom refsByNumeric
           childRef <- M.lookup edgeTo refsByNumeric
           Just (parentRef, childRef)
 
-    traverse_ (uncurry addEdge) refs
+    traverse_ (uncurry edge) refs
 
   indexBy :: Ord k => (v -> k) -> [v] -> Map k v
   indexBy f = M.fromList . map (\v -> (f v, v))
