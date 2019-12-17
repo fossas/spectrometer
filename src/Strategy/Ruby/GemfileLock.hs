@@ -21,16 +21,15 @@ import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
 
+import           DepTypes
 import           Discovery.Walk
-import           Effect.Exec
-import           Effect.GraphBuilder
+import           Effect.LabeledGrapher
 import           Effect.ReadFS
-import qualified Graph as G
+import           Graphing (Graphing)
 import           Types
-import           Text.Megaparsec
+import           Text.Megaparsec hiding (label)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import           Text.Megaparsec.Debug
 
 discover :: Discover
 discover = Discover
@@ -82,66 +81,63 @@ newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Member (Input [Section]) r => Sem r G.Graph
+analyze :: Member (Input [Section]) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-buildGraph :: [Section] -> G.Graph
-buildGraph sections = run $ evalGraphBuilder G.empty $ do
-      let depMap = buildNodes sections
-      nodeMap <- traverse addNode depMap
-      buildEdges sections nodeMap
-      buildDirect sections nodeMap
+data GemfilePkg = GemfilePkg { pkgName :: Text }
+  deriving (Eq, Ord, Show, Generic)
 
-buildNodes :: [Section] -> Map Text G.Dependency
-buildNodes sections = M.fromList $ concatMap depsFromSection sections
+type instance PkgLabel GemfilePkg = GemfileLabel
 
-depsFromSection :: Section-> [(Text, G.Dependency)]
-depsFromSection (GitSection _ _ _ specs) = map (\a -> (specName a, depFromSpec a)) specs 
-depsFromSection (GemSection _ specs) = map (\a -> (specName a, depFromSpec a)) specs 
-depsFromSection (PathSection _ specs) = map (\a -> (specName a, depFromSpec a)) specs 
-depsFromSection _ = []
-      
-depFromSpec :: Spec -> G.Dependency
-depFromSpec x = G.Dependency G.GemType (specName x) (Just $ G.CEq $ specVersion x) [] M.empty
+data GemfileLabel =
+    GemfileVersion Text
+  | GitRemote Text (Maybe Text) -- ^ repo url, revision
+  | OtherRemote Text -- ^ url
+  deriving (Eq, Ord, Show, Generic)
 
--- Populate the dependencies with their deep deps
-buildEdges :: Member GraphBuilder r => [Section] -> Map Text G.DepRef -> Sem r ()
-buildEdges sections depGraph = traverse_ (buildSectionEdges depGraph) sections
+toDependency :: GemfilePkg -> Set GemfileLabel -> Dependency
+toDependency pkg = foldr applyLabel start
+  where
 
-buildSectionEdges :: Member GraphBuilder r => Map Text G.DepRef -> Section -> Sem r ()
-buildSectionEdges depGraph (GitSection _ _ _ specs) = buildSpecsEdges specs depGraph
-buildSectionEdges depGraph (GemSection _ specs) = buildSpecsEdges specs depGraph
-buildSectionEdges depGraph (PathSection _ specs) = buildSpecsEdges specs depGraph
-buildSectionEdges _ _ = pure ()
+  start :: Dependency
+  start = Dependency
+    { dependencyType = GemType
+    , dependencyName = pkgName pkg
+    , dependencyVersion = Nothing
+    , dependencyLocations = []
+    , dependencyTags = M.empty
+    }
 
-buildSpecsEdges :: Member GraphBuilder r => [Spec] -> Map Text G.DepRef -> Sem r ()
-buildSpecsEdges specs depGraph = traverse_ (buildSpecEdges depGraph) specs
+  applyLabel :: GemfileLabel -> Dependency -> Dependency
+  applyLabel (GemfileVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
+  applyLabel (GitRemote repo maybeRevision) dep =
+    dep { dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep }
+  applyLabel (OtherRemote loc) dep =
+    dep { dependencyLocations = loc : dependencyLocations dep }
 
-buildSpecEdges :: Member GraphBuilder r => Map Text G.DepRef -> Spec -> Sem r ()
-buildSpecEdges depMap (Spec _ name children) = traverse_ (buildSpecDepEdge depMap name) children
+buildGraph :: [Section] -> Graphing Dependency
+buildGraph sections = run . withLabeling toDependency $
+  traverse_ addSection sections
+  where
+  addSection :: Member (LabeledGrapher GemfilePkg) r => Section -> Sem r ()
+  addSection (DependencySection deps) = traverse_ (direct . GemfilePkg . directName) deps
+  addSection (GitSection remote revision branch specs) =
+    traverse_ (addSpec (GitRemote remote (revision <|> branch))) specs
+  addSection (PathSection remote specs) =
+    traverse_ (addSpec (OtherRemote remote)) specs
+  addSection (GemSection remote specs) =
+    traverse_ (addSpec (OtherRemote remote)) specs
+  addSection UnknownSection{} = pure ()
 
-buildSpecDepEdge :: Member GraphBuilder r => Map Text G.DepRef -> Text -> SpecDep -> Sem r ()
-buildSpecDepEdge depMap name dep = do
-      let refs = do
-            parentRef <- M.lookup name depMap
-            childRef <- M.lookup (depName dep) depMap
-            Just (parentRef, childRef)
-      case refs of
-            Just (parentRef, childRef) -> addEdge parentRef childRef 
-            Nothing -> pure ()
-
-buildDirect :: Member GraphBuilder r => [Section] -> Map Text G.DepRef -> Sem r ()
-buildDirect sections depMap = traverse_ (directDepsFromSection depMap) sections
-
-directDepsFromSection :: Member GraphBuilder r =>  Map Text G.DepRef -> Section -> Sem r ()
-directDepsFromSection dependencyNameMap (DependencySection specs)  = traverse_ (addDirectDep dependencyNameMap) specs
-directDepsFromSection _ _ = pure ()
-
-addDirectDep :: Member GraphBuilder r =>  Map Text G.DepRef -> DirectDep -> Sem r ()
-addDirectDep depMap x = 
-      case M.lookup (directName x) depMap of
-            Just directRef -> addDirect directRef
-            Nothing -> pure ()
+  addSpec :: Member (LabeledGrapher GemfilePkg) r => GemfileLabel -> Spec -> Sem r ()
+  addSpec remoteLabel spec = do
+    let pkg = GemfilePkg (specName spec)
+    -- add edges between spec and specdeps
+    traverse_ (edge pkg . GemfilePkg . depName) (specDeps spec)
+    -- add a label for version
+    label pkg (GemfileVersion (specVersion spec))
+    -- add a label for remote
+    label pkg remoteLabel
 
 type Parser = Parsec Void Text
 

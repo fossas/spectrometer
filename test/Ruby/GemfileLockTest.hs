@@ -10,34 +10,33 @@ import           Polysemy.Input
 import qualified Data.Text.IO as TIO
 import           Text.Megaparsec
 
-import           Effect.GraphBuilder
-import qualified Graph as G
-import           Strategy.Ruby.GemfileLock
-import           GraphUtil
+import DepTypes
+import Strategy.Ruby.GemfileLock
+import GraphUtil
 
 import qualified Test.Tasty.Hspec as T
 
-dependencyOne :: G.Dependency
-dependencyOne = G.Dependency { dependencyType = G.GemType
+dependencyOne :: Dependency
+dependencyOne = Dependency { dependencyType = GemType
                         , dependencyName = "dep-one"
-                        , dependencyVersion = Just (G.CEq "1.0.0")
-                        , dependencyLocations = []
+                        , dependencyVersion = Just (CEq "1.0.0")
+                        , dependencyLocations = ["temp@12345"]
                         , dependencyTags = M.empty
                         }
 
-dependencyTwo :: G.Dependency
-dependencyTwo = G.Dependency { dependencyType = G.GemType
+dependencyTwo :: Dependency
+dependencyTwo = Dependency { dependencyType = GemType
                         , dependencyName = "dep-two"
-                        , dependencyVersion = Just (G.CEq "2.0.0")
-                        , dependencyLocations = []
+                        , dependencyVersion = Just (CEq "2.0.0")
+                        , dependencyLocations = ["remote"]
                         , dependencyTags = M.empty
                         }
 
-dependencyThree :: G.Dependency
-dependencyThree = G.Dependency { dependencyType = G.GemType
+dependencyThree :: Dependency
+dependencyThree = Dependency { dependencyType = GemType
                         , dependencyName = "dep-three"
-                        , dependencyVersion = Just (G.CEq "3.0.0")
-                        , dependencyLocations = []
+                        , dependencyVersion = Just (CEq "3.0.0")
+                        , dependencyLocations = ["remote"]
                         , dependencyTags = M.empty
                         }
 
