@@ -126,7 +126,7 @@ gomodParser = do
   replaceStatements :: Parser [Statement]
   replaceStatements = block "replace" singleReplace
 
-  -- parse the body of a single replace (wihtout the leading "replace" lexeme)
+  -- parse the body of a single replace (without the leading "replace" lexeme)
   singleReplace :: Parser Statement
   singleReplace = ReplaceStatement <$> packageName <* optional semver <* lexeme (chunk "=>") <*> packageName <*> semver
 
