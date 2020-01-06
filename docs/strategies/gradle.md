@@ -6,11 +6,11 @@ tend to contain several (sub)projects with their own buildscripts, and plugins
 that add dependencies of their own.
 
 To accurately determine the entire project/dependency structure, we use an
-external script
+external script.
 
 | Strategy   | Direct Deps | Deep Deps | Edges | Tags |
 | ---        | ---         | ---       | ---   | ---  |
-| initscript | Yes         | Yes       | Yes   |      |
+| initscript | ✅          | ✅        | ✅    |      |
 
 ## Project Discovery
 

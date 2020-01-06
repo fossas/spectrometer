@@ -13,7 +13,7 @@ be pretty solid.
 
 | Strategy    | Direct Deps | Deep Deps | Edges | Tags |
 | ---         | ---         | ---       | ---   | ---  |
-| mavenplugin | Yes         | Yes       | Yes   |      |
+| mavenplugin | ✅          | ✅        | ✅    |      |
 
 ## Project Discovery
 
