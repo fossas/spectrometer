@@ -1,0 +1,102 @@
+name: Build & Test
+on: [push]
+
+jobs:
+  build-linux:
+    name: build-linux
+    runs-on: ubuntu-latest
+    container: quay.io/fossa/haskell-static-alpine
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/cache@v1
+      name: Cache cabal store
+      with:
+        path: ~/.cabal/store
+        key: ${{ runner.os }}-cabal-store
+
+    - name: Install dependencies
+      run: |
+        cabal update
+        cabal configure --project-file=cabal.project.ci --enable-tests
+        cabal build --project-file=cabal.project.ci --only-dependencies
+
+    - name: Build
+      run: |
+        cabal build --project-file=cabal.project.ci
+
+    - name: Run tests
+      run: |
+        cabal test --project-file=cabal.project.ci
+
+  build-macos:
+    name: build-macos
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/cache@v1
+      name: Cache cabal store
+      with:
+        path: ~/.cabal/store
+        key: ${{ runner.os }}-cabal-store
+
+    - name: Install ghcup
+      run: |
+        mkdir -p ~/.ghcup/bin && curl https://gitlab.haskell.org/haskell/ghcup/raw/master/ghcup > ~/.ghcup/bin/ghcup && chmod +x ~/.ghcup/bin/ghcup
+        echo "::add-path::$HOME/.ghcup/bin"
+        echo "::add-path::$HOME/.cabal/bin"
+
+    - name: Install ghc/cabal
+      run: |
+        ghcup install 8.6.5
+        ghcup set 8.6.5
+        ghcup install-cabal
+
+    - name: Install dependencies
+      run: |
+        cabal update
+        cabal configure --project-file=cabal.project.ci --enable-tests
+        cabal build --project-file=cabal.project.ci --only-dependencies
+
+    - name: Build
+      run: |
+        cabal build --project-file=cabal.project.ci
+
+    - name: Run tests
+      run: |
+        cabal test --project-file=cabal.project.ci
+
+  build-windows:
+    name: build-windows
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/cache@v1
+      name: Cache cabal store
+      with:
+        path: ~/AppData/Roaming/cabal/store
+        key: ${{ runner.os }}-cabal-store
+
+    - name: Install ghc/cabal
+      run: |
+        choco install ghc --version=8.6.5
+        echo '::add-path::C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.6.5\bin'
+
+    - name: Install dependencies
+      run: |
+        cabal update
+        cabal configure --project-file=cabal.project.ci --enable-tests
+        cabal build --project-file=cabal.project.ci --only-dependencies
+
+    - name: Build
+      run: |
+        cabal build --project-file=cabal.project.ci
+
+    - name: Run tests
+      run: |
+        cabal test --project-file=cabal.project.ci
