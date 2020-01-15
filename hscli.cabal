@@ -120,6 +120,7 @@ library
     Strategy.Node.YarnLock
     Strategy.NpmList
     Strategy.NuGet.PackagesConfig
+    Strategy.NuGet.PackageReference
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
     Strategy.NuGet.Nuspec
@@ -163,6 +164,7 @@ test-suite tests
     Node.NpmLockTest
     Node.PackageJsonTest
     NuGet.PackagesConfigTest
+    NuGet.PackageReferenceTest
     NuGet.ProjectAssetsJsonTest
     NuGet.ProjectJsonTest
     NuGet.NuspecTest

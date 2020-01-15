@@ -14,10 +14,11 @@ import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
 import qualified Strategy.Node.YarnLock as YarnLock
+import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
+import qualified Strategy.NuGet.PackageReference as PackageReference
 import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
 import qualified Strategy.NuGet.ProjectJson as ProjectJson
 import qualified Strategy.NuGet.Nuspec as Nuspec
-import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList
 import qualified Strategy.Python.ReqTxt as ReqTxt
@@ -41,12 +42,13 @@ discoverFuncs =
 
   , Maven.discover
 
+  , PackageJson.discover
   , NpmLock.discover
   , NpmList.discover
   , YarnLock.discover
-  , PackageJson.discover
 
   , PackagesConfig.discover
+  , PackageReference.discover
   , ProjectAssetsJson.discover
   , ProjectJson.discover
   , Nuspec.discover
@@ -66,6 +68,7 @@ strategyGroups :: [StrategyGroup]
 strategyGroups =
   [ StrategyGroup "dotnet"
       [ SomeStrategy PackagesConfig.strategy
+      , SomeStrategy PackageReference.strategy
       , SomeStrategy ProjectAssetsJson.strategy
       , SomeStrategy ProjectJson.strategy
       , SomeStrategy Nuspec.strategy
