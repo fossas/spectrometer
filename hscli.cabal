@@ -75,6 +75,7 @@ common deps
     , vector                       ^>=0.12.0.3
     , yaml                         ^>=0.11.1
     , yarn-lock                    ^>=0.6.2
+    , xml
 
 library
   import:          lang
@@ -118,8 +119,10 @@ library
     Strategy.Node.PackageJson
     Strategy.Node.YarnLock
     Strategy.NpmList
+    Strategy.NuGet.PackagesConfig
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
+    Strategy.NuGet.Nuspec
     Strategy.Python.PipList
     Strategy.Python.Pipenv
     Strategy.Python.ReqTxt
@@ -159,8 +162,10 @@ test-suite tests
     Maven.MavenTest
     Node.NpmLockTest
     Node.PackageJsonTest
+    NuGet.PackagesConfigTest
     NuGet.ProjectAssetsJsonTest
     NuGet.ProjectJsonTest
+    NuGet.NuspecTest
     Python.PipListTest
     Python.PipenvTest
     Python.ReqTxtTest
