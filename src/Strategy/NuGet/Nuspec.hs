@@ -51,10 +51,10 @@ analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (Graph
 analyze BasicFileOpts{..} = do
       contents <- readContentsBS targetFile
       let nuspecGroups = parseNuspec =<< XML.parseXMLDoc contents
-      
       case nuspecGroups of
         Just gs -> pure $ buildGraph gs
-        Nothing -> undefined
+        Nothing -> throw (FileParseError (fromRelFile targetFile) "this file was unable to be parsed as a nuspec file")
+
 
 data Group = Group
   { dependencies  :: [NuGetDependency]
@@ -96,7 +96,7 @@ parseNuspec nuspec = do
 buildGraph :: [Group] -> Graphing Dependency
 buildGraph project = unfold direct (const []) toDependency
     where
-    direct = foldr (\x y -> y ++ dependencies x) [] project
+    direct = concatMap (\x -> dependencies x) project
     toDependency NuGetDependency{..} =
       Dependency { dependencyType = NuGetType
                , dependencyName = T.pack depID

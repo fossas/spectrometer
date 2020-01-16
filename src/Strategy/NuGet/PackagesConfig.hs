@@ -52,7 +52,7 @@ analyze BasicFileOpts{..} = do
       let packagesConfig = parsePackagesConfig =<< XML.parseXMLDoc contents
       case packagesConfig of
         Just gs -> pure $ buildGraph gs
-        Nothing -> undefined
+        Nothing -> throw (FileParseError (fromRelFile targetFile) "this file was unable to be parsed as a packages.config file")
 
 data NuGetDependency = NuGetDependency
   { depID        :: String

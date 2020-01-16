@@ -5,6 +5,8 @@ module Strategy.NuGet.PackageReference
   , analyze
   , parsePackageReference
 
+  , ItemGroup(..)
+  , PackageReference(..)
   ) where
 
 import Prologue
@@ -13,11 +15,10 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.List as L
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.Output
 import qualified Text.XML.Light as XML
 
-import           Diagnostics
 import           DepTypes
 import           Discovery.Walk
 import           Effect.ReadFS
@@ -45,20 +46,14 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "nuget-packagereference"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts -> analyze & fileInputXML (targetFile opts) parsePackageReference
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
   }
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (Graphing Dependency)
-analyze BasicFileOpts{..} = do
-      contents <- readContentsBS targetFile
-      let packageReference = parsePackageReference =<< XML.parseXMLDoc contents
-      
-      case packageReference of
-        Just gs -> pure $ buildGraph gs
-        Nothing -> undefined
+analyze :: Member (Input [ItemGroup]) r => Sem r (Graphing Dependency)
+analyze = buildGraph <$> input
 
 data ItemGroup = ItemGroup
   { dependencies        :: [PackageReference]
@@ -100,13 +95,11 @@ parsePackageReference project = do
 buildGraph :: [ItemGroup] -> Graphing Dependency
 buildGraph project = unfold direct (const []) toDependency
     where
-    direct = foldr (\x y -> y ++ dependencies x) [] project
+    direct = concatMap (\x -> dependencies x) project
     toDependency PackageReference{..} =
       Dependency { dependencyType = NuGetType
                , dependencyName = T.pack depID
-               , dependencyVersion = case depVersion of
-                                       Nothing -> Nothing
-                                       Just ver -> Just (CEq $ T.pack ver)
+               , dependencyVersion =  fmap (CEq . T.pack) depVersion
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
