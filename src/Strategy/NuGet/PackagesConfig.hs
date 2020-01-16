@@ -5,6 +5,7 @@ module Strategy.NuGet.PackagesConfig
   , analyze
   , parsePackagesConfig
 
+  , NuGetDependency(..)
   ) where
 
 import Prologue
@@ -12,11 +13,10 @@ import Prologue
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.Output
 import qualified Text.XML.Light as XML
 
-import           Diagnostics
 import           DepTypes
 import           Discovery.Walk
 import           Effect.ReadFS
@@ -40,19 +40,14 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "nuget-packagesconfig"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts -> analyze & fileInputXML (targetFile opts) parsePackagesConfig
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
   }
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (Graphing Dependency)
-analyze BasicFileOpts{..} = do
-      contents <- readContentsBS targetFile
-      let packagesConfig = parsePackagesConfig =<< XML.parseXMLDoc contents
-      case packagesConfig of
-        Just gs -> pure $ buildGraph gs
-        Nothing -> throw (FileParseError (fromRelFile targetFile) "this file was unable to be parsed as a packages.config file")
+analyze :: Member (Input [NuGetDependency]) r => Sem r (Graphing Dependency)
+analyze = buildGraph <$> input
 
 data NuGetDependency = NuGetDependency
   { depID        :: String

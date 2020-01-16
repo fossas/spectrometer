@@ -13,6 +13,8 @@ import DepTypes
 import GraphUtil
 import Strategy.NuGet.Nuspec
 import Test.Tasty.Hspec
+import Polysemy
+import Polysemy.Input
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
@@ -37,6 +39,17 @@ dependencyThree = Dependency { dependencyType = NuGetType
                         , dependencyLocations = []
                         , dependencyTags = M.empty
                         }
+groupList :: [Group]
+groupList = [Group [depOne, depTwo], Group [depThree]]
+
+depOne :: NuGetDependency
+depOne = NuGetDependency "one" "1.0.0"
+
+depTwo :: NuGetDependency
+depTwo = NuGetDependency "two" "2.0.0"
+
+depThree :: NuGetDependency
+depThree = NuGetDependency "three" "3.0.0"
 
 spec_analyze :: Spec
 spec_analyze = do
@@ -45,11 +58,11 @@ spec_analyze = do
   describe "nuspec analyzer" $ do
     it "reads a file and constructs an accurate graph" $ do
       case parseNuspec =<< XML.parseXMLDoc nuspecFile of
-        Just groups -> do
-          let graph = buildGraph groups
+        Just groups -> groups `shouldContain` groupList
+        Nothing -> expectationFailure "could not parse nuspec file"
 
+    it "constructs an accurate graph" $ do
+          let graph = analyze & runInputConst @[Group] groupList & run
           expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
           expectEdges [] graph
-
-        Nothing -> expectationFailure "could not parse nuspec file"

@@ -5,6 +5,8 @@ module Strategy.NuGet.Nuspec
   , analyze
   , parseNuspec
 
+  , Group(..)
+  , NuGetDependency(..)
   ) where
 
 import Prologue
@@ -13,11 +15,10 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.List as L
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.Output
 import qualified Text.XML.Light as XML
 
-import           Diagnostics
 import           DepTypes
 import           Discovery.Walk
 import           Effect.ReadFS
@@ -41,20 +42,14 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "nuget-nuspec"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts -> analyze & fileInputXML (targetFile opts) parseNuspec
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
   }
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (Graphing Dependency)
-analyze BasicFileOpts{..} = do
-      contents <- readContentsBS targetFile
-      let nuspecGroups = parseNuspec =<< XML.parseXMLDoc contents
-      case nuspecGroups of
-        Just gs -> pure $ buildGraph gs
-        Nothing -> throw (FileParseError (fromRelFile targetFile) "this file was unable to be parsed as a nuspec file")
-
+analyze :: Member (Input [Group]) r => Sem r (Graphing Dependency)
+analyze = buildGraph <$> input
 
 data Group = Group
   { dependencies  :: [NuGetDependency]
