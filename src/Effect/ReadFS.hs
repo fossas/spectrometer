@@ -2,19 +2,24 @@
 {-# language TemplateHaskell #-}
 
 module Effect.ReadFS
-  ( ReadFS(..)
+  ( -- * ReadFS Effect
+    ReadFS(..)
   , readFSToIO
 
+  -- * Reading raw file contents
   , readContentsBS
   , readContentsText
   , doesFileExist
   , doesDirExist
 
+  -- * Parsing file contents
   , readContentsParser
   , readContentsJson
+  , readContentsXML
   , readContentsYaml
   , readContentsXML
 
+  -- * 'Input' interpreters
   , fileInputParser
   , fileInputJson
   , fileInputYaml
@@ -28,7 +33,7 @@ import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import           Data.Text.Encoding (decodeUtf8)
 import           Data.Yaml (decodeEither', prettyPrintParseException)
-import qualified Text.XML.Light as XML
+import           Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import           Path (Dir, File, Path, toFilePath)
 import qualified Path.IO as PIO
 import           Polysemy
@@ -36,6 +41,7 @@ import           Polysemy.Error hiding (catch)
 import           Polysemy.Input
 import           Text.Megaparsec (Parsec, runParser)
 import           Text.Megaparsec.Error (errorBundlePretty)
+import qualified Text.XML.Light as XML
 
 import Diagnostics
 
@@ -78,7 +84,7 @@ readContentsJson file = do
     Right a -> pure a
 
 -- | Read YAML from a file
-readContentsYaml ::  (FromJSON a, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem r a
+readContentsYaml :: (FromJSON a, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem r a
 readContentsYaml file = do
   contents <- readContentsBS file
   case decodeEither' contents of
@@ -86,12 +92,14 @@ readContentsYaml file = do
     Right a -> pure a
 
 -- | Read XML from a file
-readContentsXML ::  Members '[ReadFS, Error ReadFSErr] r => Path b File -> (XML.Element -> Maybe a) -> Sem r a
-readContentsXML file xmlParser = do
+readContentsXML :: (FromXML a, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem r a
+readContentsXML file = do
   contents <- readContentsBS file
-  case xmlParser =<< XML.parseXMLDoc contents of
-    Nothing -> throw (FileParseError (toFilePath file) "this file was unable to be parsed as xml")
-    Just parse -> pure parse
+  case XML.parseXMLDoc contents of
+    Nothing -> throw (FileParseError (toFilePath file) "parseXMLDoc failed")
+    Just xml -> case parseXML xml of
+      Left e -> throw (FileParseError (toFilePath file) (xmlErrorPretty e))
+      Right a -> pure a
 
 -- | Interpret an 'Input' effect by parsing file contents
 fileInputParser :: Members '[ReadFS, Error ReadFSErr] r => Parser i -> Path b File -> Sem (Input i ': r) a -> Sem r a
@@ -111,10 +119,10 @@ fileInputYaml file = interpret $ \case
   Input -> readContentsYaml file
 {-# INLINE fileInputYaml #-}
 
--- | Interpret an 'Input' effect by parsing XML contents
-fileInputXML :: Members '[ReadFS, Error ReadFSErr] r =>  Path b File -> (XML.Element -> Maybe i) -> Sem (Input i ': r) a -> Sem r a
-fileInputXML file parser = interpret $ \case
-  Input -> readContentsXML file parser
+-- | Interpret an 'Input' effect by parsing XML file contents
+fileInputXML :: (FromXML i, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem (Input i ': r) a -> Sem r a
+fileInputXML file = interpret $ \case
+  Input -> readContentsXML file
 {-# INLINE fileInputXML #-}
 
 readFSToIO :: Members '[Embed IO, Error ReadFSErr] r => Sem (ReadFS ': r) a -> Sem r a
