@@ -88,29 +88,23 @@ toDependency pkg = foldr applyLabel start
 
   applyLabel :: PaketLabel -> Dependency -> Dependency
   applyLabel (PaketVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
-  applyLabel (GroupName name) dep = dep { dependencyTags = M.insert "group" (name : (fromMaybe [] (M.lookup "group" $ dependencyTags dep))  ) (dependencyTags dep)} 
+  applyLabel (GroupName name) dep = dep { dependencyTags = M.insertWith (++) "group" [name] (dependencyTags dep) }
   applyLabel (PaketRemote repo) dep = dep { dependencyLocations = repo : dependencyLocations dep }
   
 buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
-      traverse_ addSection sections
+      traverse_ (addSection "MAIN") sections
       where
-            addSection :: Member (LabeledGrapher PaketPkg) r => Section -> Sem r ()
-            addSection (GitSection remotes) = traverse_ (addRemote "MAIN") remotes
-            addSection (NugetSection remotes) = traverse_ (addRemote "MAIN") remotes
-            addSection (HTTPSection remotes) =  traverse_ (addRemote "MAIN") remotes
-            addSection (GroupSection group gSections) = traverse_ (addGroupSection group) gSections
-            addSection (UnknownSection _) = pure ()
-
-            addGroupSection :: Member (LabeledGrapher PaketPkg) r => Text -> Section -> Sem r ()
-            addGroupSection group (GitSection remotes) = traverse_ (addRemote group) remotes
-            addGroupSection group (NugetSection remotes) = traverse_ (addRemote group) remotes
-            addGroupSection group (HTTPSection remotes) =  traverse_ (addRemote group) remotes
-            addGroupSection _ _ = pure ()
+            addSection :: Member (LabeledGrapher PaketPkg) r => Text -> Section -> Sem r ()
+            addSection group (GitSection remotes) = traverse_ (addRemote group) remotes
+            addSection group (NugetSection remotes) = traverse_ (addRemote group) remotes
+            addSection group (HTTPSection remotes) =  traverse_ (addRemote group) remotes
+            addSection _ (GroupSection group gSections) = traverse_ (addSection group) gSections
+            addSection _ (UnknownSection _) = pure ()
 
             addRemote :: Member (LabeledGrapher PaketPkg) r => Text -> Remote -> Sem r ()
             addRemote group remote = traverse_ (addSpec (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
-                                                          -- Remote     -- Group Name
+
             addSpec :: Member (LabeledGrapher PaketPkg) r => PaketLabel -> PaketLabel -> PaketDep -> Sem r ()
             addSpec remote group dep = do
               let pkg = PaketPkg (name dep)
@@ -118,12 +112,11 @@ buildGraph sections = run . withLabeling toDependency $
               traverse_ (edge pkg . PaketPkg) (transitive dep)
               -- add a label for version
               label pkg (PaketVersion (version dep))
-              -- add a label for remote
+              -- add a label for remote and group
               label pkg remote
-              --   label pkg group
               label pkg group
-              direct pkg
 
+              direct pkg
 
 type Name = Text
 
