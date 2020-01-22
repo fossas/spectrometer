@@ -70,9 +70,7 @@ type instance PkgLabel PaketPkg = PaketLabel
 data PaketLabel =
     PaketVersion Text
   | PaketRemote Text
---   | GitRemote Text (Maybe Text) -- ^ repo url, revision
---   | OtherRemote Text -- ^ url
-  | GroupName Text -- ^ url
+  | GroupName Text
   deriving (Eq, Ord, Show, Generic)
 
 toDependency :: PaketPkg -> Set PaketLabel -> Dependency
@@ -91,12 +89,7 @@ toDependency pkg = foldr applyLabel start
   applyLabel :: PaketLabel -> Dependency -> Dependency
   applyLabel (PaketVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
   applyLabel (GroupName name) dep = dep { dependencyTags = M.insert "group" (name : (fromMaybe [] (M.lookup "group" $ dependencyTags dep))  ) (dependencyTags dep)} 
-  -- there are going to be conflicts and we should append all of the group keys.
-   -- Others we need are git remote and https remote
   applyLabel (PaketRemote repo) dep = dep { dependencyLocations = repo : dependencyLocations dep }
-  applyLabel _ dep = dep
---   applyLabel (OtherRemote loc) dep =
---     dep { dependencyLocations = loc : dependencyLocations dep }
   
 buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $

@@ -18,64 +18,65 @@ import qualified Test.Tasty.Hspec as T
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
-                        , dependencyName = "one"
-                        , dependencyVersion = Just (CEq "1.0.0")
-                        , dependencyLocations = ["nuget.com"]
-                        , dependencyTags = M.fromList [("group", ["MAIN"])]
-                        }
+                           , dependencyName = "one"
+                           , dependencyVersion = Just (CEq "1.0.0")
+                           , dependencyLocations = ["nuget.com"]
+                           , dependencyTags = M.fromList [("group", ["MAIN"])]
+                           }
 
 dependencyTwo :: Dependency
 dependencyTwo = Dependency { dependencyType = NuGetType
-                        , dependencyName = "two"
-                        , dependencyVersion = Just (CEq "2.0.0")
-                        , dependencyLocations = ["nuget.com"]
-                        , dependencyTags = M.fromList [("group", ["MAIN"])]
-                        }
+                           , dependencyName = "two"
+                           , dependencyVersion = Just (CEq "2.0.0")
+                           , dependencyLocations = ["nuget-v2.com", "nuget.com"]
+                           , dependencyTags = M.fromList [("group", ["MAIN", "TEST"])]
+                           }
 
 dependencyThree :: Dependency
 dependencyThree = Dependency { dependencyType = NuGetType
-                        , dependencyName = "three"
-                        , dependencyVersion = Just (CEq "3.0.0")
-                        , dependencyLocations = ["custom-site.com"]
-                        , dependencyTags = M.fromList [("group", ["MAIN"])]
-                        }
+                             , dependencyName = "three"
+                             , dependencyVersion = Just (CEq "3.0.0")
+                             , dependencyLocations = ["custom-site.com"]
+                             , dependencyTags = M.fromList [("group", ["MAIN"])]
+                             }
 
 dependencyFour :: Dependency
 dependencyFour = Dependency { dependencyType = NuGetType
-                        , dependencyName = "four"
-                        , dependencyVersion = Just (CEq "4.0.0")
-                        , dependencyLocations = ["nuget-v2.com"]
-                        , dependencyTags = M.fromList [("group", ["TEST"])]
-                        }
+                            , dependencyName = "four"
+                            , dependencyVersion = Just (CEq "4.0.0")
+                            , dependencyLocations = ["nuget-v2.com"]
+                            , dependencyTags = M.fromList [("group", ["TEST"])]
+                            }
 
 dependencyFive :: Dependency
 dependencyFive = Dependency { dependencyType = NuGetType
-                        , dependencyName = "five"
-                        , dependencyVersion = Just (CEq "5.0.0")
-                        , dependencyLocations = ["nuget-v2.com"]
-                        , dependencyTags = M.fromList [("group", ["TEST"])]
-                        }
+                            , dependencyName = "five"
+                            , dependencyVersion = Just (CEq "5.0.0")
+                            , dependencyLocations = ["nuget-v2.com"]
+                            , dependencyTags = M.fromList [("group", ["TEST"])]
+                            }
 
 dependencySix :: Dependency
 dependencySix = Dependency { dependencyType = NuGetType
-                        , dependencyName = "six"
-                        , dependencyVersion = Just (CEq "6.0.0")
-                        , dependencyLocations = ["github.com"]
-                        , dependencyTags = M.fromList [("group", ["TEST"])]
-                        }
+                           , dependencyName = "six"
+                           , dependencyVersion = Just (CEq "6.0.0")
+                           , dependencyLocations = ["github.com"]
+                           , dependencyTags = M.fromList [("group", ["TEST"])]
+                           }
 
 nugetSection :: Section
 nugetSection = NugetSection [Remote "nuget.com" [PaketDep "one" "1.0.0" ["two"]
-                                 , PaketDep "two" "2.0.0" []
-                                 ]]
+                                                , PaketDep "two" "2.0.0" []
+                                                ]]
 
 httpSection :: Section
 httpSection = HTTPSection [Remote "custom-site.com" [PaketDep "three" "3.0.0" []]]
 
 nugetGroupRemote :: Remote
 nugetGroupRemote = Remote "nuget-v2.com" [PaketDep "four" "4.0.0" ["five"]
-                                 , PaketDep "five" "5.0.0" []
-                                 ]
+                                         , PaketDep "five" "5.0.0" []
+                                         , PaketDep "two" "2.0.0" []
+                                         ]
 
 gitGroupRemote :: Remote
 gitGroupRemote = Remote "github.com" [PaketDep "six" "6.0.0" []]

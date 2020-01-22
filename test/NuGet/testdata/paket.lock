@@ -16,6 +16,7 @@ NUGET
      four (4.0.0)
        five (>1.0.0)
      five (5.0.0)
+     two (2.0.0)
 
 GITHUB
   remote: github.com
