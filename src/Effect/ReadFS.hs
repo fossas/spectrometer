@@ -15,7 +15,6 @@ module Effect.ReadFS
   -- * Parsing file contents
   , readContentsParser
   , readContentsJson
-  , readContentsXML
   , readContentsYaml
   , readContentsXML
 
@@ -41,7 +40,6 @@ import           Polysemy.Error hiding (catch)
 import           Polysemy.Input
 import           Text.Megaparsec (Parsec, runParser)
 import           Text.Megaparsec.Error (errorBundlePretty)
-import qualified Text.XML.Light as XML
 
 import Diagnostics
 
@@ -94,12 +92,10 @@ readContentsYaml file = do
 -- | Read XML from a file
 readContentsXML :: (FromXML a, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem r a
 readContentsXML file = do
-  contents <- readContentsBS file
-  case XML.parseXMLDoc contents of
-    Nothing -> throw (FileParseError (toFilePath file) "parseXMLDoc failed")
-    Just xml -> case parseXML xml of
-      Left e -> throw (FileParseError (toFilePath file) (xmlErrorPretty e))
-      Right a -> pure a
+  contents <- readContentsText file
+  case parseXML contents of
+    Left err -> throw (FileParseError (toFilePath file) (xmlErrorPretty err))
+    Right a -> pure a
 
 -- | Interpret an 'Input' effect by parsing file contents
 fileInputParser :: Members '[ReadFS, Error ReadFSErr] r => Parser i -> Path b File -> Sem (Input i ': r) a -> Sem r a

@@ -30,6 +30,9 @@ import qualified Text.XML.Light as XML
 class FromXML a where
   parseElement :: XML.Element -> Parser a
 
+instance FromXML XML.Element where
+  parseElement = pure
+
 instance FromXML T.Text where
   parseElement = fmap T.pack . content
 
@@ -38,9 +41,18 @@ instance FromXML T.Text where
 newtype Parser a = Parser { unParser :: Sem '[Reader ParsePath, Fail, NonDet, Error ParseError] a }
   deriving (Functor, Applicative, Alternative, Monad, MonadFail, MonadPlus)
 
+runParser :: Parser a -> Either ParseError a
+runParser = run
+  . runError
+  . nonDetToError (UnknownError "NonDet.empty")
+  . failToError UnknownError
+  . runReader []
+  . unParser
+
 data ParseError =
     ParseElementMissing ParsePath String
   | ParseAttrMissing ParsePath String
+  | ParseXMLDocFailed
   | UnknownError String
 
 xmlErrorPretty :: ParseError -> T.Text
@@ -50,26 +62,24 @@ xmlErrorPretty (ParseAttrMissing path attrName) =
   "Missing attribute at " <> renderPath path <> "; attrName: " <> T.pack attrName
 xmlErrorPretty (UnknownError err) =
   "UnknownError " <> T.pack err
+xmlErrorPretty ParseXMLDocFailed = "parseXMLDoc failed"
 
 renderPath :: ParsePath -> T.Text
 renderPath = T.intercalate "." . map T.pack . reverse
 
 type ParsePath = [String] -- reversed parse path
 
-parseXML :: FromXML a => XML.Element -> Either ParseError a
-parseXML = run
-  . runError
-  . nonDetToError (UnknownError "NonDet.empty")
-  . failToNonDet
-  . runReader []
-  . unParser
-  . parseElement
+parseXML :: FromXML a => T.Text -> Either ParseError a
+parseXML inp =
+  case XML.parseXMLDoc inp of
+    Nothing -> Left ParseXMLDocFailed
+    Just xml -> runParser (parseElement xml)
 
-attr :: String -> XML.Element -> Parser String
+attr :: String -> XML.Element -> Parser T.Text
 attr attrName el =
   case XML.findAttrBy (\elName -> XML.qName elName == attrName) el of
     Nothing -> Parser $ ask >>= \path -> throw (ParseAttrMissing path attrName)
-    Just a  -> pure a
+    Just a  -> pure (T.pack a)
 
 child :: FromXML a => String -> XML.Element -> Parser a
 child childName el = Parser $
