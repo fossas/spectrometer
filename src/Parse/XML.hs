@@ -16,7 +16,7 @@ module Parse.XML
 
 import Prelude
 
-import Control.Applicative (Alternative)
+import Control.Applicative (optional, Alternative)
 import Control.Monad (MonadPlus)
 import Control.Monad.Fail (MonadFail)
 import qualified Data.Text as T
@@ -41,12 +41,12 @@ instance FromXML T.Text where
 newtype Parser a = Parser { unParser :: Sem '[Reader ParsePath, Fail, NonDet, Error ParseError] a }
   deriving (Functor, Applicative, Alternative, Monad, MonadFail, MonadPlus)
 
-runParser :: Parser a -> Either ParseError a
-runParser = run
+runParser :: String -> Parser a -> Either ParseError a
+runParser rootName = run
   . runError
   . nonDetToError (UnknownError "NonDet.empty")
   . failToError UnknownError
-  . runReader []
+  . runReader [rootName]
   . unParser
 
 data ParseError =
@@ -54,6 +54,7 @@ data ParseError =
   | ParseAttrMissing ParsePath String
   | ParseXMLDocFailed
   | UnknownError String
+  deriving (Eq, Ord, Show)
 
 xmlErrorPretty :: ParseError -> T.Text
 xmlErrorPretty (ParseElementMissing path childName) =
@@ -65,7 +66,8 @@ xmlErrorPretty (UnknownError err) =
 xmlErrorPretty ParseXMLDocFailed = "parseXMLDoc failed"
 
 renderPath :: ParsePath -> T.Text
-renderPath = T.intercalate "." . map T.pack . reverse
+renderPath [] = "[no path]"
+renderPath xs = (\path -> "[" <> path <> "]") . T.intercalate "." . map T.pack . reverse $ xs
 
 type ParsePath = [String] -- reversed parse path
 
@@ -73,7 +75,7 @@ parseXML :: FromXML a => T.Text -> Either ParseError a
 parseXML inp =
   case XML.parseXMLDoc inp of
     Nothing -> Left ParseXMLDocFailed
-    Just xml -> runParser (parseElement xml)
+    Just root -> runParser (XML.qName (XML.elName root)) (parseElement root)
 
 attr :: String -> XML.Element -> Parser T.Text
 attr attrName el =
