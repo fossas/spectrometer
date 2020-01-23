@@ -71,6 +71,7 @@ data PaketLabel =
     PaketVersion Text
   | PaketRemote Text
   | GroupName Text
+  | DepLocation Text
   deriving (Eq, Ord, Show, Generic)
 
 toDependency :: PaketPkg -> Set PaketLabel -> Dependency
@@ -89,6 +90,7 @@ toDependency pkg = foldr applyLabel start
   applyLabel :: PaketLabel -> Dependency -> Dependency
   applyLabel (PaketVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
   applyLabel (GroupName name) dep = dep { dependencyTags = M.insertWith (++) "group" [name] (dependencyTags dep) }
+  applyLabel (DepLocation loc) dep = dep { dependencyTags = M.insertWith (++) "location" [loc] (dependencyTags dep) }
   applyLabel (PaketRemote repo) dep = dep { dependencyLocations = repo : dependencyLocations dep }
   
 buildGraph :: [Section] -> Graphing Dependency
@@ -96,17 +98,15 @@ buildGraph sections = run . withLabeling toDependency $
       traverse_ (addSection "MAIN") sections
       where
             addSection :: Member (LabeledGrapher PaketPkg) r => Text -> Section -> Sem r ()
-            addSection group (GitSection remotes) = traverse_ (addRemote group) remotes
-            addSection group (NugetSection remotes) = traverse_ (addRemote group) remotes
-            addSection group (HTTPSection remotes) =  traverse_ (addRemote group) remotes
+            addSection group (StandardSection location remotes) = traverse_ (addRemote group location) remotes
             addSection _ (GroupSection group gSections) = traverse_ (addSection group) gSections
             addSection _ (UnknownSection _) = pure ()
 
-            addRemote :: Member (LabeledGrapher PaketPkg) r => Text -> Remote -> Sem r ()
-            addRemote group remote = traverse_ (addSpec (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
+            addRemote :: Member (LabeledGrapher PaketPkg) r => Text -> Text -> Remote -> Sem r ()
+            addRemote group loc remote = traverse_ (addSpec (DepLocation $ loc) (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
 
-            addSpec :: Member (LabeledGrapher PaketPkg) r => PaketLabel -> PaketLabel -> PaketDep -> Sem r ()
-            addSpec remote group dep = do
+            addSpec :: Member (LabeledGrapher PaketPkg) r => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> Sem r ()
+            addSpec loc remote group dep = do
               let pkg = PaketPkg (name dep)
               -- add edges between spec and specdeps
               traverse_ (edge pkg . PaketPkg) (transitive dep)
@@ -115,15 +115,15 @@ buildGraph sections = run . withLabeling toDependency $
               -- add a label for remote and group
               label pkg remote
               label pkg group
+              label pkg loc
 
               direct pkg
 
 type Name = Text
+type Location = Text
 
 data Section =
-      GitSection [Remote]
-      | NugetSection [Remote]
-      | HTTPSection [Remote]
+       StandardSection Location [Remote]
       | UnknownSection Text
       | GroupSection Name [Section]
       deriving (Eq, Ord, Show, Generic)
@@ -146,13 +146,13 @@ data Group = Group
 
 
 findSections :: Parser [Section]
-findSections = many (try githubSectionParser <|> try httpSectionParser <|> try nugetSectionParser <|> try groupSection <|> try emptySection) <* eof
+findSections = many (try standardSectionParser <|> try groupSection <|> try emptySection) <* eof
 
 groupSection :: Parser Section
 groupSection = do
           _ <- chunk "GROUP"
           name <- textValue
-          sections <- many (try githubSectionParser <|> try httpSectionParser <|> try nugetSectionParser <|>  try emptySection)
+          sections <- many (try standardSectionParser <|>  try emptySection)
           pure $ GroupSection name sections
 
 emptySection :: Parser Section
@@ -162,28 +162,13 @@ emptySection = do
       _ <- eol
       pure $ UnknownSection emptyLine
 
-httpSectionParser :: Parser Section
-httpSectionParser = L.nonIndented scn (L.indentBlock scn p)
+standardSectionParser :: Parser Section
+standardSectionParser = L.nonIndented scn (L.indentBlock scn p)
       where
         p = do
-          _ <- chunk "HTTP"
-          return (L.IndentMany Nothing (\remotes -> pure $ HTTPSection remotes) remoteParser)
+          location <- chunk "HTTP" <|> "GITHUB" <|> "NUGET"
+          return (L.IndentMany Nothing (\remotes -> pure $ StandardSection location remotes) remoteParser)
 
-githubSectionParser :: Parser Section
-githubSectionParser = L.nonIndented scn (L.indentBlock scn p)
-      where
-        p = do
-          _ <- chunk "GITHUB"
-          return (L.IndentMany Nothing (\remotes -> pure $ GitSection remotes) remoteParser)
-
-nugetSectionParser :: Parser Section
-nugetSectionParser = L.nonIndented scn (L.indentBlock scn p)
-      where
-        p = do
-          _ <- chunk "NUGET"
-          return (L.IndentMany Nothing (\remotes -> pure $ NugetSection remotes) remoteParser)
-
--- fieldName,  (value, deps)
 remoteParser :: Parser Remote
 remoteParser = L.indentBlock scn p
   where
