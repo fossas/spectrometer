@@ -107,16 +107,13 @@ buildGraph sections = run . withLabeling toDependency $
 
             addSpec :: Member (LabeledGrapher PaketPkg) r => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> Sem r ()
             addSpec loc remote group dep = do
+              -- add edges, labels, and direct deps
               let pkg = PaketPkg (name dep)
-              -- add edges between spec and specdeps
               traverse_ (edge pkg . PaketPkg) (transitive dep)
-              -- add a label for version
               label pkg (PaketVersion (version dep))
-              -- add a label for remote and group
               label pkg remote
               label pkg group
               label pkg loc
-
               direct pkg
 
 type Name = Text
@@ -146,17 +143,17 @@ data Group = Group
 
 
 findSections :: Parser [Section]
-findSections = many (try standardSectionParser <|> try groupSection <|> try emptySection) <* eof
+findSections = many (try standardSectionParser <|> try groupSection <|> try unknownSection) <* eof
 
 groupSection :: Parser Section
 groupSection = do
           _ <- chunk "GROUP"
           name <- textValue
-          sections <- many (try standardSectionParser <|>  try emptySection)
+          sections <- many (try standardSectionParser <|>  try unknownSection)
           pure $ GroupSection name sections
 
-emptySection :: Parser Section
-emptySection = do 
+unknownSection :: Parser Section
+unknownSection = do 
       emptyLine <- restOfLine
       guard $ not $ "GROUP" `T.isPrefixOf` emptyLine
       _ <- eol
@@ -167,7 +164,7 @@ standardSectionParser = L.nonIndented scn (L.indentBlock scn p)
       where
         p = do
           location <- chunk "HTTP" <|> "GITHUB" <|> "NUGET"
-          return (L.IndentMany Nothing (\remotes -> pure $ StandardSection location remotes) remoteParser)
+          return $ L.IndentMany Nothing (\remotes -> pure $ StandardSection location remotes) remoteParser
 
 remoteParser :: Parser Remote
 remoteParser = L.indentBlock scn p
@@ -175,12 +172,7 @@ remoteParser = L.indentBlock scn p
     p = do
       _ <- chunk "remote:"
       value <- textValue
-      return (L.IndentMany Nothing (\specs -> pure $ Remote value specs) specParser)
-
-textValue :: Parser Text
-textValue = do
-      _ <- chunk " "
-      restOfLine
+      pure $ L.IndentMany Nothing (\specs -> pure $ Remote value specs) specParser
 
 specParser :: Parser PaketDep
 specParser = L.indentBlock scn p
@@ -189,7 +181,7 @@ specParser = L.indentBlock scn p
         name <- findDep
         version <- findVersion
         _ <- restOfLine
-        pure (L.IndentMany Nothing (\a -> pure $ PaketDep name version a) specsParser)
+        pure $ L.IndentMany Nothing (\a -> pure $ PaketDep name version a) specsParser
       
 specsParser :: Parser Text
 specsParser = do
@@ -206,6 +198,11 @@ findVersion = do
       result <- lexeme (takeWhileP (Just "version") (/= ')'))
       _ <- char ')'
       pure result
+
+textValue :: Parser Text
+textValue = do
+      _ <- chunk " "
+      restOfLine
 
 restOfLine :: Parser Text
 restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
