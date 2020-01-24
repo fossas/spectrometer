@@ -10,7 +10,7 @@ import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Gradle as Gradle
-import qualified Strategy.Maven as Maven
+import qualified Strategy.Maven.PluginStrategy as MavenPlugin
 import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
@@ -40,7 +40,7 @@ discoverFuncs =
 
   , Gradle.discover
 
-  , Maven.discover
+  , MavenPlugin.discover
 
   , PackageJson.discover
   , NpmLock.discover
@@ -79,7 +79,7 @@ strategyGroups =
       [ SomeStrategy Gradle.strategy
       ]
   , StrategyGroup "maven"
-      [ SomeStrategy Maven.strategy
+      [ SomeStrategy MavenPlugin.strategy
       ]
   , StrategyGroup "nodejs"
       [ SomeStrategy YarnLock.strategy

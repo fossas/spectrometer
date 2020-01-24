@@ -1,4 +1,4 @@
-module Strategy.Maven
+module Strategy.Maven.PluginStrategy
   ( discover
   , strategy
   , analyze
