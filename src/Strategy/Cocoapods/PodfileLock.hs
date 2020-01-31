@@ -6,6 +6,9 @@ module Strategy.Cocoapods.PodfileLock
   , configure
   , findSections
 
+  , Dep (..)
+  , Pod (..)
+  , Section (..)
   ) where
 
 import Prologue

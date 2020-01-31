@@ -157,6 +157,7 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
+    Cocoapods.PodfileLockTest
     Go.GlideLockTest
     Go.GoListTest
     Go.GomodTest
