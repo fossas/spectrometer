@@ -108,6 +108,7 @@ library
     LabeledGraphing
     Parse.XML
     Prologue
+    Strategy.Cocoapods.PodfileLock
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod

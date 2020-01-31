@@ -22,6 +22,7 @@ data DepType =
   | NodeJSType -- ^ NPM registry (or similar)
   | NuGetType -- ^ Nuget registry
   | PipType    -- ^ Pip registry
+  | PodType    -- ^ Cocoapods registry
   | GoType -- ^ Go dependency
   deriving (Eq, Ord, Show, Generic)
 
