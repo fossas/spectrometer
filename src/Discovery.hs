@@ -10,6 +10,7 @@ import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Gradle as Gradle
+import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Maven.PluginStrategy as MavenPlugin
 import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Node.NpmLock as NpmLock
@@ -31,6 +32,8 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
+discoverFuncs = [MavenPom.discover]
+{-
 discoverFuncs =
   [ GoList.discover
   , Gomod.discover
@@ -65,6 +68,8 @@ discoverFuncs =
 
   , Config.loadConfig strategyGroups
   ]
+-}
+
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
