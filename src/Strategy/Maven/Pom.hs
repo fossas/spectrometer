@@ -26,13 +26,11 @@ import           Discovery.Walk
 import           DepTypes
 import           Effect.Error (try)
 import           Effect.Exec
+import           Effect.LabeledGrapher
 import           Effect.ReadFS
 import           Graphing
 import           Parse.XML
 import           Types
-
--- overlaying poms:
--- - https://maven.apache.org/pom.html#Inheritance
 
 -- > although, groupId and version need not be explicitly defined if they are inherited from a parent
 -- > The relative path of the parent <code>pom.xml</code> file within the check out. If not specified, it defaults to <code>../pom.xml</code>
@@ -157,6 +155,7 @@ instance FromXML MvnDependency where
                   <*> optional (child "scope" el)
                   <*> optional (child "optional" el)
 
+-- FIXME: gross
 data PomCache m a where
   LoadPom :: Path Abs File -> PomCache m (Either ReadFSErr Pom)
 
@@ -169,7 +168,7 @@ runPomCache = runState @(Map (Path Abs File) (Either ReadFSErr Pom)) M.empty . r
         (cached :: Maybe (Either ReadFSErr Pom)) <- gets (M.lookup path)
         case cached of
           -- FIXME: gross
-          Just _ -> pure (Left (ResolveError "TODO CHANGE ME"))
+          Just _ -> pure (Left (ResolveError "FIXME"))
           Nothing -> do
             (res :: Either ReadFSErr Pom) <- try (readContentsXML path)
             modify (M.insert path res)
@@ -197,23 +196,39 @@ recursiveLoadPom path = do
     -- TODO: diagnostics/warnings?
     traverse_ recursiveLoadPom resolvedPath
 
-data ReifiedPom = ReifiedPom
+-- TODO: newtypes?
+type Group = Text
+type Artifact = Text
+data ValidPom = ValidPom
   { reifiedCoord                :: MavenCoordinate
   , reifiedParent               :: Maybe MavenCoordinate
   , reifiedProperties           :: Map Text Text
-  , reifiedDependencyManagement :: [MvnDependency]
-  , reifiedDependencies         :: [MvnDependency]
+  , reifiedDependencyManagement :: Map (Group, Artifact) MvnDependency
+  , reifiedDependencies         :: Map (Group, Artifact) MvnDependency
   } deriving (Eq, Ord, Show, Generic)
+
+instance Semigroup ValidPom where
+  -- TODO: overlay properties and dependencyManagement
+  (<>) = overlayPoms
+
+-- overlaying poms:
+-- - https://maven.apache.org/pom.html#Inheritance
+-- TODO (incomplete list):
+-- - dependencyManagement
+-- - properties
+-- - dependencies
+overlayPoms :: ValidPom -> ValidPom -> ValidPom
+overlayPoms parentPom childPom = undefined
 
 -- TODO: turn `Map (Path Abs File) (Either ReadFSErr Pom)` into:
 -- - Map MavenCoordinate (Path Abs File)
 -- - AdjacencyMap MavenCoordinate
 data GlobalClosure = GlobalClosure
   { globalGraph :: AM.AdjacencyMap MavenCoordinate
-  , globalPoms  :: Map MavenCoordinate (Path Abs File, ReifiedPom)
+  , globalPoms  :: Map MavenCoordinate (Path Abs File, ValidPom)
   } deriving (Eq, Ord, Show, Generic)
 
-buildClosure :: Map (Path Abs File) ReifiedPom -> GlobalClosure
+buildClosure :: Map (Path Abs File) ValidPom -> GlobalClosure
 buildClosure cache = GlobalClosure
   { globalGraph = AM.overlays
       [AM.edge parentCoord (reifiedCoord pom)
@@ -228,32 +243,52 @@ indexBy f = M.fromList . map (\v -> (f v, v))
 sourceVertices :: Ord a => AM.AdjacencyMap a -> [a]
 sourceVertices graph = [v | v <- AM.vertexList graph, S.null (AM.preSet v graph)]
 
-determineProjectRoots :: Path Abs Dir -> GlobalClosure -> [MavenCoordinate] -> Map (Path Rel File) (MavenCoordinate, ReifiedPom)
+determineProjectRoots :: Path Abs Dir -> GlobalClosure -> [MavenCoordinate] -> Map (Path Rel File) (MavenCoordinate, ValidPom)
 determineProjectRoots rootDir closure = go
   where
   go [] = M.empty
   go coordRoots = M.union projects (go frontier)
     where
+    inRoot :: [(MavenCoordinate, Path Rel File, ValidPom)]
     inRoot = mapMaybe (\coord -> do
                           (abspath, pom) <- M.lookup coord (globalPoms closure)
                           relpath <- PIO.makeRelative rootDir abspath
                           pure (coord, relpath, pom)) coordRoots
+
+    inRootCoords :: [MavenCoordinate]
     inRootCoords = map (\(c,_,_) -> c) inRoot
+
+    remainingCoords :: [MavenCoordinate]
     remainingCoords = coordRoots \\ inRootCoords
 
+    projects :: Map (Path Rel File) (MavenCoordinate, ValidPom)
     projects = M.fromList (map (\(coord,path,pom) -> (path, (coord, pom))) inRoot)
+
+    frontier :: [MavenCoordinate]
     frontier = concatMap (\coord -> S.toList $ AM.postSet coord (globalGraph closure)) remainingCoords
 
-data PomCtx = PomCtx
-  { ctxDepManagement :: [MvnDependency]
-  , ctxProperties    :: Map Text Text
-  } deriving (Eq, Ord, Show, Generic)
+-- TODO: use MavenCoordinate?
+data MavenPackage = MavenPackage
+  deriving (Eq, Ord, Show, Generic)
+
+type instance PkgLabel MavenPackage = MavenLabel
+
+data MavenLabel = MavenLabel
+  deriving (Eq, Ord, Show, Generic)
 
 -- TODO: overlay pom data
 -- TODO: property interpolation
--- TODO: awful type signature
-buildProjectGraph :: GlobalClosure -> (MavenCoordinate, ReifiedPom) -> Graphing Dependency
-buildProjectGraph closure coord = undefined
+-- TODO: make topcoord direct
+buildProjectGraph :: GlobalClosure -> MavenCoordinate -> ValidPom -> Graphing Dependency
+buildProjectGraph closure topcoord toppom = run . withLabeling toDependency $ go topcoord toppom
+  where
+  go coord pom = undefined
+
+  toDependency :: MavenPackage -> Set MavenLabel -> Dependency
+  toDependency = undefined
+
+reifyDeps :: ValidPom -> [MvnDependency]
+reifyDeps = undefined
 
 discover :: Discover
 discover = Discover
@@ -271,48 +306,48 @@ discover' dir = do
         walkContinue
 
   (pomPaths, ()) <- outputToIOMonoid @(Path Rel File) Seq.singleton findPoms
-  -- FIXME: exceptions
+  -- FIXME: exceptions, Embed IO
   absolutePomPaths <- traverse (embed @IO . PIO.makeAbsolute) pomPaths
 
   (cache, ()) <- runPomCache $ traverse_ recursiveLoadPom absolutePomPaths
 
-  let reified :: Map (Path Abs File) ReifiedPom
-      reified = M.mapMaybe (reify <=< eitherToMaybe) cache
+  let validated :: Map (Path Abs File) ValidPom
+      validated = M.mapMaybe (validate <=< eitherToMaybe) cache
 
       eitherToMaybe :: Either a b -> Maybe b
       eitherToMaybe (Left _) = Nothing
       eitherToMaybe (Right b) = Just b
 
-      reify :: Pom -> Maybe ReifiedPom
-      reify pom = do
-        coord <- reifyCoordinate pom
-        let parentCoord = reifyParentCoordinate <$> pomParent pom
+      validate :: Pom -> Maybe ValidPom
+      validate pom = do
+        coord <- validateCoordinate pom
+        let parentCoord = parentToCoordinate <$> pomParent pom
             properties = pomProperties pom
-            depManagement = pomDependencyManagement pom
-            deps = pomDependencies pom
-        pure (ReifiedPom coord parentCoord properties depManagement deps)
+            depManagement = indexBy (\dep -> (depGroup dep, depArtifact dep)) (pomDependencyManagement pom)
+            deps = indexBy (\dep -> (depGroup dep, depArtifact dep)) (pomDependencies pom)
+        pure (ValidPom coord parentCoord properties depManagement deps)
 --
-      reifyCoordinate :: Pom -> Maybe MavenCoordinate
-      reifyCoordinate pom = MavenCoordinate
+      validateCoordinate :: Pom -> Maybe MavenCoordinate
+      validateCoordinate pom = MavenCoordinate
         <$> (pomGroup pom <|> (parentGroup <$> pomParent pom))
         <*> pure (pomArtifact pom)
         <*> (pomVersion pom <|> (parentVersion <$> pomParent pom))
 
-      reifyParentCoordinate :: Parent -> MavenCoordinate
-      reifyParentCoordinate Parent{..} = MavenCoordinate
+      parentToCoordinate :: Parent -> MavenCoordinate
+      parentToCoordinate Parent{..} = MavenCoordinate
         { coordGroup    = parentGroup
         , coordArtifact = parentArtifact
         , coordVersion  = parentVersion
         }
 
-  let closure = buildClosure reified
+  let closure = buildClosure validated
       roots = sourceVertices (globalGraph closure)
 
-      projectRoots :: Map (Path Rel File) (MavenCoordinate, ReifiedPom)
+      projectRoots :: Map (Path Rel File) (MavenCoordinate, ValidPom)
       projectRoots = determineProjectRoots dir closure roots
 
       projects :: Map (Path Rel File) (Graphing Dependency)
-      projects = M.map (buildProjectGraph closure) projectRoots
+      projects = M.map (\(coord,pom) -> buildProjectGraph closure coord pom) projectRoots
 
   traverse_ (output . ConfiguredStrategy strategy . uncurry MavenStrategyOpts) (M.toList projects)
   pure ()
