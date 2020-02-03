@@ -3,6 +3,8 @@ module Strategy.Carthage
   ( discover
   , analyze
   , strategy
+  , ResolvedEntry(..)
+  , EntryType(..)
   ) where
 
 import qualified Prelude as Unsafe
@@ -43,7 +45,7 @@ discover' = walk $ \_ subdirs files ->
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "carthage"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = fmap (G.gmap toDependency) . analyze
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete
@@ -52,8 +54,8 @@ strategy = Strategy
 relCheckoutsDir :: Path Rel File -> Path Rel Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (G.Graphing Dependency)
-analyze (BasicFileOpts topPath) = fmap (G.gmap toDependency) . evalGrapher $ do
+analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (G.Graphing ResolvedEntry)
+analyze (BasicFileOpts topPath) = evalGrapher $ do
   -- We only care about top-level resolved cartfile errors
   topEntries <- fromEither =<< analyzeSingle topPath
 
@@ -63,12 +65,14 @@ analyze (BasicFileOpts topPath) = fmap (G.gmap toDependency) . evalGrapher $ do
 
   where
 
-  analyzeSingle :: Members '[ReadFS, Grapher ResolvedEntry] r => Path Rel File -> Sem r (Either ReadFSErr [ResolvedEntry])
+  analyzeSingle :: Members '[ReadFS, Grapher ResolvedEntry] r
+                => Path Rel File
+                -> Sem r (Either ReadFSErr [ResolvedEntry])
   analyzeSingle path = do
-    (maybeEntries :: Either ReadFSErr [ResolvedEntry]) <- runError (readContentsParser resolvedCartfileParser path)
+    maybeEntries :: Either ReadFSErr [ResolvedEntry] <- readContentsParser' resolvedCartfileParser path
+
     for maybeEntries $ \entries -> do
-      for_ entries $ \entry -> do
-          descend (relCheckoutsDir path) entry
+      traverse_ (descend (relCheckoutsDir path)) entries
       pure entries
 
   descend :: Members '[ReadFS, Grapher ResolvedEntry] r
@@ -124,7 +128,7 @@ parseSingleEntry = L.nonIndented scn $ do
   entryType <- lexeme $ choice
     [ GithubType <$ chunk "github"
     , GitType    <$ chunk "git"
-    , BinaryType <$ chunk "binary" -- TODO: validate the assumption that it's structured the same way
+    , BinaryType <$ chunk "binary"
     ]
 
   entryName    <- word

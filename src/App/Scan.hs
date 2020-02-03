@@ -35,7 +35,7 @@ scanMain basedir = do
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
   scan basedir
-    & loggerToIO Debug
+    & loggerToIO Info
     & asyncToIOFinal
     & resourceToIOFinal
     & embedToFinal @IO

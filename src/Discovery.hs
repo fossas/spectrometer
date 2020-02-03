@@ -31,8 +31,6 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
-discoverFuncs = [Carthage.discover]
-{-
 discoverFuncs =
   [ GoList.discover
   , Gomod.discover
@@ -67,7 +65,6 @@ discoverFuncs =
 
   , Config.loadConfig strategyGroups
   ]
--}
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =

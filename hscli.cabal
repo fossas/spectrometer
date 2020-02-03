@@ -157,6 +157,7 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
+    Carthage.CarthageTest
     Go.GlideLockTest
     Go.GoListTest
     Go.GomodTest
