@@ -3,6 +3,7 @@ module Discovery
   , strategyGroups
   ) where
 
+import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
@@ -30,7 +31,8 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
-
+discoverFuncs = [Carthage.discover]
+{-
 discoverFuncs =
   [ GoList.discover
   , Gomod.discover
@@ -61,8 +63,11 @@ discoverFuncs =
   , BundleShow.discover
   , GemfileLock.discover
 
+  , Carthage.discover
+
   , Config.loadConfig strategyGroups
   ]
+-}
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
@@ -102,5 +107,8 @@ strategyGroups =
       , SomeStrategy GopkgLock.strategy
       , SomeStrategy GopkgToml.strategy
       , SomeStrategy GlideLock.strategy
+      ]
+  , StrategyGroup "carthage"
+      [ SomeStrategy Carthage.strategy
       ]
   ]
