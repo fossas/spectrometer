@@ -14,14 +14,13 @@ import qualified Data.Text as T
 import Polysemy
 import Polysemy.Error
 import Polysemy.Output
-import Text.Megaparsec hiding (try)
+import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import Diagnostics
 import Discovery.Walk
 import DepTypes
-import Effect.Error
 import Effect.Grapher
 import Effect.ReadFS
 import qualified Graphing as G
@@ -50,19 +49,29 @@ strategy = Strategy
   , strategyComplete = Complete
   }
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (G.Graphing Dependency)
-analyze (BasicFileOpts path) = fmap (G.gmap toDependency) . evalGrapher $ do
-  -- We only care about top-level resolved cartfile errors
-  cartfile <- readContentsParser resolvedCartfileParser path
+relCheckoutsDir :: Path Rel File -> Path Rel Dir
+relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
-  for_ (resolvedEntries cartfile) $ \entry -> do
+analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (G.Graphing Dependency)
+analyze (BasicFileOpts topPath) = fmap (G.gmap toDependency) . evalGrapher $ do
+  -- We only care about top-level resolved cartfile errors
+  topEntries <- fromEither =<< analyzeSingle topPath
+
+  for_ topEntries $ \entry -> do
     direct entry
-    descend (parent path </> $(mkRelDir "Carthage/Checkouts")) entry
+    descend (relCheckoutsDir topPath) entry
 
   where
 
-  -- FIXME: kill ReadFSErr/try
-  descend :: Members '[ReadFS, Error ReadFSErr, Grapher ResolvedEntry] r
+  analyzeSingle :: Members '[ReadFS, Grapher ResolvedEntry] r => Path Rel File -> Sem r (Either ReadFSErr [ResolvedEntry])
+  analyzeSingle path = do
+    (maybeEntries :: Either ReadFSErr [ResolvedEntry]) <- runError (readContentsParser resolvedCartfileParser path)
+    for maybeEntries $ \entries -> do
+      for_ entries $ \entry -> do
+          descend (relCheckoutsDir path) entry
+      pure entries
+
+  descend :: Members '[ReadFS, Grapher ResolvedEntry] r
           => Path Rel Dir -- Checkouts directory
           -> ResolvedEntry
           -> Sem r ()
@@ -70,26 +79,13 @@ analyze (BasicFileOpts path) = fmap (G.gmap toDependency) . evalGrapher $ do
     let checkoutName = T.unpack $ entryToCheckoutName entry
 
     case parseRelDir checkoutName of
-      Nothing -> pure () -- TODO?
+      Nothing -> pure ()
       Just path -> do
         let checkoutPath :: Path Rel Dir
             checkoutPath = checkoutsDir </> path
 
-        deeper <- parseDeep (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
-        traverse_ (edge entry) deeper
-
-  parseDeep :: Members '[ReadFS, Error ReadFSErr, Grapher ResolvedEntry] r
-            => Path Rel File
-            -> Sem r [ResolvedEntry]
-  parseDeep path = do
-    -- FIXME: kill 'try'
-    (maybeCartfile :: Either ReadFSErr ResolvedCartfile) <- try (readContentsParser resolvedCartfileParser path)
-    case maybeCartfile of
-      Left _ -> pure [] -- TODO?
-      Right cartfile -> do
-        for_ (resolvedEntries cartfile) $ \entry -> do
-          descend (parent path </> $(mkRelDir "Carthage/Checkouts")) entry
-        pure (resolvedEntries cartfile)
+        deeper <- analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
+        traverse_ (traverse_ (edge entry)) deeper
 
 entryToCheckoutName :: ResolvedEntry -> Text
 entryToCheckoutName entry =
@@ -109,7 +105,7 @@ entryToDepName entry =
 toDependency :: ResolvedEntry -> Dependency
 toDependency entry = Dependency
   { dependencyType = CarthageType
-  , dependencyName = resolvedName entry -- TODO: fix for github
+  , dependencyName = entryToDepName entry
   , dependencyVersion = Just (CEq (resolvedVersion entry))
   , dependencyTags = M.empty
   , dependencyLocations = [] -- TODO: git location?
@@ -120,8 +116,8 @@ toDependency entry = Dependency
 --
 -- Additional documentation for cartfile can be found here:
 -- https://github.com/Carthage/Carthage/blob/master/Documentation/Artifacts.md
-resolvedCartfileParser :: Parser ResolvedCartfile
-resolvedCartfileParser = ResolvedCartfile <$> many parseSingleEntry <* eof
+resolvedCartfileParser :: Parser [ResolvedEntry]
+resolvedCartfileParser = many parseSingleEntry <* eof
 
 parseSingleEntry :: Parser ResolvedEntry
 parseSingleEntry = L.nonIndented scn $ do
@@ -137,11 +133,9 @@ parseSingleEntry = L.nonIndented scn $ do
 
   pure (ResolvedEntry entryType entryName entryVersion)
 
--- TODO: common lexer stuff
 word :: Parser Text
 word = T.pack <$> choice
   [ lexeme (char '\"' *> someTill (satisfy (not . isSpace)) (char '\"'))
-  -- TODO: is there a combinator for (not . isSpace) already?
   , lexeme (some (satisfy (not . isSpace)))
   ]
 
@@ -155,10 +149,6 @@ lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
 
 type Parser = Parsec Void Text
-
-newtype ResolvedCartfile = ResolvedCartfile
-  { resolvedEntries :: [ResolvedEntry]
-  } deriving (Eq, Ord, Show, Generic)
 
 data ResolvedEntry = ResolvedEntry
   { resolvedType    :: EntryType
