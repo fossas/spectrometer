@@ -262,13 +262,16 @@ determineProjectRoots rootDir closure = go . S.fromList
     frontier :: Set MavenCoordinate
     frontier = S.unions $ S.map (\coord -> AM.postSet coord (globalGraph closure)) remainingCoords
 
--- TODO: use MavenCoordinate?
-data MavenPackage = MavenPackage
+type Version = Text -- TODO: newtype?
+data MavenPackage = MavenPackage Group Artifact (Maybe Version)
   deriving (Eq, Ord, Show, Generic)
 
 type instance PkgLabel MavenPackage = MavenLabel
 
-data MavenLabel = MavenLabel
+data MavenLabel =
+    MavenLabelClassifier Text
+  | MavenLabelScope Text
+  | MavenLabelOptional Text
   deriving (Eq, Ord, Show, Generic)
 
 -- TODO: overlay pom data
@@ -283,7 +286,20 @@ buildProjectGraph closure topcoord toppom = run . withLabeling toDependency $ go
   toDependency = undefined
 
 reifyDeps :: ValidPom -> [MvnDependency]
-reifyDeps = undefined
+reifyDeps pom = M.elems $ M.mapWithKey overlayDepManagement (reifiedDependencies pom)
+  where
+  overlayDepManagement key dep =
+    case M.lookup key (reifiedDependencyManagement pom) of
+      Nothing -> dep
+      -- prefer fields on dep, falling back to managementDep fields
+      Just managementDep -> MvnDependency
+        { depGroup = depGroup dep
+        , depArtifact = depArtifact dep
+        , depVersion = depVersion dep <|> depVersion managementDep
+        , depClassifier = depClassifier dep <|> depClassifier managementDep
+        , depScope = depScope dep <|> depScope managementDep
+        , depOptional = depOptional dep <|> depScope managementDep
+        }
 
 discover :: Discover
 discover = Discover
@@ -321,7 +337,7 @@ discover' dir = do
             depManagement = indexBy (\dep -> (depGroup dep, depArtifact dep)) (pomDependencyManagement pom)
             deps = indexBy (\dep -> (depGroup dep, depArtifact dep)) (pomDependencies pom)
         pure (ValidPom coord parentCoord properties depManagement deps)
---
+
       validateCoordinate :: Pom -> Maybe MavenCoordinate
       validateCoordinate pom = MavenCoordinate
         <$> (pomGroup pom <|> (parentGroup <$> pomParent pom))
