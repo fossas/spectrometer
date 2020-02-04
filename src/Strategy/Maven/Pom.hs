@@ -1,4 +1,3 @@
--- FIXME: remove?
 {-# language TemplateHaskell #-}
 
 module Strategy.Maven.Pom
@@ -191,6 +190,7 @@ recursiveLoadPom path = do
 -- TODO: newtypes?
 type Group = Text
 type Artifact = Text
+type Version = Text
 data ValidPom = ValidPom
   { reifiedCoord                :: MavenCoordinate
   , reifiedParent               :: Maybe MavenCoordinate
@@ -199,22 +199,22 @@ data ValidPom = ValidPom
   , reifiedDependencies         :: Map (Group, Artifact) MvnDependency
   } deriving (Eq, Ord, Show, Generic)
 
+-- this semigroup is "left-biased", like Map
 instance Semigroup ValidPom where
-  -- TODO: overlay properties and dependencyManagement
   (<>) = overlayPoms
 
--- overlaying poms:
--- - https://maven.apache.org/pom.html#Inheritance
--- TODO (incomplete list):
--- - dependencyManagement
--- - properties
--- - dependencies
+-- almost all fields are inherited -- and the only ones we're tracking are
+-- properties/dependencyManagement/dependencies
+-- https://maven.apache.org/pom.html#Inheritance
 overlayPoms :: ValidPom -> ValidPom -> ValidPom
-overlayPoms parentPom childPom = undefined
+overlayPoms childPom parentPom = ValidPom
+  { reifiedCoord = reifiedCoord childPom
+  , reifiedParent = reifiedParent childPom
+  , reifiedProperties = M.union (reifiedProperties childPom) (reifiedProperties parentPom)
+  , reifiedDependencyManagement = M.unionWith overlayDeps (reifiedDependencyManagement childPom) (reifiedDependencyManagement parentPom)
+  , reifiedDependencies = M.unionWith overlayDeps (reifiedDependencies childPom) (reifiedDependencies parentPom)
+  }
 
--- TODO: turn `Map (Path Abs File) (Either ReadFSErr Pom)` into:
--- - Map MavenCoordinate (Path Abs File)
--- - AdjacencyMap MavenCoordinate
 data GlobalClosure = GlobalClosure
   { globalGraph :: AM.AdjacencyMap MavenCoordinate
   , globalPoms  :: Map MavenCoordinate (Path Abs File, ValidPom)
@@ -262,7 +262,6 @@ determineProjectRoots rootDir closure = go . S.fromList
     frontier :: Set MavenCoordinate
     frontier = S.unions $ S.map (\coord -> AM.postSet coord (globalGraph closure)) remainingCoords
 
-type Version = Text -- TODO: newtype?
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)
   deriving (Eq, Ord, Show, Generic)
 
@@ -285,21 +284,22 @@ buildProjectGraph closure topcoord toppom = run . withLabeling toDependency $ go
   toDependency :: MavenPackage -> Set MavenLabel -> Dependency
   toDependency = undefined
 
+-- TODO: overlayDepBodies? separate MvnDependency into key & body
+overlayDeps :: MvnDependency -> MvnDependency -> MvnDependency
+overlayDeps childDep parentDep = MvnDependency
+  { depGroup = depGroup childDep
+  , depArtifact = depArtifact childDep
+  , depVersion = depVersion childDep <|> depVersion parentDep
+  , depClassifier = depClassifier childDep <|> depClassifier parentDep
+  , depScope = depScope childDep <|> depScope parentDep
+  , depOptional = depOptional childDep <|> depScope parentDep
+  }
+
 reifyDeps :: ValidPom -> [MvnDependency]
 reifyDeps pom = M.elems $ M.mapWithKey overlayDepManagement (reifiedDependencies pom)
   where
-  overlayDepManagement key dep =
-    case M.lookup key (reifiedDependencyManagement pom) of
-      Nothing -> dep
-      -- prefer fields on dep, falling back to managementDep fields
-      Just managementDep -> MvnDependency
-        { depGroup = depGroup dep
-        , depArtifact = depArtifact dep
-        , depVersion = depVersion dep <|> depVersion managementDep
-        , depClassifier = depClassifier dep <|> depClassifier managementDep
-        , depScope = depScope dep <|> depScope managementDep
-        , depOptional = depOptional dep <|> depScope managementDep
-        }
+  overlayDepManagement :: (Group,Artifact) -> MvnDependency -> MvnDependency
+  overlayDepManagement key dep = maybe dep (overlayDeps dep) (M.lookup key (reifiedDependencyManagement pom))
 
 discover :: Discover
 discover = Discover
