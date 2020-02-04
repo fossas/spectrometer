@@ -9,7 +9,6 @@ module Strategy.Maven.Pom
 import Prologue
 
 import qualified Algebra.Graph.AdjacencyMap as AM
-import           Data.List ((\\))
 import qualified Data.Map.Strict as M
 import           Data.Maybe (mapMaybe)
 import qualified Data.Sequence as Seq
@@ -237,28 +236,31 @@ sourceVertices :: Ord a => AM.AdjacencyMap a -> [a]
 sourceVertices graph = [v | v <- AM.vertexList graph, S.null (AM.preSet v graph)]
 
 determineProjectRoots :: Path Abs Dir -> GlobalClosure -> [MavenCoordinate] -> Map (Path Rel File) (MavenCoordinate, ValidPom)
-determineProjectRoots rootDir closure = go
+determineProjectRoots rootDir closure = go . S.fromList
   where
-  go [] = M.empty
-  go coordRoots = M.union projects (go frontier)
+  go :: Set MavenCoordinate -> Map (Path Rel File) (MavenCoordinate, ValidPom)
+  go coordRoots
+    | S.null coordRoots = M.empty
+    | otherwise = M.union projects (go frontier)
     where
-    inRoot :: [(MavenCoordinate, Path Rel File, ValidPom)]
-    inRoot = mapMaybe (\coord -> do
-                          (abspath, pom) <- M.lookup coord (globalPoms closure)
-                          relpath <- PIO.makeRelative rootDir abspath
-                          pure (coord, relpath, pom)) coordRoots
+    inRoot :: Set (MavenCoordinate, Path Rel File, ValidPom)
+    inRoot = S.fromList $
+      mapMaybe (\coord -> do
+                   (abspath, pom) <- M.lookup coord (globalPoms closure)
+                   relpath <- PIO.makeRelative rootDir abspath
+                   pure (coord, relpath, pom)) (S.toList coordRoots)
 
-    inRootCoords :: [MavenCoordinate]
-    inRootCoords = map (\(c,_,_) -> c) inRoot
+    inRootCoords :: Set MavenCoordinate
+    inRootCoords = S.map (\(c,_,_) -> c) inRoot
 
-    remainingCoords :: [MavenCoordinate]
-    remainingCoords = coordRoots \\ inRootCoords
+    remainingCoords :: Set MavenCoordinate
+    remainingCoords = coordRoots S.\\ inRootCoords
 
     projects :: Map (Path Rel File) (MavenCoordinate, ValidPom)
-    projects = M.fromList (map (\(coord,path,pom) -> (path, (coord, pom))) inRoot)
+    projects = M.fromList $ S.toList $ S.map (\(coord,path,pom) -> (path, (coord, pom))) inRoot
 
-    frontier :: [MavenCoordinate]
-    frontier = concatMap (\coord -> S.toList $ AM.postSet coord (globalGraph closure)) remainingCoords
+    frontier :: Set MavenCoordinate
+    frontier = S.unions $ S.map (\coord -> AM.postSet coord (globalGraph closure)) remainingCoords
 
 -- TODO: use MavenCoordinate?
 data MavenPackage = MavenPackage
