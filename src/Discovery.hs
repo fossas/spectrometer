@@ -27,8 +27,6 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
-
-import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
@@ -65,8 +63,6 @@ discoverFuncs =
   , GemfileLock.discover
 
   , Carthage.discover
-
-  , Config.loadConfig strategyGroups
   ]
 -}
 

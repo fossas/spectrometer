@@ -79,13 +79,6 @@ data MavenStrategyOpts = MavenStrategyOpts
   , strategyGraph :: Graphing Dependency
   } deriving (Eq, Ord, Show, Generic)
 
--- FIXME: ConfiguredStrategy requires these instances
-instance FromJSON MavenStrategyOpts where
-  parseJSON _ = error "parseJSON MavenStrategyOpts"
-
-instance ToJSON MavenStrategyOpts where
-  toJSON _ = error "toJSON MavenStrategyOpts"
-
 strategy :: Strategy MavenStrategyOpts
 strategy = Strategy
   { strategyName = "maven-pom"

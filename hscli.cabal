@@ -95,7 +95,6 @@ library
     DepTypes
     Diagnostics
     Discovery
-    Discovery.Config
     Discovery.Walk
     Effect.Error
     Effect.Exec
