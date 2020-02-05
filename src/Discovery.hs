@@ -5,6 +5,7 @@ module Discovery
 
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
+import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
@@ -32,7 +33,6 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
-
 discoverFuncs =
   [ Podfile.discover
   , PodfileLock.discover
@@ -63,8 +63,10 @@ discoverFuncs =
   , SetupPy.discover
   , ReqTxt.discover
 
---   , BundleShow.discover
---   , GemfileLock.discover
+  , BundleShow.discover
+  , GemfileLock.discover
+
+  , Carthage.discover
 
   , Config.loadConfig strategyGroups
   ]
@@ -101,15 +103,18 @@ strategyGroups =
       , SomeStrategy SetupPy.strategy
       , SomeStrategy PipList.strategy
       ]
---   , StrategyGroup "ruby"
---       [ SomeStrategy BundleShow.strategy
---       , SomeStrategy GemfileLock.strategy
---       ]
+   , StrategyGroup "ruby"
+       [ SomeStrategy BundleShow.strategy
+       , SomeStrategy GemfileLock.strategy
+       ]
   , StrategyGroup "golang"
       [ SomeStrategy GoList.strategy
       , SomeStrategy Gomod.strategy
       , SomeStrategy GopkgLock.strategy
       , SomeStrategy GopkgToml.strategy
       , SomeStrategy GlideLock.strategy
+      ]
+  , StrategyGroup "carthage"
+      [ SomeStrategy Carthage.strategy
       ]
   ]
