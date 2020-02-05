@@ -26,7 +26,7 @@ import           Effect.Error (try)
 import           Effect.Exec
 import           Effect.LabeledGrapher
 import           Effect.ReadFS
-import           Graphing
+import qualified Graphing as G
 import           Parse.XML
 import           Types
 
@@ -74,7 +74,7 @@ data MavenModule = MavenModule (Path Abs File) (Maybe Pom)
 
 data MavenStrategyOpts = MavenStrategyOpts
   { strategyPath  :: Path Rel File
-  , strategyGraph :: Graphing Dependency
+  , strategyGraph :: G.Graphing Dependency
   } deriving (Eq, Ord, Show, Generic)
 
 strategy :: Strategy MavenStrategyOpts
@@ -232,6 +232,7 @@ buildClosure cache = GlobalClosure
 indexBy :: Ord k => (v -> k) -> [v] -> Map k v
 indexBy f = M.fromList . map (\v -> (f v, v))
 
+-- a "source" vertex is one without any incoming edges
 sourceVertices :: Ord a => AM.AdjacencyMap a -> [a]
 sourceVertices graph = [v | v <- AM.vertexList graph, S.null (AM.preSet v graph)]
 
@@ -273,16 +274,68 @@ data MavenLabel =
   | MavenLabelOptional Text
   deriving (Eq, Ord, Show, Generic)
 
--- TODO: overlay pom data
--- TODO: property interpolation
--- TODO: make topcoord direct
-buildProjectGraph :: GlobalClosure -> MavenCoordinate -> ValidPom -> Graphing Dependency
-buildProjectGraph closure topcoord toppom = run . withLabeling toDependency $ go topcoord toppom
+toDependency :: MavenPackage -> Set MavenLabel -> Dependency
+toDependency (MavenPackage group artifact version) = foldr applyLabel start
   where
-  go coord pom = undefined
+  start :: Dependency
+  start = Dependency
+    { dependencyType = MavenType
+    , dependencyName = group <> ":" <> artifact
+    , dependencyVersion = CEq <$> version
+    , dependencyLocations = []
+    , dependencyTags = M.empty
+    }
 
-  toDependency :: MavenPackage -> Set MavenLabel -> Dependency
-  toDependency = undefined
+  applyLabel :: MavenLabel -> Dependency -> Dependency
+  applyLabel lbl dep = case lbl of
+    MavenLabelClassifier classifier -> addTag "classifier" classifier dep
+    MavenLabelScope scope -> addTag "scope" scope dep
+    MavenLabelOptional opt -> addTag "optional" opt dep
+
+  -- TODO: reuse this in other strategies
+  addTag :: Text -> Text -> Dependency -> Dependency
+  addTag key value dep = dep { dependencyTags = M.insertWith (++) key [value] (dependencyTags dep) }
+
+coordToPackage :: MavenCoordinate -> MavenPackage
+coordToPackage coord = MavenPackage (coordGroup coord) (coordArtifact coord) (Just (coordVersion coord))
+
+-- TODO: make toppom's dependencies direct rather than toppom?
+buildProjectGraph :: GlobalClosure -> MavenCoordinate -> ValidPom -> G.Graphing Dependency
+buildProjectGraph closure topcoord toppom = run . withLabeling toDependency $ do
+  direct (coordToPackage topcoord)
+  go topcoord toppom
+  where
+  go :: Member (LabeledGrapher MavenPackage) r => MavenCoordinate -> ValidPom -> Sem r ()
+  go coord incompletePom = do
+    traverse_ addDep deps
+    for_ childPoms $ \(childCoord,childPom) -> do
+      edge (coordToPackage coord) (coordToPackage childCoord)
+      go childCoord childPom
+
+    traverse_ (uncurry go) childPoms
+
+    where
+    completePom :: ValidPom
+    completePom = derivePom closure incompletePom
+
+    deps :: [MvnDependency]
+    deps = reifyDeps completePom
+
+    -- TODO: property interpolation for versions
+    addDep :: Member (LabeledGrapher MavenPackage) r => MvnDependency -> Sem r ()
+    addDep dep = do
+      let depPackage = MavenPackage (depGroup dep) (depArtifact dep) (depVersion dep)
+      edge (coordToPackage coord) depPackage
+
+    childPoms :: [(MavenCoordinate,ValidPom)]
+    childPoms = [(childCoord,pom) | childCoord <- S.toList (AM.postSet coord (globalGraph closure))
+                                  , Just (_,pom) <- [M.lookup childCoord (globalPoms closure)]]
+
+derivePom :: GlobalClosure -> ValidPom -> ValidPom
+derivePom closure pom = fromMaybe pom $ do
+  parentCoord <- reifiedParent pom
+  (_,parentPom) <- M.lookup parentCoord (globalPoms closure)
+  pure (overlayPoms pom (derivePom closure parentPom))
 
 -- TODO: overlayDepBodies? separate MvnDependency into key & body
 overlayDeps :: MvnDependency -> MvnDependency -> MvnDependency
@@ -357,7 +410,7 @@ discover' dir = do
       projectRoots :: Map (Path Rel File) (MavenCoordinate, ValidPom)
       projectRoots = determineProjectRoots dir closure roots
 
-      projects :: Map (Path Rel File) (Graphing Dependency)
+      projects :: Map (Path Rel File) (G.Graphing Dependency)
       projects = M.map (\(coord,pom) -> buildProjectGraph closure coord pom) projectRoots
 
   traverse_ (output . ConfiguredStrategy strategy . uncurry MavenStrategyOpts) (M.toList projects)
