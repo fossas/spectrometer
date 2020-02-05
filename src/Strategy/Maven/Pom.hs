@@ -12,6 +12,7 @@ import qualified Data.Map.Strict as M
 import           Data.Maybe (mapMaybe)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
+import qualified Data.Text as T
 import qualified Path.IO as PIO
 import           Polysemy
 import           Polysemy.Error
@@ -321,15 +322,30 @@ buildProjectGraph closure topcoord toppom = run . withLabeling toDependency $ do
     deps :: [MvnDependency]
     deps = reifyDeps completePom
 
-    -- TODO: property interpolation for versions
     addDep :: Member (LabeledGrapher MavenPackage) r => MvnDependency -> Sem r ()
     addDep dep = do
-      let depPackage = MavenPackage (depGroup dep) (depArtifact dep) (depVersion dep)
+      let interpolatedVersion = naiveInterpolate (reifiedProperties completePom) <$> depVersion dep
+          depPackage = MavenPackage (depGroup dep) (depArtifact dep) interpolatedVersion
+
       edge (coordToPackage coord) depPackage
 
     childPoms :: [(MavenCoordinate,ValidPom)]
     childPoms = [(childCoord,pom) | childCoord <- S.toList (AM.postSet coord (globalGraph closure))
                                   , Just (_,pom) <- [M.lookup childCoord (globalPoms closure)]]
+
+-- naively interpolate properties into a Text. This only interpolates Text that
+-- starts with "${" and ends with "}", e.g.,
+--     "${myproperty}"
+-- will interpolate the value of "myproperty", but
+--     "blah-${myproperty}"
+-- will not have its property interpolated
+naiveInterpolate :: Map Text Text -> Text -> Text
+naiveInterpolate properties text
+  | T.isPrefixOf "${" text
+  , T.isSuffixOf "}" text =
+      let stripped = T.drop 2 (T.init text)
+       in fromMaybe ("PROPERTY NOT FOUND: " <> text) (M.lookup stripped properties)
+  | otherwise = text
 
 derivePom :: GlobalClosure -> ValidPom -> ValidPom
 derivePom closure pom = fromMaybe pom $ do
