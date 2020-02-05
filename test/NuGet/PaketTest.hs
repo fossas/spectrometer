@@ -101,8 +101,8 @@ spec_analyze = do
                   ] graph
 
   paketLockFile <- T.runIO (TIO.readFile "test/NuGet/testdata/paket.lock")
-  T.describe "paket lock parser" $ do
-    T.it "parses error messages into an empty list" $ do
+  T.describe "paket lock parser" $
+    T.it "parses error messages into an empty list" $
       case runParser findSections "" paketLockFile of
         Left _ -> T.expectationFailure "failed to parse"
         Right result -> do

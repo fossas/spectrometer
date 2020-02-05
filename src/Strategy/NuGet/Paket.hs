@@ -8,10 +8,6 @@ module Strategy.NuGet.Paket
   , PaketDep(..)
   , Section(..)
   , Remote(..)
---   , Spec(..)
---   , SpecDep(..)
---   , DirectDep(..)
---   , Section(..)
   ) where
 
 import Prologue
@@ -62,7 +58,7 @@ configure = ConfiguredStrategy strategy . BasicFileOpts
 analyze :: Member (Input [Section]) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-data PaketPkg = PaketPkg { pkgName :: Text }
+newtype PaketPkg = PaketPkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)
 
 type instance PkgLabel PaketPkg = PaketLabel
@@ -103,7 +99,7 @@ buildGraph sections = run . withLabeling toDependency $
             addSection _ (UnknownSection _) = pure ()
 
             addRemote :: Member (LabeledGrapher PaketPkg) r => Text -> Text -> Remote -> Sem r ()
-            addRemote group loc remote = traverse_ (addSpec (DepLocation $ loc) (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
+            addRemote group loc remote = traverse_ (addSpec (DepLocation loc) (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
 
             addSpec :: Member (LabeledGrapher PaketPkg) r => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> Sem r ()
             addSpec loc remote group dep = do
