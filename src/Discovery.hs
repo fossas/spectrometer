@@ -3,6 +3,7 @@ module Discovery
   , strategyGroups
   ) where
 
+import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
 import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
@@ -33,7 +34,8 @@ import           Types
 discoverFuncs :: [Discover]
 
 discoverFuncs =
-  [ PodfileLock.discover
+  [ Podfile.discover
+  , PodfileLock.discover
 
   , GoList.discover
   , Gomod.discover
@@ -61,8 +63,8 @@ discoverFuncs =
   , SetupPy.discover
   , ReqTxt.discover
 
-  , BundleShow.discover
-  , GemfileLock.discover
+--   , BundleShow.discover
+--   , GemfileLock.discover
 
   , Config.loadConfig strategyGroups
   ]
@@ -70,7 +72,8 @@ discoverFuncs =
 strategyGroups :: [StrategyGroup]
 strategyGroups =
   [ StrategyGroup "cocoapods"
-      [ SomeStrategy PodfileLock.strategy
+      [ SomeStrategy Podfile.strategy
+      , SomeStrategy PodfileLock.strategy
       ]
   , StrategyGroup "dotnet"
       [ SomeStrategy PackagesConfig.strategy
@@ -98,10 +101,10 @@ strategyGroups =
       , SomeStrategy SetupPy.strategy
       , SomeStrategy PipList.strategy
       ]
-  , StrategyGroup "ruby"
-      [ SomeStrategy BundleShow.strategy
-      , SomeStrategy GemfileLock.strategy
-      ]
+--   , StrategyGroup "ruby"
+--       [ SomeStrategy BundleShow.strategy
+--       , SomeStrategy GemfileLock.strategy
+--       ]
   , StrategyGroup "golang"
       [ SomeStrategy GoList.strategy
       , SomeStrategy Gomod.strategy

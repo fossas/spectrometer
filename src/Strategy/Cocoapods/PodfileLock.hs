@@ -64,7 +64,6 @@ type instance PkgLabel PodfilePkg = PodfileLabel
 
 data PodfileLabel =
     PodfileVersion Text
-  -- | PkgRemote Text
   deriving (Eq, Ord, Show, Generic)
 
 toDependency :: PodfilePkg -> Set PodfileLabel -> Dependency
@@ -82,7 +81,6 @@ toDependency pkg = foldr applyLabel start
 
   applyLabel :: PodfileLabel -> Dependency -> Dependency
   applyLabel (PodfileVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
-  -- applyLabel (PkgRemote repo) dep = dep { dependencyLocations = repo : dependencyLocations dep }
 
 buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
@@ -91,7 +89,6 @@ buildGraph sections = run . withLabeling toDependency $
   addSection :: Member (LabeledGrapher PodfilePkg) r => Section -> Sem r ()
   addSection (DependencySection deps) = traverse_ (direct . PodfilePkg . depName) deps
   addSection (PodSection pods) = traverse_ addSpec pods
-  -- addSection (SpecRepos remotes) = traverse_ (addSpec (OtherRemote remote)) specs
   addSection _ = pure ()
 
   addSpec :: Member (LabeledGrapher PodfilePkg) r => Pod -> Sem r ()
@@ -107,12 +104,19 @@ type Parser = Parsec Void Text
 data Section =
       PodSection [Pod]
       | DependencySection [Dep]
-      | UnknownSection Text
       | SpecRepos [Remote] 
+      | ExternalSources [SourceDep]
+      | CheckoutOptions [SourceDep]
+      | UnknownSection Text
       deriving (Eq, Ord, Show, Generic)
 
 newtype Dep = Dep
       { depName :: Text
+      } deriving (Eq, Ord, Show, Generic)
+
+data SourceDep = SourceDep
+      { sDepName    :: Text
+      , tags :: Map Text Text
       } deriving (Eq, Ord, Show, Generic)
 
 data Pod = Pod
@@ -128,7 +132,7 @@ data Remote = Remote
 
 
 findSections :: Parser [Section]
-findSections = many (try podSectionParser <|> try dependenciesSectionParser <|> try specRepoParser <|> try emptySection) <* eof
+findSections = many (try podSectionParser <|> try dependenciesSectionParser <|> try specRepoParser <|> try externalSourcesParser <|> try checkoutOptionsParser <|> try emptySection) <* eof
 
 emptySection :: Parser Section
 emptySection = do 
@@ -156,6 +160,36 @@ specRepoParser = L.nonIndented scn (L.indentBlock scn p)
         p = do
           _ <- chunk "SPEC REPOS:"
           return (L.IndentMany Nothing (\remotes -> pure $ SpecRepos remotes) remoteParser)
+
+externalSourcesParser :: Parser Section
+externalSourcesParser = L.nonIndented scn (L.indentBlock scn p)
+      where
+        p = do
+          _ <- chunk "EXTERNAL SOURCES:"
+          return (L.IndentMany Nothing (\exDeps -> pure $ ExternalSources exDeps) externalDepsParser)
+
+checkoutOptionsParser :: Parser Section
+checkoutOptionsParser = L.nonIndented scn (L.indentBlock scn p)
+      where
+        p = do
+          _ <- chunk "CHECKOUT OPTIONS:"
+          return (L.IndentMany Nothing (\exDeps -> pure $ CheckoutOptions exDeps) externalDepsParser)
+
+externalDepsParser :: Parser SourceDep
+externalDepsParser = L.indentBlock scn p
+      where
+        p = do
+          depName <- lexeme (takeWhileP (Just "external dep parser") (/= ':'))
+          _ <- restOfLine
+          return (L.IndentMany Nothing (\exDeps -> pure $ SourceDep depName $ M.fromList exDeps) tagParser)
+
+tagParser :: Parser (Text, Text)
+tagParser = do
+      _ <- chunk (":")
+      tag <- lexeme (takeWhileP (Just "tag parser") (/= ':'))
+      _ <- chunk (": ")
+      value <- restOfLine
+      pure (tag, value)
 
 remoteParser :: Parser Remote
 remoteParser = L.indentBlock scn p
