@@ -103,10 +103,10 @@ strategyGroups =
       , SomeStrategy SetupPy.strategy
       , SomeStrategy PipList.strategy
       ]
-   , StrategyGroup "ruby"
-       [ SomeStrategy BundleShow.strategy
-       , SomeStrategy GemfileLock.strategy
-       ]
+  , StrategyGroup "ruby"
+      [ SomeStrategy BundleShow.strategy
+      , SomeStrategy GemfileLock.strategy
+      ]
   , StrategyGroup "golang"
       [ SomeStrategy GoList.strategy
       , SomeStrategy Gomod.strategy
