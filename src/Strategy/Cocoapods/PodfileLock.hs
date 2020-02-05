@@ -57,12 +57,12 @@ configure = ConfiguredStrategy strategy . BasicFileOpts
 analyze :: Member (Input [Section]) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-data PodfilePkg = PodfilePkg { pkgName :: Text }
+newtype PodfilePkg = PodfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)
 
 type instance PkgLabel PodfilePkg = PodfileLabel
 
-data PodfileLabel =
+newtype PodfileLabel =
     PodfileVersion Text
   deriving (Eq, Ord, Show, Generic)
 
@@ -115,8 +115,8 @@ newtype Dep = Dep
       } deriving (Eq, Ord, Show, Generic)
 
 data SourceDep = SourceDep
-      { sDepName    :: Text
-      , tags :: Map Text Text
+      { sDepName :: Text
+      , tags     :: Map Text Text
       } deriving (Eq, Ord, Show, Generic)
 
 data Pod = Pod
@@ -130,7 +130,6 @@ data Remote = Remote
      , deps          :: [Dep]
      } deriving (Eq, Ord, Show, Generic)
 
-
 findSections :: Parser [Section]
 findSections = many (try podSectionParser <|> try dependenciesSectionParser <|> try specRepoParser <|> try externalSourcesParser <|> try checkoutOptionsParser <|> try emptySection) <* eof
 
@@ -141,39 +140,26 @@ emptySection = do
       pure $ UnknownSection emptyLine
 
 podSectionParser :: Parser Section
-podSectionParser = L.nonIndented scn (L.indentBlock scn p)
-      where
-        p = do
-          _ <- chunk "PODS:"
-          return (L.IndentMany Nothing (\pods -> pure $ PodSection pods) podParser)
+podSectionParser = sectionParser "PODS:" PodSection podParser
 
 dependenciesSectionParser :: Parser Section
-dependenciesSectionParser = L.nonIndented scn (L.indentBlock scn p)
-      where
-        p = do
-          _ <- chunk "DEPENDENCIES:"
-          return (L.IndentMany Nothing (\dependencies -> pure $ DependencySection dependencies) depParser)
+dependenciesSectionParser = sectionParser "DEPENDENCIES:" DependencySection depParser
 
 specRepoParser :: Parser Section
-specRepoParser = L.nonIndented scn (L.indentBlock scn p)
-      where
-        p = do
-          _ <- chunk "SPEC REPOS:"
-          return (L.IndentMany Nothing (\remotes -> pure $ SpecRepos remotes) remoteParser)
+specRepoParser = sectionParser "SPEC REPOS:" SpecRepos remoteParser
 
 externalSourcesParser :: Parser Section
-externalSourcesParser = L.nonIndented scn (L.indentBlock scn p)
-      where
-        p = do
-          _ <- chunk "EXTERNAL SOURCES:"
-          return (L.IndentMany Nothing (\exDeps -> pure $ ExternalSources exDeps) externalDepsParser)
+externalSourcesParser = sectionParser "EXTERNAL SOURCES:" ExternalSources externalDepsParser
 
 checkoutOptionsParser :: Parser Section
-checkoutOptionsParser = L.nonIndented scn (L.indentBlock scn p)
+checkoutOptionsParser = sectionParser "CHECKOUT OPTIONS:" CheckoutOptions externalDepsParser
+
+sectionParser :: Text -> ([a] -> Section) -> Parser a -> Parser Section
+sectionParser section lambda parser = L.nonIndented scn (L.indentBlock scn p)
       where
         p = do
-          _ <- chunk "CHECKOUT OPTIONS:"
-          return (L.IndentMany Nothing (\exDeps -> pure $ CheckoutOptions exDeps) externalDepsParser)
+          _ <- chunk section
+          return (L.IndentMany Nothing (pure . lambda) parser)
 
 externalDepsParser :: Parser SourceDep
 externalDepsParser = L.indentBlock scn p
@@ -185,9 +171,9 @@ externalDepsParser = L.indentBlock scn p
 
 tagParser :: Parser (Text, Text)
 tagParser = do
-      _ <- chunk (":")
+      _ <- chunk ":"
       tag <- lexeme (takeWhileP (Just "tag parser") (/= ':'))
-      _ <- chunk (": ")
+      _ <- chunk ": "
       value <- restOfLine
       pure (tag, value)
 
@@ -202,7 +188,7 @@ podParser :: Parser Pod
 podParser = L.indentBlock scn p
     where 
       p = do
-        _ <- chunk ("- ")
+        _ <- chunk "- "
         name <- findDep
         version <- findVersion
         _ <- restOfLine
@@ -210,7 +196,7 @@ podParser = L.indentBlock scn p
 
 depParser :: Parser Dep
 depParser = do
-      _ <- chunk ("- ")
+      _ <- chunk "- "
       name <- findDep
       _ <- restOfLine
       pure $ Dep name

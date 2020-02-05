@@ -68,8 +68,8 @@ spec_analyze = do
                   ] graph
 
   podLockFile <- T.runIO (TIO.readFile "test/Cocoapods/testdata/Podfile.lock")
-  T.describe "podfile lock parser" $ do
-    T.it "parses error messages into an empty list" $ do
+  T.describe "podfile lock parser" $
+    T.it "parses error messages into an empty list" $
       case runParser findSections "" podLockFile of
         Left _ -> T.expectationFailure "failed to parse"
         Right result -> do

@@ -101,7 +101,7 @@ data Line =
       deriving (Eq, Ord, Show, Generic)
 
 parsePodfile :: Parser Podfile
-parsePodfile = (linesToPodfile $ Podfile [] "") . concat <$> ((podParser <|> findSource <|> ignoredLine) `sepBy` eol) <* eof
+parsePodfile = linesToPodfile (Podfile [] "") . concat <$> ((podParser <|> findSource <|> ignoredLine) `sepBy` eol) <* eof
 
 linesToPodfile :: Podfile -> [Line] -> Podfile
 linesToPodfile file (PodLine pod : xs) = linesToPodfile (file { pods = pod : pods file }) xs
@@ -111,7 +111,7 @@ linesToPodfile file [] = file
 findSource :: Parser [Line]
 findSource = do
           _ <- chunk "source \'"
-          source <- takeWhileP (Just "source") (/= '\'')
+          source <- takeWhileP (Just "source parser") (/= '\'')
           _ <- char '\''
           pure [SourceLine source]
 
@@ -129,21 +129,21 @@ podParser = do
 findDep :: Parser Text
 findDep = do
       _ <- char '\'' <|> char '\"'
-      result <- takeWhileP (Just "dependency") (\a -> a /= '\'' && a /= '\"')
+      result <- takeWhileP (Just "dependency parser") (\a -> a /= '\'' && a /= '\"')
       _ <- char '\'' <|> char '\"'
       pure result
 
 findVersion :: Parser Text
 findVersion = do
       _ <- chunk "\'"
-      result <- takeWhileP (Just "version") (/= '\'')
+      result <- takeWhileP (Just "version parser") (/= '\'')
       _ <- char '\''
       pure result
 
 gitParser :: Parser Location
 gitParser = do
       _ <- chunk ":git => \'"
-      project <- takeWhileP (Just "git remote") (/= '\'')
+      project <- takeWhileP (Just "git remote parser") (/= '\'')
       version <- optional (commitParser <|> tagParser)
       _ <- char '\''
       pure $ Git project version
@@ -151,19 +151,17 @@ gitParser = do
 commitParser :: Parser Text
 commitParser = do
       _ <- chunk "\', :commit => \'"
-      version <- takeWhileP (Just "commit parser") (/= '\'')
-      pure version
+      takeWhileP (Just "commit parser") (/= '\'')
 
 tagParser :: Parser Text
 tagParser = do
       _ <- chunk "\', :tag => \'"
-      version <- takeWhileP (Just "tag parser") (/= '\'')
-      pure version
+      takeWhileP (Just "tag parser") (/= '\'')
 
 pathParser :: Parser Location
 pathParser = do
       _ <- chunk ":path => \'"
-      project <- takeWhileP (Just "path") (/= '\'')
+      project <- takeWhileP (Just "path parser") (/= '\'')
       _ <- char '\''
       pure $ Path project
 
@@ -171,7 +169,7 @@ sourceParser :: Parser Location
 sourceParser = do
       c <- chunk ":source => \'"
       _ <- traceM $ show c
-      repo <- takeWhileP (Just "path") (/= '\'')
+      repo <- takeWhileP (Just "source parser") (/= '\'')
       _ <- char '\''
       pure $ Source repo
 
