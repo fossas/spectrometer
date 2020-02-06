@@ -30,8 +30,6 @@ import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import           Types
 
 discoverFuncs :: [Discover]
-discoverFuncs = [MavenPom.discover]
-{-
 discoverFuncs =
   [ GoList.discover
   , Gomod.discover
@@ -42,6 +40,7 @@ discoverFuncs =
   , Gradle.discover
 
   , MavenPlugin.discover
+  , MavenPom.discover
 
   , PackageJson.discover
   , NpmLock.discover
@@ -64,7 +63,6 @@ discoverFuncs =
 
   , Carthage.discover
   ]
--}
 
 
 strategyGroups :: [StrategyGroup]
@@ -81,6 +79,7 @@ strategyGroups =
       ]
   , StrategyGroup "maven"
       [ SomeStrategy MavenPlugin.strategy
+      , SomeStrategy MavenPom.strategy
       ]
   , StrategyGroup "nodejs"
       [ SomeStrategy YarnLock.strategy
