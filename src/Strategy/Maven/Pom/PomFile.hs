@@ -19,8 +19,6 @@ import qualified Data.Map.Strict as M
 
 import Parse.XML
 
-
-
 ----- Validating POM files
 
 -- TODO: validation errors?
@@ -150,7 +148,7 @@ data RawDependency = RawDependency
   } deriving (Eq, Ord, Show, Generic)
 
 instance FromXML RawPom where
-  parseElement el = do
+  parseElement el =
     RawPom <$> optional (child "parent" el)
            <*> optional (child "groupId" el)
            <*> child "artifactId" el

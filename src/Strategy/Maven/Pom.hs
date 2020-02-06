@@ -1,5 +1,3 @@
-{-# language TemplateHaskell #-}
-
 module Strategy.Maven.Pom
   ( discover
   , strategy
@@ -52,7 +50,6 @@ discover' dir = do
       projects = M.fromList $ map (\closure -> (closurePath closure, buildProjectGraph closure)) projectClosures
 
   traverse_ (output . ConfiguredStrategy strategy . uncurry MavenStrategyOpts) (M.toList projects)
-  pure ()
 
 type Version = Text
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)
@@ -111,7 +108,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
     overlayParents pom = fromMaybe pom $ do
       parentCoord <- pomParentCoord pom
       (_,parentPom) <- M.lookup parentCoord (closurePoms closure)
-      pure (pom <> (overlayParents parentPom))
+      pure (pom <> overlayParents parentPom)
 
     deps :: Map (Group,Artifact) MvnDepBody
     deps = reifyDeps completePom

@@ -22,7 +22,7 @@ data GlobalClosure = GlobalClosure
   , globalPoms  :: Map MavenCoordinate (Path Abs File, Pom)
   } deriving (Eq, Ord, Show, Generic)
 
-buildGlobalClosure :: Member (ReadFS) r => [Path Abs File] -> Sem r GlobalClosure
+buildGlobalClosure :: Member ReadFS r => [Path Abs File] -> Sem r GlobalClosure
 buildGlobalClosure files = do
   (loadResults,()) <- runState @LoadResults M.empty $ traverse_ recursiveLoadPom files
 
@@ -101,14 +101,15 @@ resolvePath cur txt = nonDetToError (ResolveError "Resolved file doesn't exist")
   let resolveToFile :: Members '[NonDet, ReadFS, Error ReadFSErr] r => Sem r (Path Abs File)
       resolveToFile = do
         file <- resolveFile cur txt
-        exists <- doesFileExist file
-        guard exists
-        pure file
+        checkFile file
 
       resolveToDir :: Members '[NonDet, ReadFS, Error ReadFSErr] r => Sem r (Path Abs File)
       resolveToDir = do
         dir <- resolveDir cur txt
         let file = dir </> $(mkRelFile "pom.xml")
+        checkFile file
+
+      checkFile file = do
         exists <- doesFileExist file
         guard exists
         pure file

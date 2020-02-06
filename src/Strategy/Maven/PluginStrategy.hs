@@ -85,7 +85,7 @@ buildGraph PluginOutput{..} = run $ evalGrapher $ do
     , dependencyVersion = Just (CEq artifactVersion)
     , dependencyLocations = []
     , dependencyTags = M.fromList $
-      [("scopes", artifactScopes)] ++
+      ("scopes", artifactScopes) :
       [("optional", ["true"]) | artifactOptional]
     }
 

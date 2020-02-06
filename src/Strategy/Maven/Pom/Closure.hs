@@ -26,7 +26,7 @@ findProjects basedir = do
 
 findPomFiles :: Member (Embed IO) r => Path Abs Dir -> Sem r [Path Abs File]
 findPomFiles dir = do
-  (relPaths,_) <- runOutputList @(Path Rel File) $ do
+  (relPaths,_) <- runOutputList @(Path Rel File) $
     flip walk dir $ \_ _ files -> do
       case find ((== "pom.xml") . fileName) files of
         Just file -> output file
