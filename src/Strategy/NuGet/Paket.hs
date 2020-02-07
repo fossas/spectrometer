@@ -156,49 +156,34 @@ unknownSection = do
       pure $ UnknownSection emptyLine
 
 standardSectionParser :: Parser Section
-standardSectionParser = L.nonIndented scn (L.indentBlock scn p)
-      where
-        p = do
+standardSectionParser = L.nonIndented scn $ L.indentBlock scn $ do
           location <- chunk "HTTP" <|> "GITHUB" <|> "NUGET"
           return $ L.IndentMany Nothing (\remotes -> pure $ StandardSection location remotes) remoteParser
 
 remoteParser :: Parser Remote
-remoteParser = L.indentBlock scn p
-  where
-    p = do
+remoteParser = L.indentBlock scn $ do
       _ <- chunk "remote:"
       value <- textValue
       pure $ L.IndentMany Nothing (\specs -> pure $ Remote value specs) specParser
 
 specParser :: Parser PaketDep
-specParser = L.indentBlock scn p
-    where 
-      p = do
+specParser = L.indentBlock scn $ do
         name <- findDep
         version <- findVersion
         _ <- restOfLine
         pure $ L.IndentMany Nothing (\a -> pure $ PaketDep name version a) specsParser
       
 specsParser :: Parser Text
-specsParser = do
-      name <- findDep
-      _ <- restOfLine
-      pure name
+specsParser = findDep <* restOfLine
 
 findDep :: Parser Text
 findDep = lexeme (takeWhile1P (Just "dep") (not . C.isSpace))
 
 findVersion :: Parser Text
-findVersion = do
-      _ <- char '('
-      result <- lexeme (takeWhileP (Just "version") (/= ')'))
-      _ <- char ')'
-      pure result
+findVersion = between (char '(') (char ')') takeWhile1P (Just "version") (/= ')')
 
 textValue :: Parser Text
-textValue = do
-      _ <- chunk " "
-      restOfLine
+textValue = chunk ' ' *> restOfLine
 
 restOfLine :: Parser Text
 restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
