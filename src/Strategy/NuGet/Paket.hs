@@ -180,10 +180,10 @@ findDep :: Parser Text
 findDep = lexeme (takeWhile1P (Just "dep") (not . C.isSpace))
 
 findVersion :: Parser Text
-findVersion = between (char '(') (char ')') takeWhile1P (Just "version") (/= ')')
+findVersion = between (char '(') (char ')') $ takeWhile1P (Just "version") (/= ')')
 
 textValue :: Parser Text
-textValue = chunk ' ' *> restOfLine
+textValue = chunk " " *> restOfLine
 
 restOfLine :: Parser Text
 restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
