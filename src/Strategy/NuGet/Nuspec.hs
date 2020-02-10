@@ -7,12 +7,14 @@ module Strategy.NuGet.Nuspec
   , Nuspec(..)
   , Group(..)
   , NuGetDependency(..)
+  , License(..)
   ) where
 
 import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.List as L
+import qualified Data.Text as T
 import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
@@ -50,8 +52,15 @@ strategy = Strategy
 analyze :: Member (Input Nuspec) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-newtype Nuspec = Nuspec
-  { groups :: [Group]
+data Nuspec = Nuspec
+  { groups        :: [Group]
+  , license       :: Maybe License
+  , licenseUrl    :: Maybe Text
+  } deriving (Eq, Ord, Show, Generic)
+
+data License = License
+  { licenseType  :: Maybe Text
+  , value        :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
 newtype Group = Group
@@ -68,6 +77,13 @@ instance FromXML Nuspec where
     metadata     <- child "metadata" el
     dependencies <- child "dependencies" metadata
     Nuspec <$> children "group" dependencies
+           <*> optional (child "license" metadata)
+           <*> optional (child "licenseUrl" metadata)
+
+instance FromXML License where
+  parseElement el =
+    License <$> optional (attr "type" el)
+            <*> optional (content el)
 
 instance FromXML Group where
   parseElement el = Group <$> children "dependency" el
@@ -83,11 +99,11 @@ buildGraph project = unfold direct (const []) toDependency
     direct = concatMap dependencies (groups project)
     toDependency NuGetDependency{..} =
       Dependency { dependencyType = NuGetType
-               , dependencyName = depID
-               , dependencyVersion = Just (CEq depVersion)
-               , dependencyLocations = []
-               , dependencyTags = M.empty
-               }
+                 , dependencyName = depID
+                 , dependencyVersion = Just (CEq depVersion)
+                 , dependencyLocations = []
+                 , dependencyTags = M.empty
+                 }
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts

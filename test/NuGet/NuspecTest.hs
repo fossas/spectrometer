@@ -42,7 +42,7 @@ dependencyThree = Dependency { dependencyType = NuGetType
                         }
 
 nuspec :: Nuspec
-nuspec = Nuspec groupList
+nuspec = Nuspec groupList Nothing Nothing
 
 groupList :: [Group]
 groupList = [Group [depOne, depTwo], Group [depThree]]
@@ -63,7 +63,10 @@ spec_analyze = do
   describe "nuspec analyzer" $ do
     it "reads a file and constructs an accurate graph" $ do
       case parseXML nuspecFile of
-        Right project -> (groups project) `shouldContain` groupList
+        Right project -> do
+          (groups project) `shouldContain` groupList
+          (license project) `shouldBe` (Just $ License (Just "file") (Just "license-file"))
+          (licenseUrl project) `shouldBe` (Just "https://licence.location.com/LICENSE.md")
         Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
