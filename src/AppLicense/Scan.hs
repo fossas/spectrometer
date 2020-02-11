@@ -19,7 +19,6 @@ import Polysemy.Output
 import Polysemy.Resource
 import System.Exit (die)
 
-import App.Scan.ProjectInference (InferredProject(..), inferProject)
 import Control.Parallel
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
