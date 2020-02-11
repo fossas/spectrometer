@@ -70,6 +70,7 @@ instance ToJSON ProjectLicenseScan where
     ]
 
 type StrategyGroupName = Text
+
 mkLicenseScans :: [StrategyGroup] -> S.Seq CompletedLicenseScan -> [ProjectLicenseScan]
 mkLicenseScans groups seqScans = toProjectScan <$> toList seqScans
   where

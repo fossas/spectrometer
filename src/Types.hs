@@ -174,7 +174,6 @@ instance ToJSON LicenseResult where
 
 ---------- Completed License Scan
 
--- | Completed license scan output.
 data CompletedLicenseScan = CompletedLicenseScan
   { completedLicenseName     :: Text
   , completedLicenses        :: [LicenseResult]

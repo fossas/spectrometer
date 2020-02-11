@@ -52,4 +52,4 @@ scanCmd = info
   (LicenseScan <$> optional (strOption $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning")
            <*> (fromMaybe False <$> optional (switch $ long "debug" <> help "Enable debug logging"))
   )
-  (progDesc "Scan for dependencies")
+  (progDesc "Scan for licenses")
