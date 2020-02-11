@@ -65,7 +65,7 @@ spec_analyze = do
       case parseXML nuspecFile of
         Right project -> do
           (groups project) `shouldContain` groupList
-          (license project) `shouldBe` (Just $ License (Just "file") (Just "license-file"))
+          (license project) `shouldBe` (Just $ NuspecLicense "file" "license-file")
           (licenseUrl project) `shouldBe` (Just "https://licence.location.com/LICENSE.md")
         Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
 

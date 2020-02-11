@@ -7,7 +7,7 @@ module Strategy.NuGet.Nuspec
   , Nuspec(..)
   , Group(..)
   , NuGetDependency(..)
-  , License(..)
+  , NuspecLicense(..)
   ) where
 
 import Prologue
@@ -34,7 +34,7 @@ discover = Discover
 
 discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
-  case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
+  case find (L.isSuffixOf ".nuspec" . fileName) files of
     Just file -> output (configure file)
     Nothing -> pure ()
 
@@ -44,23 +44,45 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "nuget-nuspec"
   , strategyAnalyze = \opts -> analyze & fileInputXML @Nuspec (targetFile opts)
+  , strategyLicense = \opts -> findLicenses (targetFile opts) & fileInputXML @Nuspec (targetFile opts)
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
   }
+
+findLicenses :: Member (Input Nuspec) r => Path Rel File -> Sem r [LicenseResult]
+findLicenses file = do
+  nuspec :: Nuspec <- input
+  pure [LicenseResult file (nuspecLicenses nuspec)]
+
+nuspecLicenses :: Nuspec -> [License]
+nuspecLicenses nuspec = url ++ licenseField
+          where
+            url = case licenseUrl nuspec of
+              Just location -> [License LicenseURL location]
+              Nothing -> []
+            licenseField = case license nuspec of
+              Just field -> [License (parseLicenseType $ typeField field) (licenseValue field)]
+              Nothing -> []
+
+parseLicenseType :: Text -> LicenseType
+parseLicenseType rawType = case T.unpack rawType of 
+                            "expression" -> LicenseSPDX
+                            "file" -> LicenseFile
+                            _ -> UnknownType
 
 analyze :: Member (Input Nuspec) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
 data Nuspec = Nuspec
   { groups        :: [Group]
-  , license       :: Maybe License
+  , license       :: Maybe NuspecLicense
   , licenseUrl    :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
-data License = License
-  { licenseType  :: Maybe Text
-  , value        :: Maybe Text
+data NuspecLicense = NuspecLicense
+  { typeField    :: Text
+  , licenseValue :: Text
   } deriving (Eq, Ord, Show, Generic)
 
 newtype Group = Group
@@ -80,10 +102,10 @@ instance FromXML Nuspec where
            <*> optional (child "license" metadata)
            <*> optional (child "licenseUrl" metadata)
 
-instance FromXML License where
+instance FromXML NuspecLicense where
   parseElement el =
-    License <$> optional (attr "type" el)
-            <*> optional (content el)
+    NuspecLicense <$> attr "type" el
+                  <*> content el
 
 instance FromXML Group where
   parseElement el = Group <$> children "dependency" el
