@@ -47,11 +47,23 @@ dependencyFour = Dependency { dependencyType = PodType
                              , dependencyTags = M.empty 
                              }
 
-testPodfile :: Podfile
-testPodfile = Podfile testPods "test.repo"
+podOne :: Pod
+podOne = Pod "one" (Just "1.0.0") M.empty 
+
+podTwo :: Pod
+podTwo = Pod "two" (Just "2.0.0") (M.fromList [(SourceProperty, "custom.repo")])
+
+podThree :: Pod
+podThree = Pod "three" (Just "3.0.0") (M.fromList [(PathProperty, "internal/path")])
+
+podFour :: Pod
+podFour = Pod "four" Nothing (M.fromList [(GitProperty, "fossa/spectrometer"), (CommitProperty, "12345")])
 
 testPods :: [Pod]
-testPods = [Pod "one" (Just "1.0.0") Nothing, Pod "two" (Just "2.0.0") (Just $ Source "custom.repo"), Pod "three" (Just "3.0.0") (Just $ Path "internal/path"), Pod "four" Nothing (Just $ Git "fossa/spectrometer" (Just "12345"))]
+testPods = [podOne, podTwo, podThree, podFour]
+
+testPodfile :: Podfile
+testPodfile = Podfile testPods "test.repo"
 
 spec_analyze :: T.Spec
 spec_analyze = do

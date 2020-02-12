@@ -7,7 +7,7 @@ module Strategy.Cocoapods.Podfile
 
   , Pod (..)
   , Podfile (..)
-  , Location (..)
+  , PropertyType (..)
   ) where
 
 import Prologue
@@ -62,23 +62,26 @@ buildGraph podfile = unfold direct (const []) toDependency
     direct = pods podfile
     toDependency Pod{..} =
       Dependency { dependencyType = PodType
-               , dependencyName = name
-               , dependencyVersion = case version of
-                                          Nothing -> Nothing
-                                          Just name -> Just (CEq name)
-               , dependencyLocations = case location of 
-                                          Just (Source repo) -> [repo]
-                                          _ -> [source podfile]
-               , dependencyTags = M.empty
-               }
+                 , dependencyName = name
+                 , dependencyVersion = case version of
+                                            Nothing -> Nothing
+                                            Just name -> Just (CEq name)
+                 , dependencyLocations = case M.lookup SourceProperty properties of 
+                                            Just repo -> [repo]
+                                            _ -> [source podfile]
+                 , dependencyTags = M.empty
+                 }
 
 type Parser = Parsec Void Text
 
 data Pod = Pod
      { name      :: Text
      , version   :: Maybe Text
-     , location  :: Maybe Location
+     , properties :: Map PropertyType Text
      } deriving (Eq, Ord, Show, Generic)
+
+data PropertyType = GitProperty | CommitProperty | SourceProperty | PathProperty
+  deriving (Eq, Ord, Show, Generic)
 
 type Repo = Text
 type Version = Text
@@ -89,19 +92,13 @@ data Podfile = Podfile
       , source :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-data Location =
-      Git Repo (Maybe Version)
-      | Source Repo
-      | Path Directory
-      deriving (Eq, Ord, Show, Generic)
-
 data Line =
       PodLine Pod
       | SourceLine Text
       deriving (Eq, Ord, Show, Generic)
 
 parsePodfile :: Parser Podfile
-parsePodfile = linesToPodfile (Podfile [] "") . concat <$> ((podParser <|> findSource <|> ignoredLine) `sepBy` eol) <* eof
+parsePodfile = linesToPodfile (Podfile [] "") . concat <$> ((try podParser <|> findSource <|> ignoredLine) `sepBy` eol) <* eof
 
 linesToPodfile :: Podfile -> [Line] -> Podfile
 linesToPodfile file (PodLine pod : xs) = linesToPodfile (file { pods = pod : pods file }) xs
@@ -117,61 +114,44 @@ findSource = do
 
 podParser :: Parser [Line]
 podParser = do
-          _ <- chunk "  pod " <|> chunk "pod "
-          dep <- findDep
-          _<- optional $ chunk ", "
-          version <- optional findVersion
-          _<- optional $ chunk ", "
-          remote <- optional $ gitParser <|> pathParser <|> sourceParser
-          _ <- restOfLine
-          pure [PodLine $ Pod dep version remote]
-
-findDep :: Parser Text
-findDep = do
-      _ <- char '\'' <|> char '\"'
-      result <- takeWhileP (Just "dependency parser") (\a -> a /= '\'' && a /= '\"')
-      _ <- char '\'' <|> char '\"'
-      pure result
-
-findVersion :: Parser Text
-findVersion = do
-      _ <- chunk "\'"
-      result <- takeWhileP (Just "version parser") (/= '\'')
-      _ <- char '\''
-      pure result
-
-gitParser :: Parser Location
-gitParser = do
-      _ <- chunk ":git => \'"
-      project <- takeWhileP (Just "git remote parser") (/= '\'')
-      version <- optional (commitParser <|> tagParser)
-      _ <- char '\''
-      pure $ Git project version
-
-commitParser :: Parser Text
-commitParser = do
-      _ <- chunk "\', :commit => \'"
-      takeWhileP (Just "commit parser") (/= '\'')
-
-tagParser :: Parser Text
-tagParser = do
-      _ <- chunk "\', :tag => \'"
-      takeWhileP (Just "tag parser") (/= '\'')
-
-pathParser :: Parser Location
-pathParser = do
-      _ <- chunk ":path => \'"
-      project <- takeWhileP (Just "path parser") (/= '\'')
-      _ <- char '\''
-      pure $ Path project
-
-sourceParser :: Parser Location
-sourceParser = do
-      c <- chunk ":source => \'"
-      _ <- traceM $ show c
-      repo <- takeWhileP (Just "source parser") (/= '\'')
-      _ <- char '\''
-      pure $ Source repo
+  sc
+  _   <- symbol "pod"
+  name <- stringLiteral
+  version <- optional (try (comma *> stringLiteral))
+  properties <- many property
+  _ <- restOfLine
+  pure [PodLine $ Pod name version (M.fromList properties)]
+            
+comma :: Parser ()
+comma = () <$ symbol ","
+          
+property :: Parser (PropertyType, Text)
+property = do
+  comma
+  propertyType <- choice
+    [ GitProperty    <$ symbol ":git"
+    , CommitProperty <$ symbol ":commit"
+    , SourceProperty <$ symbol ":source"
+    , PathProperty   <$ symbol ":path"
+    ]
+  _ <- symbol "=>"
+  value <- stringLiteral
+  pure (propertyType, value)
+            
+symbol :: Text -> Parser Text
+symbol = lexeme . chunk
+          
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc
+          
+stringLiteral :: Parser Text
+stringLiteral = T.pack <$> go
+  where
+  go = (char '"'  *> manyTill L.charLiteral (char '"'))
+   <|> (char '\'' *> manyTill L.charLiteral (char '\''))
+             
+sc :: Parser ()
+sc =  L.space (void $ some (char ' ')) (L.skipLineComment "#") empty
 
 restOfLine :: Parser Text
 restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
