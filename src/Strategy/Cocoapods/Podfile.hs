@@ -14,14 +14,12 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import qualified Data.Char as C
 import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
 
 import           DepTypes
 import           Discovery.Walk
-import           Effect.LabeledGrapher
 import           Effect.ReadFS
 import           Graphing (Graphing, unfold)
 import           Types
@@ -65,7 +63,7 @@ buildGraph podfile = unfold direct (const []) toDependency
                  , dependencyName = name
                  , dependencyVersion = case version of
                                             Nothing -> Nothing
-                                            Just name -> Just (CEq name)
+                                            Just ver -> Just (CEq ver)
                  , dependencyLocations = case M.lookup SourceProperty properties of 
                                             Just repo -> [repo]
                                             _ -> [source podfile]
@@ -82,10 +80,6 @@ data Pod = Pod
 
 data PropertyType = GitProperty | CommitProperty | SourceProperty | PathProperty
   deriving (Eq, Ord, Show, Generic)
-
-type Repo = Text
-type Version = Text
-type Directory = Text
 
 data Podfile = Podfile
       { pods :: [Pod]
