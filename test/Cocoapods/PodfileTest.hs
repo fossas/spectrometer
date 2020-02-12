@@ -1,5 +1,6 @@
 module Cocoapods.PodfileTest
-  where
+  ( spec_analyze
+  ) where
 
 import Prologue
 

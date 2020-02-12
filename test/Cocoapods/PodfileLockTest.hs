@@ -1,5 +1,6 @@
 module Cocoapods.PodfileLockTest
-  where
+  ( spec_analyze
+  ) where
 
 import Prologue
 
