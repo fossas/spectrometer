@@ -46,10 +46,13 @@ discover' :: forall r. Members '[Embed IO, ReadFS, Error ReadFSErr, Output Confi
 discover' dir = do
   projectClosures <- findProjects dir
 
-  let projects :: Map (Path Rel File) (G.Graphing Dependency)
-      projects = M.fromList $ map (\closure -> (closurePath closure, buildProjectGraph closure)) projectClosures
+  let projects :: [(Path Rel File, G.Graphing Dependency)]
+      projects = map (\closure -> (closurePath closure, buildProjectGraph closure)) projectClosures
 
-  traverse_ (output . ConfiguredStrategy strategy . uncurry MavenStrategyOpts) (M.toList projects)
+  traverse_ (output . configure) projects
+
+configure :: (Path Rel File, G.Graphing Dependency) -> ConfiguredStrategy
+configure (file,graph) = ConfiguredStrategy strategy (MavenStrategyOpts file graph)
 
 type Version = Text
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)
