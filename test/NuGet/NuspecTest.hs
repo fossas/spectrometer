@@ -59,6 +59,7 @@ depThree = NuGetDependency "three" "3.0.0"
 spec_analyze :: Spec
 spec_analyze = do
   nuspecFile <- runIO (TIO.readFile "test/NuGet/testdata/test.nuspec")
+  nuspecLicenseFile <- runIO (TIO.readFile "test/NuGet/testdata/license.nuspec")
 
   describe "nuspec analyzer" $ do
     it "reads a file and constructs an accurate graph" $ do
@@ -67,6 +68,14 @@ spec_analyze = do
           (groups project) `shouldContain` groupList
           (license project) `shouldBe` (Just $ NuspecLicense "file" "license-file")
           (licenseUrl project) `shouldBe` (Just "https://licence.location.com/LICENSE.md")
+        Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
+
+    it "reads a file and extracts the correct license" $ do
+      case parseXML nuspecLicenseFile of
+        Right project -> do
+          (groups project) `shouldBe` groupList
+          (license project) `shouldBe` (Just $ NuspecLicense "file" "license-file")
+          (licenseUrl project) `shouldBe` Nothing
         Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do

@@ -114,6 +114,15 @@ jobs:
         name: hscli-osx
         path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli
 
+    - name: Strip pathfinder binary
+      run: |
+        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: pathfinder-osx
+        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+
   build-windows:
     name: build-windows
     runs-on: windows-latest
@@ -154,3 +163,12 @@ jobs:
       with:
         name: hscli-windows.exe
         path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli.exe
+
+    - name: Strip pathfinder binary
+      run: |
+        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: pathfinder-windows.exe
+        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
