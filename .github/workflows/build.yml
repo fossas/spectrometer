@@ -61,7 +61,7 @@ jobs:
       run: |
         strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/pathfinder-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
 
-    - uses: actions/upload-pathfinder-artifact@v1
+    - uses: actions/upload-artifact@v1
       with:
         name: pathfinder-linux
         path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/pathfinder-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
