@@ -98,8 +98,6 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
       edge (coordToPackage coord) (coordToPackage childCoord)
       go childCoord childPom
 
-    traverse_ (uncurry go) childPoms
-
     where
     completePom :: Pom
     completePom = overlayParents incompletePom
