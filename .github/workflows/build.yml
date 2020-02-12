@@ -28,13 +28,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # - uses: actions/cache@v1
-    #   name: Cache cabal store
-    #   id: cache
-    #   with:
-    #     path: ~/.cabal/store
-    #     key: ${{ runner.os }}-cabal-store
-
     - uses: actions/cache@v1
       name: Cache ~/.cabal/packages
       id: cache-package
@@ -97,10 +90,25 @@ jobs:
     - uses: actions/checkout@v2
 
     - uses: actions/cache@v1
-      name: Cache cabal store
+      name: Cache ~/.cabal/packages
+      id: cache-package
+      with:
+        path: ~/.cabal/packages
+        key: ${{ runner.os }}-cabal-packages
+
+    - uses: actions/cache@v1
+      name: Cache ~/.cabal/store
+      id: cache-store
       with:
         path: ~/.cabal/store
         key: ${{ runner.os }}-cabal-store
+
+    - uses: actions/cache@v1
+      name: Cache dist-newstyle
+      id: cache-newstyle
+      with:
+        path: dist-newstyle
+        key: ${{ runner.os }}-dist-newstyle
 
     - name: Install ghcup
       run: |
@@ -154,10 +162,27 @@ jobs:
     - uses: actions/checkout@v2
 
     - uses: actions/cache@v1
-      name: Cache cabal store
+      name: Cache ~/.cabal/packages
+      id: cache-package
+      with:
+        path: ~/AppData/Roaming/cabal/packages
+        path: ~/.cabal/packages
+        key: ${{ runner.os }}-cabal-packages
+
+    - uses: actions/cache@v1
+      name: Cache ~/.cabal/store
+      id: cache-store
       with:
         path: ~/AppData/Roaming/cabal/store
         key: ${{ runner.os }}-cabal-store
+
+    - uses: actions/cache@v1
+      name: Cache dist-newstyle
+      id: cache-newstyle
+      with:
+        path: ~/AppData/Roaming/dist-newstyle
+        path: dist-newstyle
+        key: ${{ runner.os }}-dist-newstyle
 
     - name: Install ghc/cabal
       run: |
