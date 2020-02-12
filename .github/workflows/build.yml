@@ -166,7 +166,6 @@ jobs:
       id: cache-package
       with:
         path: ~/AppData/Roaming/cabal/packages
-        path: ~/.cabal/packages
         key: ${{ runner.os }}-cabal-packages
 
     - uses: actions/cache@v1
@@ -181,7 +180,6 @@ jobs:
       id: cache-newstyle
       with:
         path: ~/AppData/Roaming/dist-newstyle
-        path: dist-newstyle
         key: ${{ runner.os }}-dist-newstyle
 
     - name: Install ghc/cabal
