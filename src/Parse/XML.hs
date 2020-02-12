@@ -107,7 +107,7 @@ children :: FromXML a => String -> XML.Element -> Parser [a]
 children name = traverse (subparse name) . XML.filterChildrenName (\elName -> XML.qName elName == name)
 
 content :: XML.Element -> Parser T.Text
-content = Parser . pure . T.pack . XML.strContent
+content = pure . T.pack . XML.strContent
 
 -- default an optional field to a specific value
 defaultsTo :: Parser (Maybe a) -> a -> Parser a
