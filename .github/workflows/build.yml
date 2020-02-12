@@ -30,11 +30,13 @@ jobs:
 
     - uses: actions/cache@v1
       name: Cache cabal store
+      id: cache
       with:
         path: ~/.cabal/store
         key: ${{ runner.os }}-cabal-store
 
     - name: Install dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         cabal update
         cabal configure --project-file=cabal.project.ci -O2 --enable-tests
