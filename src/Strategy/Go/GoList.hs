@@ -1,8 +1,6 @@
 module Strategy.Go.GoList
   ( discover
-  , strategy
   , analyze
-  , configure
 
   , Require(..)
   )
@@ -35,22 +33,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir _ files ->
+discover' :: Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
-    Nothing -> walkContinue
-    Just _  -> do
-      output (configure dir)
-      walkContinue
+    Nothing -> pure ()
+    Just file  -> do
+      res <- runError @ExecErr (analyze (parent file))
+      traverse_ (output . dummyConfigure "golang-golist" Optimal NotComplete (parent file)) res
 
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "golang-golist"
-  , strategyAnalyze = analyze
-  , strategyModule = targetDir
-  , strategyOptimal = Optimal
-  , strategyComplete = NotComplete
-  }
+  walkContinue
 
 data Require = Require
   { reqPackage :: Text
@@ -64,9 +55,9 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Error ExecErr, Exec] r => BasicDirOpts -> Sem r (Graphing Dependency)
-analyze BasicDirOpts{..} = graphingGolang $ do
-  stdout <- execThrow targetDir golistCmd []
+analyze :: Members '[Error ExecErr, Exec] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze dir = graphingGolang $ do
+  stdout <- execThrow dir golistCmd []
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
       requires = mapMaybe toRequire gomodLines
@@ -79,8 +70,8 @@ analyze BasicDirOpts{..} = graphingGolang $ do
 
   buildGraph requires
 
-  -- TODO: logging/etc
-  _ <- E.try @ExecErr (fillInTransitive targetDir)
+  -- TODO: diagnostics?
+  _ <- E.try @ExecErr (fillInTransitive dir)
   pure ()
 
 buildGraph :: Member (LabeledGrapher GolangPackage) r => [Require] -> Sem r ()
@@ -92,6 +83,3 @@ buildGraph = traverse_ go
     let pkg = mkGolangPackage reqPackage
     direct pkg
     label pkg (mkGolangVersion reqVersion)
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts

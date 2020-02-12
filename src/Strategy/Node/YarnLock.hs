@@ -2,7 +2,6 @@ module Strategy.Node.YarnLock
   ( discover
   , strategy
   , analyze
-  , configure
   ) where
 
 import Prologue
@@ -30,11 +29,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files -> do
-  for_ files $ \f ->
-    when (fileName f == "yarn.lock") $
-      output (configure f)
+  case find (\f -> fileName f == "yarn.lock") files of
+    Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "nodejs-yarnlock" Optimal Complete (parent file)) res
 
   walkSkipNamed ["node_modules/"] subdirs
 
@@ -47,14 +48,14 @@ strategy = Strategy
   , strategyComplete = Complete
   }
 
-analyze :: Members '[Error ReadFSErr, ReadFS] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
 analyze lockfile = do
-    let path = fromRelFile lockfile
+  let path = fromRelFile lockfile
 
-    contents <- readContentsText lockfile
-    case YL.parse path contents of
-      Left err -> throw (FileParseError path (YL.prettyLockfileError err))
-      Right a -> pure (buildGraph a)
+  contents <- readContentsText lockfile
+  case YL.parse path contents of
+    Left err -> throw (FileParseError path (YL.prettyLockfileError err))
+    Right a -> pure (buildGraph a)
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
 buildGraph lockfile = run . evalGrapher $
@@ -82,6 +83,3 @@ buildGraph lockfile = run . evalGrapher $
                      YL.GitRemote url rev -> [url <> "@" <> rev]
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

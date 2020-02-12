@@ -70,7 +70,7 @@ mkProjects groups = toProjects . grouping
     groupName <- M.lookup stratName groupsByStrategy
     group     <- M.lookup groupName groupsByName
 
-    findIndex (\(SomeStrategy strat) -> strategyName strat == stratName)
+    findIndex (\strat -> strat == stratName)
               (groupStrategies group)
 
   groupsByName :: Map StrategyGroupName StrategyGroup
@@ -79,8 +79,7 @@ mkProjects groups = toProjects . grouping
   groupsByStrategy :: Map StrategyName StrategyGroupName
   groupsByStrategy = M.fromList
     [(stratName, groupName) | StrategyGroup groupName strategies <- groups
-                            , SomeStrategy strat <- strategies
-                            , let stratName = strategyName strat
+                            , stratName <- strategies
                             ]
 
 instance ToJSON Project where

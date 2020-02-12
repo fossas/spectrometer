@@ -2,7 +2,6 @@ module Strategy.Node.NpmLock
   ( discover
   , analyze
   , buildGraph
-  , strategy
 
   , NpmPackageJson(..)
   , NpmDep(..)
@@ -12,16 +11,17 @@ module Strategy.Node.NpmLock
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.LabeledGrapher
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Types
+import Diagnostics
+import DepTypes
+import Discovery.Walk
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Types
 
 discover :: Discover
 discover = Discover
@@ -29,26 +29,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package-lock.json") files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "nodejs-packagelock" Optimal Complete (parent file)) res
 
   walkSkipNamed ["node_modules/"] subdirs
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nodejs-packagelock"
-  , strategyAnalyze = \opts -> analyze
-      & fileInputJson @NpmPackageJson (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
 
 data NpmPackageJson = NpmPackageJson
   { packageName         :: Text
@@ -78,8 +67,10 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: Member (Input NpmPackageJson) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  packageLock <- readContentsJson @NpmPackageJson file
+  pure (buildGraph packageLock)
 
 data NpmPackage = NpmPackage
   { pkgName    :: Text

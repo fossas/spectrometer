@@ -1,20 +1,19 @@
 
 module Strategy.Python.ReqTxt
   ( discover
-  , strategy
   , analyze
-  , configure
   )
   where
 
 import Prologue
 
 import Polysemy
-import Polysemy.Input
+import Polysemy.Error
 import Polysemy.Output
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
+import Diagnostics
 import Discovery.Walk
 import DepTypes
 import Graphing
@@ -28,25 +27,19 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files ->
   case find (\f -> fileName f == "requirements.txt") files of
     Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "python-requirements" Optimal NotComplete (parent file)) res
       walkContinue
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "python-requirements"
-  , strategyAnalyze = \opts -> analyze & fileInputParser requirementsTxtParser (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = NotComplete
-  }
-
-analyze :: Member (Input [Req]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  reqs <- readContentsParser requirementsTxtParser file
+  pure (buildGraph reqs)
 
 type Parser = Parsec Void Text
 
@@ -76,6 +69,3 @@ requirementsTxtParser = concat <$> ((line `sepBy` eol) <* eof)
      <|> pure [] -- empty line
 
   oneOfS = asum . map string
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

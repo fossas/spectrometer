@@ -1,6 +1,5 @@
 module Strategy.Maven.PluginStrategy
   ( discover
-  , strategy
   , analyze
   , buildGraph
   ) where
@@ -8,20 +7,20 @@ module Strategy.Maven.PluginStrategy
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-import           Polysemy.Resource
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
+import Polysemy.Resource
 
-import           DepTypes
-import           Diagnostics
-import           Discovery.Walk
-import           Effect.Exec
-import           Effect.Grapher hiding (Edge)
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Strategy.Maven.Plugin
-import           Types
+import DepTypes
+import Diagnostics
+import Discovery.Walk
+import Effect.Exec
+import Effect.Grapher hiding (Edge)
+import Effect.ReadFS
+import Graphing (Graphing)
+import Strategy.Maven.Plugin
+import Types
 
 discover :: Discover
 discover = Discover
@@ -29,41 +28,22 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-mavenValidateCmd :: Command
-mavenValidateCmd = Command
-  { cmdNames = ["mvn"]
-  , cmdBaseArgs = ["validate"]
-  , cmdAllowErr = Never
-  }
+discover' :: forall r. Members '[Embed IO, Resource, Exec, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \_ subdirs files -> do
+  case find (\f -> fileName f == "pom.xml") files of
+    Nothing -> walkContinue
+    Just file -> do
+      maybeRes <- runError @ReadFSErr $ runError @ExecErr (analyze (parent file))
+      case maybeRes of
+        Right (Right res) -> output (dummyConfigure "maven-cli" Optimal Complete (parent file) res)
+        _ -> pure ()
+      walkSkipAll subdirs
 
-discover' :: forall r. Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir subdirs files -> do
-  let buildscripts = filter (\f -> fileName f == "pom.xml") files
-
-  if null buildscripts
-    then walkContinue
-    else do
-      res <- exec dir mavenValidateCmd []
-      case res of
-        Left _ -> walkContinue
-        Right _ -> do
-          output (configure dir)
-          walkSkipAll subdirs
-
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "maven-cli"
-  , strategyAnalyze = analyze
-  , strategyModule = targetDir
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
-
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r => BasicDirOpts -> Sem r (Graphing Dependency)
-analyze BasicDirOpts{..} = withUnpackedPlugin $ \filepath -> do
-  installPlugin targetDir filepath
-  execPlugin targetDir
-  pluginOutput <- parsePluginOutput targetDir
+analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze dir = withUnpackedPlugin $ \filepath -> do
+  installPlugin dir filepath
+  execPlugin dir
+  pluginOutput <- parsePluginOutput dir
   pure (buildGraph pluginOutput)
 
 buildGraph :: PluginOutput -> Graphing Dependency
@@ -100,6 +80,3 @@ buildGraph PluginOutput{..} = run $ evalGrapher $ do
 
   indexBy :: Ord k => (v -> k) -> [v] -> Map k v
   indexBy f = M.fromList . map (\v -> (f v, v))
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts

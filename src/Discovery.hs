@@ -65,47 +65,56 @@ discoverFuncs =
   ]
 
 
+-- FIXME
 strategyGroups :: [StrategyGroup]
 strategyGroups =
   [ StrategyGroup "dotnet"
-      [ SomeStrategy PackagesConfig.strategy
-      , SomeStrategy PackageReference.strategy
-      , SomeStrategy ProjectAssetsJson.strategy
-      , SomeStrategy ProjectJson.strategy
-      , SomeStrategy Nuspec.strategy
-      ]
+      --[ SomeStrategy PackagesConfig.strategy
+      --, SomeStrategy PackageReference.strategy
+      --, SomeStrategy ProjectAssetsJson.strategy
+      --, SomeStrategy ProjectJson.strategy
+      --, SomeStrategy Nuspec.strategy
+      --]
+      []
   , StrategyGroup "gradle"
-      [ SomeStrategy Gradle.strategy
-      ]
+      --[ SomeStrategy Gradle.strategy
+      --]
+      []
   , StrategyGroup "maven"
-      [ SomeStrategy MavenPlugin.strategy
-      , SomeStrategy MavenPom.strategy
-      ]
+      --[ SomeStrategy MavenPlugin.strategy
+      --, SomeStrategy MavenPom.strategy
+      --]
+      []
   , StrategyGroup "nodejs"
-      [ SomeStrategy YarnLock.strategy
-      , SomeStrategy NpmLock.strategy
-      , SomeStrategy NpmList.strategy
-      , SomeStrategy PackageJson.strategy
-      ]
+      --[ SomeStrategy YarnLock.strategy
+      --, SomeStrategy NpmLock.strategy
+      --, SomeStrategy NpmList.strategy
+      --, SomeStrategy PackageJson.strategy
+      --]
+      []
   , StrategyGroup "python"
-      [ SomeStrategy Pipenv.strategyWithCmd
-      , SomeStrategy Pipenv.strategyNoCmd
-      , SomeStrategy ReqTxt.strategy
-      , SomeStrategy SetupPy.strategy
-      , SomeStrategy PipList.strategy
-      ]
+      --[ SomeStrategy Pipenv.strategyWithCmd
+      --, SomeStrategy Pipenv.strategyNoCmd
+      --, SomeStrategy ReqTxt.strategy
+      --, SomeStrategy SetupPy.strategy
+      --, SomeStrategy PipList.strategy
+      --]
+      []
   , StrategyGroup "ruby"
-      [ SomeStrategy BundleShow.strategy
-      , SomeStrategy GemfileLock.strategy
-      ]
+      --[ SomeStrategy BundleShow.strategy
+      --, SomeStrategy GemfileLock.strategy
+      --]
+      []
   , StrategyGroup "golang"
-      [ SomeStrategy GoList.strategy
-      , SomeStrategy Gomod.strategy
-      , SomeStrategy GopkgLock.strategy
-      , SomeStrategy GopkgToml.strategy
-      , SomeStrategy GlideLock.strategy
-      ]
+      --[ SomeStrategy GoList.strategy
+      --, SomeStrategy Gomod.strategy
+      --, SomeStrategy GopkgLock.strategy
+      --, SomeStrategy GopkgToml.strategy
+      --, SomeStrategy GlideLock.strategy
+      --]
+      []
   , StrategyGroup "carthage"
-      [ SomeStrategy Carthage.strategy
-      ]
+      --[ SomeStrategy Carthage.strategy
+      --]
+      []
   ]

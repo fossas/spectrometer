@@ -1,6 +1,5 @@
 module Strategy.Maven.Pom
   ( discover
-  , strategy
   ) where
 
 import Prologue
@@ -27,15 +26,6 @@ data MavenStrategyOpts = MavenStrategyOpts
   , strategyGraph :: G.Graphing Dependency
   } deriving (Eq, Ord, Show, Generic)
 
-strategy :: Strategy MavenStrategyOpts
-strategy = Strategy
-  { strategyName = "maven-pom"
-  , strategyAnalyze = pure . strategyGraph
-  , strategyModule = parent . strategyPath
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
-
 discover :: Discover
 discover = Discover
   { discoverName = "maven-pom"
@@ -49,10 +39,7 @@ discover' dir = do
   let projects :: [(Path Rel File, G.Graphing Dependency)]
       projects = map (\closure -> (closurePath closure, buildProjectGraph closure)) projectClosures
 
-  traverse_ (output . configure) projects
-
-configure :: (Path Rel File, G.Graphing Dependency) -> ConfiguredStrategy
-configure (file,graph) = ConfiguredStrategy strategy (MavenStrategyOpts file graph)
+  traverse_ (\(path, graph) -> output (dummyConfigure "maven-pom" NotOptimal NotComplete (parent path) graph)) projects
 
 type Version = Text
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)

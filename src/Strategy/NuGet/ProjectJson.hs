@@ -1,6 +1,5 @@
 module Strategy.NuGet.ProjectJson
   ( discover
-  , strategy
   , buildGraph
   , analyze
 
@@ -11,16 +10,17 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
-import           Data.Aeson.Types
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
+import Data.Aeson.Types
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Types
+import Diagnostics
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Types
 
 discover :: Discover
 discover = Discover
@@ -28,23 +28,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "project.json") files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "nuget-projectjson" NotOptimal NotComplete (parent file)) res
 
   walkContinue
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nuget-projectjson"
-  , strategyAnalyze = \opts -> analyze
-      & fileInputJson @ProjectJson (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
 
 data ProjectJson = ProjectJson
   { dependencies     :: Map Text DependencyInfo
@@ -71,8 +63,10 @@ instance FromJSON DependencyInfo where
     parseJSONText = withText "DependencyVersion" $ \text ->
         pure $ DependencyInfo text Nothing
 
-analyze :: Member (Input ProjectJson) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  project <- readContentsJson @ProjectJson file
+  pure (buildGraph project)
 
 data NuGetDependency = NuGetDependency
   { name            :: Text
@@ -95,6 +89,3 @@ buildGraph project = unfold direct (const []) toDependency
                   Nothing -> M.empty
                   Just depType -> M.insert "type" [depType]  M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

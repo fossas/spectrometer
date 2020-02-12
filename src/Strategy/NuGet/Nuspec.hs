@@ -1,6 +1,5 @@
 module Strategy.NuGet.Nuspec
   ( discover
-  , strategy
   , buildGraph
   , analyze
 
@@ -13,16 +12,17 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.List as L
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Parse.XML
-import           Types
+import Diagnostics
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Parse.XML
+import Types
 
 discover :: Discover
 discover = Discover
@@ -30,25 +30,20 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "nuget-nuspec" NotOptimal NotComplete (parent file)) res
 
   walkContinue
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nuget-nuspec"
-  , strategyAnalyze = \opts -> analyze & fileInputXML @Nuspec (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
-
-analyze :: Member (Input Nuspec) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  nuspec <- readContentsXML @Nuspec file
+  pure (buildGraph nuspec)
 
 newtype Nuspec = Nuspec
   { groups :: [Group]
@@ -88,6 +83,3 @@ buildGraph project = unfold direct (const []) toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

@@ -1,8 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
+
 module Strategy.Carthage
   ( discover
   , analyze
-  , strategy
   , ResolvedEntry(..)
   , EntryType(..)
   ) where
@@ -30,32 +30,24 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "carthage"
+  { discoverName = "carthage-lock"
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files ->
   case find (\f -> fileName f == "Cartfile.resolved") files of
     Nothing -> walkContinue
     Just file -> do
-      output (configure file)
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "carthage-lock" Optimal Complete (parent file)) res
       walkSkipAll subdirs
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "carthage"
-  , strategyAnalyze = fmap (G.gmap toDependency) . analyze
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
 
 relCheckoutsDir :: Path Rel File -> Path Rel Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (G.Graphing ResolvedEntry)
-analyze (BasicFileOpts topPath) = evalGrapher $ do
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (G.Graphing Dependency)
+analyze topPath = fmap (G.gmap toDependency) . evalGrapher $ do
   -- We only care about top-level resolved cartfile errors
   topEntries <- fromEither =<< analyzeSingle topPath
 
@@ -162,6 +154,3 @@ data ResolvedEntry = ResolvedEntry
 
 data EntryType = GithubType | GitType | BinaryType
   deriving (Eq, Ord, Show, Generic)
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

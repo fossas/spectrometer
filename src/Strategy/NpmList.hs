@@ -1,17 +1,16 @@
 module Strategy.NpmList
   ( discover
-  , strategy
   , analyze
-  , configure
   ) where
 
 import Prologue
 
 import qualified Data.Map.Strict as M
 import Polysemy
-import Polysemy.Input
+import Polysemy.Error
 import Polysemy.Output
 
+import Diagnostics
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
@@ -24,22 +23,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \dir subdirs files -> do
-  for_ files $ \f ->
-    when (fileName f == "package.json") $
-      output (configure dir)
+  case find (\f -> fileName f == "package.json") files of
+    Nothing -> pure ()
+    Just _ -> do
+      res <- runError @ExecErr (analyze dir)
+      traverse_ (output . dummyConfigure "nodejs-npm" Optimal Complete dir) res
 
   walkSkipNamed ["node_modules/"] subdirs
-
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "nodejs-npm"
-  , strategyAnalyze = \opts -> analyze & execInputJson @NpmOutput (targetDir opts) npmListCmd []
-  , strategyModule = targetDir
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
 
 npmListCmd :: Command
 npmListCmd = Command
@@ -48,8 +40,10 @@ npmListCmd = Command
   , cmdAllowErr = NonEmptyStdout
   }
 
-analyze :: Member (Input NpmOutput) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze dir = do
+  npmOutput <- execJson @NpmOutput dir npmListCmd []
+  pure (buildGraph npmOutput)
 
 buildGraph :: NpmOutput -> Graphing Dependency
 buildGraph top = unfold direct getDeps toDependency
@@ -63,9 +57,6 @@ buildGraph top = unfold direct getDeps toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts
 
 data NpmOutput = NpmOutput
   { outputInvalid      :: Maybe Bool

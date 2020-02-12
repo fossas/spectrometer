@@ -1,8 +1,6 @@
 module Strategy.Go.GopkgLock
   ( discover
-  , strategy
   , analyze
-  , configure
 
   , Project(..)
 
@@ -21,7 +19,6 @@ import qualified Toml
 import DepTypes
 import Diagnostics
 import Discovery.Walk
-import qualified Effect.Error as E
 import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
@@ -36,22 +33,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover' :: Members '[Embed IO, ReadFS, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.lock") files of
-    Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
-      walkContinue
+    Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "golang-gopkglock" Optimal NotComplete (parent file)) res
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "golang-gopkglock"
-  , strategyAnalyze = analyze
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = NotComplete
-  }
+  walkContinue
 
 golockCodec :: TomlCodec GoLock
 golockCodec = GoLock
@@ -73,16 +63,16 @@ data Project = Project
   , projectRevision :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[Exec, ReadFS, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r (Graphing Dependency)
-analyze BasicFileOpts{..} = graphingGolang $ do
-  contents <- readContentsText targetFile
+analyze :: Members '[Exec, ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = graphingGolang $ do
+  contents <- readContentsText file
   case Toml.decode golockCodec contents of
-    Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
+    Left err -> throw (FileParseError (fromRelFile file) (Toml.prettyException err))
     Right golock -> do
       buildGraph (lockProjects golock)
 
-      -- TODO: logging/etc
-      _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+      -- TODO: diagnostics?
+      _ <- runError @ExecErr (fillInTransitive (parent file))
       pure ()
 
 buildGraph :: Member (LabeledGrapher GolangPackage) r => [Project] -> Sem r ()
@@ -97,6 +87,3 @@ buildGraph = void . traverse_ go
 
     -- label location when it exists
     traverse_ (label pkg . GolangLabelLocation) projectSource
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

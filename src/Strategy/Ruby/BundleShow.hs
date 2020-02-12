@@ -1,8 +1,6 @@
 module Strategy.Ruby.BundleShow
   ( discover
-  , strategy
   , analyze
-  , configure
 
   , BundleShowDep(..)
   , buildGraph
@@ -14,12 +12,13 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import           Polysemy
-import           Polysemy.Input
+import           Polysemy.Error
 import           Polysemy.Output
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
 import DepTypes
+import Diagnostics
 import Discovery.Walk
 import Effect.Exec
 import Graphing
@@ -31,12 +30,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \dir _ files ->
   case find (\f -> fileName f `elem` ["Gemfile", "Gemfile.lock"]) files of
     Nothing -> walkContinue
     Just _  -> do
-      output (configure dir)
+      res <- runError @ExecErr (analyze dir)
+      traverse_ (output . dummyConfigure "ruby-bundleshow" NotOptimal NotComplete dir) res
       walkContinue
 
 bundleShowCmd :: Command
@@ -46,17 +46,10 @@ bundleShowCmd = Command
   , cmdAllowErr = Never
   }
 
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "ruby-bundleshow"
-  , strategyAnalyze = \opts -> analyze & execInputParser bundleShowParser (targetDir opts) bundleShowCmd []
-  , strategyModule = targetDir
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
-
-analyze :: Member (Input [BundleShowDep]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze dir = do
+  deps <- execParser bundleShowParser dir bundleShowCmd []
+  pure (buildGraph deps)
 
 buildGraph :: [BundleShowDep] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency
@@ -69,16 +62,12 @@ buildGraph xs = unfold xs (const []) toDependency
                , dependencyTags = M.empty
                }
 
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts
-
 data BundleShowDep = BundleShowDep
   { depName    :: Text
   , depVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
 type Parser = Parsec Void Text
-
 
 bundleShowParser :: Parser [BundleShowDep]
 bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof

@@ -1,6 +1,5 @@
 module Strategy.NuGet.PackagesConfig
   ( discover
-  , strategy
   , buildGraph
   , analyze
 
@@ -11,16 +10,17 @@ module Strategy.NuGet.PackagesConfig
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Parse.XML
-import           Types
+import Diagnostics
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Parse.XML
+import Types
 
 discover :: Discover
 discover = Discover
@@ -28,22 +28,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> (fileName f) == "packages.config") files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "nuget-packagesconfig" NotOptimal NotComplete (parent file)) res
 
   walkContinue
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nuget-packagesconfig"
-  , strategyAnalyze = \opts -> analyze & fileInputXML @PackagesConfig (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
 
 instance FromXML PackagesConfig where
   parseElement el = PackagesConfig <$> children "package" el
@@ -57,8 +50,10 @@ newtype PackagesConfig = PackagesConfig
   { deps :: [NuGetDependency]
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Member (Input PackagesConfig) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  packagesConfig <- readContentsXML @PackagesConfig file
+  pure (buildGraph packagesConfig)
 
 data NuGetDependency = NuGetDependency
   { depID      :: Text
@@ -75,6 +70,3 @@ buildGraph config = unfold (deps config) (const []) toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

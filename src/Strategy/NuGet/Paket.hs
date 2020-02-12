@@ -1,8 +1,6 @@
 module Strategy.NuGet.Paket
   ( discover
-  , strategy
   , analyze
-  , configure
   , findSections
 
   , PaketDep(..)
@@ -15,18 +13,19 @@ import Prologue
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.LabeledGrapher
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Types
-import           Text.Megaparsec hiding (label)
-import           Text.Megaparsec.Char
+import Diagnostics
+import DepTypes
+import Discovery.Walk
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Types
+import Text.Megaparsec hiding (label)
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void Text
@@ -37,26 +36,19 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
-  for_ files $ \f ->
-    when (fileName f == "paket.lock") $ output (configure f)
+  case find (\f -> fileName f == "paket.lock") files of
+    Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "paket" Optimal Complete (parent file)) res
   walkContinue
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "paket"
-  , strategyAnalyze = \opts -> analyze & fileInputParser findSections (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
-
-analyze :: Member (Input [Section]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  sections <- readContentsParser findSections file
+  pure (buildGraph sections)
 
 newtype PaketPkg = PaketPkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)

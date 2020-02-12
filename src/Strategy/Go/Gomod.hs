@@ -1,8 +1,6 @@
 module Strategy.Go.Gomod
   ( discover
-  , strategy
   , analyze
-  , configure
   , buildGraph
 
   , Gomod(..)
@@ -26,7 +24,6 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import DepTypes
 import Diagnostics
 import Discovery.Walk
-import qualified Effect.Error as E
 import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
@@ -41,22 +38,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover' :: Members '[Embed IO, ReadFS, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
-    Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
-      walkContinue
+    Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "golang-gomod" NotOptimal NotComplete (parent file)) res
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "golang-gomod"
-  , strategyAnalyze = analyze
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
+  walkContinue
 
 data Statement =
     RequireStatement Text Text -- ^ package, version
@@ -196,14 +186,14 @@ resolve gomod = map resolveReplace (modRequires gomod)
   where
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
-analyze :: Members '[Error ReadFSErr, Error ExecErr, ReadFS, Exec] r => BasicFileOpts -> Sem r (Graphing Dependency)
-analyze BasicFileOpts{..} = graphingGolang $ do
-  gomod <- readContentsParser gomodParser targetFile
+analyze :: Members '[Exec, ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = graphingGolang $ do
+  gomod <- readContentsParser gomodParser file
 
   buildGraph gomod
 
-  -- TODO: logging/etc
-  _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+  -- TODO: diagnostics?
+  _ <- runError @ExecErr (fillInTransitive (parent file))
   pure ()
 
 buildGraph :: Member (LabeledGrapher GolangPackage) r => Gomod -> Sem r ()
@@ -216,6 +206,3 @@ buildGraph = traverse_ go . resolve
 
     direct pkg
     label pkg (mkGolangVersion reqVersion)
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

@@ -1,6 +1,5 @@
 module Strategy.Node.PackageJson
   ( discover
-  , strategy
   , buildGraph
 
   , PackageJson(..)
@@ -9,16 +8,17 @@ module Strategy.Node.PackageJson
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.LabeledGrapher
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Types
+import Diagnostics
+import DepTypes
+import Discovery.Walk
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Types
 
 discover :: Discover
 discover = Discover
@@ -26,23 +26,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "nodejs-packagejson" NotOptimal NotComplete (parent file)) res
 
   walkSkipNamed ["node_modules/"] subdirs
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nodejs-packagejson"
-  , strategyAnalyze = \opts -> analyze
-      & fileInputJson @PackageJson (targetFile opts)
-  , strategyModule = parent. targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
 
 data PackageJson = PackageJson
   { packageDeps    :: Map Text Text
@@ -54,8 +46,10 @@ instance FromJSON PackageJson where
     PackageJson <$> obj .:? "dependencies"    .!= M.empty
                 <*> obj .:? "devDependencies" .!= M.empty
 
-analyze :: Member (Input PackageJson) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  packageJson <- readContentsJson @PackageJson file
+  pure (buildGraph packageJson)
 
 -- TODO: decode version constraints
 data NodePackage = NodePackage
@@ -97,6 +91,3 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
     , dependencyLocations = []
     , dependencyTags = M.empty
     }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

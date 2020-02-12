@@ -2,7 +2,6 @@
 
 module Strategy.Gradle
   ( discover
-  , strategy
 
   , buildGraph
   , JsonDep(..)
@@ -33,13 +32,6 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Types
 
-gradleTasksCmd :: Command
-gradleTasksCmd = Command
-  { cmdNames = ["./gradlew", "gradlew.bat", "gradle"]
-  , cmdBaseArgs = ["tasks"]
-  , cmdAllowErr = Never
-  }
-
 gradleJsonDepsCmd :: Command
 gradleJsonDepsCmd = Command
   { cmdNames = ["./gradlew", "gradlew.bat", "gradle"]
@@ -53,34 +45,20 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: forall r. Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir subdirs files -> do
-    let buildscripts = filter (\f -> "build.gradle" `isPrefixOf` fileName f) files
-
-    if null buildscripts
-      then walkContinue
-      else do
-        res <- exec dir gradleTasksCmd []
-        case res of
-          Left _ -> walkContinue
-          Right _ -> do
-            output (configure dir)
-            walkSkipAll subdirs
-
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "gradle-cli"
-  , strategyAnalyze = analyze
-  , strategyModule = targetDir
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
+discover' :: forall r. Members '[Embed IO, Resource, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \_ subdirs files -> do
+  case find (\f -> fileName f == "build.gradle") files of
+    Nothing -> walkContinue
+    Just file -> do
+      res <- runError @ExecErr (analyze (parent file))
+      traverse_ (output . dummyConfigure "gradle-cli" Optimal Complete (parent file)) res
+      walkSkipAll subdirs
 
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
 
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr] r => BasicDirOpts -> Sem r (Graphing Dependency)
-analyze BasicDirOpts{..} =
+analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze dir =
   bracket (embed @IO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
           (embed @IO . removeDirRecur)
           act
@@ -90,7 +68,7 @@ analyze BasicDirOpts{..} =
   act tmpDir = do
     let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
     embed (BS.writeFile initScriptFilepath initScript)
-    stdout <- execThrow targetDir gradleJsonDepsCmd [initScriptFilepath]
+    stdout <- execThrow dir gradleJsonDepsCmd [initScriptFilepath]
 
     let text = decodeUtf8 $ BL.toStrict stdout
         textLines :: [Text]
@@ -166,6 +144,3 @@ instance FromJSON JsonDep where
       "project" -> ProjectDep <$> obj .: "name"
       "package" -> PackageDep <$> obj .: "name" <*> obj .: "version" <*> obj .: "dependencies"
       _         -> unexpected (String ty)
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts

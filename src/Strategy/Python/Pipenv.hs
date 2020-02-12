@@ -1,11 +1,6 @@
 module Strategy.Python.Pipenv
   ( discover
-  , strategyWithCmd
-  , strategyNoCmd
-  , analyzeWithCmd
-  , analyzeNoCmd
-  , configureWithCmd
-  , configureNoCmd
+  , analyze
 
   , PipenvGraphDep(..)
   , PipfileLock(..)
@@ -21,12 +16,13 @@ import Prologue
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Polysemy
-import Polysemy.Input
+import Polysemy.Error
 import Polysemy.Output
 
+import Diagnostics
 import Discovery.Walk
 import DepTypes
-import qualified Graphing as G
+import Graphing (Graphing)
 import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
@@ -38,13 +34,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files ->
   case find (\f -> fileName f == "Pipfile.lock") files of
     Nothing -> walkContinue
     Just file -> do
-      output (configureWithCmd file)
-      output (configureNoCmd file)
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "python-pipenv" Optimal Complete (parent file)) res
       walkContinue
 
 pipenvGraphCmd :: Command
@@ -54,39 +50,18 @@ pipenvGraphCmd = Command
   , cmdAllowErr = Never
   }
 
-strategyWithCmd :: Strategy BasicFileOpts
-strategyWithCmd = Strategy
-  { strategyName = "python-pipenv"
-  , strategyAnalyze = \opts -> analyzeWithCmd
-      & fileInputJson @PipfileLock (targetFile opts)
-      & execInputJson @[PipenvGraphDep] (parent (targetFile opts)) pipenvGraphCmd []
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
+analyze :: Members '[ReadFS, Error ReadFSErr, Exec] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze lockfile = do
+  lock <- readContentsJson lockfile
+  -- TODO: diagnostics?
+  maybeDeps <- runError @ExecErr (execJson (parent lockfile) pipenvGraphCmd [])
 
-strategyNoCmd :: Strategy BasicFileOpts
-strategyNoCmd = Strategy
-  { strategyName = "python-pipfile"
-  , strategyAnalyze = \opts -> analyzeNoCmd & fileInputJson @PipfileLock (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
+  pure (buildGraph lock (eitherToMaybe maybeDeps))
 
-configureWithCmd :: Path Rel File -> ConfiguredStrategy
-configureWithCmd = ConfiguredStrategy strategyWithCmd . BasicFileOpts
+eitherToMaybe :: Either a b -> Maybe b
+eitherToMaybe = either (const Nothing) Just
 
-configureNoCmd :: Path Rel File -> ConfiguredStrategy
-configureNoCmd = ConfiguredStrategy strategyNoCmd . BasicFileOpts
-
-analyzeWithCmd :: Members '[Input PipfileLock, Input [PipenvGraphDep]] r => Sem r (G.Graphing Dependency)
-analyzeWithCmd = buildGraph <$> input <*> (Just <$> input)
-
-analyzeNoCmd :: Member (Input PipfileLock) r => Sem r (G.Graphing Dependency)
-analyzeNoCmd = buildGraph <$> input <*> pure Nothing
-
-buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> G.Graphing Dependency
+buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do
   buildNodes lock
   case maybeDeps of

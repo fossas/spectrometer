@@ -1,9 +1,7 @@
 
 module Strategy.Ruby.GemfileLock
   ( discover
-  , strategy
   , analyze
-  , configure
   , findSections
 
   , Spec(..)
@@ -18,10 +16,11 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
 import           Polysemy
-import           Polysemy.Input
+import           Polysemy.Error
 import           Polysemy.Output
 
 import           DepTypes
+import           Diagnostics
 import           Discovery.Walk
 import           Effect.LabeledGrapher
 import           Effect.ReadFS
@@ -37,23 +36,14 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   for_ files $ \f ->
-    when (fileName f == "Gemfile.lock") $ output (configure f)
+    when (fileName f == "Gemfile.lock") $ do
+      res <- runError @ReadFSErr (analyze f)
+      traverse_ (output . dummyConfigure "gemfile-lock" Optimal Complete (parent f)) res
+
   walkContinue
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "gemfile-lock"
-  , strategyAnalyze = \opts -> analyze & fileInputParser findSections (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
 
 type Remote = Text
 type Revision = Text
@@ -81,8 +71,10 @@ newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Member (Input [Section]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  sections <- readContentsParser findSections file
+  pure (buildGraph sections)
 
 data GemfilePkg = GemfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)

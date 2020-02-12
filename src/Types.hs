@@ -15,6 +15,9 @@ module Types
 
   , BasicDirOpts(..)
   , BasicFileOpts(..)
+
+  -- FIXME: remove
+  , dummyConfigure
   ) where
 
 import Prologue
@@ -81,7 +84,7 @@ data Strategy options = Strategy
 -- For example, @"python"@ is a @StrategyGroup@ that has pipenv, piplist, ... as strategies
 data StrategyGroup = StrategyGroup
   { groupName       :: Text -- ^ e.g., "python"
-  , groupStrategies :: [SomeStrategy]
+  , groupStrategies :: [Text]
   }
 
 -- | An arbitrary 'Strategy', suitable for use in lists, map values, ...
@@ -96,6 +99,17 @@ data ConfiguredStrategy where
   ConfiguredStrategy :: Strategy options -> options -> ConfiguredStrategy
 
 ---------- Completed Strategies
+
+-- FIXME: remove
+dummyConfigure :: Text -> Optimal -> Complete -> Path Rel Dir -> Graphing Dependency -> ConfiguredStrategy
+dummyConfigure name optimal complete path graph = flip ConfiguredStrategy () $
+  Strategy
+    { strategyName = name
+    , strategyAnalyze = const (pure graph)
+    , strategyModule = const path
+    , strategyOptimal = optimal
+    , strategyComplete = complete
+    }
 
 -- | Completed strategy output. See 'Strategy' for additional information about
 -- these fields.

@@ -1,6 +1,5 @@
 module Strategy.NuGet.PackageReference
   ( discover
-  , strategy
   , buildGraph
   , analyze
 
@@ -13,16 +12,17 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.List as L
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Parse.XML
-import           Types
+import Diagnostics
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Parse.XML
+import Types
 
 discover :: Discover
 discover = Discover
@@ -30,11 +30,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find isPackageRefFile files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> do
+      res <- runError @ReadFSErr (analyze file)
+      traverse_ (output . dummyConfigure "nuget-packagereference" NotOptimal NotComplete (parent file)) res
 
   walkContinue
  
@@ -42,17 +44,10 @@ discover' = walk $ \_ _ files -> do
       isPackageRefFile :: Path Rel File -> Bool
       isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nuget-packagereference"
-  , strategyAnalyze = \opts -> analyze & fileInputXML @PackageReference (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
-
-analyze :: Member (Input PackageReference) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze file = do
+  packageReference <- readContentsXML @PackageReference file
+  pure (buildGraph packageReference)
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]
@@ -89,6 +84,3 @@ buildGraph project = unfold direct (const []) toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

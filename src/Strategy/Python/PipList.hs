@@ -1,8 +1,6 @@
 module Strategy.Python.PipList
   ( discover
-  , strategy
   , analyze
-  , configure
 
   , PipListDep(..)
   , buildGraph
@@ -13,9 +11,10 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import Polysemy
-import Polysemy.Input
+import Polysemy.Error
 import Polysemy.Output
 
+import Diagnostics
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
@@ -28,12 +27,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \dir _ files ->
   case find (\f -> fileName f `elem` ["setup.py", "requirements.txt"]) files of
     Nothing -> walkContinue
-    Just _  -> do
-      output (configure dir)
+    Just _ -> do
+      res <- runError @ExecErr (analyze dir)
+      traverse_ (output . dummyConfigure "python-piplist" NotOptimal NotComplete dir) res
       walkContinue
 
 pipListCmd :: Command
@@ -43,17 +43,10 @@ pipListCmd = Command
   , cmdAllowErr = Never
   }
 
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "python-piplist"
-  , strategyAnalyze = \opts -> analyze & execInputJson @[PipListDep] (targetDir opts) pipListCmd []
-  , strategyModule = targetDir
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
-
-analyze :: Member (Input [PipListDep]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze dir = do
+  deps <- execJson @[PipListDep] dir pipListCmd []
+  pure (buildGraph deps)
 
 buildGraph :: [PipListDep] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency
@@ -65,9 +58,6 @@ buildGraph xs = unfold xs (const []) toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts
 
 data PipListDep = PipListDep
   { depName    :: Text
