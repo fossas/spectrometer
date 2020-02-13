@@ -33,21 +33,21 @@ jobs:
       id: cache-package
       with:
         path: ~/.cabal/packages
-        key: ${{ runner.os }}-cabal-packages
+        key: ${{ hashFiles ('hscli.cabal') }}-cabal-packages
 
     - uses: actions/cache@v1
       name: Cache ~/.cabal/store
       id: cache-store
       with:
         path: ~/.cabal/store
-        key: ${{ runner.os }}-cabal-store
+        key: ${{ hashFiles ('hscli.cabal') }}-cabal-store
 
     - uses: actions/cache@v1
       name: Cache dist-newstyle
       id: cache-newstyle
       with:
         path: dist-newstyle
-        key: ${{ runner.os }}-dist-newstyle
+        key: ${{ hashFiles ('hscli.cabal') }}-dist-newstyle
 
     - name: Install dependencies
       if: steps.cache-package.outputs.cache-hit != 'true' || steps.cache-store.outputs.cache-hit != 'true' || steps.cache-newstyle.outputs.cache-hit != 'true'
