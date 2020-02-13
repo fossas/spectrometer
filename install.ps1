@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 
 $github = "https://github.com"
 $latestUri = "$github/fossas/spectrometer/releases/latest"
-$extractDir = "$env:ALLUSERSPROFILE\spectrometer"
+$extractDir = "$env:ALLUSERSPROFILE\hscli"
 
 Write-Verbose "Looking up latest release..."
 
@@ -29,10 +29,10 @@ if ($releasePage -inotmatch 'href=\"(.*?releases\/download\/.*?windows.*?)\"')
 $downloadUri = "$github/$($Matches[1])"
 Write-Verbose "Downloading from: $downloadUri"
 
-$TempDir = Join-Path ([System.IO.Path]::GetTempPath()) "spectrometer"
+$TempDir = Join-Path ([System.IO.Path]::GetTempPath()) "hscli"
 if (![System.IO.Directory]::Exists($TempDir)) {[void][System.IO.Directory]::CreateDirectory($TempDir)}
 
-$zipFile = "$TempDir\spectrometer.zip"
+$zipFile = "$TempDir\hscli.zip"
 
 (New-Object System.Net.WebClient).DownloadFile($downloadUri, $zipFile)
 
@@ -40,9 +40,9 @@ Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
 
 $ErrorActionPreference = $OldEAP
 
-$spectrometer = "$extractDir\spectrometer.exe"
+$hscli = "$extractDir\hscli.exe"
 
-Write-Host "Installed fossa-spectrometer at: spectrometer"
-Write-Host "Get started by running: spectrometer.exe --help"
+Write-Host "Installed fossa-hscli at: hscli"
+Write-Host "Get started by running: hscli.exe --help"
 
-Write-Output $spectrometer
+Write-Output $hscli
