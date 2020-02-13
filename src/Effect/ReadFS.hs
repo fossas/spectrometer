@@ -29,12 +29,6 @@ module Effect.ReadFS
   , readContentsYaml'
   , readContentsXML
   , readContentsXML'
-
-  -- * 'Input' interpreters
-  , fileInputParser
-  , fileInputJson
-  , fileInputYaml
-  , fileInputXML
   ) where
 
 import Prologue
@@ -48,7 +42,6 @@ import           Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import qualified Path.IO as PIO
 import           Polysemy
 import           Polysemy.Error
-import           Polysemy.Input
 import           Text.Megaparsec (Parsec, runParser)
 import           Text.Megaparsec.Error (errorBundlePretty)
 
@@ -147,30 +140,6 @@ readContentsXML file = do
 -- | Read XML from a file
 readContentsXML' :: (FromXML a, Member ReadFS r) => Path b File -> Sem r (Either ReadFSErr a)
 readContentsXML' = runError . readContentsXML
-
--- | Interpret an 'Input' effect by parsing file contents
-fileInputParser :: Members '[ReadFS, Error ReadFSErr] r => Parser i -> Path b File -> Sem (Input i ': r) a -> Sem r a
-fileInputParser parser file = interpret $ \case
-  Input -> readContentsParser parser file
-{-# INLINE fileInputParser #-}
-
--- | Interpret an 'Input' effect by parsing JSON file contents
-fileInputJson :: (FromJSON i, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem (Input i ': r) a -> Sem r a
-fileInputJson file = interpret $ \case
-  Input -> readContentsJson file
-{-# INLINE fileInputJson #-}
-
--- | Interpret an 'Input' effect by parsing YAML file contents
-fileInputYaml :: (FromJSON i, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem (Input i ': r) a -> Sem r a
-fileInputYaml file = interpret $ \case
-  Input -> readContentsYaml file
-{-# INLINE fileInputYaml #-}
-
--- | Interpret an 'Input' effect by parsing XML file contents
-fileInputXML :: (FromXML i, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem (Input i ': r) a -> Sem r a
-fileInputXML file = interpret $ \case
-  Input -> readContentsXML file
-{-# INLINE fileInputXML #-}
 
 readFSToIO :: Members '[Embed IO] r => Sem (ReadFS ': r) a -> Sem r a
 readFSToIO = interpret $ \case
