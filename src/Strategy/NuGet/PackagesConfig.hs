@@ -51,9 +51,7 @@ newtype PackagesConfig = PackagesConfig
   } deriving (Eq, Ord, Show, Generic)
 
 analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
-analyze file = do
-  packagesConfig <- readContentsXML @PackagesConfig file
-  pure (mkProjectClosure file packagesConfig)
+analyze file = mkProjectClosure file <$> readContentsXML file
 
 mkProjectClosure :: Path Rel File -> PackagesConfig -> ProjectClosure
 mkProjectClosure file config = ProjectClosure

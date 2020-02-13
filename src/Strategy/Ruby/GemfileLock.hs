@@ -72,9 +72,7 @@ newtype DirectDep = DirectDep
       } deriving (Eq, Ord, Show, Generic)
 
 analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
-analyze file = do
-  sections <- readContentsParser findSections file
-  pure (mkProjectClosure file sections)
+analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSections file
 
 mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
 mkProjectClosure file sections = ProjectClosure

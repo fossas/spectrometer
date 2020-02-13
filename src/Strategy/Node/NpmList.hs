@@ -1,4 +1,4 @@
-module Strategy.NpmList
+module Strategy.Node.NpmList
   ( discover
   , analyze
   ) where
@@ -41,9 +41,7 @@ npmListCmd = Command
   }
 
 analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
-analyze dir = do
-  npmOutput <- execJson @NpmOutput dir npmListCmd []
-  pure (mkProjectClosure dir npmOutput)
+analyze dir = mkProjectClosure dir <$> execJson @NpmOutput dir npmListCmd []
 
 mkProjectClosure :: Path Rel Dir -> NpmOutput -> ProjectClosure
 mkProjectClosure dir npmOutput = ProjectClosure

@@ -12,7 +12,7 @@ import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Maven.PluginStrategy as MavenPlugin
-import qualified Strategy.NpmList as NpmList
+import qualified Strategy.Node.NpmList as NpmList
 import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
 import qualified Strategy.Node.YarnLock as YarnLock

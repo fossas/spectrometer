@@ -49,9 +49,7 @@ bundleShowCmd = Command
   }
 
 analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
-analyze dir = do
-  deps <- execParser bundleShowParser dir bundleShowCmd []
-  pure (mkProjectClosure dir deps)
+analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd []
 
 mkProjectClosure :: Path Rel Dir -> [BundleShowDep] -> ProjectClosure
 mkProjectClosure dir deps = ProjectClosure

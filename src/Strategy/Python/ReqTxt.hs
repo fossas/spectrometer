@@ -37,9 +37,7 @@ discover' = walk $ \_ _ files -> do
   walkContinue
 
 analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
-analyze file = do
-  reqs <- readContentsParser requirementsTxtParser file
-  pure (mkProjectClosure file reqs)
+analyze file = mkProjectClosure file <$> readContentsParser requirementsTxtParser file
 
 mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosure
 mkProjectClosure file reqs = ProjectClosure

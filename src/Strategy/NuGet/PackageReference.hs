@@ -45,9 +45,7 @@ discover' = walk $ \_ _ files -> do
       isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
 analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
-analyze file = do
-  packageReference <- readContentsXML @PackageReference file
-  pure (mkProjectClosure file packageReference)
+analyze file = mkProjectClosure file <$> readContentsXML @PackageReference file
 
 mkProjectClosure :: Path Rel File -> PackageReference -> ProjectClosure
 mkProjectClosure file package = ProjectClosure

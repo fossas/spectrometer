@@ -68,9 +68,7 @@ instance FromJSON NpmDep where
            <*> obj .:? "dependencies"
 
 analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
-analyze file = do
-  packageLock <- readContentsJson @NpmPackageJson file
-  pure (mkProjectClosure file packageLock)
+analyze file = mkProjectClosure file <$> readContentsJson @NpmPackageJson file
 
 mkProjectClosure :: Path Rel File -> NpmPackageJson -> ProjectClosure
 mkProjectClosure file lock = ProjectClosure

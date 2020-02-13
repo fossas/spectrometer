@@ -57,9 +57,7 @@ instance FromJSON DependencyInfo where
              <*> obj .:? "dependencies" .!= M.empty
 
 analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
-analyze file = do
-  project <- readContentsJson @ProjectAssetsJson file
-  pure (mkProjectClosure file project)
+analyze file = mkProjectClosure file <$> readContentsJson @ProjectAssetsJson file
 
 mkProjectClosure :: Path Rel File -> ProjectAssetsJson -> ProjectClosure
 mkProjectClosure file projectAssetsJson = ProjectClosure

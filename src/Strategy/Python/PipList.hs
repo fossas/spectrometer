@@ -44,9 +44,7 @@ pipListCmd = Command
   }
 
 analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
-analyze dir = do
-  deps <- execJson @[PipListDep] dir pipListCmd []
-  pure (mkProjectClosure dir deps)
+analyze dir = mkProjectClosure dir <$> execJson @[PipListDep] dir pipListCmd []
 
 mkProjectClosure :: Path Rel Dir -> [PipListDep] -> ProjectClosure
 mkProjectClosure dir deps = ProjectClosure

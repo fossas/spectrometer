@@ -61,16 +61,13 @@ relCheckoutsDir :: Path Rel File -> Path Rel Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
 analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
-analyze topPath = do
-  (graph :: G.Graphing ResolvedEntry) <- evalGrapher $ do
-    -- We only care about top-level resolved cartfile errors
-    topEntries <- fromEither =<< analyzeSingle topPath
+analyze topPath = fmap (mkProjectClosure topPath) . evalGrapher $ do
+  -- We only care about top-level resolved cartfile errors
+  topEntries <- fromEither =<< analyzeSingle topPath
 
-    for_ topEntries $ \entry -> do
-      direct entry
-      descend (relCheckoutsDir topPath) entry
-
-  pure (mkProjectClosure topPath graph)
+  for_ topEntries $ \entry -> do
+    direct entry
+    descend (relCheckoutsDir topPath) entry
 
   where
 

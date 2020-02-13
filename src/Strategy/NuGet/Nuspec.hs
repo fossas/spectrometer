@@ -41,9 +41,7 @@ discover' = walk $ \_ _ files -> do
   walkContinue
 
 analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
-analyze file = do
-  nuspec <- readContentsXML @Nuspec file
-  pure (mkProjectClosure file nuspec)
+analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file
 
 mkProjectClosure :: Path Rel File -> Nuspec -> ProjectClosure
 mkProjectClosure file nuspec = ProjectClosure

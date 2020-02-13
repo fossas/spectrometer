@@ -101,7 +101,7 @@ doesDirExist :: Member ReadFS r => Path b Dir -> Sem r Bool
 type Parser = Parsec Void Text
 
 -- | Read from a file, parsing its contents
-readContentsParser :: Members '[ReadFS, Error ReadFSErr] r => Parser a -> Path b File -> Sem r a
+readContentsParser :: forall a r b. Members '[ReadFS, Error ReadFSErr] r => Parser a -> Path b File -> Sem r a
 readContentsParser parser file = do
   contents <- readContentsText file
   case runParser parser (toFilePath file) contents of
@@ -109,7 +109,7 @@ readContentsParser parser file = do
     Right a -> pure a
 
 -- | Read from a file, parsing its contents
-readContentsParser' :: Member ReadFS r => Parser a -> Path b File -> Sem r (Either ReadFSErr a)
+readContentsParser' :: forall a r b. Member ReadFS r => Parser a -> Path b File -> Sem r (Either ReadFSErr a)
 readContentsParser' parser file = runError $ readContentsParser parser file
 
 -- | Read JSON from a file
