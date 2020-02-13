@@ -136,7 +136,7 @@ jobs:
       id: cache-store
       with:
         path: ~/AppData/Roaming/cabal/store
-        key: ${{ hashFiles ('%AppData/Roaming/hscli.cabal') }}-${{ runner.os }}-cabal-store
+        key: ${{ hashFiles ('**\hscli.cabal') }}-${{ runner.os }}-cabal-store
 
     - name: Install ghc/cabal
       run: |
