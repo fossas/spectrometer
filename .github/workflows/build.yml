@@ -93,21 +93,21 @@ jobs:
       id: cache-package
       with:
         path: ~/.cabal/packages
-        key: ${{ runner.os }}-cabal-packages
+        key: ${{ hashFiles ('hscli.cabal') }}-${{ runner.os }}-cabal-packages
 
     - uses: actions/cache@v1
       name: Cache ~/.cabal/store
       id: cache-store
       with:
         path: ~/.cabal/store
-        key: ${{ runner.os }}-cabal-store
+        key: ${{ hashFiles ('hscli.cabal') }}-${{ runner.os }}-cabal-store
 
     - uses: actions/cache@v1
       name: Cache dist-newstyle
       id: cache-newstyle
       with:
         path: dist-newstyle
-        key: ${{ runner.os }}-dist-newstyle
+        key: ${{ hashFiles ('hscli.cabal') }}-${{ runner.os }}-dist-newstyle
 
     - name: Install ghcup
       run: |
@@ -165,14 +165,14 @@ jobs:
       id: cache-package
       with:
         path: ~/AppData/Roaming/cabal/packages
-        key: ${{ runner.os }}-cabal-packages
+        key: ${{ hashFiles ('~/AppData/Roaming/hscli.cabal') }}-${{ runner.os }}-cabal-packages
 
     - uses: actions/cache@v1
       name: Cache ~/.cabal/store
       id: cache-store
       with:
         path: ~/AppData/Roaming/cabal/store
-        key: ${{ runner.os }}-cabal-store
+        key: ${{ hashFiles ('~/AppData/Roaming/hscli.cabal') }}-${{ runner.os }}-cabal-store
 
     - uses: actions/cache@v1
       name: Cache dist-newstyle
@@ -180,6 +180,7 @@ jobs:
       with:
         path: ~/AppData/Roaming/dist-newstyle
         key: ${{ runner.os }}-dist-newstyle
+        key: ${{ hashFiles ('~/AppData/Roaming/hscli.cabal') }}-${{ runner.os }}-dist-newstyle
 
     - name: Install ghc/cabal
       run: |
