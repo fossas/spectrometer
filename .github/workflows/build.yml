@@ -33,24 +33,23 @@ jobs:
       id: cache-package
       with:
         path: ~/.cabal/packages
-        key: ${{ hashFiles ('hscli.cabal') }}-cabal-packages
+        key: ${{ hashFiles ('hscli.cabal') }}-${{ runner.os }}-cabal-packages
 
     - uses: actions/cache@v1
       name: Cache ~/.cabal/store
       id: cache-store
       with:
         path: ~/.cabal/store
-        key: ${{ hashFiles ('hscli.cabal') }}-cabal-store
+        key: ${{ hashFiles ('hscli.cabal') }}-${{ runner.os }}-cabal-store
 
     - uses: actions/cache@v1
       name: Cache dist-newstyle
       id: cache-newstyle
       with:
         path: dist-newstyle
-        key: ${{ hashFiles ('hscli.cabal') }}-dist-newstyle
+        key: ${{ hashFiles ('hscli.cabal') }}-${{ runner.os }}-dist-newstyle
 
     - name: Install dependencies
-      if: steps.cache-package.outputs.cache-hit != 'true' || steps.cache-store.outputs.cache-hit != 'true' || steps.cache-newstyle.outputs.cache-hit != 'true'
       run: |
         cabal update
         cabal configure --project-file=cabal.project.ci -O2 --enable-tests
