@@ -27,12 +27,11 @@ discover = Discover
 
 discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "requirements.txt") files of
-    Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
-      pure ()
+  let txtFiles = filter (\f -> ".txt" `isSuffixOf` fileName f) files
+
+  for_ txtFiles $ \file -> do
+    res <- runError @ReadFSErr (analyze file)
+    traverse_ output res
 
   walkContinue
 

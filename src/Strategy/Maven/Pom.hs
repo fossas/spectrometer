@@ -9,10 +9,8 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 import           Polysemy
-import           Polysemy.Error
 import           Polysemy.Output
 
-import Diagnostics
 import DepTypes
 import Effect.LabeledGrapher
 import Effect.ReadFS
@@ -32,7 +30,7 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: forall r. Members '[Embed IO, ReadFS, Error ReadFSErr, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' :: forall r. Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' dir = do
   (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
   traverse_ (output . mkProjectClosure) mvnClosures
