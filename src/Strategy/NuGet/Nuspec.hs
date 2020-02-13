@@ -107,7 +107,7 @@ instance FromXML NuspecLicense where
                   <*> content el
 
 instance FromXML Group where
-  parseElement el = Group <$> optional (children "dependency" el) `defaultsTo` []
+  parseElement el = Group <$> (children "dependency" el)
 
 instance FromXML NuGetDependency where
   parseElement el =
