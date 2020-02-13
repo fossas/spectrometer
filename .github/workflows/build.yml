@@ -179,7 +179,6 @@ jobs:
       id: cache-newstyle
       with:
         path: ~/AppData/Roaming/dist-newstyle
-        key: ${{ runner.os }}-dist-newstyle
         key: ${{ hashFiles ('~/AppData/Roaming/hscli.cabal') }}-${{ runner.os }}-dist-newstyle
 
     - name: Install ghc/cabal
