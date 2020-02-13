@@ -29,13 +29,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package-lock.json") files of
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "nodejs-packagelock" Optimal Complete (parent file)) res
+      traverse_ output res
 
   walkSkipNamed ["node_modules/"] subdirs
 
@@ -67,10 +67,24 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze file = do
   packageLock <- readContentsJson @NpmPackageJson file
-  pure (buildGraph packageLock)
+  pure (mkProjectClosure file packageLock)
+
+mkProjectClosure :: Path Rel File -> NpmPackageJson -> ProjectClosure
+mkProjectClosure file lock = ProjectClosure
+  { closureStrategyGroup = NodejsGroup
+  , closureStrategyName  = "nodejs-packagelock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph lock
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 data NpmPackage = NpmPackage
   { pkgName    :: Text

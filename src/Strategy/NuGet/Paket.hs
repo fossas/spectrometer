@@ -36,19 +36,33 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "paket.lock") files of
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "paket" Optimal Complete (parent file)) res
+      traverse_ output res
   walkContinue
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze file = do
   sections <- readContentsParser findSections file
-  pure (buildGraph sections)
+  pure (mkProjectClosure file sections)
+
+mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
+mkProjectClosure file sections = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "paket"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph sections
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 newtype PaketPkg = PaketPkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)

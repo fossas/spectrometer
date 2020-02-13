@@ -28,23 +28,37 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: forall r. Members '[Embed IO, Resource, Exec, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: forall r. Members '[Embed IO, Resource, Exec, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "pom.xml") files of
     Nothing -> walkContinue
     Just file -> do
       maybeRes <- runError @ReadFSErr $ runError @ExecErr (analyze (parent file))
       case maybeRes of
-        Right (Right res) -> output (dummyConfigure "maven-cli" Optimal Complete (parent file) res)
+        Right (Right res) -> output res
         _ -> pure ()
       walkSkipAll subdirs
 
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r => Path Rel Dir -> Sem r ProjectClosure
 analyze dir = withUnpackedPlugin $ \filepath -> do
   installPlugin dir filepath
   execPlugin dir
   pluginOutput <- parsePluginOutput dir
-  pure (buildGraph pluginOutput)
+  pure (mkProjectClosure dir pluginOutput)
+
+mkProjectClosure :: Path Rel Dir -> PluginOutput -> ProjectClosure
+mkProjectClosure dir pluginOutput = ProjectClosure
+  { closureStrategyGroup = MavenGroup
+  , closureStrategyName  = "maven-cli"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph pluginOutput
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} = run $ evalGrapher $ do

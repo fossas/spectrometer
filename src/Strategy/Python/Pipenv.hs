@@ -34,14 +34,16 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover' :: Members '[Embed IO, ReadFS, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Pipfile.lock") files of
-    Nothing -> walkContinue
+    Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "python-pipenv" Optimal Complete (parent file)) res
-      walkContinue
+      traverse_ output res
+      pure ()
+
+  walkContinue
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command
@@ -50,13 +52,27 @@ pipenvGraphCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[ReadFS, Error ReadFSErr, Exec] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr, Exec] r => Path Rel File -> Sem r ProjectClosure
 analyze lockfile = do
   lock <- readContentsJson lockfile
   -- TODO: diagnostics?
   maybeDeps <- runError @ExecErr (execJson (parent lockfile) pipenvGraphCmd [])
 
-  pure (buildGraph lock (eitherToMaybe maybeDeps))
+  pure (mkProjectClosure lockfile lock (eitherToMaybe maybeDeps))
+
+mkProjectClosure :: Path Rel File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosure
+mkProjectClosure file lockfile maybeDeps = ProjectClosure
+  { closureStrategyGroup = PythonGroup
+  , closureStrategyName  = "python-pipenv"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph lockfile maybeDeps
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe = either (const Nothing) Just

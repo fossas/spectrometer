@@ -30,13 +30,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find isPackageRefFile files of
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "nuget-packagereference" NotOptimal NotComplete (parent file)) res
+      traverse_ output res
 
   walkContinue
  
@@ -44,10 +44,24 @@ discover' = walk $ \_ _ files -> do
       isPackageRefFile :: Path Rel File -> Bool
       isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze file = do
   packageReference <- readContentsXML @PackageReference file
-  pure (buildGraph packageReference)
+  pure (mkProjectClosure file packageReference)
+
+mkProjectClosure :: Path Rel File -> PackageReference -> ProjectClosure
+mkProjectClosure file package = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "nuget-packagereference"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph package
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]

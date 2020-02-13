@@ -23,13 +23,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \dir subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
     Just _ -> do
       res <- runError @ExecErr (analyze dir)
-      traverse_ (output . dummyConfigure "nodejs-npm" Optimal Complete dir) res
+      traverse_ output res
 
   walkSkipNamed ["node_modules/"] subdirs
 
@@ -40,10 +40,24 @@ npmListCmd = Command
   , cmdAllowErr = NonEmptyStdout
   }
 
-analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
 analyze dir = do
   npmOutput <- execJson @NpmOutput dir npmListCmd []
-  pure (buildGraph npmOutput)
+  pure (mkProjectClosure dir npmOutput)
+
+mkProjectClosure :: Path Rel Dir -> NpmOutput -> ProjectClosure
+mkProjectClosure dir npmOutput = ProjectClosure
+  { closureStrategyGroup = NodejsGroup
+  , closureStrategyName  = "nodejs-npmlist"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph npmOutput
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 buildGraph :: NpmOutput -> Graphing Dependency
 buildGraph top = unfold direct getDeps toDependency

@@ -28,13 +28,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> (fileName f) == "packages.config") files of
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "nuget-packagesconfig" NotOptimal NotComplete (parent file)) res
+      traverse_ output res
 
   walkContinue
 
@@ -50,10 +50,24 @@ newtype PackagesConfig = PackagesConfig
   { deps :: [NuGetDependency]
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze file = do
   packagesConfig <- readContentsXML @PackagesConfig file
-  pure (buildGraph packagesConfig)
+  pure (mkProjectClosure file packagesConfig)
+
+mkProjectClosure :: Path Rel File -> PackagesConfig -> ProjectClosure
+mkProjectClosure file config = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "nuget-packagesconfig"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph config
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 data NuGetDependency = NuGetDependency
   { depID      :: Text

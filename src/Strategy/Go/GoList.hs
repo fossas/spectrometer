@@ -33,13 +33,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
     Just file  -> do
       res <- runError @ExecErr (analyze (parent file))
-      traverse_ (output . dummyConfigure "golang-golist" Optimal NotComplete (parent file)) res
+      traverse_ output res
 
   walkContinue
 
@@ -55,8 +55,8 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Error ExecErr, Exec] r => Path Rel Dir -> Sem r (Graphing Dependency)
-analyze dir = graphingGolang $ do
+analyze :: Members '[Error ExecErr, Exec] r => Path Rel Dir -> Sem r ProjectClosure
+analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
   stdout <- execThrow dir golistCmd []
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
@@ -73,6 +73,20 @@ analyze dir = graphingGolang $ do
   -- TODO: diagnostics?
   _ <- E.try @ExecErr (fillInTransitive dir)
   pure ()
+
+mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosure
+mkProjectClosure dir graph = ProjectClosure
+  { closureStrategyGroup = GolangGroup
+  , closureStrategyName  = "golang-golist"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = graph
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = NotComplete
+    }
 
 buildGraph :: Member (LabeledGrapher GolangPackage) r => [Require] -> Sem r ()
 buildGraph = traverse_ go

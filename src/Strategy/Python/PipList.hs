@@ -27,13 +27,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \dir _ files ->
   case find (\f -> fileName f `elem` ["setup.py", "requirements.txt"]) files of
     Nothing -> walkContinue
     Just _ -> do
       res <- runError @ExecErr (analyze dir)
-      traverse_ (output . dummyConfigure "python-piplist" NotOptimal NotComplete dir) res
+      traverse_ output res
       walkContinue
 
 pipListCmd :: Command
@@ -43,10 +43,24 @@ pipListCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
 analyze dir = do
   deps <- execJson @[PipListDep] dir pipListCmd []
-  pure (buildGraph deps)
+  pure (mkProjectClosure dir deps)
+
+mkProjectClosure :: Path Rel Dir -> [PipListDep] -> ProjectClosure
+mkProjectClosure dir deps = ProjectClosure
+  { closureStrategyGroup = PythonGroup
+  , closureStrategyName  = "python-piplist"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph deps
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 buildGraph :: [PipListDep] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency

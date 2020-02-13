@@ -45,19 +45,19 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: forall r. Members '[Embed IO, Resource, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: forall r. Members '[Embed IO, Resource, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "build.gradle") files of
     Nothing -> walkContinue
     Just file -> do
       res <- runError @ExecErr (analyze (parent file))
-      traverse_ (output . dummyConfigure "gradle-cli" Optimal Complete (parent file)) res
+      traverse_ output res
       walkSkipAll subdirs
 
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
 
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
 analyze dir =
   bracket (embed @IO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
           (embed @IO . removeDirRecur)
@@ -89,7 +89,21 @@ analyze dir =
         packagesToOutput :: Map Text [JsonDep]
         packagesToOutput = M.fromList packagePathsWithDecoded
 
-    pure (buildGraph packagesToOutput)
+    pure (mkProjectClosure dir packagesToOutput)
+
+mkProjectClosure :: Path Rel Dir -> Map Text [JsonDep] -> ProjectClosure
+mkProjectClosure dir deps = ProjectClosure
+  { closureStrategyGroup = GradleGroup
+  , closureStrategyName  = "gradle-cli"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph deps
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 -- TODO: use LabeledGraphing to add labels for environments
 buildGraph :: Map Text [JsonDep] -> Graphing Dependency

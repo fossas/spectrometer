@@ -15,8 +15,6 @@ import Text.Megaparsec.Char
 
 import Diagnostics
 import Discovery.Walk
-import DepTypes
-import Graphing
 import Effect.ReadFS
 import Strategy.Python.Util
 import Types
@@ -27,19 +25,35 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "requirements.txt") files of
-    Nothing -> walkContinue
+    Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "python-requirements" Optimal NotComplete (parent file)) res
-      walkContinue
+      traverse_ output res
+      pure ()
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+  walkContinue
+
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze file = do
   reqs <- readContentsParser requirementsTxtParser file
-  pure (buildGraph reqs)
+  pure (mkProjectClosure file reqs)
+
+mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosure
+mkProjectClosure file reqs = ProjectClosure
+  { closureStrategyGroup = PythonGroup
+  , closureStrategyName  = "python-requirements"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph reqs
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 type Parser = Parsec Void Text
 

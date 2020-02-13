@@ -30,20 +30,32 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "glide.lock") files of
     Nothing -> pure ()
     Just file  -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "golang-glidelock" Optimal NotComplete (parent file)) res
+      traverse_ output res
 
   walkContinue
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
-analyze file = do
-  lockfile <- readContentsYaml @GlideLockfile file
-  pure (buildGraph lockfile)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file
+
+mkProjectClosure :: Path Rel File -> GlideLockfile -> ProjectClosure
+mkProjectClosure file lock = ProjectClosure
+  { closureStrategyGroup = GolangGroup
+  , closureStrategyName  = "golang-glidelock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph lock
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = NotComplete
+    }
 
 buildGraph :: GlideLockfile -> Graphing Dependency
 buildGraph lockfile = unfold direct (const []) toDependency

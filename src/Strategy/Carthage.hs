@@ -34,26 +34,43 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files ->
   case find (\f -> fileName f == "Cartfile.resolved") files of
     Nothing -> walkContinue
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "carthage-lock" Optimal Complete (parent file)) res
+      traverse_ output res
       walkSkipAll subdirs
+
+mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosure
+mkProjectClosure file graph = ProjectClosure
+  { closureStrategyGroup = CarthageGroup
+  , closureStrategyName  = "carthage-lock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = G.gmap toDependency graph
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 relCheckoutsDir :: Path Rel File -> Path Rel Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (G.Graphing Dependency)
-analyze topPath = fmap (G.gmap toDependency) . evalGrapher $ do
-  -- We only care about top-level resolved cartfile errors
-  topEntries <- fromEither =<< analyzeSingle topPath
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze topPath = do
+  (graph :: G.Graphing ResolvedEntry) <- evalGrapher $ do
+    -- We only care about top-level resolved cartfile errors
+    topEntries <- fromEither =<< analyzeSingle topPath
 
-  for_ topEntries $ \entry -> do
-    direct entry
-    descend (relCheckoutsDir topPath) entry
+    for_ topEntries $ \entry -> do
+      direct entry
+      descend (relCheckoutsDir topPath) entry
+
+  pure (mkProjectClosure topPath graph)
 
   where
 

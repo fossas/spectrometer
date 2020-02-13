@@ -1,6 +1,5 @@
 module Strategy.Node.YarnLock
   ( discover
-  , strategy
   , analyze
   ) where
 
@@ -29,33 +28,38 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "yarn.lock") files of
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "nodejs-yarnlock" Optimal Complete (parent file)) res
+      traverse_ output res
 
   walkSkipNamed ["node_modules/"] subdirs
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nodejs-yarnlock"
-  , strategyAnalyze = analyze . targetFile
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
-
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze lockfile = do
   let path = fromRelFile lockfile
 
   contents <- readContentsText lockfile
   case YL.parse path contents of
     Left err -> throw (FileParseError path (YL.prettyLockfileError err))
-    Right a -> pure (buildGraph a)
+    Right a -> pure (mkProjectClosure lockfile a)
+
+mkProjectClosure :: Path Rel File -> YL.Lockfile -> ProjectClosure
+mkProjectClosure file lock = ProjectClosure
+  { closureStrategyGroup = NodejsGroup
+  , closureStrategyName  = "nodejs-yarnlock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph lock
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
 buildGraph lockfile = run . evalGrapher $

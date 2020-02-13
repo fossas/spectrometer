@@ -26,13 +26,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "nodejs-packagejson" NotOptimal NotComplete (parent file)) res
+      traverse_ output res
 
   walkSkipNamed ["node_modules/"] subdirs
 
@@ -46,10 +46,24 @@ instance FromJSON PackageJson where
     PackageJson <$> obj .:? "dependencies"    .!= M.empty
                 <*> obj .:? "devDependencies" .!= M.empty
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze file = do
   packageJson <- readContentsJson @PackageJson file
-  pure (buildGraph packageJson)
+  pure (mkProjectClosure file packageJson)
+
+mkProjectClosure :: Path Rel File -> PackageJson -> ProjectClosure
+mkProjectClosure file package = ProjectClosure
+  { closureStrategyGroup = NodejsGroup
+  , closureStrategyName  = "nodejs-packagejson"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph package
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 -- TODO: decode version constraints
 data NodePackage = NodePackage

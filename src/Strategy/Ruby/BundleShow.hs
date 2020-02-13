@@ -30,14 +30,16 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir _ files ->
+discover' :: Members '[Embed IO, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["Gemfile", "Gemfile.lock"]) files of
-    Nothing -> walkContinue
+    Nothing -> pure ()
     Just _  -> do
       res <- runError @ExecErr (analyze dir)
-      traverse_ (output . dummyConfigure "ruby-bundleshow" NotOptimal NotComplete dir) res
-      walkContinue
+      traverse_ output res
+      pure ()
+
+  walkContinue
 
 bundleShowCmd :: Command
 bundleShowCmd = Command
@@ -46,10 +48,24 @@ bundleShowCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r (Graphing Dependency)
+analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
 analyze dir = do
   deps <- execParser bundleShowParser dir bundleShowCmd []
-  pure (buildGraph deps)
+  pure (mkProjectClosure dir deps)
+
+mkProjectClosure :: Path Rel Dir -> [BundleShowDep] -> ProjectClosure
+mkProjectClosure dir deps = ProjectClosure
+  { closureStrategyGroup = RubyGroup
+  , closureStrategyName  = "ruby-bundleshow"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph deps
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 buildGraph :: [BundleShowDep] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency

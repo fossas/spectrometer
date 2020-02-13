@@ -32,14 +32,24 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: forall r. Members '[Embed IO, ReadFS, Error ReadFSErr, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: forall r. Members '[Embed IO, ReadFS, Error ReadFSErr, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' dir = do
-  projectClosures <- findProjects dir
+  (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
+  traverse_ (output . mkProjectClosure) mvnClosures
 
-  let projects :: [(Path Rel File, G.Graphing Dependency)]
-      projects = map (\closure -> (closurePath closure, buildProjectGraph closure)) projectClosures
-
-  traverse_ (\(path, graph) -> output (dummyConfigure "maven-pom" NotOptimal NotComplete (parent path) graph)) projects
+mkProjectClosure :: MavenProjectClosure -> ProjectClosure
+mkProjectClosure mvnClosure = ProjectClosure
+  { closureStrategyGroup = MavenGroup
+  , closureStrategyName  = "maven-pom"
+  , closureModuleDir     = parent (closurePath mvnClosure)
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildProjectGraph mvnClosure
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 type Version = Text
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)

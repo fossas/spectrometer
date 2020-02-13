@@ -34,7 +34,6 @@ common lang
     RankNTypes
     RecordWildCards
     ScopedTypeVariables
-    StrictData
     TupleSections
     TypeApplications
     TypeFamilies

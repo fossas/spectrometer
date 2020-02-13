@@ -38,13 +38,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "golang-gomod" NotOptimal NotComplete (parent file)) res
+      traverse_ output res
 
   walkContinue
 
@@ -186,8 +186,8 @@ resolve gomod = map resolveReplace (modRequires gomod)
   where
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
-analyze :: Members '[Exec, ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
-analyze file = graphingGolang $ do
+analyze :: Members '[Exec, ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   gomod <- readContentsParser gomodParser file
 
   buildGraph gomod
@@ -195,6 +195,20 @@ analyze file = graphingGolang $ do
   -- TODO: diagnostics?
   _ <- runError @ExecErr (fillInTransitive (parent file))
   pure ()
+
+mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosure
+mkProjectClosure file graph = ProjectClosure
+  { closureStrategyGroup = GolangGroup
+  , closureStrategyName  = "golang-gomod"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = graph
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 buildGraph :: Member (LabeledGrapher GolangPackage) r => Gomod -> Sem r ()
 buildGraph = traverse_ go . resolve

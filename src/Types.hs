@@ -5,19 +5,19 @@ module Types
   , Strategy(..)
   , StrategyGroup(..)
 
+  , ProjectClosure(..)
+  , StrategyGroup'(..)
+
   , Optimal(..)
   , Complete(..)
 
   , ConfiguredStrategy(..)
   , SomeStrategy(..)
 
-  , CompletedStrategy(..)
+  , ProjectDependencies(..)
 
   , BasicDirOpts(..)
   , BasicFileOpts(..)
-
-  -- FIXME: remove
-  , dummyConfigure
   ) where
 
 import Prologue
@@ -37,7 +37,7 @@ import Graphing
 ---------- Discovery
 
 -- | The effects available for use in 'Discover'
-type DiscoverEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output ConfiguredStrategy] r
+type DiscoverEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output ProjectClosure] r
 
 -- | Discover functions produce 'ConfiguredStrategy's, given a base directory
 -- to search
@@ -67,6 +67,14 @@ instance ToJSON Complete where
 -- | The effects available for use in 'Strategy'
 type StrategyEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r
 
+-- TODO: typeclassify?
+data ProjectClosure = ProjectClosure
+  { closureStrategyGroup :: StrategyGroup'
+  , closureStrategyName  :: Text
+  , closureModuleDir     :: Path Rel Dir
+  , closureDependencies  :: ProjectDependencies
+  }
+
 -- | Strategies produce dependency graphs
 --
 -- @options@ must have 'ToJSON' and 'FromJSON' instances -- these are used to
@@ -78,6 +86,17 @@ data Strategy options = Strategy
   , strategyOptimal  :: Optimal -- ^ Whether this strategy is considered "optimal" -- i.e., best case analysis for a given project. Notably, this __does not__ imply "complete".
   , strategyComplete :: Complete -- ^ Whether this strategy produces graphs that contain all dependencies for a given project. When @NotComplete@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
   }
+
+data StrategyGroup' =
+    CarthageGroup
+  | DotnetGroup
+  | GolangGroup
+  | GradleGroup
+  | MavenGroup
+  | NodejsGroup
+  | PythonGroup
+  | RubyGroup
+  deriving (Eq, Ord, Show, Generic)
 
 -- | 'Strategy' outputs are grouped and sorted based on the provided @StrategyGroup@s
 --
@@ -100,25 +119,12 @@ data ConfiguredStrategy where
 
 ---------- Completed Strategies
 
--- FIXME: remove
-dummyConfigure :: Text -> Optimal -> Complete -> Path Rel Dir -> Graphing Dependency -> ConfiguredStrategy
-dummyConfigure name optimal complete path graph = flip ConfiguredStrategy () $
-  Strategy
-    { strategyName = name
-    , strategyAnalyze = const (pure graph)
-    , strategyModule = const path
-    , strategyOptimal = optimal
-    , strategyComplete = complete
-    }
-
 -- | Completed strategy output. See 'Strategy' for additional information about
 -- these fields.
-data CompletedStrategy = CompletedStrategy
-  { completedName     :: Text
-  , completedModule   :: Path Rel Dir
-  , completedGraph    :: Graphing Dependency
-  , completedOptimal  :: Optimal
-  , completedComplete :: Complete
+data ProjectDependencies = ProjectDependencies
+  { dependenciesGraph    :: Graphing Dependency
+  , dependenciesOptimal  :: Optimal
+  , dependenciesComplete :: Complete
   } deriving (Eq, Ord, Show, Generic)
 
 ---------- Basic Opts

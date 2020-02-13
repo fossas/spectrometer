@@ -36,12 +36,12 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   for_ files $ \f ->
     when (fileName f == "Gemfile.lock") $ do
       res <- runError @ReadFSErr (analyze f)
-      traverse_ (output . dummyConfigure "gemfile-lock" Optimal Complete (parent f)) res
+      traverse_ output res
 
   walkContinue
 
@@ -71,10 +71,24 @@ newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze file = do
   sections <- readContentsParser findSections file
-  pure (buildGraph sections)
+  pure (mkProjectClosure file sections)
+
+mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
+mkProjectClosure file sections = ProjectClosure
+  { closureStrategyGroup = RubyGroup
+  , closureStrategyName  = "gemfile-lock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph sections
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 data GemfilePkg = GemfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)

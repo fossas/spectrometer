@@ -28,13 +28,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "project.json") files of
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (output . dummyConfigure "nuget-projectjson" NotOptimal NotComplete (parent file)) res
+      traverse_ output res
 
   walkContinue
 
@@ -63,10 +63,24 @@ instance FromJSON DependencyInfo where
     parseJSONText = withText "DependencyVersion" $ \text ->
         pure $ DependencyInfo text Nothing
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
 analyze file = do
   project <- readContentsJson @ProjectJson file
-  pure (buildGraph project)
+  pure (mkProjectClosure file project)
+
+mkProjectClosure :: Path Rel File -> ProjectJson -> ProjectClosure
+mkProjectClosure file projectJson = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "nuget-projectjson"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph projectJson
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 data NuGetDependency = NuGetDependency
   { name            :: Text
