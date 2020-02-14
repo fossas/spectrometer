@@ -1,6 +1,5 @@
 module Types
-  ( DiscoverEffs
-  , Discover(..)
+  ( Discover(..)
   , StrategyGroup(..)
 
   , ProjectClosure(..)
@@ -10,6 +9,9 @@ module Types
   , Complete(..)
 
   , ProjectDependencies(..)
+  , Task(..)
+  , TaskEffs
+  , forkTask
   ) where
 
 import Prologue
@@ -28,14 +30,22 @@ import Graphing
 
 ---------- Discovery
 
--- | The effects available for use in 'Discover'
-type DiscoverEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output ProjectClosure] r
+data Task = Task
+  { taskName :: Text
+  , taskRun  :: forall r. TaskEffs r => Sem r ()
+  }
+
+-- | The effects available for use in Tasks
+type TaskEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output Task, Output ProjectClosure] r
+
+forkTask :: forall r r1. (TaskEffs r, Member (Output Task) r1) => Text -> Sem r () -> Sem r1 ()
+forkTask name act = output @Task (Task name act)
 
 -- | Discover functions produce 'ConfiguredStrategy's, given a base directory
 -- to search
 data Discover = Discover
   { discoverName :: Text
-  , discoverFunc :: forall r. DiscoverEffs r => Path Abs Dir -> Sem r ()
+  , discoverFunc :: forall r. TaskEffs r => Path Abs Dir -> Sem r ()
   }
 
 ---------- Strategies

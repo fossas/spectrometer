@@ -1,14 +1,76 @@
+{-# language TemplateHaskell #-}
 module Control.Parallel
-  ( runActions
-  , Progress(..)
+  ( -- runActions
+  -- , Progress(..)
   ) where
 
 import Prologue
 
+import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
 import Polysemy
+import Polysemy.Final
 import Polysemy.Async
+import Polysemy.Input
+import Polysemy.Output
 import Polysemy.Resource
+import qualified Polysemy.State as S
+
+data Parallel m a where
+  Fork :: Text -> m () -> Parallel m ()
+
+makeSem ''Parallel
+
+example :: Members '[Embed IO, Parallel] r => Sem r ()
+example = (replicateM_ 100 . embed . print =<<) . S.runState @Int 0 $ do
+  sequence [fork "" (go n) | n <- [1..100]]
+  pure ()
+
+go :: Members '[Embed IO, Parallel, S.State Int] r => Int -> Sem r ()
+go n = do
+  --embed $ putStrLn $ "hello " <> show n
+  fork "" $ do
+    S.modify @Int (+1)
+    embed $ threadDelay 2000000
+    embed . print =<< S.get @Int
+    --embed $ putStrLn $ "world" <> show n
+    pure ()
+
+parallelToIO :: forall r a
+                   . Members '[Embed IO, Async, Resource] r
+                  => Int
+                  -> (Progress -> Sem r ())
+                  -> Sem (Parallel ': r) a
+                  -> Sem r ()
+parallelToIO numThreads reportProgress act = do
+  (state :: State (Sem r ())) <- embed $
+    State <$> newTVarIO []
+          <*> newTVarIO 0
+          <*> newTVarIO 0
+
+  sinkIntoTVar (stQueued state) act
+
+  _ <- async $ updateProgress reportProgress state
+
+  if numThreads > 1
+    then do
+      replicateM_ numThreads (async (worker state))
+
+      -- wait for queued and running tasks to end
+      embed @IO $ atomically $ do
+        queued  <- readTVar (stQueued state)
+        check (null queued)
+        running <- readTVar (stRunning state)
+        check (running == 0)
+
+    else worker state
+
+sinkIntoTVar :: Member (Embed IO) r => TVar [Sem r ()] -> Sem (Parallel ': r) a -> Sem r a
+sinkIntoTVar var = interpretH $ \case
+  Fork name act -> do
+    act' <- runT act
+    fa <- embed @IO $ atomically $ modifyTVar var $ (:) $ () <$ sinkIntoTVar var act'
+    pureT fa
 
 data State action = State
   { stQueued    :: TVar [action]
@@ -22,6 +84,7 @@ data Progress = Progress
   , pCompleted :: Int
   } deriving (Eq, Ord, Show, Generic)
 
+{-
 -- | Run arbitrary actions in parallel, given:
 --
 -- - @numThreads@ - The number of worker threads to run
@@ -62,6 +125,7 @@ runActions numThreads initial runAction reportProgress = do
     else worker (runAction enqueue) state
 
   pure ()
+-}
 
 updateProgress :: Member (Embed IO) r => (Progress -> Sem r ()) -> State any -> Sem r ()
 updateProgress f st@State{..} = loop (Progress 0 0 0)
@@ -88,8 +152,8 @@ stopWhenDone State{..} act = do
         else act
     _ -> act
 
-worker :: forall r action. (Member (Embed IO) r, Member Resource r) => (action -> Sem r ()) -> State action -> Sem r ()
-worker runAction st@State{..} = loop
+worker :: forall r. (Member (Embed IO) r, Member Resource r) => State (Sem r ()) -> Sem r ()
+worker st@State{..} = loop
   where
 
   loop = join $ embed $ atomically $ stopWhenDone st $ do
@@ -99,7 +163,7 @@ worker runAction st@State{..} = loop
       (x:xs) -> do
         writeTVar stQueued xs
         addRunning
-        pure $ runAction x `finally` (complete *> loop)
+        pure $ x `finally` (complete *> loop)
 
   addRunning :: STM ()
   addRunning = modifyTVar stRunning (+1)

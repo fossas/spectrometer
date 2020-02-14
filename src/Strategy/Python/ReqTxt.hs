@@ -25,13 +25,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure, Output (Task r)] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \_ _ files -> do
   let txtFiles = filter (\f -> ".txt" `isSuffixOf` fileName f) files
 
-  for_ txtFiles $ \file -> do
-    res <- runError @ReadFSErr (analyze file)
-    traverse_ output res
+  for_ txtFiles $ \file -> forkTask "python-requirements" $ do
+    res <- analyze file
+    output res
 
   walkContinue
 

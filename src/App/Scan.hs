@@ -62,7 +62,9 @@ scan basedir = do
 
   logSticky ""
 
-runAction :: Members '[Final IO, Embed IO, Resource, Logger, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
+runAction = undefined
+{-
+runAction :: forall r. Members '[Final IO, Embed IO, Resource, Logger, Output ProjectClosure] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
 runAction basedir enqueue = \case
   ADiscover Discover{..} -> do
     let prettyName = fill 20 (annotate (colorDull Cyan) (pretty discoverName <> " "))
@@ -75,7 +77,9 @@ runAction basedir enqueue = \case
       & errorToIOFinal @CLIErr
       & fromExceptionSem @SomeException
       & errorToIOFinal @SomeException
-      & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
+      & outputToIOMonoid @ProjectClosure S.singleton
+
+    undefined -- TODO: possibly rename ADiscover and pass `enqueue` to discover functions?
 
     case result of
       Left someException -> do
@@ -85,7 +89,8 @@ runAction basedir enqueue = \case
         logWarn $ prettyName <> annotate (color Red) "Discovery failed"
         logDebug $ pretty (show err) <> line
       Right (Right ()) -> logDebug $ prettyName <> annotate (color Green) "Finished discovery"
-
+-}
+{-
   AStrategy (ConfiguredStrategy Strategy{..} opts) -> do
     let prettyName = annotate (color Cyan) (pretty strategyName)
         prettyPath = pretty (toFilePath (strategyModule opts))
@@ -110,6 +115,34 @@ runAction basedir enqueue = \case
         logInfo $ prettyPath <> " " <> prettyName <> " " <> annotate (color Green) "Analyzed"
         logDebug (pretty (show graph))
         output (CompletedStrategy strategyName (strategyModule opts) graph strategyOptimal strategyComplete)
+-}
+
+runTask :: forall r. Members '[Final IO, Embed IO, Resource, Logger, Output ProjectClosure] r => (Task -> Sem r ()) -> Task -> Sem r ()
+runTask enqueue = \case
+  Task name act -> do
+    -- TODO: logging task names?
+    let prettyName = fill 20 (annotate (colorDull Cyan) (pretty name <> " "))
+    logDebug $ prettyName <> " starting task"
+
+    result <- act
+      & readFSToIO
+      & readFSErrToCLIErr
+      & execToIO
+      & execErrToCLIErr
+      & errorToIOFinal @CLIErr
+      & fromExceptionSem @SomeException
+      & errorToIOFinal @SomeException
+      & runOutputSem @Task enqueue
+
+    case result of
+      Left someException -> do
+        logWarn $ prettyName <> " " <> annotate (color Yellow) "failed with uncaught SomeException"
+        logWarn $ pretty (show someException) <> line
+      Right (Left err) -> do
+        logDebug $ prettyName <> " " <> annotate (color Yellow) "failed"
+        logDebug $ pretty (show err) <> line
+      Right (Right ()) -> do
+        logInfo $ prettyName <> " " <> annotate (color Green) "Analyzed"
 
 updateProgress :: Member Logger r => Progress -> Sem r ()
 updateProgress Progress{..} =
@@ -124,4 +157,4 @@ updateProgress Progress{..} =
 
 data Action =
     ADiscover Discover
-  | AStrategy ConfiguredStrategy
+  -- | AStrategy ConfiguredStrategy
