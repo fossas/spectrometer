@@ -6,9 +6,8 @@ module Strategy.Python.SetupPy
 
 import Prologue
 
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -24,7 +23,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "setup.py") files of
     Nothing -> pure ()
@@ -35,7 +40,7 @@ discover' = walk $ \_ _ files -> do
 
   walkContinue
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsParser installRequiresParser file
 
 mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosure

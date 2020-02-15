@@ -94,7 +94,6 @@ library
     App.Scan.Project
     App.Scan.ProjectInference
     Control.Carrier.Output.List
-    Control.Carrier.Writer.CPS
     Control.Effect.Output
     Control.Parallel
     DepTypes

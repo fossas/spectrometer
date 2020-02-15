@@ -13,11 +13,10 @@ module Strategy.Python.Pipenv
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 
 import Diagnostics
 import Discovery.Walk
@@ -34,7 +33,14 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Pipfile.lock") files of
     Nothing -> pure ()
@@ -52,7 +58,13 @@ pipenvGraphCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[ReadFS, Error ReadFSErr, Exec] r => Path Rel File -> Sem r ProjectClosure
+analyze ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has (Error ReadFSErr) sig m
+  , Effect sig
+  )
+  => Path Rel File -> m ProjectClosure
 analyze lockfile = do
   lock <- readContentsJson lockfile
   -- TODO: diagnostics?
@@ -112,7 +124,7 @@ data PipLabel =
   | PipEnvironment Text -- production, development
   deriving (Eq, Ord, Show, Generic)
 
-buildNodes :: Member (LabeledGrapher PipPkg) r => PipfileLock -> Sem r ()
+buildNodes :: forall sig m. Has (LabeledGrapher PipPkg) sig m => PipfileLock -> m ()
 buildNodes PipfileLock{..} = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
       indexBy ix = M.fromList . map (\v -> (ix v, v))
@@ -125,12 +137,11 @@ buildNodes PipfileLock{..} = do
 
   where
 
-  addWithLabel :: Member (LabeledGrapher PipPkg) r
-               => Text -- env name: production, development
+  addWithLabel :: Text -- env name: production, development
                -> Map Text PipfileSource
                -> Text -- dep name
                -> PipfileDep
-               -> Sem r ()
+               -> m ()
   addWithLabel env sourcesMap depName dep = do
     let pkg = PipPkg depName (T.drop 2 (fileDepVersion dep))
     -- TODO: reachable instead of direct
@@ -143,7 +154,7 @@ buildNodes PipfileLock{..} = do
         Just source -> label pkg (PipSource (sourceUrl source))
         Nothing -> pure ()
 
-buildEdges :: Member (LabeledGrapher PipPkg) r => [PipenvGraphDep] -> Sem r ()
+buildEdges :: Has (LabeledGrapher PipPkg) sig m => [PipenvGraphDep] -> m ()
 buildEdges pipenvDeps = do
   traverse_ (direct . mkPkg) pipenvDeps
   traverse_ mkEdges pipenvDeps
@@ -153,7 +164,7 @@ buildEdges pipenvDeps = do
   mkPkg :: PipenvGraphDep -> PipPkg
   mkPkg dep = PipPkg (depName dep) (depInstalled dep)
 
-  mkEdges :: Member (LabeledGrapher PipPkg) r => PipenvGraphDep -> Sem r ()
+  mkEdges :: Has (LabeledGrapher PipPkg) sig m => PipenvGraphDep -> m ()
   mkEdges parentDep =
     forM_ (depDependencies parentDep) $ \childDep -> do
       edge (mkPkg parentDep) (mkPkg childDep)

@@ -9,11 +9,9 @@ module Strategy.NuGet.PackagesConfig
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-
 import Diagnostics
 import DepTypes
 import Discovery.Walk
@@ -28,7 +26,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> (fileName f) == "packages.config") files of
     Nothing -> pure ()
@@ -50,7 +54,7 @@ newtype PackagesConfig = PackagesConfig
   { deps :: [NuGetDependency]
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsXML file
 
 mkProjectClosure :: Path Rel File -> PackagesConfig -> ProjectClosure

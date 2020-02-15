@@ -7,9 +7,8 @@ module Strategy.Python.ReqTxt
 
 import Prologue
 
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -25,17 +24,23 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure, Output (Task r)] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   let txtFiles = filter (\f -> ".txt" `isSuffixOf` fileName f) files
 
-  for_ txtFiles $ \file -> forkTask "python-requirements" $ do
-    res <- analyze file
-    output res
+  for_ txtFiles $ \file -> do
+    res <- runError @ReadFSErr (analyze file)
+    traverse_ output res
 
   walkContinue
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsParser requirementsTxtParser file
 
 mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosure

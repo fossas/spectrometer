@@ -10,12 +10,11 @@ module Strategy.NuGet.Paket
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 
 import Diagnostics
 import DepTypes
@@ -36,7 +35,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "paket.lock") files of
     Nothing -> pure ()
@@ -45,7 +50,7 @@ discover' = walk $ \_ _ files -> do
       traverse_ output res
   walkContinue
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsParser findSections file
 
 mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
@@ -97,15 +102,15 @@ buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
       traverse_ (addSection "MAIN") sections
       where
-            addSection :: Member (LabeledGrapher PaketPkg) r => Text -> Section -> Sem r ()
+            addSection :: Has (LabeledGrapher PaketPkg) sig m => Text -> Section -> m ()
             addSection group (StandardSection location remotes) = traverse_ (addRemote group location) remotes
             addSection _ (GroupSection group gSections) = traverse_ (addSection group) gSections
             addSection _ (UnknownSection _) = pure ()
 
-            addRemote :: Member (LabeledGrapher PaketPkg) r => Text -> Text -> Remote -> Sem r ()
+            addRemote :: Has (LabeledGrapher PaketPkg) sig m => Text -> Text -> Remote -> m ()
             addRemote group loc remote = traverse_ (addSpec (DepLocation loc) (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
 
-            addSpec :: Member (LabeledGrapher PaketPkg) r => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> Sem r ()
+            addSpec :: Has (LabeledGrapher PaketPkg) sig m => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> m ()
             addSpec loc remote group dep = do
               -- add edges, labels, and direct deps
               let pkg = PaketPkg (name dep)

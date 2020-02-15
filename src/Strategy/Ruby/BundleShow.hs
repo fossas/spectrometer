@@ -10,12 +10,11 @@ module Strategy.Ruby.BundleShow
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-import           Text.Megaparsec
-import           Text.Megaparsec.Char
+import Text.Megaparsec
+import Text.Megaparsec.Char
 
 import DepTypes
 import Diagnostics
@@ -30,7 +29,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has (Output ProjectClosure) sig m
+  , Has Exec sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["Gemfile", "Gemfile.lock"]) files of
     Nothing -> pure ()
@@ -48,7 +53,7 @@ bundleShowCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosure
 analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd []
 
 mkProjectClosure :: Path Rel Dir -> [BundleShowDep] -> ProjectClosure

@@ -9,10 +9,9 @@ module Strategy.Python.PipList
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 
 import Diagnostics
 import DepTypes
@@ -27,7 +26,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has Exec sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \dir _ files ->
   case find (\f -> fileName f `elem` ["setup.py", "requirements.txt"]) files of
     Nothing -> walkContinue
@@ -43,7 +48,7 @@ pipListCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosure
 analyze dir = mkProjectClosure dir <$> execJson @[PipListDep] dir pipListCmd []
 
 mkProjectClosure :: Path Rel Dir -> [PipListDep] -> ProjectClosure

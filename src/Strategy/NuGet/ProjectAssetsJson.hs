@@ -8,12 +8,11 @@ module Strategy.NuGet.ProjectAssetsJson
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Maybe
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 
 import Diagnostics
 import DepTypes
@@ -28,7 +27,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "project.assets.json") files of
     Nothing -> pure ()
@@ -56,7 +61,7 @@ instance FromJSON DependencyInfo where
     DependencyInfo <$> obj .: "type"
              <*> obj .:? "dependencies" .!= M.empty
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsJson @ProjectAssetsJson file
 
 mkProjectClosure :: Path Rel File -> ProjectAssetsJson -> ProjectClosure
