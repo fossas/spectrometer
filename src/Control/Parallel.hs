@@ -1,25 +1,25 @@
-{-# language TemplateHaskell #-}
 module Control.Parallel
-  ( -- runActions
-  -- , Progress(..)
+  ( runActions
+  , Progress(..)
   ) where
 
 import Prologue
 
-import Control.Concurrent (threadDelay)
+import Control.Carrier.Lift
+import qualified Control.Concurrent.Async as Async
 import Control.Concurrent.STM
-import Polysemy
-import Polysemy.Final
-import Polysemy.Async
-import Polysemy.Input
-import Polysemy.Output
-import Polysemy.Resource
-import qualified Polysemy.State as S
+import Control.Effect.Exception
+-- import Polysemy
+-- import Polysemy.Final
+-- import Polysemy.Async
+-- import Polysemy.Input
+-- import Polysemy.Output
+-- import Polysemy.Resource
+-- import qualified Polysemy.State as S
 
+{-
 data Parallel m a where
   Fork :: Text -> m () -> Parallel m ()
-
-makeSem ''Parallel
 
 example :: Members '[Embed IO, Parallel] r => Sem r ()
 example = (replicateM_ 100 . embed . print =<<) . S.runState @Int 0 $ do
@@ -71,6 +71,7 @@ sinkIntoTVar var = interpretH $ \case
     act' <- runT act
     fa <- embed @IO $ atomically $ modifyTVar var $ (:) $ () <$ sinkIntoTVar var act'
     pureT fa
+-}
 
 data State action = State
   { stQueued    :: TVar [action]
@@ -84,7 +85,10 @@ data Progress = Progress
   , pCompleted :: Int
   } deriving (Eq, Ord, Show, Generic)
 
-{-
+-- TODO: just define MonadUnliftIO?
+asyncLiftIO :: Has (Lift IO) sig m => m () -> m ()
+asyncLiftIO act = liftWith @IO $ \ctx runIt -> ctx <$ Async.async (runIt (act <$ ctx))
+
 -- | Run arbitrary actions in parallel, given:
 --
 -- - @numThreads@ - The number of worker threads to run
@@ -94,29 +98,28 @@ data Progress = Progress
 -- - A function that can be used to report 'Progress'
 --
 -- All tasks will complete before this returns.
-runActions :: forall r action
-            . Members '[Embed IO, Async, Resource] r
+runActions :: (Has (Lift IO) sig m, MonadIO m)
            => Int -- number of threads
            -> [action] -- initial actions
-           -> ((action -> Sem r ()) -> action -> Sem r ()) -- given an action to enqueue more actions, run an action
-           -> (Progress -> Sem r ()) -- get progress updates
-           -> Sem r ()
+           -> ((action -> m ()) -> action -> m ()) -- given an action to enqueue more actions, run an action
+           -> (Progress -> m ()) -- get progress updates
+           -> m ()
 runActions numThreads initial runAction reportProgress = do
-  state <- embed $
+  state <- liftIO $
     State <$> newTVarIO initial
           <*> newTVarIO 0
           <*> newTVarIO 0
 
-  _ <- async $ updateProgress reportProgress state
+  _ <- asyncLiftIO $ updateProgress reportProgress state
 
-  let enqueue action = embed $ atomically $ modifyTVar (stQueued state) (action:)
+  let enqueue action = liftIO $ atomically $ modifyTVar (stQueued state) (action:)
 
   if numThreads > 1
     then do
-      replicateM_ numThreads (async (worker (runAction enqueue) state))
+      replicateM_ numThreads (asyncLiftIO (worker (runAction enqueue) state))
 
       -- wait for queued and running tasks to end
-      embed $ atomically $ do
+      liftIO $ atomically $ do
         queued  <- readTVar (stQueued state)
         check (null queued)
         running <- readTVar (stRunning state)
@@ -125,12 +128,11 @@ runActions numThreads initial runAction reportProgress = do
     else worker (runAction enqueue) state
 
   pure ()
--}
 
-updateProgress :: Member (Embed IO) r => (Progress -> Sem r ()) -> State any -> Sem r ()
+updateProgress :: MonadIO m => (Progress -> m ()) -> State any -> m ()
 updateProgress f st@State{..} = loop (Progress 0 0 0)
   where
-  loop prev = join $ embed $ atomically $ stopWhenDone st $ do
+  loop prev = join $ liftIO $ atomically $ stopWhenDone st $ do
     running <- readTVar stRunning
     queued <- length <$> readTVar stQueued
     completed <- readTVar stCompleted
@@ -141,7 +143,7 @@ updateProgress f st@State{..} = loop (Progress 0 0 0)
 
     pure $ f new *> loop new
 
-stopWhenDone :: State any -> STM (Sem r ()) -> STM (Sem r ())
+stopWhenDone :: Applicative m => State any -> STM (m ()) -> STM (m ())
 stopWhenDone State{..} act = do
   queued <- readTVar stQueued
   case queued of
@@ -152,21 +154,21 @@ stopWhenDone State{..} act = do
         else act
     _ -> act
 
-worker :: forall r. (Member (Embed IO) r, Member Resource r) => State (Sem r ()) -> Sem r ()
-worker st@State{..} = loop
+worker :: (MonadIO m, Has (Lift IO) sig m) => (action -> m ()) -> State action -> m ()
+worker runAction st@State{..} = loop
   where
 
-  loop = join $ embed $ atomically $ stopWhenDone st $ do
+  loop = join $ liftIO $ atomically $ stopWhenDone st $ do
     queued <- readTVar stQueued
     case queued of
       [] -> retry
       (x:xs) -> do
         writeTVar stQueued xs
         addRunning
-        pure $ x `finally` (complete *> loop)
+        pure $ runAction x `finally` (complete *> loop)
 
   addRunning :: STM ()
   addRunning = modifyTVar stRunning (+1)
 
-  complete :: Sem r ()
-  complete = embed $ atomically $ modifyTVar stRunning (subtract 1) *> modifyTVar stCompleted (+1)
+  complete :: MonadIO m => m ()
+  complete = liftIO $ atomically $ modifyTVar stRunning (subtract 1) *> modifyTVar stCompleted (+1)

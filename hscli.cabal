@@ -55,6 +55,8 @@ common deps
     , containers                   ^>=0.6.0
     , file-embed                   ^>=0.0.11
     , filepath                     ^>=1.4.2.1
+    , fused-effects                ^>=1.0.0.1
+    , fused-effects-exceptions     ^>=1.0.0.0
     , git-config                   ^>=0.1.2
     , megaparsec                   ^>=8.0
     , modern-uri                   ^>=0.3.1
@@ -63,7 +65,6 @@ common deps
     , optparse-applicative         ^>=0.15.1
     , path                         ^>=0.7
     , path-io                      ^>=1.6.0
-    , polysemy                     ^>=1.2.1
     , prettyprinter                ^>=1.6
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , stm                          ^>=2.5.0
@@ -71,6 +72,7 @@ common deps
     , text                         ^>=1.2.3
     , time                         ^>=1.9.3
     , tomland                      ^>=1.2.0
+    , transformers                 ^>=0.5.6.2
     , typed-process                ^>=0.2.6
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
@@ -91,6 +93,9 @@ library
     App.Scan.GraphMangler
     App.Scan.Project
     App.Scan.ProjectInference
+    Control.Carrier.Output.List
+    Control.Carrier.Writer.CPS
+    Control.Effect.Output
     Control.Parallel
     DepTypes
     Diagnostics

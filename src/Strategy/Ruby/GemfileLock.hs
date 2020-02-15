@@ -12,22 +12,20 @@ module Strategy.Ruby.GemfileLock
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-
-import           DepTypes
-import           Diagnostics
-import           Discovery.Walk
-import           Effect.LabeledGrapher
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Types
-import           Text.Megaparsec hiding (label)
-import           Text.Megaparsec.Char
+import DepTypes
+import Diagnostics
+import Discovery.Walk
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Types
+import Text.Megaparsec hiding (label)
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 discover :: Discover
@@ -36,7 +34,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has (Output ProjectClosure) sig m
+  , Has ReadFS sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   for_ files $ \f ->
     when (fileName f == "Gemfile.lock") $ do
@@ -71,7 +75,7 @@ newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSections file
 
 mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
@@ -123,7 +127,7 @@ buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
   traverse_ addSection sections
   where
-  addSection :: Member (LabeledGrapher GemfilePkg) r => Section -> Sem r ()
+  addSection :: Has (LabeledGrapher GemfilePkg) sig m => Section -> m ()
   addSection (DependencySection deps) = traverse_ (direct . GemfilePkg . directName) deps
   addSection (GitSection remote revision branch specs) =
     traverse_ (addSpec (GitRemote remote (revision <|> branch))) specs
@@ -133,7 +137,7 @@ buildGraph sections = run . withLabeling toDependency $
     traverse_ (addSpec (OtherRemote remote)) specs
   addSection UnknownSection{} = pure ()
 
-  addSpec :: Member (LabeledGrapher GemfilePkg) r => GemfileLabel -> Spec -> Sem r ()
+  addSpec :: Has (LabeledGrapher GemfilePkg) sig m => GemfileLabel -> Spec -> m ()
   addSpec remoteLabel spec = do
     let pkg = GemfilePkg (specName spec)
     -- add edges between spec and specdeps

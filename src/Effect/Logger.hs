@@ -1,8 +1,12 @@
-{-# language TemplateHaskell #-}
-
 module Effect.Logger
   ( Logger(..)
+  , LogMsg(..)
   , Severity(..)
+
+  , LoggerC(..)
+  , IgnoreLoggerC(..)
+  , runLogger
+  , ignoreLogger
 
   , log
   , logSticky
@@ -13,72 +17,72 @@ module Effect.Logger
   , logWarn
   , logError
 
-  , ignoreLogger
-  , loggerToIO
   , module Data.Text.Prettyprint.Doc
   , module Data.Text.Prettyprint.Doc.Render.Terminal
   ) where
 
 import Prologue
 
+import Control.Algebra
+import Control.Carrier.Reader
 import Control.Concurrent.Async (async, wait)
 import Control.Concurrent.STM (atomically, check, newTVarIO, readTVar, writeTVar)
-import Control.Concurrent.STM.TQueue (newTQueueIO, tryReadTQueue, writeTQueue)
+import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, tryReadTQueue, writeTQueue)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import Polysemy
 import System.IO (hSetBuffering, BufferMode(NoBuffering), stdout)
 
-data Logger m a where
-  Log       :: Severity -> Doc AnsiStyle -> Logger m ()
-  LogSticky :: Doc AnsiStyle -> Logger m ()
+data Logger m k
+  = Log LogMsg (m k)
+  deriving (Generic1)
 
-data Severity =
-    Trace
-  | Debug
-  | Info
-  | Warn
-  | Error
-  deriving (Eq, Ord, Show, Generic)
+data LogMsg
+  = LogNormal Severity (Doc AnsiStyle)
+  | LogSticky (Doc AnsiStyle)
+  deriving (Show, Generic)
 
-makeSem_ ''Logger
+instance HFunctor Logger
+instance Effect Logger
 
 -- | Log a message with the given severity
-log :: Member Logger r => Severity -> Doc AnsiStyle -> Sem r ()
+log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
+log severity logLine = send (Log (LogNormal severity logLine) (pure ()))
 
 -- | Log a "sticky" line -- a log line that sticks to the bottom of the terminal until cleared or overwritten by other sticky line.
 --
 -- NOTE: The 'Doc' must not contain newlines
-logSticky :: Member Logger r => Doc AnsiStyle -> Sem r ()
+logSticky :: Has Logger sig m => Doc AnsiStyle -> m ()
+logSticky logLine = send (Log (LogSticky logLine) (pure ()))
 
-logTrace :: Member Logger r => Doc AnsiStyle -> Sem r ()
-logTrace = log Trace
+data Severity =
+    SevTrace
+  | SevDebug
+  | SevInfo
+  | SevWarn
+  | SevError
+  deriving (Eq, Ord, Show, Generic)
 
-logDebug :: Member Logger r => Doc AnsiStyle -> Sem r ()
-logDebug = log Debug
+logTrace :: Has Logger sig m => Doc AnsiStyle -> m ()
+logTrace = log SevTrace
 
-logInfo :: Member Logger r => Doc AnsiStyle -> Sem r ()
-logInfo = log Info
+logDebug :: Has Logger sig m => Doc AnsiStyle -> m ()
+logDebug = log SevDebug
 
-logWarn :: Member Logger r => Doc AnsiStyle -> Sem r ()
-logWarn = log Warn
+logInfo :: Has Logger sig m => Doc AnsiStyle -> m ()
+logInfo = log SevInfo
 
-logError :: Member Logger r => Doc AnsiStyle -> Sem r ()
-logError = log Error
+logWarn :: Has Logger sig m => Doc AnsiStyle -> m ()
+logWarn = log SevWarn
 
-ignoreLogger :: Sem (Logger ': r) a -> Sem r a
-ignoreLogger = interpret $ \case
-  Log _ _ -> pure ()
-  LogSticky _ -> pure ()
-{-# INLINE ignoreLogger #-}
+logError :: Has Logger sig m => Doc AnsiStyle -> m ()
+logError = log SevError
 
--- | A thread-safe interpreter for the Logger effect
-loggerToIO :: Member (Embed IO) r => Severity -> Sem (Logger ': r) a -> Sem r a
-loggerToIO minSeverity act = do
-  queue <- embed (hSetBuffering stdout NoBuffering *> newTQueueIO @(Logger Void ()))
-  cancelVar <- embed (newTVarIO False)
+runLogger :: MonadIO m => Severity -> LoggerC m a -> m a
+runLogger minSeverity (LoggerC act) = do
+  queue <- liftIO (hSetBuffering stdout NoBuffering *> newTQueueIO @LogMsg)
+  cancelVar <- liftIO (newTVarIO False)
 
   let loop :: Text -> IO ()
       loop sticky = do
@@ -92,35 +96,52 @@ loggerToIO minSeverity act = do
               pure Nothing
 
         case maybeMsg of
-          Nothing -> pure () -- exit
+          Nothing -> pure ()
           Just msg -> do
             let stickyLen   = T.length sticky
                 clearSticky = TIO.putStr (T.replicate stickyLen "\b" <> T.replicate stickyLen " " <> T.replicate stickyLen "\b")
             case msg of
-              Log sev doc -> do
+              LogNormal sev logLine -> do
                 when (sev >= minSeverity) $ do
                   clearSticky
-                  printIt $ doc <> line
+                  printIt $ logLine <> line
                   TIO.putStr sticky
                 loop sticky
-              LogSticky doc -> do
+              LogSticky logLine -> do
                 clearSticky
-                let rendered = renderIt doc
+                let rendered = renderIt logLine
                 TIO.putStr rendered
                 loop rendered
 
-  tid <- embed $ async $ loop ""
+  res <- runReader queue act
 
-  result <- interpret (\case
-    Log sev text -> embed $ atomically $ writeTQueue queue (Log sev text)
-    LogSticky text -> embed $ atomically $ writeTQueue queue (LogSticky text)) act
+  tid <- liftIO $ async $ loop ""
+  liftIO $ do
+    atomically $ writeTVar cancelVar True
+    void (wait tid)
 
-  -- wait for log queue to flush, or async logging task to end
-  embed $ atomically $ writeTVar cancelVar True
-  embed $ void (wait tid)
+  pure res
 
-  pure result
-{-# INLINE loggerToIO #-}
+newtype LoggerC m a = LoggerC { runLoggerC :: ReaderC (TQueue LogMsg) m a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance (Algebra sig m, MonadIO m) => Algebra (Logger :+: sig) (LoggerC m) where
+  alg (L (Log msg k)) = do
+    queue <- LoggerC ask
+    liftIO $ atomically $ writeTQueue queue msg
+    k
+   
+  alg (R other) = LoggerC (alg (R (handleCoercible other)))
+
+newtype IgnoreLoggerC m a = IgnoreLoggerC { runIgnoreLoggerC :: m a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+ignoreLogger :: IgnoreLoggerC m a -> m a
+ignoreLogger = runIgnoreLoggerC
+
+instance (Algebra sig m, Effect sig) => Algebra (Logger :+: sig) (IgnoreLoggerC m) where
+  alg (L (Log _ k)) = k
+  alg (R other) = IgnoreLoggerC (alg (handleCoercible other))
 
 printIt :: Doc AnsiStyle -> IO ()
 printIt = renderIO stdout . layoutPretty defaultLayoutOptions

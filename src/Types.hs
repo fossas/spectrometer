@@ -11,16 +11,14 @@ module Types
   , ProjectDependencies(..)
   , Task(..)
   , TaskEffs
-  , forkTask
   ) where
 
 import Prologue
 
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-import Polysemy.Resource
-
+import Control.Algebra
+import Control.Effect.Error
+import Control.Effect.Lift
+import Control.Effect.Output
 import DepTypes
 import Effect.Exec
 import Effect.Logger
@@ -32,20 +30,28 @@ import Graphing
 
 data Task = Task
   { taskName :: Text
-  , taskRun  :: forall r. TaskEffs r => Sem r ()
+  , taskRun  :: forall sig m. TaskEffs sig m => m ()
   }
 
 -- | The effects available for use in Tasks
-type TaskEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output Task, Output ProjectClosure] r
-
-forkTask :: forall r r1. (TaskEffs r, Member (Output Task) r1) => Text -> Sem r () -> Sem r1 ()
-forkTask name act = output @Task (Task name act)
+type TaskEffs sig m =
+  ( Has (Lift IO) sig m
+  , MonadIO m
+  , Has Logger sig m
+  , Has Exec sig m
+  , Has (Error ExecErr) sig m
+  , Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Has (Output ProjectClosure) sig m
+  , Effect sig
+  )
+  -- Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output Task, Output ProjectClosure] r
 
 -- | Discover functions produce 'ConfiguredStrategy's, given a base directory
 -- to search
 data Discover = Discover
   { discoverName :: Text
-  , discoverFunc :: forall r. TaskEffs r => Path Abs Dir -> Sem r ()
+  , discoverFunc :: forall sig m. TaskEffs sig m => Path Abs Dir -> m ()
   }
 
 ---------- Strategies
