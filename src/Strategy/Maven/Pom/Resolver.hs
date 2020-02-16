@@ -1,4 +1,5 @@
 {-# language TemplateHaskell #-}
+
 module Strategy.Maven.Pom.Resolver
   ( GlobalClosure(..)
   , buildGlobalClosure

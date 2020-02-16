@@ -18,7 +18,7 @@ import Prologue
 import Control.Algebra
 import Control.Effect.Error
 import Control.Effect.Lift
-import Control.Effect.Output
+import Control.Effect.Writer
 import DepTypes
 import Effect.Exec
 import Effect.Logger
@@ -42,10 +42,10 @@ type TaskEffs sig m =
   , Has (Error ExecErr) sig m
   , Has ReadFS sig m
   , Has (Error ReadFSErr) sig m
-  , Has (Output ProjectClosure) sig m
+  , Has (Writer [ProjectClosure]) sig m
   , Effect sig
   )
-  -- Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output Task, Output ProjectClosure] r
+  -- Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output Task, Writer [ProjectClosure]] r
 
 -- | Discover functions produce 'ConfiguredStrategy's, given a base directory
 -- to search
@@ -79,7 +79,7 @@ data ProjectClosure = ProjectClosure
   , closureStrategyName  :: Text -- ^ e.g., "python-pipenv". This is temporary: ProjectClosures will eventually combine several strategies into one
   , closureModuleDir     :: Path Rel Dir -- ^ the relative module directory (for grouping with other strategies)
   , closureDependencies  :: ProjectDependencies
-  }
+  } deriving (Eq, Ord, Show, Generic)
 
 data ProjectDependencies = ProjectDependencies
   { dependenciesGraph    :: Graphing Dependency

@@ -189,4 +189,4 @@ instance (Algebra sig m, MonadIO m) => Algebra (ReadFS :+: sig) (ReadFSIOC m) wh
     -- NB: these never throw
     DoesFileExist file k -> k =<< PIO.doesFileExist file
     DoesDirExist dir k -> k =<< PIO.doesDirExist dir
-  alg (R other) = alg (R (handleCoercible other))
+  alg (R other) = ReadFSIOC (alg (handleCoercible other))

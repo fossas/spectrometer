@@ -8,6 +8,7 @@ import Prologue
 
 -- | Errors that can be produced by 'Discover' and 'Strategy'
 
+-- FIXME: remove?
 data CLIErr =
     CLIErrExec ExecErr -- ^ Command execution error
   | CLIErrReadFS ReadFSErr -- ^ Filesystem error

@@ -9,7 +9,7 @@ module Strategy.NuGet.ProjectJson
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Output.List
+import Control.Carrier.Writer.Strict
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Aeson.Types
@@ -29,7 +29,7 @@ discover = Discover
 
 discover' ::
   ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
+  , Has (Writer [ProjectClosure]) sig m
   , MonadIO m
   , Effect sig
   )
@@ -39,7 +39,7 @@ discover' = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+      traverse_ (tell @[ProjectClosure] . pure) res
 
   walkContinue
 

@@ -93,8 +93,6 @@ library
     App.Scan.GraphMangler
     App.Scan.Project
     App.Scan.ProjectInference
-    Control.Carrier.Output.List
-    Control.Effect.Output
     Control.Parallel
     DepTypes
     Diagnostics

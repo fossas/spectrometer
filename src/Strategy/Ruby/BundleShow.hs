@@ -11,7 +11,7 @@ module Strategy.Ruby.BundleShow
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Output.List
+import Control.Carrier.Writer.Strict
 import qualified Data.Map.Strict as M
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -30,7 +30,7 @@ discover = Discover
   }
 
 discover' ::
-  ( Has (Output ProjectClosure) sig m
+  ( Has (Writer [ProjectClosure]) sig m
   , Has Exec sig m
   , MonadIO m
   , Effect sig
@@ -41,7 +41,7 @@ discover' = walk $ \dir _ files -> do
     Nothing -> pure ()
     Just _  -> do
       res <- runError @ExecErr (analyze dir)
-      traverse_ output res
+      traverse_ (tell @[ProjectClosure] . pure) res
       pure ()
 
   walkContinue

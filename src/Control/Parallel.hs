@@ -130,7 +130,8 @@ runActions numThreads initial runAction reportProgress = do
   pure ()
 
 updateProgress :: MonadIO m => (Progress -> m ()) -> State any -> m ()
-updateProgress f st@State{..} = loop (Progress 0 0 0)
+updateProgress f st@State{..} = do
+  loop (Progress 0 0 0)
   where
   loop prev = join $ liftIO $ atomically $ stopWhenDone st $ do
     running <- readTVar stRunning

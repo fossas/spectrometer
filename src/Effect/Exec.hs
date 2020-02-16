@@ -98,13 +98,13 @@ execThrow dir cmd args = do
 {-# INLINE execThrow #-}
 
 runExecIO :: ExecIOC m a -> m a
-runExecIO = coerce
+runExecIO = runExecIOC
 
 newtype ExecIOC m a = ExecIOC { runExecIOC :: m a }
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
-  alg (R other) = alg (R (handleCoercible other))
+  alg (R other) = ExecIOC (alg (handleCoercible other))
 
   alg (L (Exec dir cmd args k)) = (k =<<) . ExecIOC $ liftIO $ do
     absolute <- makeAbsolute dir
@@ -130,4 +130,5 @@ instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
                 then pure (Left [CmdFailure cmdName exitcode stderr])
                 else pure (Right stdout)
             (_, Always) -> pure (Right stdout)
-    runExceptT $ asum (map runCmd (cmdNames cmd))
+    res <- runExceptT $ asum (map runCmd (cmdNames cmd))
+    pure res

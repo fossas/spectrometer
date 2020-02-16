@@ -11,7 +11,7 @@ import Prologue hiding (json)
 
 import Data.Aeson.Types (Parser, unexpected)
 import Control.Carrier.Error.Either
-import Control.Carrier.Output.List
+import Control.Carrier.Writer.Strict
 import Control.Effect.Exception
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
@@ -47,7 +47,7 @@ discover = Discover
 discover' ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
-  , Has (Output ProjectClosure) sig m
+  , Has (Writer [ProjectClosure]) sig m
   , MonadIO m
   , Effect sig
   )
@@ -57,7 +57,7 @@ discover' = walk $ \_ subdirs files -> do
     Nothing -> walkContinue
     Just file -> do
       res <- runError @ExecErr (analyze (parent file))
-      traverse_ output res
+      traverse_ (tell @[ProjectClosure] . pure) res
       walkSkipAll subdirs
 
 initScript :: ByteString

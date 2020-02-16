@@ -5,16 +5,14 @@ module App.Scan
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Effect.Exception as Exc
+import Control.Carrier.Lift
+import Control.Carrier.Writer.Strict
 import Control.Concurrent
-import Control.Exception (SomeException)
 import Data.Bool (bool)
 import qualified Data.Sequence as S
 import Path.IO
-import Polysemy
-import Polysemy.Async
-import Polysemy.Error
-import Polysemy.Output
-import Polysemy.Resource
 import System.Exit (die)
 
 import App.Scan.Project (mkProjects)
@@ -24,7 +22,6 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Diagnostics
 import Discovery
-import Effect.Error
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS hiding (doesDirExist)
@@ -36,24 +33,28 @@ scanMain basedir debug = do
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
   scan basedir
-    & loggerToIO (bool Info Debug debug)
-    & asyncToIOFinal
-    & resourceToIOFinal
-    & embedToFinal @IO
-    & runFinal
+    & runLogger (bool SevInfo SevDebug debug)
+    & runM
 
-scan :: Members '[Final IO, Embed IO, Resource, Async, Logger] r => Path Abs Dir -> Sem r ()
+scan ::
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 scan basedir = do
   setCurrentDir basedir
-  capabilities <- embed getNumCapabilities
+  capabilities <- liftIO getNumCapabilities
 
-  (results, ()) <- runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
-    & outputToIOMonoid S.singleton
+  () <- runActions capabilities (map ADiscover discoverFuncs) (runTask basedir) updateProgress
+    -- FIXME: async output
 
   logSticky "[ Combining Analyses ]"
 
-  let projects = mkProjects strategyGroups results
-  embed (encodeFile "analysis.json" projects)
+  --let projects = mkProjects strategyGroups (S.fromList results)
+  let projects = mkProjects strategyGroups (S.fromList [])
+  liftIO (encodeFile "analysis.json" projects)
 
   inferred <- inferProject basedir
   logInfo ""
@@ -62,9 +63,8 @@ scan basedir = do
 
   logSticky ""
 
-runAction = undefined
 {-
-runAction :: forall r. Members '[Final IO, Embed IO, Resource, Logger, Output ProjectClosure] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
+runAction :: forall r. Members '[Final IO, Embed IO, Resource, Logger, Writer [ProjectClosure]] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
 runAction basedir enqueue = \case
   ADiscover Discover{..} -> do
     let prettyName = fill 20 (annotate (colorDull Cyan) (pretty discoverName <> " "))
@@ -117,22 +117,31 @@ runAction basedir enqueue = \case
         output (CompletedStrategy strategyName (strategyModule opts) graph strategyOptimal strategyComplete)
 -}
 
-runTask :: forall r. Members '[Final IO, Embed IO, Resource, Logger, Output ProjectClosure] r => (Task -> Sem r ()) -> Task -> Sem r ()
-runTask enqueue = \case
-  Task name act -> do
+runTask ::
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  , MonadIO m
+  , Effect sig
+  )
+  -- => (Task -> m ()) -> Task -> m ()
+  => Path Abs Dir -> (Action -> m ()) -> Action -> m ()
+runTask dir _ = \case
+  ADiscover Discover{..} -> do
+  --Task name act -> do
     -- TODO: logging task names?
-    let prettyName = fill 20 (annotate (colorDull Cyan) (pretty name <> " "))
+    let prettyName = fill 20 (annotate (colorDull Cyan) (pretty discoverName <> " "))
+    -- let prettyName = fill 20 (annotate (colorDull Cyan) (pretty name <> " "))
     logDebug $ prettyName <> " starting task"
 
-    result <- act
-      & readFSToIO
-      & readFSErrToCLIErr
-      & execToIO
-      & execErrToCLIErr
-      & errorToIOFinal @CLIErr
-      & fromExceptionSem @SomeException
-      & errorToIOFinal @SomeException
-      & runOutputSem @Task enqueue
+    (closures, result) <- discoverFunc dir
+      & runReadFSIO
+      & runExecIO
+      & runError @ReadFSErr
+      & runError @ExecErr
+      -- FIXME: catch SomeException again
+      -- & fromExceptionSem @SomeException
+      -- FIXME: async && pass upward
+      & runWriter @[ProjectClosure]
 
     case result of
       Left someException -> do
@@ -144,7 +153,7 @@ runTask enqueue = \case
       Right (Right ()) -> do
         logInfo $ prettyName <> " " <> annotate (color Green) "Analyzed"
 
-updateProgress :: Member Logger r => Progress -> Sem r ()
+updateProgress :: Has Logger sig m => Progress -> m ()
 updateProgress Progress{..} =
   logSticky ( "[ "
             <> annotate (color Cyan) (pretty pQueued)

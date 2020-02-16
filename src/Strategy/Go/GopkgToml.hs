@@ -12,7 +12,7 @@ module Strategy.Go.GopkgToml
 import Prologue hiding ((.=), empty)
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Output.List
+import Control.Carrier.Writer.Strict
 import qualified Data.Map.Strict as M
 import Toml (TomlCodec, (.=))
 import qualified Toml
@@ -37,7 +37,7 @@ discover = Discover
 discover' ::
   ( Has ReadFS sig m
   , Has Exec sig m
-  , Has (Output ProjectClosure) sig m
+  , Has (Writer [ProjectClosure]) sig m
   , MonadIO m
   , Effect sig
   )
@@ -47,7 +47,7 @@ discover' = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+      traverse_ (tell @[ProjectClosure] . pure) res
 
   walkContinue
 

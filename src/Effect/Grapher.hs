@@ -1,5 +1,3 @@
-{-# language TemplateHaskell #-}
-
 -- | Grapher is a thin State wrapper effect around 'G.Graphing'
 --
 -- It defines @direct@ and @edge@ combinators analagous to 'G.direct' and

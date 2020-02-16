@@ -113,9 +113,11 @@ runLogger minSeverity (LoggerC act) = do
                 TIO.putStr rendered
                 loop rendered
 
-  res <- runReader queue act
 
   tid <- liftIO $ async $ loop ""
+
+  res <- runReader queue act
+
   liftIO $ do
     atomically $ writeTVar cancelVar True
     void (wait tid)

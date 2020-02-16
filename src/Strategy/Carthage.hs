@@ -11,7 +11,7 @@ import qualified Prelude as Unsafe
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Output.List
+import Control.Carrier.Writer.Strict
 import Data.Char (isSpace)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -35,7 +35,7 @@ discover = Discover
 
 discover' ::
   ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
+  , Has (Writer [ProjectClosure]) sig m
   , MonadIO m
   , Effect sig
   )
@@ -45,7 +45,7 @@ discover' = walk $ \_ subdirs files ->
     Nothing -> walkContinue
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+      traverse_ (tell @[ProjectClosure] . pure) res
       walkSkipAll subdirs
 
 mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosure
