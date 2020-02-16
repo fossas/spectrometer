@@ -10,11 +10,9 @@ module Strategy.Node.NpmLock
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-
 import Diagnostics
 import DepTypes
 import Discovery.Walk
@@ -29,7 +27,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package-lock.json") files of
     Nothing -> pure ()
@@ -67,7 +71,7 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsJson @NpmPackageJson file
 
 mkProjectClosure :: Path Rel File -> NpmPackageJson -> ProjectClosure
@@ -101,10 +105,10 @@ buildGraph packageJson = run . withLabeling toDependency $ do
   pure ()
 
   where
-  addDirect :: Member (LabeledGrapher NpmPackage) r => Text -> NpmDep -> Sem r ()
+  addDirect :: Has (LabeledGrapher NpmPackage) sig m => Text -> NpmDep -> m ()
   addDirect name NpmDep{depVersion} = direct (NpmPackage name depVersion)
 
-  addDep :: Member (LabeledGrapher NpmPackage) r => Text -> NpmDep -> Sem r ()
+  addDep :: Has (LabeledGrapher NpmPackage) sig m => Text -> NpmDep -> m ()
   addDep name NpmDep{..} = do
     let pkg = NpmPackage name depVersion
 

@@ -6,12 +6,10 @@ module Strategy.Maven.PluginStrategy
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
+import Control.Effect.Exception
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-import Polysemy.Resource
-
 import DepTypes
 import Diagnostics
 import Discovery.Walk
@@ -28,7 +26,15 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: forall r. Members '[Embed IO, Resource, Exec, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "pom.xml") files of
     Nothing -> walkContinue
@@ -39,7 +45,15 @@ discover' = walk $ \_ subdirs files -> do
         _ -> pure ()
       walkSkipAll subdirs
 
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r => Path Rel Dir -> Sem r ProjectClosure
+analyze ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Has Exec sig m
+  , Has (Error ExecErr) sig m
+  , MonadIO m
+  )
+  => Path Rel Dir -> m ProjectClosure
 analyze dir = withUnpackedPlugin $ \filepath -> do
   installPlugin dir filepath
   execPlugin dir
@@ -83,7 +97,7 @@ buildGraph PluginOutput{..} = run $ evalGrapher $ do
       [("optional", ["true"]) | artifactOptional]
     }
 
-  visitEdge :: Member (Grapher Dependency) r => Map Int Dependency -> Edge -> Sem r ()
+  visitEdge :: Has (Grapher Dependency) sig m => Map Int Dependency -> Edge -> m ()
   visitEdge refsByNumeric Edge{..} = do
     let refs = do
           parentRef <- M.lookup edgeFrom refsByNumeric

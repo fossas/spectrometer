@@ -8,18 +8,15 @@ module Strategy.Go.GoList
 
 import Prologue hiding ((<?>))
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.ByteString.Lazy as BL
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-
 import DepTypes
 import Diagnostics
 import Discovery.Walk
-import qualified Effect.Error as E
 import Effect.Exec
 import Effect.LabeledGrapher
 import Graphing (Graphing)
@@ -33,7 +30,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has Exec sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
@@ -55,7 +58,12 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Error ExecErr, Exec] r => Path Rel Dir -> Sem r ProjectClosure
+analyze ::
+  ( Has Exec sig m
+  , Has (Error ExecErr) sig m
+  , Effect sig
+  )
+  => Path Rel Dir -> m ProjectClosure
 analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
   stdout <- execThrow dir golistCmd []
 
@@ -71,8 +79,11 @@ analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
   buildGraph requires
 
   -- TODO: diagnostics?
-  _ <- E.try @ExecErr (fillInTransitive dir)
+  _ <- try @ExecErr (fillInTransitive dir)
   pure ()
+
+try :: Has (Error e) sig m => m a -> m (Either e a)
+try act = (Right <$> act) `catchError` (pure . Left)
 
 mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosure
 mkProjectClosure dir graph = ProjectClosure
@@ -88,11 +99,11 @@ mkProjectClosure dir graph = ProjectClosure
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Member (LabeledGrapher GolangPackage) r => [Require] -> Sem r ()
+buildGraph :: Has (LabeledGrapher GolangPackage) sig m => [Require] -> m ()
 buildGraph = traverse_ go
   where
 
-  go :: Member (LabeledGrapher GolangPackage) r => Require -> Sem r ()
+  go :: Has (LabeledGrapher GolangPackage) sig m => Require -> m ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
     direct pkg

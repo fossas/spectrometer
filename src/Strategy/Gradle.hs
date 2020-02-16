@@ -10,6 +10,9 @@ module Strategy.Gradle
 import Prologue hiding (json)
 
 import Data.Aeson.Types (Parser, unexpected)
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
+import Control.Effect.Exception
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.FileEmbed (embedFile)
@@ -18,10 +21,6 @@ import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-import Polysemy.Resource
 import qualified System.FilePath as FP
 
 import DepTypes
@@ -45,7 +44,14 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: forall r. Members '[Embed IO, Resource, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "build.gradle") files of
     Nothing -> walkContinue
@@ -57,17 +63,23 @@ discover' = walk $ \_ subdirs files -> do
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
 
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr] r => Path Rel Dir -> Sem r ProjectClosure
+analyze ::
+  ( Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has (Error ExecErr) sig m
+  , MonadIO m
+  )
+  => Path Rel Dir -> m ProjectClosure
 analyze dir =
-  bracket (embed @IO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
-          (embed @IO . removeDirRecur)
+  bracket (liftIO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
+          (liftIO . removeDirRecur)
           act
 
   where
 
   act tmpDir = do
     let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
-    embed (BS.writeFile initScriptFilepath initScript)
+    liftIO (BS.writeFile initScriptFilepath initScript)
     stdout <- execThrow dir gradleJsonDepsCmd [initScriptFilepath]
 
     let text = decodeUtf8 $ BL.toStrict stdout
@@ -110,7 +122,7 @@ buildGraph :: Map Text [JsonDep] -> Graphing Dependency
 buildGraph mapping = run . evalGrapher $ M.traverseWithKey addProject mapping
   where
   -- add top-level projects from the output
-  addProject :: Member (Grapher Dependency) r => Text -> [JsonDep] -> Sem r ()
+  addProject :: Has (Grapher Dependency) sig m => Text -> [JsonDep] -> m ()
   addProject projName projDeps = do
     let projAsDep = projectToDep projName
     direct projAsDep
@@ -119,7 +131,7 @@ buildGraph mapping = run . evalGrapher $ M.traverseWithKey addProject mapping
       mkRecursiveEdges dep
 
   -- build edges between deps, recursively
-  mkRecursiveEdges :: Member (Grapher Dependency) r => JsonDep -> Sem r ()
+  mkRecursiveEdges :: Has (Grapher Dependency) sig m => JsonDep -> m ()
   mkRecursiveEdges (ProjectDep _) = pure ()
   mkRecursiveEdges jsondep@(PackageDep _ _ deps) = do
     let packageAsDep = jsonDepToDep jsondep

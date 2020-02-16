@@ -7,11 +7,9 @@ module Strategy.Node.PackageJson
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-
 import Diagnostics
 import DepTypes
 import Discovery.Walk
@@ -26,7 +24,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
@@ -46,7 +50,7 @@ instance FromJSON PackageJson where
     PackageJson <$> obj .:? "dependencies"    .!= M.empty
                 <*> obj .:? "devDependencies" .!= M.empty
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsJson @PackageJson file
 
 mkProjectClosure :: Path Rel File -> PackageJson -> ProjectClosure
@@ -82,7 +86,7 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
 
   where
 
-  addDep :: Member (LabeledGrapher NodePackage) r => Text -> Text -> Text -> Sem r ()
+  addDep :: Has (LabeledGrapher NodePackage) sig m => Text -> Text -> Text -> m ()
   addDep env name constraint = do
     let pkg = NodePackage name constraint
     direct pkg

@@ -5,12 +5,11 @@ module Strategy.Maven.Pom
 import Prologue
 
 import qualified Algebra.Graph.AdjacencyMap as AM
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Output
-
 import DepTypes
 import Effect.LabeledGrapher
 import Effect.ReadFS
@@ -30,7 +29,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: forall r. Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' dir = do
   (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
   traverse_ (output . mkProjectClosure) mvnClosures
@@ -89,7 +94,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
   direct (coordToPackage (closureRootCoord closure))
   go (closureRootCoord closure) (closureRootPom closure)
   where
-  go :: Member (LabeledGrapher MavenPackage) r => MavenCoordinate -> Pom -> Sem r ()
+  go :: Has (LabeledGrapher MavenPackage) sig m => MavenCoordinate -> Pom -> m ()
   go coord incompletePom = do
     _ <- M.traverseWithKey addDep deps
     for_ childPoms $ \(childCoord,childPom) -> do
@@ -109,7 +114,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
     deps :: Map (Group,Artifact) MvnDepBody
     deps = reifyDeps completePom
 
-    addDep :: Member (LabeledGrapher MavenPackage) r => (Group,Artifact) -> MvnDepBody -> Sem r ()
+    addDep :: Has (LabeledGrapher MavenPackage) sig m => (Group,Artifact) -> MvnDepBody -> m ()
     addDep (group,artifact) body = do
       let interpolatedVersion = naiveInterpolate (pomProperties completePom) <$> depVersion body
           depPackage = MavenPackage group artifact interpolatedVersion
@@ -129,8 +134,7 @@ reifyDeps pom = M.mapWithKey overlayDepManagement (pomDependencies pom)
   overlayDepManagement :: (Group,Artifact) -> MvnDepBody -> MvnDepBody
   overlayDepManagement key body = maybe body (body <>) (M.lookup key (pomDependencyManagement pom))
 
--- TODO: make toppom's dependencies direct rather than toppom?
--- naively interpolate properties into a Text. This only interpolates Text that
+-- Naively interpolate properties into a Text. This only interpolates Text that
 -- starts with "${" and ends with "}", e.g.,
 --     "${myproperty}"
 -- will interpolate the value of "myproperty", but

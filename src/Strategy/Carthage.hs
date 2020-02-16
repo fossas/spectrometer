@@ -10,12 +10,11 @@ module Strategy.Carthage
 import qualified Prelude as Unsafe
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import Data.Char (isSpace)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -34,7 +33,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files ->
   case find (\f -> fileName f == "Cartfile.resolved") files of
     Nothing -> walkContinue
@@ -60,7 +65,12 @@ mkProjectClosure file graph = ProjectClosure
 relCheckoutsDir :: Path Rel File -> Path Rel Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze ::
+  ( Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Effect sig
+  )
+  => Path Rel File -> m ProjectClosure
 analyze topPath = fmap (mkProjectClosure topPath) . evalGrapher $ do
   -- We only care about top-level resolved cartfile errors
   topEntries <- fromEither =<< analyzeSingle topPath
@@ -71,9 +81,12 @@ analyze topPath = fmap (mkProjectClosure topPath) . evalGrapher $ do
 
   where
 
-  analyzeSingle :: Members '[ReadFS, Grapher ResolvedEntry] r
-                => Path Rel File
-                -> Sem r (Either ReadFSErr [ResolvedEntry])
+  analyzeSingle ::
+    ( Has ReadFS sig m
+    , Has (Grapher ResolvedEntry) sig m
+    , Effect sig
+    )
+    => Path Rel File -> m (Either ReadFSErr [ResolvedEntry])
   analyzeSingle path = do
     maybeEntries :: Either ReadFSErr [ResolvedEntry] <- readContentsParser' resolvedCartfileParser path
 
@@ -81,10 +94,12 @@ analyze topPath = fmap (mkProjectClosure topPath) . evalGrapher $ do
       traverse_ (descend (relCheckoutsDir path)) entries
       pure entries
 
-  descend :: Members '[ReadFS, Grapher ResolvedEntry] r
-          => Path Rel Dir -- Checkouts directory
-          -> ResolvedEntry
-          -> Sem r ()
+  descend ::
+    ( Has ReadFS sig m
+    , Has (Grapher ResolvedEntry) sig m
+    , Effect sig
+    )
+    => Path Rel Dir {- checkouts directory -} -> ResolvedEntry -> m ()
   descend checkoutsDir entry = do
     let checkoutName = T.unpack $ entryToCheckoutName entry
 

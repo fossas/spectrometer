@@ -10,12 +10,8 @@ module Strategy.Go.GopkgLock
 
 import Prologue hiding ((.=))
 
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-import Toml (TomlCodec, (.=))
-import qualified Toml
-
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import DepTypes
 import Diagnostics
 import Discovery.Walk
@@ -25,6 +21,8 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
+import qualified Toml
+import Toml (TomlCodec, (.=))
 import Types
 
 discover :: Discover
@@ -33,7 +31,14 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Exec, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.lock") files of
     Nothing -> pure ()
@@ -63,11 +68,17 @@ data Project = Project
   , projectRevision :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[Exec, ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze ::
+  ( Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Has Exec sig m
+  , Effect sig
+  )
+  => Path Rel File -> m ProjectClosure
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   contents <- readContentsText file
   case Toml.decode golockCodec contents of
-    Left err -> throw (FileParseError (fromRelFile file) (Toml.prettyException err))
+    Left err -> throwError (FileParseError (fromRelFile file) (Toml.prettyException err))
     Right golock -> do
       buildGraph (lockProjects golock)
 
@@ -89,10 +100,10 @@ mkProjectClosure file graph = ProjectClosure
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Member (LabeledGrapher GolangPackage) r => [Project] -> Sem r ()
+buildGraph :: Has (LabeledGrapher GolangPackage) sig m => [Project] -> m ()
 buildGraph = void . traverse_ go
   where
-  go :: Member (LabeledGrapher GolangPackage) r => Project -> Sem r ()
+  go :: Has (LabeledGrapher GolangPackage) sig m => Project -> m ()
   go Project{..} = do
     let pkg = mkGolangPackage projectName
 

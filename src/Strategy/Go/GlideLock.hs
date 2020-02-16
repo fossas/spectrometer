@@ -11,12 +11,10 @@ module Strategy.Go.GlideLock
 
 import Prologue hiding ((.=))
 
+import Control.Carrier.Error.Either
+import Control.Carrier.Output.List
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-
 import DepTypes
 import Diagnostics
 import Discovery.Walk
@@ -30,7 +28,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' :: Members '[Embed IO, ReadFS, Output ProjectClosure] r => Path Abs Dir -> Sem r ()
+discover' ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "glide.lock") files of
     Nothing -> pure ()
@@ -40,7 +44,11 @@ discover' = walk $ \_ _ files -> do
 
   walkContinue
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => Path Rel File -> Sem r ProjectClosure
+analyze ::
+  ( Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  )
+  => Path Rel File -> m ProjectClosure
 analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file
 
 mkProjectClosure :: Path Rel File -> GlideLockfile -> ProjectClosure
