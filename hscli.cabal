@@ -94,6 +94,10 @@ library
     App.Scan.GraphMangler
     App.Scan.Project
     App.Scan.ProjectInference
+    Control.Carrier.Output.IO
+    Control.Carrier.Threaded
+    Control.Effect.Output
+    Control.Effect.Threaded
     Control.Parallel
     DepTypes
     Diagnostics

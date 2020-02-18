@@ -1,6 +1,11 @@
 module Control.Effect.Threaded
   ( Threaded(..)
   , Handle(..)
+
+  , fork
+  , kill
+  , wait
+
   , module X
   ) where
 
@@ -24,6 +29,15 @@ instance Effect Threaded where
   thread ctx handler (Fork m k) = Fork (handler (m <$ ctx)) (handler . (<$ ctx) . k)
   thread ctx handler (Kill h k) = Kill h (handler (k <$ ctx))
   thread ctx handler (Wait h k) = Wait h (handler (k <$ ctx))
+
+fork :: Has Threaded sig m => m a -> m Handle
+fork act = send (Fork act pure)
+
+kill :: Has Threaded sig m => Handle -> m ()
+kill h = send (Kill h (pure ()))
+
+wait :: Has Threaded sig m => Handle -> m ()
+wait h = send (Wait h (pure ()))
 
 data Handle = Handle
   { handleTid  :: Conc.ThreadId

@@ -18,8 +18,8 @@ import Prologue
 import Control.Algebra
 import Control.Effect.Error
 import Control.Effect.Lift
+import Control.Effect.Output
 import Control.Effect.Threaded
-import Control.Effect.Writer
 import DepTypes
 import Effect.Exec
 import Effect.Logger
@@ -44,7 +44,7 @@ type TaskEffs sig m =
   , Has (Error ExecErr) sig m
   , Has ReadFS sig m
   , Has (Error ReadFSErr) sig m
-  , Has (Writer [ProjectClosure]) sig m
+  , Has (Output ProjectClosure) sig m
   , Effect sig
   )
   -- Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output Task, Writer [ProjectClosure]] r
