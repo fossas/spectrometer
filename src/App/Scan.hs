@@ -7,7 +7,6 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import Control.Effect.Exception as Exc
-import Control.Carrier.Lift
 import Control.Carrier.Writer.Strict
 import Control.Concurrent
 import Data.Bool (bool)
@@ -17,6 +16,7 @@ import System.Exit (die)
 
 import App.Scan.Project (mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
+import Control.Carrier.Threaded
 import Control.Parallel
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -34,11 +34,12 @@ scanMain basedir debug = do
 
   scan basedir
     & runLogger (bool SevInfo SevDebug debug)
-    & runM
+    & runThreaded
 
 scan ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Threaded sig m
   , MonadIO m
   , Effect sig
   )
@@ -120,6 +121,7 @@ runAction basedir enqueue = \case
 runTask ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Threaded sig m
   , MonadIO m
   , Effect sig
   )

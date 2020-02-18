@@ -5,10 +5,11 @@ module Control.Parallel
 
 import Prologue
 
+import Control.Algebra
 import Control.Carrier.Lift
 import qualified Control.Concurrent as CC
-import Control.Concurrent.STM
 import Control.Effect.Exception
+import Control.Concurrent.STM
 -- import Polysemy
 -- import Polysemy.Final
 -- import Polysemy.Async
@@ -17,6 +18,116 @@ import Control.Effect.Exception
 -- import Polysemy.Resource
 -- import qualified Polysemy.State as S
 
+
+{-
+instance Effect Parallel where
+  thread ctx handler (Fork name m k) = Fork name (handler (m <$ ctx)) (handler (k <$ ctx))
+
+newtype ParallelC m a = ParallelC { runParallelC :: ReaderC (TVar [m ()]) m a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+runParallel :: TVar [m ()] -> ParallelC m a -> m a
+runParallel var = runReader var . runParallelC
+
+something :: (Has (Lift IO) sig m, MonadIO m)
+           => Int -- number of threads
+           -> [ParallelC m ()] -- initial actions
+           -> (Progress -> m ()) -- get progress updates
+           -> m ()
+something numThreads actions progress = runActions' numThreads actions progress
+
+-- | Run arbitrary actions in parallel, given:
+--
+-- - @numThreads@ - The number of worker threads to run
+-- - @initial@ - The initial list of actions
+-- - @runAction@ - A function that runs an action, which can itself enqueue more actions
+--   via the @enqueue@ function provided as an argument
+-- - A function that can be used to report 'Progress'
+--
+-- All tasks will complete before this returns.
+runActions' :: (Has (Lift IO) sig m, MonadIO m)
+           => Int -- number of threads
+           -> [ParallelC m ()] -- initial actions
+           -- -> ((action -> m ()) -> action -> m ()) -- given an action to enqueue more actions, run an action
+           -> (Progress -> m ()) -- get progress updates
+           -> m ()
+runActions' numThreads initial reportProgress = do
+  state <- liftIO $
+    State <$> newTVarIO []
+          <*> newTVarIO 0
+          <*> newTVarIO 0
+
+  -- TODO: clean up threads
+  -- _ <- forkIO $ updateProgress reportProgress state
+
+  let enqueue action = liftIO $ atomically $ modifyTVar (stQueued state) (action:)
+  initial' <- traverse (runParallel (stQueued state)) initial
+  traverse_ enqueue initial'
+
+  if numThreads > 1
+    then do
+      replicateM_ numThreads (forkIO (worker' state))
+
+      -- wait for queued and running tasks to end
+      liftIO $ atomically $ do
+        queued  <- readTVar (stQueued state)
+        check (null queued)
+        running <- readTVar (stRunning state)
+        check (running == 0)
+
+    else worker state
+
+  pure ()
+
+updateProgress' :: MonadIO m => (Progress -> m ()) -> State any -> m ()
+updateProgress' f st@State{..} = do
+  loop (Progress 0 0 0)
+  where
+  loop prev = join $ liftIO $ atomically $ stopWhenDone' st $ do
+    running <- readTVar stRunning
+    queued <- length <$> readTVar stQueued
+    completed <- readTVar stCompleted
+
+    let new = Progress running queued completed
+
+    check (prev /= new)
+
+    pure $ f new *> loop new
+
+stopWhenDone' :: Applicative m => State any -> STM (m ()) -> STM (m ())
+stopWhenDone' State{..} act = do
+  queued <- readTVar stQueued
+  case queued of
+    [] -> do
+      running <- readTVar stRunning
+      if running == 0
+        then pure (pure ())
+        else act
+    _ -> act
+
+worker' :: (MonadIO m, Has (Lift IO) sig m) => State (m ()) -> m ()
+worker' st@State{..} = loop
+  where
+
+  loop = join $ liftIO $ atomically $ stopWhenDone' st $ do
+    queued <- readTVar stQueued
+    case queued of
+      [] -> retry
+      (x:xs) -> do
+        writeTVar stQueued xs
+        addRunning
+        pure $ x `finally` (complete *> loop)
+
+  addRunning :: STM ()
+  addRunning = modifyTVar stRunning (+1)
+
+  complete :: MonadIO m => m ()
+  complete = liftIO $ atomically $ modifyTVar stRunning (subtract 1) *> modifyTVar stCompleted (+1)
+
+-- withParallel :: MonadIO m => ParallelC m a -> m a
+-- withParallel = undefined
+
+-}
 {-
 data Parallel m a where
   Fork :: Text -> m () -> Parallel m ()

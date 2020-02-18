@@ -18,6 +18,7 @@ import Prologue
 import Control.Algebra
 import Control.Effect.Error
 import Control.Effect.Lift
+import Control.Effect.Threaded
 import Control.Effect.Writer
 import DepTypes
 import Effect.Exec
@@ -36,6 +37,7 @@ data Task = Task
 -- | The effects available for use in Tasks
 type TaskEffs sig m =
   ( Has (Lift IO) sig m
+  , Has Threaded sig m
   , MonadIO m
   , Has Logger sig m
   , Has Exec sig m
