@@ -150,8 +150,7 @@ executable hscli
   hs-source-dirs: app
   build-depends:  hscli
   ghc-options:
-    -flate-specialise -fspecialize-aggressively -O -threaded
-    -with-rtsopts=-N
+    -threaded -with-rtsopts=-N
 
 test-suite tests
   import:             lang

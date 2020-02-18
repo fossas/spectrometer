@@ -6,7 +6,7 @@ module Control.Parallel
 import Prologue
 
 import Control.Carrier.Lift
-import qualified Control.Concurrent.Async as Async
+import qualified Control.Concurrent as CC
 import Control.Concurrent.STM
 import Control.Effect.Exception
 -- import Polysemy
@@ -85,9 +85,8 @@ data Progress = Progress
   , pCompleted :: Int
   } deriving (Eq, Ord, Show, Generic)
 
--- TODO: just define MonadUnliftIO?
-asyncLiftIO :: Has (Lift IO) sig m => m () -> m ()
-asyncLiftIO act = liftWith @IO $ \ctx runIt -> ctx <$ Async.async (runIt (act <$ ctx))
+forkIO :: Has (Lift IO) sig m => m a -> m CC.ThreadId
+forkIO act = liftWith @IO $ \ctx runIt -> (<$ ctx) <$> CC.forkIO (void (runIt (act <$ ctx)))
 
 -- | Run arbitrary actions in parallel, given:
 --
@@ -110,13 +109,14 @@ runActions numThreads initial runAction reportProgress = do
           <*> newTVarIO 0
           <*> newTVarIO 0
 
-  _ <- asyncLiftIO $ updateProgress reportProgress state
+  -- TODO: clean up threads
+  _ <- forkIO $ updateProgress reportProgress state
 
   let enqueue action = liftIO $ atomically $ modifyTVar (stQueued state) (action:)
 
   if numThreads > 1
     then do
-      replicateM_ numThreads (asyncLiftIO (worker (runAction enqueue) state))
+      replicateM_ numThreads (forkIO (worker (runAction enqueue) state))
 
       -- wait for queued and running tasks to end
       liftIO $ atomically $ do
