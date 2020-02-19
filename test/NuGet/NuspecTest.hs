@@ -12,8 +12,6 @@ import qualified Data.Text.IO as TIO
 import DepTypes
 import GraphUtil
 import Parse.XML
-import Polysemy
-import Polysemy.Input
 import Strategy.NuGet.Nuspec
 import Test.Tasty.Hspec
 
@@ -67,7 +65,7 @@ spec_analyze = do
         Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
-          let graph = analyze & runInputConst nuspec & run
+          let graph = buildGraph nuspec
           expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
           expectEdges [] graph

@@ -6,6 +6,8 @@ module Strategy.Go.GopkgToml
 
   , analyze
   , buildGraph
+
+  , gopkgCodec
   )
   where
 

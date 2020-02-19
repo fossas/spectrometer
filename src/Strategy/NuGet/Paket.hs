@@ -2,6 +2,7 @@ module Strategy.NuGet.Paket
   ( discover
   , analyze
   , findSections
+  , buildGraph
 
   , PaketDep(..)
   , Section(..)

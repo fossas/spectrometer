@@ -2,9 +2,11 @@ module Strategy.Go.GopkgLock
   ( discover
   , analyze
 
+  , GoLock(..)
   , Project(..)
 
   , buildGraph
+  , golockCodec
   )
   where
 

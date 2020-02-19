@@ -37,7 +37,7 @@ discover' = walk $ \_ subdirs files ->
   case find (\f -> fileName f == "Cartfile.resolved") files of
     Nothing -> walkContinue
     Just file -> do
-      runSimpleStrategy "carthage-lock" CarthageGroup $ analyze file
+      runSimpleStrategy "carthage-lock" CarthageGroup $ fmap (mkProjectClosure file) (analyze file)
       walkSkipAll subdirs
 
 mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosure
@@ -62,8 +62,8 @@ analyze ::
   , Has (Error ReadFSErr) sig m
   , Effect sig
   )
-  => Path Rel File -> m ProjectClosure
-analyze topPath = fmap (mkProjectClosure topPath) . evalGrapher $ do
+  => Path Rel File -> m (G.Graphing ResolvedEntry)
+analyze topPath = evalGrapher $ do
   -- We only care about top-level resolved cartfile errors
   topEntries <- fromEither =<< analyzeSingle topPath
 

@@ -3,6 +3,7 @@ module Strategy.Ruby.GemfileLock
   ( discover
   , analyze
   , findSections
+  , buildGraph
 
   , Spec(..)
   , SpecDep(..)
