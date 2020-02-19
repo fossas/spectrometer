@@ -8,7 +8,6 @@ module Types
   , Complete(..)
 
   , ProjectDependencies(..)
-  , Task(..)
   , TaskEffs
 
   , HasDiscover
@@ -71,11 +70,6 @@ runStrategy _ _ act = forkTask $ do
       Right (Right (Right ())) -> pure ()
 
 type TaskC m a = ExecIOC (ReadFSIOC (ErrorC ExecErr (ErrorC ReadFSErr m))) a
-
-data Task = Task
-  { taskName :: Text
-  , taskRun  :: forall sig m. TaskEffs sig m => m ()
-  }
 
 type HasDiscover sig m = (Has (Lift IO :+: Output ProjectClosure :+: TaskPool) sig m, MonadIO m, Effect sig)
 
