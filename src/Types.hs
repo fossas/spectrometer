@@ -20,8 +20,8 @@ module Types
 import Prologue
 
 import Control.Algebra
-import Control.Parallel
 import Control.Carrier.Error.Either
+import Control.Carrier.TaskPool
 import Control.Effect.Exception
 import Control.Effect.Output
 import DepTypes
@@ -34,11 +34,11 @@ import Graphing
 
 runSimpleStrategy ::
   ( Has (Lift IO) sig m
-  , Has Parallel sig m
+  , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m
   )
   => Text -> StrategyGroup' -> TaskC m ProjectClosure -> m ()
-runSimpleStrategy _ _ act = par $ do
+runSimpleStrategy _ _ act = forkTask $ do
   let runIt = runError @ReadFSErr
             . runError @ExecErr
             . runReadFSIO
@@ -54,10 +54,10 @@ runSimpleStrategy _ _ act = par $ do
 
 runStrategy ::
   ( Has (Lift IO) sig m
-  , Has Parallel sig m
+  , Has TaskPool sig m
   )
   => Text -> StrategyGroup' -> TaskC m () -> m ()
-runStrategy _ _ act = par $ do
+runStrategy _ _ act = forkTask $ do
   let runIt = runError @ReadFSErr
             . runError @ExecErr
             . runReadFSIO
@@ -78,13 +78,13 @@ data Task = Task
   , taskRun  :: forall sig m. TaskEffs sig m => m ()
   }
 
-type HasDiscover sig m = (Has (Lift IO :+: Output ProjectClosure :+: Parallel) sig m, MonadIO m, Effect sig)
+type HasDiscover sig m = (Has (Lift IO :+: Output ProjectClosure :+: TaskPool) sig m, MonadIO m, Effect sig)
 
 -- | The effects available for use in Tasks
 type TaskEffs sig m =
   ( Has (Lift IO) sig m
   , Has Logger sig m
-  , Has Parallel sig m
+  , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m
   , MonadIO m
   , Effect sig

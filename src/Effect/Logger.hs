@@ -81,7 +81,6 @@ logError = log SevError
 withLogger :: MonadIO m => Severity -> LoggerC m a -> m a
 withLogger minSeverity (LoggerC act) = do
   isTerminal <- liftIO $ hIsTerminalDevice stderr
-  --let logger = bool rawLogger rawLogger isTerminal
   let logger = bool rawLogger termLogger isTerminal
   queue <- liftIO (hSetBuffering stderr NoBuffering *> newTMQueueIO @LogMsg)
 

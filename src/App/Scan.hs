@@ -15,8 +15,8 @@ import System.Exit (die)
 
 import App.Scan.Project (mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
+import Control.Carrier.TaskPool
 import Control.Carrier.Threaded
-import Control.Parallel
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery
@@ -47,7 +47,7 @@ scan basedir = do
   let runIt discover = discoverFunc discover basedir
 
   (closures,()) <- runOutput @ProjectClosure $
-    runActions capabilities (map runIt discoverFuncs) updateProgress
+    withTaskPool capabilities updateProgress (traverse_ runIt discoverFuncs)
 
   logSticky "[ Combining Analyses ]"
 

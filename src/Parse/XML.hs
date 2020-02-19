@@ -47,11 +47,7 @@ instance FromXML v => FromXML (M.Map T.Text v) where
       value <- parseElement e
       pure (key, value)
 
--- NonDet and Fail are required for Alternative/MonadFail/MonadPlus instances.
--- We interpret in terms of `Error`, where non-throwing branches are returned.
---newtype Parser a = Parser { unParser :: Sem '[Reader ParsePath, NonDet, Error ParseError] a }
 newtype Parser a = Parser { unParser :: ReaderC ParsePath (ErrorC ParseError Identity) a }
-  --deriving (Functor, Applicative, Alternative, Monad, MonadPlus)
   deriving (Functor, Applicative, Monad)
 
 instance Alternative Parser where
