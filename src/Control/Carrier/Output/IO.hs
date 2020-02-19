@@ -1,5 +1,5 @@
 module Control.Carrier.Output.IO
-  ( OutputC
+  ( OutputC(..)
   , runOutput
   , module X
   ) where
@@ -9,7 +9,7 @@ import Control.Carrier.Reader
 import Data.IORef
 import Prologue
 
-runOutput :: MonadIO m => OutputC o m a -> m ([o],a)
+runOutput :: forall o m a. MonadIO m => OutputC o m a -> m ([o],a)
 runOutput act = do
   ref <- liftIO $ newIORef []
   res <- runReader ref (runOutputC act)

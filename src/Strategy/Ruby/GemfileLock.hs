@@ -13,7 +13,7 @@ module Strategy.Ruby.GemfileLock
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Writer.Strict
+import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
@@ -35,7 +35,7 @@ discover = Discover
   }
 
 discover' ::
-  ( Has (Writer [ProjectClosure]) sig m
+  ( Has (Output ProjectClosure) sig m
   , Has ReadFS sig m
   , MonadIO m
   , Effect sig
@@ -45,7 +45,7 @@ discover' = walk $ \_ _ files -> do
   for_ files $ \f ->
     when (fileName f == "Gemfile.lock") $ do
       res <- runError @ReadFSErr (analyze f)
-      traverse_ (tell @[ProjectClosure] . pure) res
+      traverse_ output res
 
   walkContinue
 

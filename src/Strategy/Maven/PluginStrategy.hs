@@ -7,7 +7,7 @@ module Strategy.Maven.PluginStrategy
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Writer.Strict
+import Control.Effect.Output
 import Control.Effect.Exception
 import qualified Data.Map.Strict as M
 import DepTypes
@@ -30,7 +30,7 @@ discover' ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Exec sig m
-  , Has (Writer [ProjectClosure]) sig m
+  , Has (Output ProjectClosure) sig m
   , MonadIO m
   , Effect sig
   )
@@ -41,7 +41,7 @@ discover' = walk $ \_ subdirs files -> do
     Just file -> do
       maybeRes <- runError @ReadFSErr $ runError @ExecErr (analyze (parent file))
       case maybeRes of
-        Right (Right res) -> tell [res]
+        Right (Right res) -> output res
         _ -> pure ()
       walkSkipAll subdirs
 

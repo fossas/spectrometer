@@ -11,7 +11,7 @@ module Strategy.Go.GopkgLock
 import Prologue hiding ((.=))
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Writer.Strict
+import Control.Effect.Output
 import DepTypes
 import Diagnostics
 import Discovery.Walk
@@ -34,7 +34,7 @@ discover = Discover
 discover' ::
   ( Has ReadFS sig m
   , Has Exec sig m
-  , Has (Writer [ProjectClosure]) sig m
+  , Has (Output ProjectClosure) sig m
   , MonadIO m
   , Effect sig
   )
@@ -44,7 +44,7 @@ discover' = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> do
       res <- runError @ReadFSErr (analyze file)
-      traverse_ (tell @[ProjectClosure] . pure) res
+      traverse_ output res
 
   walkContinue
 

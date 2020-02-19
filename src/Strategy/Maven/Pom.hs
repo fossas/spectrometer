@@ -6,7 +6,7 @@ import Prologue
 
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Error.Either
-import Control.Carrier.Writer.Strict
+import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -31,14 +31,14 @@ discover = Discover
 
 discover' ::
   ( Has ReadFS sig m
-  , Has (Writer [ProjectClosure]) sig m
+  , Has (Output ProjectClosure) sig m
   , MonadIO m
   , Effect sig
   )
   => Path Abs Dir -> m ()
 discover' dir = do
   (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
-  traverse_ (tell . (:[]) . mkProjectClosure) mvnClosures
+  traverse_ (output . mkProjectClosure) mvnClosures
 
 mkProjectClosure :: MavenProjectClosure -> ProjectClosure
 mkProjectClosure mvnClosure = ProjectClosure

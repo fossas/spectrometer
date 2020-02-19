@@ -16,7 +16,6 @@ module Types
 import Prologue
 
 import Control.Algebra
-import Control.Effect.Error
 import Control.Effect.Lift
 import Control.Effect.Output
 import Control.Effect.Threaded
@@ -24,7 +23,6 @@ import DepTypes
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
-import Diagnostics
 import Graphing
 
 ---------- Discovery
@@ -41,13 +39,12 @@ type TaskEffs sig m =
   , MonadIO m
   , Has Logger sig m
   , Has Exec sig m
-  , Has (Error ExecErr) sig m
+  --, Has (Error ExecErr) sig m
   , Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
+  --, Has (Error ReadFSErr) sig m
   , Has (Output ProjectClosure) sig m
   , Effect sig
   )
-  -- Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output Task, Writer [ProjectClosure]] r
 
 -- | Discover functions produce 'ConfiguredStrategy's, given a base directory
 -- to search

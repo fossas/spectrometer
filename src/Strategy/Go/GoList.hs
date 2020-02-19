@@ -9,7 +9,7 @@ module Strategy.Go.GoList
 import Prologue hiding ((<?>))
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Writer.Strict
+import Control.Effect.Output
 import qualified Data.ByteString.Lazy as BL
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
@@ -32,7 +32,7 @@ discover = Discover
 
 discover' ::
   ( Has Exec sig m
-  , Has (Writer [ProjectClosure]) sig m
+  , Has (Output ProjectClosure) sig m
   , MonadIO m
   , Effect sig
   )
@@ -42,7 +42,7 @@ discover' = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file  -> do
       res <- runError @ExecErr (analyze (parent file))
-      traverse_ (tell @[ProjectClosure] . pure) res
+      traverse_ output res
 
   walkContinue
 

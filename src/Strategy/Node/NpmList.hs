@@ -6,7 +6,7 @@ module Strategy.Node.NpmList
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Writer.Strict
+import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import Diagnostics
 import DepTypes
@@ -23,7 +23,7 @@ discover = Discover
 
 discover' ::
   ( Has Exec sig m
-  , Has (Writer [ProjectClosure]) sig m
+  , Has (Output ProjectClosure) sig m
   , MonadIO m
   , Effect sig
   )
@@ -33,7 +33,7 @@ discover' = walk $ \dir subdirs files -> do
     Nothing -> pure ()
     Just _ -> do
       res <- runError @ExecErr (analyze dir)
-      traverse_ (tell @[ProjectClosure] . pure) res
+      traverse_ output res
 
   walkSkipNamed ["node_modules/"] subdirs
 
