@@ -19,14 +19,8 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "npm-packagelock"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ subdirs files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package-lock.json") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "npm-packagelock" NodejsGroup $ analyze file

@@ -18,14 +18,8 @@ import Graphing (Graphing, unfold)
 import Parse.XML
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "nuget-packagesconfig"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> (fileName f) == "packages.config") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-packagesconfig" DotnetGroup $ analyze file

@@ -28,14 +28,8 @@ import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "golang-gopkgtoml"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.toml") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkgtoml" GolangGroup $ analyze file

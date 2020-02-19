@@ -16,14 +16,8 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "nodejs-packagejson"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ subdirs files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-packagejson" NodejsGroup $ analyze file

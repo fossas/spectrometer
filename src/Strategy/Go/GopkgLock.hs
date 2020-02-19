@@ -25,14 +25,8 @@ import qualified Toml
 import Toml (TomlCodec, (.=))
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "golang-gopkglock"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.lock") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkglock" GolangGroup $ analyze file

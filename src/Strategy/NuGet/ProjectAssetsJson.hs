@@ -19,14 +19,8 @@ import Effect.ReadFS
 import Graphing (Graphing, unfold)
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "nuget-projectassetsjson"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "project.assets.json") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-projectassetsjson" DotnetGroup $ analyze file

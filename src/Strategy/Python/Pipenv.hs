@@ -25,14 +25,8 @@ import Effect.LabeledGrapher
 import Effect.ReadFS
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "python-pipenv"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Pipfile.lock") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file

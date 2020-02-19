@@ -21,14 +21,8 @@ import Effect.Exec
 import Graphing
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "bundleshow"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \dir _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["Gemfile", "Gemfile.lock"]) files of
     Nothing -> pure ()
     Just _  -> runSimpleStrategy "ruby-bundleshow" RubyGroup $ analyze dir

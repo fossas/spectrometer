@@ -27,14 +27,8 @@ import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-discover :: Discover
-discover = Discover
-  { discoverName = "gemfilelock"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   for_ files $ \f ->
     when (fileName f == "Gemfile.lock") $
       runSimpleStrategy "ruby-gemfilelock" RubyGroup $ analyze f

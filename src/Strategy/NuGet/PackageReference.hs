@@ -21,14 +21,8 @@ import Graphing (Graphing, unfold)
 import Parse.XML
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "nuget-packagereference"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find isPackageRefFile files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-packagereference" DotnetGroup $ analyze file

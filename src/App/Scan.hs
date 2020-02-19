@@ -21,8 +21,31 @@ import Control.Carrier.Threaded
 import qualified Data.ByteString.Lazy as BL
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import Discovery
 import Effect.Logger
+import qualified Strategy.Carthage as Carthage
+import qualified Strategy.Go.GoList as GoList
+import qualified Strategy.Go.Gomod as Gomod
+import qualified Strategy.Go.GopkgLock as GopkgLock
+import qualified Strategy.Go.GopkgToml as GopkgToml
+import qualified Strategy.Go.GlideLock as GlideLock
+import qualified Strategy.Gradle as Gradle
+import qualified Strategy.Maven.Pom as MavenPom
+import qualified Strategy.Maven.PluginStrategy as MavenPlugin
+import qualified Strategy.Node.NpmList as NpmList
+import qualified Strategy.Node.NpmLock as NpmLock
+import qualified Strategy.Node.PackageJson as PackageJson
+import qualified Strategy.Node.YarnLock as YarnLock
+import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
+import qualified Strategy.NuGet.PackageReference as PackageReference
+import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
+import qualified Strategy.NuGet.ProjectJson as ProjectJson
+import qualified Strategy.NuGet.Nuspec as Nuspec
+import qualified Strategy.Python.Pipenv as Pipenv
+import qualified Strategy.Python.PipList as PipList
+import qualified Strategy.Python.ReqTxt as ReqTxt
+import qualified Strategy.Python.SetupPy as SetupPy
+import qualified Strategy.Ruby.BundleShow as BundleShow
+import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
 data ScanCmdOpts = ScanCmdOpts
@@ -60,14 +83,12 @@ scan basedir outFile = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
-  let runIt discover = discoverFunc discover basedir
-
   (closures,()) <- runOutput @ProjectClosure $
-    withTaskPool capabilities updateProgress (traverse_ runIt discoverFuncs)
+    withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
 
   logSticky "[ Combining Analyses ]"
 
-  let projects = mkProjects strategyGroups (S.fromList closures)
+  let projects = mkProjects [] (S.fromList closures)
   liftIO $ case outFile of
     Nothing -> BL.putStr (encode projects)
     Just path -> liftIO (encodeFile path projects)
@@ -78,6 +99,41 @@ scan basedir outFile = do
   logInfo ("Inferred revision: `" <> pretty (inferredRevision inferred) <> "`")
 
   logSticky ""
+
+discoverFuncs :: TaskEffs sig m => [Path Abs Dir -> m ()]
+discoverFuncs =
+  [ GoList.discover
+  , Gomod.discover
+  , GopkgToml.discover
+  , GopkgLock.discover
+  , GlideLock.discover
+
+  , Gradle.discover
+
+  , MavenPlugin.discover
+  , MavenPom.discover
+
+  , PackageJson.discover
+  , NpmLock.discover
+  , NpmList.discover
+  , YarnLock.discover
+
+  , PackagesConfig.discover
+  , PackageReference.discover
+  , ProjectAssetsJson.discover
+  , ProjectJson.discover
+  , Nuspec.discover
+
+  , PipList.discover
+  , Pipenv.discover
+  , SetupPy.discover
+  , ReqTxt.discover
+
+  , BundleShow.discover
+  , GemfileLock.discover
+
+  , Carthage.discover
+  ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()
 updateProgress Progress{..} =

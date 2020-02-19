@@ -15,14 +15,8 @@ import Effect.ReadFS
 import Strategy.Python.Util
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "setup.py"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "setup.py") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "python-setuppy" PythonGroup $

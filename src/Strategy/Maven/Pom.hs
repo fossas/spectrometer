@@ -22,14 +22,8 @@ data MavenStrategyOpts = MavenStrategyOpts
   , strategyGraph :: G.Graphing Dependency
   } deriving (Eq, Ord, Show, Generic)
 
-discover :: Discover
-discover = Discover
-  { discoverName = "maven-pom"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' dir = runStrategy "maven-pom" MavenGroup $ do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover dir = runStrategy "maven-pom" MavenGroup $ do
   (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
   traverse_ (output . mkProjectClosure) mvnClosures
 

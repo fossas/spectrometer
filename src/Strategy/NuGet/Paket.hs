@@ -28,14 +28,8 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void Text
 
-discover :: Discover
-discover = Discover
-  { discoverName = "paket-paketlock"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "paket.lock") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "paket-paketlock" DotnetGroup $ analyze file

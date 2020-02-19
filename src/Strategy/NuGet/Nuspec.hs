@@ -21,14 +21,8 @@ import Graphing (Graphing, unfold)
 import Parse.XML
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "nuget-nuspec"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-nuspec" DotnetGroup $ analyze file

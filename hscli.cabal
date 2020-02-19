@@ -99,7 +99,6 @@ library
     Control.Effect.TaskPool
     Control.Effect.Threaded
     DepTypes
-    Discovery
     Discovery.Walk
     Effect.Exec
     Effect.Grapher

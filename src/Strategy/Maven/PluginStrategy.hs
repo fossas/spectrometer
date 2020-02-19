@@ -18,14 +18,8 @@ import Graphing (Graphing)
 import Strategy.Maven.Plugin
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "maven"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ subdirs files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "pom.xml") files of
     Nothing -> walkContinue
     Just file -> do

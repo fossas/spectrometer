@@ -13,14 +13,8 @@ import Effect.Exec
 import Graphing (Graphing, unfold)
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "nodejs-npmlist"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \dir subdirs files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \dir subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
     Just _ -> runSimpleStrategy "nodejs-npmlist" NodejsGroup $ analyze dir

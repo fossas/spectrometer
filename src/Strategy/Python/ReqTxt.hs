@@ -16,14 +16,8 @@ import Effect.ReadFS
 import Strategy.Python.Util
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "requirements.txt"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   let txtFiles = filter (\f -> "req" `isPrefixOf` fileName f
                             && ".txt" `isSuffixOf` fileName f) files
 

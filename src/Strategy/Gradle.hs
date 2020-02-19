@@ -36,14 +36,8 @@ gradleJsonDepsCmd = Command
   , cmdAllowErr = Never
   }
 
-discover :: Discover
-discover = Discover
-  { discoverName = "gradle"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ subdirs files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "build.gradle") files of
     Nothing -> walkContinue
     Just file -> do

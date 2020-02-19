@@ -19,14 +19,8 @@ import Effect.Exec
 import Graphing
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "piplist"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \dir _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["setup.py", "requirements.txt"]) files of
     Nothing -> pure ()
     Just _ -> runSimpleStrategy "python-piplist" PythonGroup $ analyze dir

@@ -29,14 +29,8 @@ import Strategy.Go.Transitive
 import Strategy.Go.Types
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "golang-gomod"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gomod" GolangGroup $ analyze file

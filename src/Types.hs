@@ -1,6 +1,5 @@
 module Types
-  ( Discover(..)
-  , StrategyGroup(..)
+  ( StrategyGroup(..)
 
   , ProjectClosure(..)
   , StrategyGroup'(..)
@@ -89,13 +88,6 @@ type TaskEffs sig m =
   , MonadIO m
   , Effect sig
   )
-
--- | Discover functions produce 'ConfiguredStrategy's, given a base directory
--- to search
-data Discover = Discover
-  { discoverName :: Text
-  , discoverFunc :: forall sig m. TaskEffs sig m => Path Abs Dir -> m ()
-  }
 
 ---------- Strategies
 

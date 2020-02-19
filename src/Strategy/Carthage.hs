@@ -25,14 +25,8 @@ import Effect.ReadFS
 import qualified Graphing as G
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "carthage-lock"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ subdirs files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files ->
   case find (\f -> fileName f == "Cartfile.resolved") files of
     Nothing -> walkContinue
     Just file -> do

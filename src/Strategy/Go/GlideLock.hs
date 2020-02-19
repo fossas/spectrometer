@@ -20,14 +20,8 @@ import Effect.ReadFS
 import Graphing (Graphing, unfold)
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "glidelock"
-  , discoverFunc = discover'
-  }
-
-discover' :: HasDiscover sig m => Path Abs Dir -> m ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "glide.lock") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-glidelock" GolangGroup $ analyze file
