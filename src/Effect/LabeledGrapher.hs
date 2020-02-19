@@ -17,11 +17,12 @@ module Effect.LabeledGrapher
 
   -- re-exports
   , L.PkgLabel
+  , module X
   ) where
 
 import Prologue hiding (parent)
 
-import Control.Algebra
+import Control.Algebra as X
 import Control.Carrier.State.Strict
 
 import qualified Graphing as G

@@ -11,11 +11,12 @@ module Effect.Exec
   , ExecIOC(..)
   , runExecIO
   , module System.Exit
+  , module X
   ) where
 
 import Prologue
 
-import Control.Algebra
+import Control.Algebra as X
 import Control.Carrier.Error.Either
 import qualified Control.Exception as Exc
 import Control.Monad.Except (ExceptT(..), runExceptT)

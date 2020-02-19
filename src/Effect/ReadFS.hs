@@ -27,11 +27,13 @@ module Effect.ReadFS
   , readContentsYaml'
   , readContentsXML
   , readContentsXML'
+
+  , module X
   ) where
 
 import Prologue
 
-import Control.Algebra
+import Control.Algebra as X
 import Control.Effect.Error
 import Control.Carrier.Error.Either
 import qualified Control.Exception as E

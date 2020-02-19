@@ -17,21 +17,20 @@ module Effect.Logger
   , logWarn
   , logError
 
-  , module Data.Text.Prettyprint.Doc
-  , module Data.Text.Prettyprint.Doc.Render.Terminal
+  , module X
   ) where
 
 import Prologue
 
-import Control.Algebra
+import Control.Algebra as X
 import Control.Carrier.Reader
 import Control.Concurrent.Async (async, wait)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TMQueue (TMQueue, closeTMQueue, newTMQueueIO, readTMQueue, writeTMQueue)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal
+import Data.Text.Prettyprint.Doc as X
+import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import System.IO (hIsTerminalDevice, hSetBuffering, BufferMode(NoBuffering), stderr, stderr)
 
 data Logger m k
