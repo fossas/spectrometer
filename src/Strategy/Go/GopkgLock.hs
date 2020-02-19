@@ -11,7 +11,6 @@ module Strategy.Go.GopkgLock
 import Prologue hiding ((.=))
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import DepTypes
 import Diagnostics
 import Discovery.Walk
@@ -27,24 +26,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "gopkglock"
+  { discoverName = "golang-gopkglock"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.lock") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+    Just file -> runSimpleStrategy "golang-gopkglock" GolangGroup $ analyze file
 
   walkContinue
 

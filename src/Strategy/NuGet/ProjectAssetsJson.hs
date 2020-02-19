@@ -9,7 +9,6 @@ module Strategy.NuGet.ProjectAssetsJson
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Maybe
@@ -23,23 +22,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "projectassetsjson"
+  { discoverName = "nuget-projectassetsjson"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "project.assets.json") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+    Just file -> runSimpleStrategy "nuget-projectassetsjson" DotnetGroup $ analyze file
 
   walkContinue
 

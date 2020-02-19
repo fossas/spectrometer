@@ -12,7 +12,6 @@ module Strategy.Go.GopkgToml
 import Prologue hiding ((.=), empty)
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import Toml (TomlCodec, (.=))
 import qualified Toml
@@ -30,24 +29,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "gopkgtoml"
+  { discoverName = "golang-gopkgtoml"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.toml") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+    Just file -> runSimpleStrategy "golang-gopkgtoml" GolangGroup $ analyze file
 
   walkContinue
 

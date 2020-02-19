@@ -13,7 +13,6 @@ module Strategy.Go.Gomod
 import Prologue hiding ((<?>))
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Text.Megaparsec hiding (label)
@@ -33,24 +32,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "gomod"
+  { discoverName = "golang-gomod"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+    Just file -> runSimpleStrategy "golang-gomod" GolangGroup $ analyze file
 
   walkContinue
 

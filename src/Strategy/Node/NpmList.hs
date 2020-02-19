@@ -6,7 +6,6 @@ module Strategy.Node.NpmList
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import Diagnostics
 import DepTypes
@@ -17,23 +16,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "npm-list"
+  { discoverName = "nodejs-npmlist"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \dir subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
-    Just _ -> do
-      res <- runError @ExecErr (analyze dir)
-      traverse_ output res
+    Just _ -> runSimpleStrategy "nodejs-npmlist" NodejsGroup $ analyze dir
 
   walkSkipNamed ["node_modules/"] subdirs
 

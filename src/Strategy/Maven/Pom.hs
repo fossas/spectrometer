@@ -12,7 +12,6 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import DepTypes
 import Effect.LabeledGrapher
-import Effect.ReadFS
 import qualified Graphing as G
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
@@ -29,14 +28,8 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
-discover' dir = do
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
+discover' dir = runStrategy "maven-pom" MavenGroup $ do
   (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
   traverse_ (output . mkProjectClosure) mvnClosures
 

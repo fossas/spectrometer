@@ -8,7 +8,6 @@ module Strategy.Python.ReqTxt
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -24,20 +23,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   let txtFiles = filter (\f -> "req" `isPrefixOf` fileName f
                             && ".txt" `isSuffixOf` fileName f) files
 
-  for_ txtFiles $ \file -> do
-    res <- runError @ReadFSErr (analyze file)
-    traverse_ output res
+  for_ txtFiles $ \file ->
+    runSimpleStrategy "python-requirements" PythonGroup $ analyze file
 
   walkContinue
 

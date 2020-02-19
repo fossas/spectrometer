@@ -11,7 +11,6 @@ module Strategy.NuGet.Nuspec
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import qualified Data.List as L
 
@@ -25,23 +24,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "nuspec"
+  { discoverName = "nuget-nuspec"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+    Just file -> runSimpleStrategy "nuget-nuspec" DotnetGroup $ analyze file
 
   walkContinue
 

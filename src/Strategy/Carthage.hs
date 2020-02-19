@@ -11,7 +11,6 @@ import qualified Prelude as Unsafe
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import Data.Char (isSpace)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -33,19 +32,12 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files ->
   case find (\f -> fileName f == "Cartfile.resolved") files of
     Nothing -> walkContinue
     Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+      runSimpleStrategy "carthage-lock" CarthageGroup $ analyze file
       walkSkipAll subdirs
 
 mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosure

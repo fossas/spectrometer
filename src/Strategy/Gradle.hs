@@ -12,7 +12,6 @@ import Prologue hiding (json)
 import Data.Aeson.Types (Parser, unexpected)
 import Control.Carrier.Error.Either
 import Control.Effect.Exception
-import Control.Effect.Output
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.FileEmbed (embedFile)
@@ -44,20 +43,12 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "build.gradle") files of
     Nothing -> walkContinue
     Just file -> do
-      res <- runError @ExecErr (analyze (parent file))
-      traverse_ output res
+      runSimpleStrategy "gradle-cli" GradleGroup $ analyze (parent file)
       walkSkipAll subdirs
 
 initScript :: ByteString

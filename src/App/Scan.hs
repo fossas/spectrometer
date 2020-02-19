@@ -20,9 +20,7 @@ import Control.Parallel
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery
-import Effect.Exec
 import Effect.Logger
-import Effect.ReadFS hiding (doesDirExist)
 import Types
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
@@ -47,8 +45,6 @@ scan basedir = do
   capabilities <- liftIO getNumCapabilities
 
   let runIt discover = discoverFunc discover basedir
-        & runExecIO
-        & runReadFSIO
 
   (closures,()) <- runOutput @ProjectClosure $
     runActions capabilities (map runIt discoverFuncs) updateProgress

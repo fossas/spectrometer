@@ -9,7 +9,6 @@ module Strategy.Go.GoList
 import Prologue hiding ((<?>))
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.ByteString.Lazy as BL
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
@@ -26,23 +25,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "golist"
+  { discoverName = "golang-golist"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
-    Just file  -> do
-      res <- runError @ExecErr (analyze (parent file))
-      traverse_ output res
+    Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
 
   walkContinue
 

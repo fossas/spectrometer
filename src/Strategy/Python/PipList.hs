@@ -11,7 +11,6 @@ import Prologue
 
 import Control.Carrier.Lift
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 
 import Diagnostics
@@ -27,20 +26,13 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
-discover' = walk $ \dir _ files ->
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
+discover' = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["setup.py", "requirements.txt"]) files of
-    Nothing -> walkContinue
-    Just _ -> do
-      res <- runError @ExecErr (analyze dir)
-      traverse_ output res
-      walkContinue
+    Nothing -> pure ()
+    Just _ -> runSimpleStrategy "python-piplist" PythonGroup $ analyze dir
+
+  walkContinue
 
 pipListCmd :: Command
 pipListCmd = Command

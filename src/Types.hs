@@ -11,15 +11,21 @@ module Types
   , ProjectDependencies(..)
   , Task(..)
   , TaskEffs
+
+  , HasDiscover
+  , runStrategy
+  , runSimpleStrategy
   ) where
 
 import Prologue
 
 import Control.Algebra
-import Control.Effect.Lift
+import Control.Parallel
+import Control.Carrier.Error.Either
+import Control.Effect.Exception
 import Control.Effect.Output
-import Control.Effect.Threaded
 import DepTypes
+import Diagnostics
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
@@ -27,20 +33,61 @@ import Graphing
 
 ---------- Discovery
 
+runSimpleStrategy ::
+  ( Has (Lift IO) sig m
+  , Has Parallel sig m
+  , Has (Output ProjectClosure) sig m
+  )
+  => Text -> StrategyGroup' -> TaskC m ProjectClosure -> m ()
+runSimpleStrategy _ _ act = par $ do
+  let runIt = runError @ReadFSErr
+            . runError @ExecErr
+            . runReadFSIO
+            . runExecIO
+
+  mask $ \restore -> do
+    (res :: Either SomeException a) <- try (restore (runIt act))
+    case res of
+      Left _ -> pure () -- TODO
+      Right (Left _) -> pure () -- TODO
+      Right (Right (Left _)) -> pure () -- TODO
+      Right (Right (Right a)) -> output a
+
+runStrategy ::
+  ( Has (Lift IO) sig m
+  , Has Parallel sig m
+  )
+  => Text -> StrategyGroup' -> TaskC m () -> m ()
+runStrategy _ _ act = par $ do
+  let runIt = runError @ReadFSErr
+            . runError @ExecErr
+            . runReadFSIO
+            . runExecIO
+
+  mask $ \restore -> do
+    (res :: Either SomeException a) <- try (restore (runIt act))
+    case res of
+      Left _ -> pure () -- TODO
+      Right (Left _) -> pure () -- TODO
+      Right (Right (Left _)) -> pure () -- TODO
+      Right (Right (Right ())) -> pure ()
+
+type TaskC m a = ExecIOC (ReadFSIOC (ErrorC ExecErr (ErrorC ReadFSErr m))) a
+
 data Task = Task
   { taskName :: Text
   , taskRun  :: forall sig m. TaskEffs sig m => m ()
   }
 
+type HasDiscover sig m = (Has (Lift IO :+: Output ProjectClosure :+: Parallel) sig m, MonadIO m, Effect sig)
+
 -- | The effects available for use in Tasks
 type TaskEffs sig m =
   ( Has (Lift IO) sig m
-  , Has Threaded sig m
-  , MonadIO m
   , Has Logger sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
+  , Has Parallel sig m
   , Has (Output ProjectClosure) sig m
+  , MonadIO m
   , Effect sig
   )
 

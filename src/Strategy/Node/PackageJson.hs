@@ -8,7 +8,6 @@ module Strategy.Node.PackageJson
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import Diagnostics
 import DepTypes
@@ -20,23 +19,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "packagejson"
+  { discoverName = "nodejs-packagejson"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+    Just file -> runSimpleStrategy "nodejs-packagejson" NodejsGroup $ analyze file
 
   walkSkipNamed ["node_modules/"] subdirs
 

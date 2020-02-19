@@ -7,7 +7,6 @@ module Strategy.Maven.PluginStrategy
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import Control.Effect.Exception
 import qualified Data.Map.Strict as M
 import DepTypes
@@ -26,23 +25,12 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has (Lift IO) sig m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "pom.xml") files of
     Nothing -> walkContinue
     Just file -> do
-      maybeRes <- runError @ReadFSErr $ runError @ExecErr (analyze (parent file))
-      case maybeRes of
-        Right (Right res) -> output res
-        _ -> pure ()
+      runSimpleStrategy "maven-cli" MavenGroup $ analyze (parent file)
       walkSkipAll subdirs
 
 analyze ::

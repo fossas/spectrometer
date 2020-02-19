@@ -1,6 +1,10 @@
 module Control.Parallel
   ( runActions
   , Progress(..)
+
+  , ParallelC
+  , Parallel(..)
+  , par
   ) where
 
 import Prologue
@@ -12,20 +16,23 @@ import Control.Carrier.Threaded
 import Control.Concurrent.STM
 import Control.Effect.Exception hiding (Handler, handle)
 
-data Parallel m k = forall a. Par String (m a) (m k)
+data Parallel m k = forall a. Par (m a) (m k)
 
 instance HFunctor Parallel where
-  hmap f (Par name m k) = Par name (f m) (f k)
+  hmap f (Par m k) = Par (f m) (f k)
+
+par :: Has Parallel sig m => m a -> m ()
+par act = send (Par act (pure ()))
 
 instance Effect Parallel where
-  thread ctx handler (Par name m k) = Par name (handler (m <$ ctx)) (handler (k <$ ctx))
+  thread ctx handler (Par m k) = Par (handler (m <$ ctx)) (handler (k <$ ctx))
 
 newtype ParallelC m a = ParallelC { runParallelC :: ReaderC (TVar [m ()]) m a }
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Parallel :+: sig) (ParallelC m) where
   -- TODO: use name?
-  alg (L (Par _ m k)) = do
+  alg (L (Par m k)) = do
     var <- ParallelC ask
     liftIO $ atomically $ modifyTVar' var (runReader var (runParallelC (void m)):)
     k

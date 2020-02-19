@@ -6,7 +6,6 @@ module Strategy.Node.YarnLock
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as M
 import qualified Data.MultiKeyedMap as MKM
@@ -23,23 +22,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "yarn-lock"
+  { discoverName = "nodejs-yarnlock"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "yarn.lock") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+    Just file -> runSimpleStrategy "nodejs-yarnlock" NodejsGroup $ analyze file
 
   walkSkipNamed ["node_modules/"] subdirs
 

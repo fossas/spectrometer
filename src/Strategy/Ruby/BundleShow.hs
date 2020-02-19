@@ -11,7 +11,6 @@ module Strategy.Ruby.BundleShow
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -29,20 +28,11 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has (Output ProjectClosure) sig m
-  , Has Exec sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["Gemfile", "Gemfile.lock"]) files of
     Nothing -> pure ()
-    Just _  -> do
-      res <- runError @ExecErr (analyze dir)
-      traverse_ output res
-      pure ()
+    Just _  -> runSimpleStrategy "ruby-bundleshow" RubyGroup $ analyze dir
 
   walkContinue
 

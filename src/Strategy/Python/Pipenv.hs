@@ -14,7 +14,6 @@ module Strategy.Python.Pipenv
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
@@ -29,25 +28,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "pipenv"
+  { discoverName = "python-pipenv"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Pipfile.lock") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
-      pure ()
+    Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file
 
   walkContinue
 

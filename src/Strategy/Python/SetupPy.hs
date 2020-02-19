@@ -7,7 +7,6 @@ module Strategy.Python.SetupPy
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -23,20 +22,12 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "setup.py") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
-      pure ()
+    Just file -> runSimpleStrategy "python-setuppy" PythonGroup $
+      analyze file
 
   walkContinue
 

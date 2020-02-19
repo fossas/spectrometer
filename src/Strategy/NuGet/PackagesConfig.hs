@@ -10,7 +10,6 @@ module Strategy.NuGet.PackagesConfig
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import Diagnostics
 import DepTypes
@@ -22,23 +21,15 @@ import Types
 
 discover :: Discover
 discover = Discover
-  { discoverName = "packagesconfig"
+  { discoverName = "nuget-packagesconfig"
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has ReadFS sig m
-  , Has (Output ProjectClosure) sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   case find (\f -> (fileName f) == "packages.config") files of
     Nothing -> pure ()
-    Just file -> do
-      res <- runError @ReadFSErr (analyze file)
-      traverse_ output res
+    Just file -> runSimpleStrategy "nuget-packagesconfig" DotnetGroup $ analyze file
 
   walkContinue
 

@@ -13,7 +13,6 @@ module Strategy.Ruby.GemfileLock
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
@@ -34,18 +33,11 @@ discover = Discover
   , discoverFunc = discover'
   }
 
-discover' ::
-  ( Has (Output ProjectClosure) sig m
-  , Has ReadFS sig m
-  , MonadIO m
-  , Effect sig
-  )
-  => Path Abs Dir -> m ()
+discover' :: HasDiscover sig m => Path Abs Dir -> m ()
 discover' = walk $ \_ _ files -> do
   for_ files $ \f ->
-    when (fileName f == "Gemfile.lock") $ do
-      res <- runError @ReadFSErr (analyze f)
-      traverse_ output res
+    when (fileName f == "Gemfile.lock") $
+      runSimpleStrategy "ruby-gemfilelock" RubyGroup $ analyze f
 
   walkContinue
 
@@ -81,7 +73,7 @@ analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSecti
 mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
 mkProjectClosure file sections = ProjectClosure
   { closureStrategyGroup = RubyGroup
-  , closureStrategyName  = "gemfile-lock"
+  , closureStrategyName  = "ruby-gemfilelock"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
   }
