@@ -39,9 +39,7 @@ type TaskEffs sig m =
   , MonadIO m
   , Has Logger sig m
   , Has Exec sig m
-  --, Has (Error ExecErr) sig m
   , Has ReadFS sig m
-  --, Has (Error ReadFSErr) sig m
   , Has (Output ProjectClosure) sig m
   , Effect sig
   )

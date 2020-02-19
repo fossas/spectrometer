@@ -1,6 +1,0 @@
-module Effect.Error
-  (
-  )
-  where
-
-

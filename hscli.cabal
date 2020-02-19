@@ -103,7 +103,6 @@ library
     Diagnostics
     Discovery
     Discovery.Walk
-    Effect.Error
     Effect.Exec
     Effect.Grapher
     Effect.LabeledGrapher
