@@ -9,7 +9,6 @@ import Control.Carrier.Error.Either
 import Control.Effect.Exception as Exc
 import Control.Carrier.Output.IO
 import Control.Concurrent
-import Data.Bool (bool)
 import qualified Data.Sequence as S
 import Path.IO
 import System.Exit (die)
@@ -32,7 +31,7 @@ scanMain basedir debug = do
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
   scan basedir
-    & runLogger (bool SevInfo SevDebug debug)
+    & withLogger (bool SevInfo SevDebug debug)
     & runThreaded
 
 scan :: forall sig m.

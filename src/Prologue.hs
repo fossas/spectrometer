@@ -16,6 +16,7 @@ import Control.Monad.IO.Class as X
 import Control.Effect.Error
 import Data.Aeson as X hiding (Error)
 import Data.Bifunctor as X
+import Data.Bool as X
 import Data.ByteString as X (ByteString)
 import Data.Coerce as X (coerce)
 import Data.Foldable as X
