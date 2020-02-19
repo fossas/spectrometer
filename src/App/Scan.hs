@@ -1,6 +1,7 @@
 
 module App.Scan
   ( scanMain
+  , ScanCmdOpts(..)
   ) where
 
 import Prologue
@@ -17,20 +18,35 @@ import App.Scan.Project (mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
 import Control.Carrier.Threaded
+import qualified Data.ByteString.Lazy as BL
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery
 import Effect.Logger
 import Types
 
-scanMain :: Path Abs Dir -> Bool -> IO ()
-scanMain basedir debug = do
-  exists <- doesDirExist basedir
-  unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
+data ScanCmdOpts = ScanCmdOpts
+  { cmdBasedir :: FilePath
+  , cmdDebug   :: Bool
+  , cmdOutFile :: Maybe FilePath
+  } deriving (Eq, Ord, Show, Generic)
 
-  scan basedir
-    & withLogger (bool SevInfo SevDebug debug)
+scanMain :: ScanCmdOpts -> IO ()
+scanMain ScanCmdOpts{..} = do
+  basedir <- validateDir cmdBasedir
+
+  scan basedir cmdOutFile
+    & withLogger (bool SevInfo SevDebug cmdDebug)
     & runThreaded
+
+validateDir :: FilePath -> IO (Path Abs Dir)
+validateDir dir = do
+  absolute <- resolveDir' dir
+  exists <- doesDirExist absolute
+
+  unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
+
+  pure absolute
 
 scan :: forall sig m.
   ( Has (Lift IO) sig m
@@ -39,8 +55,8 @@ scan :: forall sig m.
   , MonadIO m
   , Effect sig
   )
-  => Path Abs Dir -> m ()
-scan basedir = do
+  => Path Abs Dir -> Maybe FilePath -> m ()
+scan basedir outFile = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
@@ -52,7 +68,9 @@ scan basedir = do
   logSticky "[ Combining Analyses ]"
 
   let projects = mkProjects strategyGroups (S.fromList closures)
-  liftIO (encodeFile "analysis.json" projects)
+  liftIO $ case outFile of
+    Nothing -> BL.putStr (encode projects)
+    Just path -> liftIO (encodeFile path projects)
 
   inferred <- inferProject basedir
   logInfo ""
