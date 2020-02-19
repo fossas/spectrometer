@@ -14,7 +14,6 @@ import Prologue hiding ((.=))
 
 import Control.Carrier.Error.Either
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Exec
 import Effect.LabeledGrapher

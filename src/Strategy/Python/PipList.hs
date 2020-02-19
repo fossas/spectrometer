@@ -13,7 +13,6 @@ import Control.Carrier.Lift
 import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 
-import Diagnostics
 import DepTypes
 import Discovery.Walk
 import Effect.Exec

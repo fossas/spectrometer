@@ -13,7 +13,6 @@ import qualified Yarn.Lock as YL
 import qualified Yarn.Lock.Types as YL
 
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS

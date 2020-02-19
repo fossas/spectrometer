@@ -25,7 +25,6 @@ import Control.Carrier.Error.Either
 import Control.Effect.Exception
 import Control.Effect.Output
 import DepTypes
-import Diagnostics
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS

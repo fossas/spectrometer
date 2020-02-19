@@ -17,7 +17,6 @@ import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
-import Diagnostics
 import Discovery.Walk
 import DepTypes
 import Graphing (Graphing)

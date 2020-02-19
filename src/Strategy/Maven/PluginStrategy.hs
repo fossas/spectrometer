@@ -10,7 +10,6 @@ import Control.Carrier.Error.Either
 import Control.Effect.Exception
 import qualified Data.Map.Strict as M
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher hiding (Edge)

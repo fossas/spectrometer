@@ -1,5 +1,6 @@
 module Effect.Exec
   ( Exec(..)
+  , ExecErr(..)
   , exec
   , execThrow
   , Command(..)
@@ -32,8 +33,6 @@ import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 
-import Diagnostics
-
 data Command = Command
   { cmdNames    :: [String] -- ^ Possible command names. E.g., "pip", "pip3", "./gradlew".
   , cmdBaseArgs :: [String] -- ^ Base arguments for the command. Additional arguments can be passed when running commands (e.g., 'exec')
@@ -60,6 +59,12 @@ data Exec m k
   -- - stdout when any of the 'cmdNames' succeed
   -- - failure descriptions for all of the commands we tried
   = forall x. Exec (Path x Dir) Command [String] (Either [CmdFailure] Stdout -> m k)
+
+-- TODO: include info about CmdFailures as appropriate
+data ExecErr =
+    CommandFailed Text Text -- ^ Command execution failed, usually from a non-zero exit. command, stderr
+  | CommandParseError Text Text -- ^ Command output couldn't be parsed. command, err
+  deriving (Eq, Ord, Show, Generic, Typeable)
 
 instance HFunctor Exec where
   hmap f (Exec dir cmd args k) = Exec dir cmd args (f . k)

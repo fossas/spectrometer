@@ -15,7 +15,6 @@ import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing, unfold)

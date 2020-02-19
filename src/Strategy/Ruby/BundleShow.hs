@@ -16,7 +16,6 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Exec
 import Graphing

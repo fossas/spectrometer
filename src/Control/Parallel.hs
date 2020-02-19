@@ -31,7 +31,6 @@ newtype ParallelC m a = ParallelC { runParallelC :: ReaderC (TVar [m ()]) m a }
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Parallel :+: sig) (ParallelC m) where
-  -- TODO: use name?
   alg (L (Par m k)) = do
     var <- ParallelC ask
     liftIO $ atomically $ modifyTVar' var (runReader var (runParallelC (void m)):)

@@ -20,7 +20,6 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Exec
 import Effect.LabeledGrapher

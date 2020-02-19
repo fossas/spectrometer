@@ -13,7 +13,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Aeson.Types
 
-import Diagnostics
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS

@@ -6,7 +6,6 @@ module Carthage.CarthageTest
 import Prologue
 
 import Control.Carrier.Error.Either
-import Diagnostics
 import Effect.ReadFS
 import qualified Graphing as G
 import GraphUtil

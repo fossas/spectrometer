@@ -14,7 +14,6 @@ import Control.Carrier.State.Strict
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
-import Diagnostics
 import Effect.ReadFS
 import Strategy.Maven.Pom.PomFile
 

@@ -98,7 +98,6 @@ library
     Control.Effect.Threaded
     Control.Parallel
     DepTypes
-    Diagnostics
     Discovery
     Discovery.Walk
     Effect.Exec

@@ -15,7 +15,6 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-import Diagnostics
 import Effect.Exec
 import Effect.LabeledGrapher
 import Strategy.Go.Types

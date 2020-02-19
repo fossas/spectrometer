@@ -14,7 +14,6 @@ import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Exec
 import Effect.LabeledGrapher

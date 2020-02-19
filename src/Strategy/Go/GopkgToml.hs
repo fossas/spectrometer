@@ -19,7 +19,6 @@ import Toml (TomlCodec, (.=))
 import qualified Toml
 
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Exec
 import Effect.LabeledGrapher

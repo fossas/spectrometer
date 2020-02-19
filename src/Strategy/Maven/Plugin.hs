@@ -21,7 +21,6 @@ import Data.FileEmbed (embedFile)
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import qualified System.FilePath as FP
 
-import Diagnostics
 import Effect.Exec
 import Effect.ReadFS
 

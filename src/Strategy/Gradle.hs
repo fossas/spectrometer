@@ -23,7 +23,6 @@ import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import qualified System.FilePath as FP
 
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher

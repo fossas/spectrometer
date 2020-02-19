@@ -13,7 +13,6 @@ import DepTypes
 import Control.Algebra
 import Control.Carrier.Error.Either
 import Control.Carrier.Reader
-import Diagnostics
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing(..))

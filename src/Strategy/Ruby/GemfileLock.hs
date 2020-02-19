@@ -18,7 +18,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.LabeledGrapher
 import Effect.ReadFS

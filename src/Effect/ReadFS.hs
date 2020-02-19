@@ -1,6 +1,7 @@
 module Effect.ReadFS
   ( -- * ReadFS Effect
     ReadFS(..)
+  , ReadFSErr(..)
   , ReadFSIOC(..)
   , runReadFSIO
 
@@ -46,8 +47,6 @@ import qualified Path.IO as PIO
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 
-import Diagnostics
-
 data ReadFS m k
   = forall x. ReadContentsBS' (Path x File) (Either ReadFSErr ByteString -> m k)
   | forall x. ReadContentsText' (Path x File) (Either ReadFSErr Text -> m k)
@@ -55,6 +54,12 @@ data ReadFS m k
   | forall x. DoesDirExist (Path x Dir) (Bool -> m k)
   | ResolveFile' (Path Abs Dir) Text (Either ReadFSErr (Path Abs File) -> m k)
   | ResolveDir' (Path Abs Dir) Text (Either ReadFSErr (Path Abs Dir) -> m k)
+
+data ReadFSErr =
+    FileReadError FilePath Text -- ^ A file couldn't be read. file, err
+  | FileParseError FilePath Text -- ^ A file's contents couldn't be parsed. TODO: ask user to help with this. file, err
+  | ResolveError Text -- ^ An IOException was thrown when resolving a file/directory
+  deriving (Eq, Ord, Show, Generic, Typeable)
 
 instance HFunctor ReadFS where
   hmap f = \case

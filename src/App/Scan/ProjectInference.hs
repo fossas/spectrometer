@@ -20,7 +20,6 @@ import qualified System.FilePath.Posix as FP
 import Text.GitConfig.Parser (Section(..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
 
-import Diagnostics
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS

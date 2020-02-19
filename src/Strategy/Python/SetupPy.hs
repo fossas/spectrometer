@@ -10,7 +10,6 @@ import Control.Carrier.Error.Either
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
-import Diagnostics
 import Discovery.Walk
 import Effect.ReadFS
 import Strategy.Python.Util
