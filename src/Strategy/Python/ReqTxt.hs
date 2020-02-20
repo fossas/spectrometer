@@ -8,6 +8,7 @@ module Strategy.Python.ReqTxt
 import Prologue
 
 import Control.Carrier.Error.Either
+import Data.List (isInfixOf)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -18,7 +19,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  let txtFiles = filter (\f -> "req" `isPrefixOf` fileName f
+  let txtFiles = filter (\f -> "req" `isInfixOf` fileName f
                             && ".txt" `isSuffixOf` fileName f) files
 
   for_ txtFiles $ \file ->
