@@ -100,7 +100,7 @@ scan basedir outFile = do
 
   logSticky ""
 
-discoverFuncs :: TaskEffs sig m => [Path Abs Dir -> m ()]
+discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
   [ GoList.discover
   , Gomod.discover

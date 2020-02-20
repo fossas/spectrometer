@@ -8,7 +8,6 @@ module Types
   , Complete(..)
 
   , ProjectDependencies(..)
-  , TaskEffs
 
   , HasDiscover
   , runStrategy
@@ -71,10 +70,7 @@ runStrategy _ _ act = forkTask $ do
 
 type TaskC m a = ExecIOC (ReadFSIOC (ErrorC ExecErr (ErrorC ReadFSErr m))) a
 
-type HasDiscover sig m = (Has (Lift IO :+: Output ProjectClosure :+: TaskPool) sig m, MonadIO m, Effect sig)
-
--- | The effects available for use in Tasks
-type TaskEffs sig m =
+type HasDiscover sig m =
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , Has TaskPool sig m
