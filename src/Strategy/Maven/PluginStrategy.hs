@@ -47,6 +47,7 @@ mkProjectClosure dir pluginOutput = ProjectClosure
   , closureStrategyName  = "maven-cli"
   , closureModuleDir     = dir
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

@@ -33,6 +33,7 @@ mkProjectClosure mvnClosure = ProjectClosure
   , closureStrategyName  = "maven-pom"
   , closureModuleDir     = parent (closurePath mvnClosure)
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

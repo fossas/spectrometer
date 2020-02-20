@@ -43,6 +43,7 @@ mkProjectClosure file package = ProjectClosure
   , closureStrategyName  = "nodejs-packagejson"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

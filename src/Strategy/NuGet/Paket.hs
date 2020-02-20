@@ -45,6 +45,7 @@ mkProjectClosure file sections = ProjectClosure
   , closureStrategyName  = "paket-paketlock"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

@@ -41,6 +41,7 @@ mkProjectClosure file lock = ProjectClosure
   , closureStrategyName  = "golang-glidelock"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

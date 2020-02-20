@@ -6,6 +6,9 @@ module Strategy.NuGet.Nuspec
   , Nuspec(..)
   , Group(..)
   , NuGetDependency(..)
+  , NuspecLicense(..)
+
+  , mkProjectClosure
   ) where
 
 import Prologue
@@ -15,6 +18,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.List as L
 
 import DepTypes
+import qualified Data.Text as T
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing, unfold)
@@ -38,6 +42,7 @@ mkProjectClosure file nuspec = ProjectClosure
   , closureStrategyName  = "nuget-nuspec"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = [LicenseResult file (nuspecLicenses nuspec)]
   }
   where
   dependencies = ProjectDependencies
@@ -46,8 +51,29 @@ mkProjectClosure file nuspec = ProjectClosure
     , dependenciesComplete = NotComplete
     }
 
-newtype Nuspec = Nuspec
-  { groups :: [Group]
+nuspecLicenses :: Nuspec -> [License]
+nuspecLicenses nuspec = url ++ licenseField
+          where
+            url = case licenseUrl nuspec of
+              Just location -> [License LicenseURL location]
+              Nothing -> []
+            licenseField = foldr (\a b -> b ++ [License (parseLicenseType $ typeField a) (licenseValue a)]) [] (license nuspec)
+
+parseLicenseType :: Text -> LicenseType
+parseLicenseType rawType = case T.unpack rawType of 
+                            "expression" -> LicenseSPDX
+                            "file" -> LicenseFile
+                            _ -> UnknownType
+
+data Nuspec = Nuspec
+  { groups        :: [Group]
+  , license       :: [NuspecLicense]
+  , licenseUrl    :: Maybe Text
+  } deriving (Eq, Ord, Show, Generic)
+
+data NuspecLicense = NuspecLicense
+  { typeField    :: Text
+  , licenseValue :: Text
   } deriving (Eq, Ord, Show, Generic)
 
 newtype Group = Group
@@ -62,11 +88,17 @@ data NuGetDependency = NuGetDependency
 instance FromXML Nuspec where
   parseElement el = do
     metadata     <- child "metadata" el
-    dependencies <- child "dependencies" metadata
-    Nuspec <$> children "group" dependencies
+    Nuspec <$> optional (child "dependencies" metadata >>= children "group") `defaultsTo` []
+           <*> children "license" metadata
+           <*> optional (child "licenseUrl" metadata)
+
+instance FromXML NuspecLicense where
+  parseElement el =
+    NuspecLicense <$> optional (attr "type" el) `defaultsTo` ""
+                  <*> content el
 
 instance FromXML Group where
-  parseElement el = Group <$> children "dependency" el
+  parseElement el = Group <$> (children "dependency" el)
 
 instance FromXML NuGetDependency where
   parseElement el =
@@ -79,8 +111,8 @@ buildGraph project = unfold direct (const []) toDependency
     direct = concatMap dependencies (groups project)
     toDependency NuGetDependency{..} =
       Dependency { dependencyType = NuGetType
-               , dependencyName = depID
-               , dependencyVersion = Just (CEq depVersion)
-               , dependencyLocations = []
-               , dependencyTags = M.empty
-               }
+                 , dependencyName = depID
+                 , dependencyVersion = Just (CEq depVersion)
+                 , dependencyLocations = []
+                 , dependencyTags = M.empty
+                 }

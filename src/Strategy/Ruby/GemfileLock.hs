@@ -70,6 +70,7 @@ mkProjectClosure file sections = ProjectClosure
   , closureStrategyName  = "ruby-gemfilelock"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

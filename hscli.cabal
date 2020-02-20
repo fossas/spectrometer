@@ -93,6 +93,8 @@ library
     App.Scan.GraphMangler
     App.Scan.Project
     App.Scan.ProjectInference
+    AppLicense
+    AppLicense.Scan
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
@@ -111,6 +113,8 @@ library
     Parse.XML
     Prologue
     Strategy.Carthage
+    Strategy.Cocoapods.Podfile
+    Strategy.Cocoapods.PodfileLock
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
@@ -153,6 +157,15 @@ executable hscli
   build-depends:  hscli
   ghc-options:    -threaded -with-rtsopts=-N
 
+executable pathfinder
+  import:         lang
+  main-is:        Main.hs
+  hs-source-dirs: licenseApp
+  build-depends:  hscli
+  ghc-options:
+    -flate-specialise -fspecialize-aggressively -O -threaded
+    -with-rtsopts=-N
+
 test-suite tests
   import:             lang
   import:             deps
@@ -163,6 +176,8 @@ test-suite tests
   -- cabal-fmt: expand test
   other-modules:
     Carthage.CarthageTest
+    Cocoapods.PodfileLockTest
+    Cocoapods.PodfileTest
     Go.GlideLockTest
     Go.GoListTest
     Go.GomodTest

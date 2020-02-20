@@ -35,6 +35,7 @@ mkProjectClosure file reqs = ProjectClosure
   , closureStrategyName  = "python-requirements"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

@@ -60,6 +60,7 @@ mkProjectClosure file lockfile maybeDeps = ProjectClosure
   , closureStrategyName  = "python-pipenv"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

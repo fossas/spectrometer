@@ -47,6 +47,7 @@ mkProjectClosure file config = ProjectClosure
   , closureStrategyName  = "nuget-packagesconfig"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

@@ -8,6 +8,10 @@ module Types
 
   , ProjectDependencies(..)
 
+  , LicenseResult(..)
+  , License(..)
+  , LicenseType(..)
+
   , HasDiscover
   , runStrategy
   , runSimpleStrategy
@@ -78,7 +82,7 @@ type HasDiscover sig m =
   , Effect sig
   )
 
----------- Strategies
+---------- Project Closures
 
 data Optimal = Optimal | NotOptimal
   deriving (Eq, Ord, Show, Generic)
@@ -99,6 +103,7 @@ data ProjectClosure = ProjectClosure
   , closureStrategyName  :: Text -- ^ e.g., "python-pipenv". This is temporary: ProjectClosures will eventually combine several strategies into one
   , closureModuleDir     :: Path Rel Dir -- ^ the relative module directory (for grouping with other strategies)
   , closureDependencies  :: ProjectDependencies
+  , closureLicenses      :: [LicenseResult]
   } deriving (Eq, Ord, Show, Generic)
 
 data ProjectDependencies = ProjectDependencies
@@ -116,4 +121,43 @@ data StrategyGroup =
   | NodejsGroup
   | PythonGroup
   | RubyGroup
+  | CocoapodsGroup
   deriving (Eq, Ord, Show, Generic)
+
+-- FIXME: we also need to annotate dep graphs with Path Rel File -- merge these somehow?
+data LicenseResult = LicenseResult
+  { licenseFile   :: Path Rel File
+  , licensesFound :: [License]
+  } deriving (Eq, Ord, Show, Generic)
+
+data License = License
+  { licenseType :: LicenseType
+  , value       :: Text
+  } deriving (Eq, Ord, Show, Generic)
+
+data LicenseType =
+          LicenseURL
+        | LicenseFile
+        | LicenseSPDX
+        | UnknownType
+          deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON License where
+    toJSON License{..} = object
+      [ "type"   .=  textType licenseType
+      , "value"  .=  value
+      ]
+      
+      where
+        textType :: LicenseType -> Text
+        textType = \case
+          LicenseURL  -> "url"
+          LicenseFile -> "file"
+          LicenseSPDX -> "spdx"
+          UnknownType -> "unknown"
+
+instance ToJSON LicenseResult where
+    toJSON LicenseResult{..} = object
+      [ "filepath"  .=  licenseFile
+      , "licenses"  .=  licensesFound
+      ]

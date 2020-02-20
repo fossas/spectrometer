@@ -12,6 +12,7 @@ import Control.Carrier.Output.IO
 import Control.Concurrent
 import qualified Data.Sequence as S
 import Path.IO
+import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
 import App.Scan.Project (mkProjects)
@@ -23,6 +24,8 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Logger
 import qualified Strategy.Carthage as Carthage
+import qualified Strategy.Cocoapods.Podfile as Podfile
+import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
 import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
@@ -56,6 +59,8 @@ data ScanCmdOpts = ScanCmdOpts
 
 scanMain :: ScanCmdOpts -> IO ()
 scanMain ScanCmdOpts{..} = do
+  hSetBuffering stdout NoBuffering
+  hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
   scan basedir cmdOutFile
@@ -71,7 +76,7 @@ validateDir dir = do
 
   pure absolute
 
-scan :: forall sig m.
+scan ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , Has Threaded sig m
@@ -133,6 +138,9 @@ discoverFuncs =
   , GemfileLock.discover
 
   , Carthage.discover
+
+  , Podfile.discover
+  , PodfileLock.discover
   ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()

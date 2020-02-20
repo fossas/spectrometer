@@ -37,6 +37,7 @@ mkProjectClosure dir npmOutput = ProjectClosure
   , closureStrategyName  = "nodejs-npmlist"
   , closureModuleDir     = dir
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

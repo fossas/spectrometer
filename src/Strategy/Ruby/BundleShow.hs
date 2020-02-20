@@ -45,6 +45,7 @@ mkProjectClosure dir deps = ProjectClosure
   , closureStrategyName  = "ruby-bundleshow"
   , closureModuleDir     = dir
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

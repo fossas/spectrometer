@@ -42,6 +42,7 @@ mkProjectClosure file package = ProjectClosure
   , closureStrategyName  = "nuget-packagereference"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

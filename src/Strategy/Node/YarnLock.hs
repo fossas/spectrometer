@@ -42,6 +42,7 @@ mkProjectClosure file lock = ProjectClosure
   , closureStrategyName  = "nodejs-yarnlock"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

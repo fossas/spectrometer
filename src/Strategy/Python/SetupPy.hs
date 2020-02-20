@@ -33,6 +33,7 @@ mkProjectClosure file reqs = ProjectClosure
   , closureStrategyName  = "python-setuppy"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

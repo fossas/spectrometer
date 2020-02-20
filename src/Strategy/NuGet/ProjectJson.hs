@@ -61,6 +61,7 @@ mkProjectClosure file projectJson = ProjectClosure
   , closureStrategyName  = "nuget-projectjson"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

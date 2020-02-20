@@ -43,6 +43,7 @@ mkProjectClosure dir deps = ProjectClosure
   , closureStrategyName  = "python-piplist"
   , closureModuleDir     = dir
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

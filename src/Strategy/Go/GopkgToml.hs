@@ -87,6 +87,7 @@ mkProjectClosure file graph = ProjectClosure
   , closureStrategyName  = "golang-gopkgtoml"
   , closureModuleDir     = parent file
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

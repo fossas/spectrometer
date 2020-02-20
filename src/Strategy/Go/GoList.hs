@@ -75,6 +75,7 @@ mkProjectClosure dir graph = ProjectClosure
   , closureStrategyName  = "golang-golist"
   , closureModuleDir     = dir
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies

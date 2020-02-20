@@ -93,6 +93,7 @@ mkProjectClosure dir deps = ProjectClosure
   , closureStrategyName  = "gradle-cli"
   , closureModuleDir     = dir
   , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
   where
   dependencies = ProjectDependencies
