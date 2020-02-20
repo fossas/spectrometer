@@ -88,7 +88,7 @@ scan basedir outFile = do
 
   logSticky "[ Combining Analyses ]"
 
-  let projects = mkProjects [] (S.fromList closures)
+  let projects = mkProjects (S.fromList closures)
   liftIO $ case outFile of
     Nothing -> BL.putStr (encode projects)
     Just path -> liftIO (encodeFile path projects)

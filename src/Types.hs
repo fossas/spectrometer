@@ -2,7 +2,6 @@ module Types
   ( StrategyGroup(..)
 
   , ProjectClosure(..)
-  , StrategyGroup'(..)
 
   , Optimal(..)
   , Complete(..)
@@ -34,7 +33,7 @@ runSimpleStrategy ::
   , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m
   )
-  => Text -> StrategyGroup' -> TaskC m ProjectClosure -> m ()
+  => Text -> StrategyGroup -> TaskC m ProjectClosure -> m ()
 runSimpleStrategy _ _ act = forkTask $ do
   let runIt = runError @ReadFSErr
             . runError @ExecErr
@@ -53,7 +52,7 @@ runStrategy ::
   ( Has (Lift IO) sig m
   , Has TaskPool sig m
   )
-  => Text -> StrategyGroup' -> TaskC m () -> m ()
+  => Text -> StrategyGroup -> TaskC m () -> m ()
 runStrategy _ _ act = forkTask $ do
   let runIt = runError @ReadFSErr
             . runError @ExecErr
@@ -81,8 +80,6 @@ type HasDiscover sig m =
 
 ---------- Strategies
 
--- FUTURE: determine strategy completeness during scan?
-
 data Optimal = Optimal | NotOptimal
   deriving (Eq, Ord, Show, Generic)
 
@@ -97,10 +94,8 @@ instance ToJSON Complete where
   toJSON Complete    = toJSON True
   toJSON NotComplete = toJSON False
 
--- TODO: typeclassify?
-
 data ProjectClosure = ProjectClosure
-  { closureStrategyGroup :: StrategyGroup'
+  { closureStrategyGroup :: StrategyGroup
   , closureStrategyName  :: Text -- ^ e.g., "python-pipenv". This is temporary: ProjectClosures will eventually combine several strategies into one
   , closureModuleDir     :: Path Rel Dir -- ^ the relative module directory (for grouping with other strategies)
   , closureDependencies  :: ProjectDependencies
@@ -112,7 +107,7 @@ data ProjectDependencies = ProjectDependencies
   , dependenciesComplete :: Complete -- ^ Whether this dependency graph contains all dependencies for a given project. When @NotComplete@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
   } deriving (Eq, Ord, Show, Generic)
 
-data StrategyGroup' =
+data StrategyGroup =
     CarthageGroup
   | DotnetGroup
   | GolangGroup
@@ -122,13 +117,3 @@ data StrategyGroup' =
   | PythonGroup
   | RubyGroup
   deriving (Eq, Ord, Show, Generic)
-
--- | 'Strategy' outputs are grouped and sorted based on the provided @StrategyGroup@s
---
--- This is temporary: ProjectClosures will eventually supersede this behavior
---
--- For example, @"python"@ is a @StrategyGroup@ that has pipenv, piplist, ... as strategies
-data StrategyGroup = StrategyGroup
-  { groupName       :: Text -- ^ e.g., "python"
-  , groupStrategies :: [Text]
-  }
