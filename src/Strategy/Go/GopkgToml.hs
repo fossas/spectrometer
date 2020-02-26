@@ -69,7 +69,7 @@ analyze ::
   , Has Exec sig m
   , Effect sig
   )
-  => Path Rel File -> m ProjectClosure
+  => Path Rel File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   contents <- readContentsText file
   case Toml.decode gopkgCodec contents of
@@ -81,13 +81,11 @@ analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
       _ <- runError @ExecErr (fillInTransitive (parent file))
       pure ()
 
-mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosure
-mkProjectClosure file graph = ProjectClosure
-  { closureStrategyGroup = GolangGroup
-  , closureStrategyName  = "golang-gopkgtoml"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure file graph = ProjectClosureBody
+  { bodyModuleDir     = parent file
+  , bodyDependencies  = dependencies
+  , bodyLicenses      = []
   }
   where
   dependencies = ProjectDependencies

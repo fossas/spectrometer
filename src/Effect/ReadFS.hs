@@ -61,6 +61,8 @@ data ReadFSErr =
   | ResolveError Text -- ^ An IOException was thrown when resolving a file/directory
   deriving (Eq, Ord, Show, Generic, Typeable)
 
+instance E.Exception ReadFSErr
+
 instance HFunctor ReadFS where
   hmap f = \case
     ReadContentsBS' path k -> ReadContentsBS' path (f . k)

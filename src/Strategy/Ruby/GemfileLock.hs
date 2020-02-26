@@ -61,16 +61,14 @@ newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSections file
 
-mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
-mkProjectClosure file sections = ProjectClosure
-  { closureStrategyGroup = RubyGroup
-  , closureStrategyName  = "ruby-gemfilelock"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosureBody
+mkProjectClosure file sections = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

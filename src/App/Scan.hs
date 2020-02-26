@@ -88,8 +88,10 @@ scan basedir outFile = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
-  (closures,()) <- runOutput @ProjectClosure $
+  (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
     withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
+
+  -- TODO FIXME NOTE REVIEW: next: handle failures
 
   logSticky "[ Combining Analyses ]"
 
