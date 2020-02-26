@@ -58,7 +58,7 @@ data ReadFS m k
 data ReadFSErr =
     FileReadError FilePath Text -- ^ A file couldn't be read. file, err
   | FileParseError FilePath Text -- ^ A file's contents couldn't be parsed. TODO: ask user to help with this. file, err
-  | ResolveError Text -- ^ An IOException was thrown when resolving a file/directory
+  | ResolveError FilePath FilePath Text -- ^ An IOException was thrown when resolving a file/directory
   deriving (Eq, Ord, Show, Generic, Typeable)
 
 instance E.Exception ReadFSErr
@@ -190,11 +190,11 @@ instance (Algebra sig m, MonadIO m) => Algebra (ReadFS :+: sig) (ReadFSIOC m) wh
     ResolveFile' dir path k -> (k =<<) . ReadFSIOC $ liftIO $
       (Right <$> PIO.resolveFile dir (T.unpack path))
       `E.catch`
-      (\(e :: E.IOException) -> pure (Left (ResolveError (T.pack (show e)))))
+      (\(e :: E.IOException) -> pure (Left (ResolveError (toFilePath dir) (T.unpack path) (T.pack (show e)))))
     ResolveDir' dir path k -> (k =<<) . ReadFSIOC $ liftIO $
       (Right <$> PIO.resolveDir dir (T.unpack path))
       `E.catch`
-      (\(e :: E.IOException) -> pure (Left (ResolveError (T.pack (show e)))))
+      (\(e :: E.IOException) -> pure (Left (ResolveError (toFilePath dir) (T.unpack path) (T.pack (show e)))))
     -- NB: these never throw
     DoesFileExist file k -> k =<< PIO.doesFileExist file
     DoesDirExist dir k -> k =<< PIO.doesDirExist dir
