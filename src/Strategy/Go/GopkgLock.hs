@@ -15,11 +15,9 @@ import Prologue hiding ((.=))
 import Control.Carrier.Error.Either
 import DepTypes
 import Discovery.Walk
-import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
 import Graphing (Graphing)
-import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import qualified Toml
 import Toml (TomlCodec, (.=))
@@ -56,7 +54,6 @@ data Project = Project
 analyze ::
   ( Has ReadFS sig m
   , Has (Error ReadFSErr) sig m
-  , Has Exec sig m
   , Effect sig
   )
   => Path Rel File -> m ProjectClosureBody
@@ -68,7 +65,7 @@ analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
       buildGraph (lockProjects golock)
 
       -- TODO: diagnostics?
-      _ <- runError @ExecErr (fillInTransitive (parent file))
+      -- _ <- runError @ExecErr (fillInTransitive (parent file))
       pure ()
 
 mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosureBody
