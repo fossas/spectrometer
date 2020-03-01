@@ -46,7 +46,6 @@ import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
 import qualified Strategy.NuGet.ProjectJson as ProjectJson
 import qualified Strategy.NuGet.Nuspec as Nuspec
 import qualified Strategy.Python.Pipenv as Pipenv
-import qualified Strategy.Python.PipList as PipList
 import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
@@ -92,8 +91,6 @@ scan basedir outFile = do
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
     withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
-
-  -- TODO FIXME NOTE REVIEW: next: handle failures
 
   logSticky "[ Combining Analyses ]"
 
@@ -187,7 +184,6 @@ discoverFuncs =
   , ProjectJson.discover
   , Nuspec.discover
 
-  , PipList.discover
   , Pipenv.discover
   , SetupPy.discover
   , ReqTxt.discover
