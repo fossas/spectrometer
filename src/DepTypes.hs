@@ -1,5 +1,6 @@
 module DepTypes
   ( Dependency(..)
+  , DepEnvironment(..)
   , DepType(..)
   , VerConstraint(..)
   ) where
@@ -7,12 +8,20 @@ module DepTypes
 import Prologue
 
 data Dependency = Dependency
-  { dependencyType      :: DepType
-  , dependencyName      :: Text
-  , dependencyVersion   :: Maybe VerConstraint
-  , dependencyLocations :: [Text]
-  , dependencyTags      :: Map Text [Text]
+  { dependencyType         :: DepType
+  , dependencyName         :: Text
+  , dependencyVersion      :: Maybe VerConstraint
+  , dependencyLocations    :: [Text]
+  , dependencyEnvironments :: [DepEnvironment]
+  , dependencyTags         :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
+
+data DepEnvironment =
+    EnvProduction
+  | EnvDevelopment
+  | EnvTesting
+  | EnvOther Text
+  deriving (Eq, Ord, Show, Generic)
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =
