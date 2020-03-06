@@ -20,7 +20,6 @@ data DepEnvironment =
     EnvProduction
   | EnvDevelopment
   | EnvTesting
-  | EnvOther Text
   deriving (Eq, Ord, Show, Generic)
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
