@@ -12,7 +12,6 @@ import DepTypes
 import Strategy.Cocoapods.PodfileLock
 import GraphUtil
 
-import qualified Test.Hspec.Megaparsec as T
 import qualified Test.Tasty.Hspec as T
 
 dependencyOne :: Dependency
@@ -69,4 +68,8 @@ spec_analyze = do
   podLockFile <- T.runIO (TIO.readFile "test/Cocoapods/testdata/Podfile.lock")
   T.describe "podfile lock parser" $
     T.it "parses error messages into an empty list" $
-      runParser findSections "" podLockFile `T.parseSatisfies` \result -> podSection `elem` result && dependencySection `elem` result
+      case runParser findSections "" podLockFile of
+        Left err -> T.expectationFailure ("failed to parse: " <> errorBundlePretty err)
+        Right result -> do
+          result `T.shouldContain` [podSection]
+          result `T.shouldContain` [dependencySection]
