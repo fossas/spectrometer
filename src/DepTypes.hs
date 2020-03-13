@@ -7,12 +7,15 @@ module DepTypes
 
 import Prologue
 
+-- FIXME: this needs a smart constructor with empty tags/environments/etc.
+-- We've historically relied on the compile error for making sure we fill all
+-- of these fields. Tests should be used to ensure this instead.
 data Dependency = Dependency
   { dependencyType         :: DepType
   , dependencyName         :: Text
   , dependencyVersion      :: Maybe VerConstraint
   , dependencyLocations    :: [Text]
-  , dependencyEnvironments :: [DepEnvironment]
+  , dependencyEnvironments :: [DepEnvironment] -- FIXME: this should be a Set
   , dependencyTags         :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
 
