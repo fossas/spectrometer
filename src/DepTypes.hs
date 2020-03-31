@@ -18,6 +18,7 @@ data Dependency = Dependency
 data DepType =
     SubprojectType -- ^ A first-party subproject
   | GemType    -- ^ Gem registry
+  | GooglesourceType  -- ^ android.googlesource.com
   | MavenType -- ^ Maven registry
   | NodeJSType -- ^ NPM registry (or similar)
   | NuGetType -- ^ Nuget registry

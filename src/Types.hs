@@ -135,6 +135,7 @@ data StrategyGroup =
     CarthageGroup
   | DotnetGroup
   | GolangGroup
+  | GooglesourceGroup
   | GradleGroup
   | MavenGroup
   | NodejsGroup
