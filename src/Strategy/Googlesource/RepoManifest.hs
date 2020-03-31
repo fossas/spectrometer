@@ -73,6 +73,12 @@ data ManifestProject = ManifestProject
   , projectRevision :: Text  -- TODO: This should be a Maybe. It needs to be grabbed from the remote or default if it's not set in the project
   } deriving (Eq, Ord, Show, Generic)
 
+instance FromXML RepoManifest where
+  parseElement el = do
+    RepoManifest <$> optional (child "default" el)
+                 <*> children "remote" el
+                 <*> children "project" el
+
 instance FromXML ManifestDefault where
   parseElement el = do 
     ManifestDefault <$> optional (attr "remote" el)
@@ -81,8 +87,8 @@ instance FromXML ManifestDefault where
 instance FromXML ManifestRemote where
   parseElement el = do
     ManifestRemote <$> attr "name" el
-                   <*> attr "remote" el
-                   <*> optional (attr "fetch" el)
+                   <*> attr "fetch" el
+                   <*> optional (attr "revision" el)
 
 instance FromXML ManifestProject where
   parseElement el = do
@@ -90,12 +96,6 @@ instance FromXML ManifestProject where
                     <*> optional (attr "path" el)
                     <*> optional (attr "remote" el)
                     <*> optional (attr "revision" el) `defaultsTo` "" -- make this a Maybe
-
-instance FromXML RepoManifest where
-  parseElement el = do
-    RepoManifest <$> optional (child "default" el)
-             <*> children "remote" el
-             <*> children "project" el
 
 buildGraph :: RepoManifest -> Graphing Dependency
 buildGraph manifest = unfold projects (const []) toDependency

@@ -184,6 +184,7 @@ test-suite tests
     Go.GomodTest
     Go.GopkgLockTest
     Go.GopkgTomlTest
+    Googlesource.RepoManifestTest
     Gradle.GradleTest
     GraphUtil
     Maven.PluginStrategyTest
