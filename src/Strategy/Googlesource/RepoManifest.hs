@@ -49,10 +49,13 @@ mkProjectClosure file manifest = ProjectClosureBody
     }
 
 -- DTD for the Repo manifest.xml file: https://gerrit.googlesource.com/git-repo/+/master/docs/manifest-format.md
+-- Note that the DTD is only "roughly adhered to" according to the documentation. For example, the DTD says that
+-- there will be zero or more project and remote tags (it uses a `*`), but the documentation specifies at least one
+-- for both of these tags (which should be denoted by a `+` in the DTD).
 data RepoManifest = RepoManifest
   { manifestDefault  :: Maybe ManifestDefault
   , manifestRemotes  :: [ManifestRemote]
-  , manifestProjects :: [ManifestProject] 
+  , manifestProjects :: [ManifestProject]
   } deriving (Eq, Ord, Show, Generic)
 
 data ManifestRemote = ManifestRemote
@@ -70,8 +73,71 @@ data ManifestProject = ManifestProject
   { projectName     :: Text
   , projectPath     :: Maybe Text
   , projectRemote   :: Maybe Text
-  , projectRevision :: Text  -- TODO: This should be a Maybe. It needs to be grabbed from the remote or default if it's not set in the project
+  , projectRevision :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
+
+-- If a project does not have a path, then use its name for the path
+projectPathOrName :: ManifestProject -> Text
+projectPathOrName (ManifestProject { projectPath = Nothing, projectName = name }) = name
+projectPathOrName (ManifestProject { projectPath = Just path}) = path
+
+-- A project's revision comes from the first of these that we encounter:
+--   * The revision attribute on the project
+--   * The revision attribute on the project's remote
+--   * The revision attribute on the manifest's default
+revisionForProject :: ManifestProject -> RepoManifest -> Text
+revisionForProject project manifest =
+  case projectRevision project of
+    Nothing -> defaultRevisionForProject project manifest
+    Just revision -> revision
+
+-- If a project does not have a revision attribute, then we look for:
+--   * The revision of the remote that it points to with its remote attribute
+--   * The revision of the default remote
+--   * The revision attribute of the project's remote
+-- TODO: The spec is not clear on what revision a project has if a project does not have a revision attribte, uses the default remote
+--       and both the <remote> and <default> have a revision attribute.
+--       I need to test this by building some sample repo manifests and syncing them.
+defaultRevisionForProject :: ManifestProject -> RepoManifest -> Text
+defaultRevisionForProject project manifest =
+  case projectRemote project of
+    Nothing -> defaultRevisionForManifest manifest
+    (Just remoteName) -> defaultRevisionForRemote remoteName manifest
+
+-- If there is a <default> tag, then use its revision
+-- if not, then fall back to the revision in the first remote
+defaultRevisionForManifest :: RepoManifest -> Text
+defaultRevisionForManifest (RepoManifest { manifestDefault = Nothing, manifestRemotes = (r:_)}) =
+  remote
+  where
+    (Just remote) = remoteRevision r
+defaultRevisionForManifest manifest =
+  case defaultRemote d of
+    Nothing -> r
+    (Just remoteName) -> defaultRevisionForRemote remoteName manifest
+  where
+    (Just d) = manifestDefault manifest
+    (Just r) = defaultRevision d
+
+defaultRevisionForRemote :: Text -> RepoManifest -> Text
+defaultRevisionForRemote remoteNameString manifest =
+  case remoteRevision remote of
+    Nothing -> forcedDefaultRevision $ forcedDefault manifest
+    (Just revision) -> revision
+  where
+    (Just remote) = find (\r -> (remoteName r) == remoteNameString) (manifestRemotes manifest)
+
+forcedDefault :: RepoManifest -> ManifestDefault
+forcedDefault manifest =
+  d
+  where
+    (Just d) = manifestDefault manifest
+
+forcedDefaultRevision :: ManifestDefault -> Text
+forcedDefaultRevision manifestDefault =
+  r
+  where
+    (Just r) = defaultRevision manifestDefault
 
 instance FromXML RepoManifest where
   parseElement el = do
@@ -80,7 +146,7 @@ instance FromXML RepoManifest where
                  <*> children "project" el
 
 instance FromXML ManifestDefault where
-  parseElement el = do 
+  parseElement el = do
     ManifestDefault <$> optional (attr "remote" el)
                     <*> optional (attr "revision" el)
 
@@ -95,16 +161,16 @@ instance FromXML ManifestProject where
     ManifestProject <$> attr "name" el
                     <*> optional (attr "path" el)
                     <*> optional (attr "remote" el)
-                    <*> optional (attr "revision" el) `defaultsTo` "" -- make this a Maybe
+                    <*> optional (attr "revision" el)
 
 buildGraph :: RepoManifest -> Graphing Dependency
 buildGraph manifest = unfold projects (const []) toDependency
     where
     projects = manifestProjects manifest
-    toDependency ManifestProject{..} =
+    toDependency mp@ManifestProject{..} =
       Dependency { dependencyType = GooglesourceType
                  , dependencyName = projectName
-                 , dependencyVersion = Just (CEq projectRevision)
-                 , dependencyLocations = []
+                 , dependencyVersion = Just (CEq $ revisionForProject mp manifest)
+                 , dependencyLocations = [projectPathOrName mp]
                  , dependencyTags = M.empty
                  }
