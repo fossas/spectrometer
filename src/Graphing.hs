@@ -14,6 +14,7 @@ module Graphing
 
   -- * Manipulating a Graphing
   , gmap
+  , filter
   , pruneUnreachable
 
   -- * Building simple Graphings
@@ -21,7 +22,7 @@ module Graphing
   , unfold
   ) where
 
-import Prologue hiding (empty, parent)
+import Prologue hiding (empty, filter, parent)
 
 import           Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import qualified Algebra.Graph.AdjacencyMap as AM
@@ -48,6 +49,13 @@ gmap f gr = gr { graphingDirect = direct', graphingAdjacent = adjacent' }
   where
   direct' = S.map f (graphingDirect gr)
   adjacent' = AM.gmap f (graphingAdjacent gr)
+
+-- | Filter Graphing elements
+filter :: (ty -> Bool) -> Graphing ty -> Graphing ty
+filter f gr = gr { graphingDirect = direct', graphingAdjacent = adjacent' }
+  where
+    direct' = S.filter f (graphingDirect gr)
+    adjacent' = AM.induce f (graphingAdjacent gr)
 
 -- | The empty Graphing
 empty :: Graphing ty
@@ -86,7 +94,7 @@ unfold seed getDeps toDependency = foldr addNode empty seed
 -- | Build a graphing from a list, where all list elements are treated as direct
 -- dependencies
 fromList :: Ord ty => [ty] -> Graphing ty
-fromList nodes = Graphing (S.fromList nodes) (AM.overlays (map AM.vertex nodes))
+fromList nodes = Graphing (S.fromList nodes) (AM.vertices nodes)
 
 -- | Remove unreachable vertices from the graph
 --
