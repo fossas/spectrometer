@@ -23,7 +23,9 @@ import Graphing (Graphing, unfold)
 import Parse.XML
 import Types
 
--- TODO: This should look in a specific location, not walk through the filesystem. It lives in PROJECT_ROOT/.repo/manifest.xml
+-- TODO: This should look in a specific location, not walk through the filesystem. 
+--       To find the file, parse .repo/manifest.xml, which will point at the true manifest,
+--       which is typically found in .repo/manifests/default.xml.
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
   case find (\f -> (==) "manifest.xml" (fileName f)) files of
@@ -82,22 +84,19 @@ projectPathOrName (ManifestProject { projectPath = Nothing, projectName = name }
 projectPathOrName (ManifestProject { projectPath = Just path}) = path
 
 -- A project's revision comes from the first of these that we encounter:
---   * The revision attribute on the project
---   * The revision attribute on the project's remote
---   * The revision attribute on the manifest's default
+--   * If the project has a revision attribute, then use that
+--   * If the project has a remote attribute and the remote it points to has a revision attribute, use that
+--   * If the project does not have a remote attribute and the default remote has a revision attribute, use that
+--   * Otherwise, use the revision attribute on the project's default tag
+--   That leaves these error cases:
+--   * If the project does not have a remote attribute and there is no default remote, then blow up
+--   * If the project does not have a revision and there is no default revision from either its remote or the default, then blow up
 revisionForProject :: ManifestProject -> RepoManifest -> Text
 revisionForProject project manifest =
   case projectRevision project of
     Nothing -> defaultRevisionForProject project manifest
     Just revision -> revision
 
--- If a project does not have a revision attribute, then we look for:
---   * The revision of the remote that it points to with its remote attribute
---   * The revision of the default remote
---   * The revision attribute of the project's remote
--- TODO: The spec is not clear on what revision a project has if a project does not have a revision attribte, uses the default remote
---       and both the <remote> and <default> have a revision attribute.
---       I need to test this by building some sample repo manifests and syncing them.
 defaultRevisionForProject :: ManifestProject -> RepoManifest -> Text
 defaultRevisionForProject project manifest =
   case projectRemote project of
@@ -105,7 +104,9 @@ defaultRevisionForProject project manifest =
     (Just remoteName) -> defaultRevisionForRemote remoteName manifest
 
 -- If there is a <default> tag, then use its revision
--- if not, then fall back to the revision in the first remote
+-- if not, then blow up
+-- TODO: This should raise an error if there's no default tag or it doesn't have a revision attribute and 
+--       it does not point at a remote with a revision attribute
 defaultRevisionForManifest :: RepoManifest -> Text
 defaultRevisionForManifest (RepoManifest { manifestDefault = Nothing, manifestRemotes = (r:_)}) =
   remote
@@ -122,22 +123,10 @@ defaultRevisionForManifest manifest =
 defaultRevisionForRemote :: Text -> RepoManifest -> Text
 defaultRevisionForRemote remoteNameString manifest =
   case remoteRevision remote of
-    Nothing -> forcedDefaultRevision $ forcedDefault manifest
+    Nothing -> fromMaybe "" $ defaultRevision $ fromMaybe (ManifestDefault { defaultRemote = Just "", defaultRevision = Just ""}) $ manifestDefault manifest
     (Just revision) -> revision
   where
     (Just remote) = find (\r -> (remoteName r) == remoteNameString) (manifestRemotes manifest)
-
-forcedDefault :: RepoManifest -> ManifestDefault
-forcedDefault manifest =
-  d
-  where
-    (Just d) = manifestDefault manifest
-
-forcedDefaultRevision :: ManifestDefault -> Text
-forcedDefaultRevision manifestDefault =
-  r
-  where
-    (Just r) = defaultRevision manifestDefault
 
 instance FromXML RepoManifest where
   parseElement el = do
