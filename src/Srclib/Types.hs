@@ -9,7 +9,7 @@ module Srclib.Types
 import Prologue
 
 data SourceUnit = SourceUnit
-  { sourceUnitName :: Text -- TODO: does core use this anywhere? if not, let's just use the filepath again
+  { sourceUnitName :: Text
   , sourceUnitType :: SourceUnitType
   , sourceUnitManifest :: Text -- ^ path to manifest file
   , sourceUnitBuild :: SourceUnitBuild
