@@ -68,6 +68,7 @@ common deps
     , path-io                      ^>=1.6.0
     , prettyprinter                ^>=1.6
     , prettyprinter-ansi-terminal  ^>=1.1.1
+    , req                          ^>=3.1.0
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , text                         ^>=1.2.3
@@ -88,6 +89,7 @@ library
   exposed-modules:
     App
     App.Scan
+    App.Scan.FossaV1
     App.Scan.Graph
     App.Scan.GraphBuilder
     App.Scan.GraphMangler

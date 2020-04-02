@@ -4,6 +4,7 @@ module Srclib.Types
   , SourceUnitBuild(..)
   , SourceUnitDependency(..)
   , Locator(..)
+  , renderLocator
   ) where
 
 import Prologue

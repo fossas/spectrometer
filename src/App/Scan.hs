@@ -15,6 +15,7 @@ import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
+import App.Scan.FossaV1 (uploadAnalysis)
 import App.Scan.Project (mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
@@ -56,6 +57,7 @@ data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , cmdDebug   :: Bool
   , cmdOutFile :: Maybe FilePath
+  , cmdApiKey  :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
@@ -64,7 +66,7 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
-  scan basedir cmdOutFile
+  scan basedir cmdOutFile cmdApiKey
     & withLogger (bool SevInfo SevDebug cmdDebug)
     & runThreaded
 
@@ -84,8 +86,11 @@ scan ::
   , MonadIO m
   , Effect sig
   )
-  => Path Abs Dir -> Maybe FilePath -> m ()
-scan basedir outFile = do
+  => Path Abs Dir
+  -> Maybe FilePath
+  -> Maybe Text -- ^ API key for fossa core. when present, we'll upload results
+  -> m ()
+scan basedir outFile fossaApiKey = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
@@ -105,6 +110,10 @@ scan basedir outFile = do
   logInfo ("Inferred revision: `" <> pretty (inferredRevision inferred) <> "`")
 
   logSticky ""
+
+  -- TODO: prevent empty uploads
+  for_ fossaApiKey $ \key ->
+    uploadAnalysis key (inferredName inferred) (inferredRevision inferred) closures
 
 buildResult :: [ProjectClosure] -> [ProjectFailure] -> Value
 buildResult closures failures = object
