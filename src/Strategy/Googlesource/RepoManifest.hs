@@ -15,6 +15,7 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
+import Data.Maybe (catMaybes)
 
 import DepTypes
 import Discovery.Walk
@@ -23,7 +24,7 @@ import Graphing (Graphing, unfold)
 import Parse.XML
 import Types
 
--- TODO: This should look in a specific location, not walk through the filesystem. 
+-- TODO: This should look in a specific location, not walk through the filesystem.
 --       To find the file, parse .repo/manifest.xml, which will point at the true manifest,
 --       which is typically found in .repo/manifests/default.xml.
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -78,10 +79,17 @@ data ManifestProject = ManifestProject
   , projectRevision :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
+data ValidatedProject = ValidatedProject
+  { validatedProjectName     :: Text
+  , validatedProjectPath     :: Text
+  , validatedProjectUrl      :: Text
+  , validatedProjectRevision :: Text
+  } deriving (Eq, Ord, Show, Generic)
+
 -- If a project does not have a path, then use its name for the path
 projectPathOrName :: ManifestProject -> Text
 projectPathOrName (ManifestProject { projectPath = Nothing, projectName = name }) = name
-projectPathOrName (ManifestProject { projectPath = Just path}) = path
+projectPathOrName (ManifestProject { projectPath = Just path }) = path
 
 -- A project's revision comes from the first of these that we encounter:
 --   * If the project has a revision attribute, then use that
@@ -91,42 +99,36 @@ projectPathOrName (ManifestProject { projectPath = Just path}) = path
 --   That leaves these error cases:
 --   * If the project does not have a remote attribute and there is no default remote, then blow up
 --   * If the project does not have a revision and there is no default revision from either its remote or the default, then blow up
-revisionForProject :: ManifestProject -> RepoManifest -> Text
+revisionForProject :: ManifestProject -> RepoManifest -> Maybe Text
 revisionForProject project manifest =
-  case projectRevision project of
-    Nothing -> defaultRevisionForProject project manifest
-    Just revision -> revision
+      projectRevision project
+  <|> (remoteForProject project manifest >>= remoteRevision)
+  <|> (manifestDefault manifest >>= defaultRevision)
 
-defaultRevisionForProject :: ManifestProject -> RepoManifest -> Text
-defaultRevisionForProject project manifest =
-  case projectRemote project of
-    Nothing -> defaultRevisionForManifest manifest
-    (Just remoteName) -> defaultRevisionForRemote remoteName manifest
+remoteForProject :: ManifestProject -> RepoManifest -> Maybe ManifestRemote
+remoteForProject project manifest =
+  remoteNameString >>= \(name :: Text) -> remoteByName name manifest
+  where
+    remoteNameString = projectRemote project <|> (manifestDefault manifest >>= defaultRemote)
 
--- If there is a <default> tag, then use its revision
--- if not, then blow up
--- TODO: This should raise an error if there's no default tag or it doesn't have a revision attribute and 
---       it does not point at a remote with a revision attribute
-defaultRevisionForManifest :: RepoManifest -> Text
-defaultRevisionForManifest (RepoManifest { manifestDefault = Nothing, manifestRemotes = (r:_)}) =
-  remote
-  where
-    (Just remote) = remoteRevision r
-defaultRevisionForManifest manifest =
-  case defaultRemote d of
-    Nothing -> r
-    (Just remoteName) -> defaultRevisionForRemote remoteName manifest
-  where
-    (Just d) = manifestDefault manifest
-    (Just r) = defaultRevision d
+remoteByName :: Text -> RepoManifest -> Maybe ManifestRemote
+remoteByName remoteNameString manifest =
+  find (\r -> remoteName r == remoteNameString) (manifestRemotes manifest)
 
-defaultRevisionForRemote :: Text -> RepoManifest -> Text
-defaultRevisionForRemote remoteNameString manifest =
-  case remoteRevision remote of
-    Nothing -> fromMaybe "" $ defaultRevision $ fromMaybe (ManifestDefault { defaultRemote = Just "", defaultRevision = Just ""}) $ manifestDefault manifest
-    (Just revision) -> revision
+validatedProjects :: RepoManifest -> [ValidatedProject]
+validatedProjects manifest =
+  catMaybes validated
   where
-    (Just remote) = find (\r -> (remoteName r) == remoteNameString) (manifestRemotes manifest)
+    validated = [validatedProject mp manifest | mp <- manifestProjects manifest]
+
+-- TODO: We're stubbing the URL with the projectPathOrName
+validatedProject :: ManifestProject -> RepoManifest -> Maybe ValidatedProject
+validatedProject project manifest =
+  case revision of
+    Nothing -> Nothing
+    (Just r) -> Just (ValidatedProject (projectName project) (projectPathOrName project) (projectPathOrName project) r)
+  where
+    revision = revisionForProject project manifest
 
 instance FromXML RepoManifest where
   parseElement el = do
@@ -155,11 +157,11 @@ instance FromXML ManifestProject where
 buildGraph :: RepoManifest -> Graphing Dependency
 buildGraph manifest = unfold projects (const []) toDependency
     where
-    projects = manifestProjects manifest
-    toDependency mp@ManifestProject{..} =
+    projects = validatedProjects manifest
+    toDependency ValidatedProject{..} =
       Dependency { dependencyType = GooglesourceType
-                 , dependencyName = projectName
-                 , dependencyVersion = Just (CEq $ revisionForProject mp manifest)
-                 , dependencyLocations = [projectPathOrName mp]
+                 , dependencyName = validatedProjectName
+                 , dependencyVersion = Just (CEq $ validatedProjectRevision)
+                 , dependencyLocations = [validatedProjectUrl]
                  , dependencyTags = M.empty
                  }
