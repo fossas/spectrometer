@@ -36,3 +36,38 @@ data Locator = Locator
   , locatorProject :: Text
   , locatorRevision :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
+
+
+-- TODO: "NormalizeGitURL", if/when we get git locators
+renderLocator :: Locator -> Text
+renderLocator Locator{..} =
+  locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
+
+instance ToJSON SourceUnit where
+  toJSON SourceUnit{..} = object
+    [ "Name" .= sourceUnitName
+    , "Type" .= sourceUnitType
+    , "Manifest" .= sourceUnitManifest
+    , "Build" .= sourceUnitBuild
+    ]
+
+instance ToJSON SourceUnitBuild where
+  toJSON SourceUnitBuild{..} = object
+    [ "Artifact" .= buildArtifact
+    , "Succeeded" .= buildSucceeded
+    , "Imports" .= buildImports
+    , "Dependencies" .= buildDependencies
+    ]
+
+instance ToJSON SourceUnitDependency where
+  toJSON SourceUnitDependency{..} = object
+    [ "locator" .= sourceDepLocator
+    , "imports" .= sourceDepImports
+    ]
+
+instance ToJSON SourceUnitType where
+  toJSON SourceUnitTypeDummyCLI = "dummy-cli"
+
+instance ToJSON Locator where
+  -- render as text
+  toJSON = toJSON . renderLocator
