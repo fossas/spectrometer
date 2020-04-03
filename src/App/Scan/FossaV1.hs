@@ -2,6 +2,7 @@ module App.Scan.FossaV1
   ( uploadAnalysis
   ) where
 
+import Data.List (isInfixOf)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Effect.Logger
 import Network.HTTP.Req
@@ -18,7 +19,6 @@ uploadUrl :: Url 'Https
 uploadUrl = https "app.fossa.com" /: "api" /: "builds" /: "custom"
 
 -- TODO: IOExceptions?
--- TODO: filter project closures in test/vendor/etc directories
 uploadAnalysis ::
   ( Has Logger sig m
   , MonadIO m
@@ -29,7 +29,8 @@ uploadAnalysis ::
   -> [ProjectClosure]
   -> m ()
 uploadAnalysis key name revision closures = do
-  let sourceUnits = map toSourceUnit closures
+  let filteredClosures = filter (isProductionPath . closureModuleDir) closures
+      sourceUnits = map toSourceUnit filteredClosures
       opts = "locator" =: (renderLocator (Locator "custom" name (Just revision)))
           <> "v" =: cliVersion
           <> "managedBuild" =: True
@@ -37,3 +38,26 @@ uploadAnalysis key name revision closures = do
           <> header "Authorization" ("token " <> encodeUtf8 key)
   resp <- runReq defaultHttpConfig $ req POST uploadUrl (ReqBodyJson sourceUnits) bsResponse opts
   logInfo ("Response from core: " <> (pretty $ decodeUtf8 $ responseBody resp))
+
+-- we specifically want Rel paths here: parent directories shouldn't affect path
+-- filtering
+isProductionPath :: Path Rel fd -> Bool
+isProductionPath path = not $ any (`isInfixOf` toFilePath path)
+  [ "doc/"
+  , "docs/"
+  , "test/"
+  , "example/"
+  , "examples/"
+  , "vendor/"
+  , "node_modules/"
+  , ".srclib-cache/"
+  , "spec/"
+  , "Godeps/"
+  , ".git/"
+  , "bower_components/"
+  , "third_party/"
+  , "third-party/"
+  , "tmp/"
+  , "Carthage/"
+  , "Checkouts/"
+  ]
