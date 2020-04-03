@@ -46,7 +46,6 @@ data FossaError
   | OtherError HttpException
   deriving (Show, Generic)
 
--- TODO: IOExceptions?
 uploadAnalysis
   :: Text -- api key
   -> Text -- project name
