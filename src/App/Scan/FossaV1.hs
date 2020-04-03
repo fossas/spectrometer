@@ -54,7 +54,7 @@ uploadAnalysis
 uploadAnalysis key name revision closures = runError . runFossaReq $ do
   let filteredClosures = filter (isProductionPath . closureModuleDir) closures
       sourceUnits = map toSourceUnit filteredClosures
-      opts = "locator" =: (renderLocator (Locator "custom" name (Just revision)))
+      opts = "locator" =: renderLocator (Locator "custom" name (Just revision))
           <> "v" =: cliVersion
           <> "managedBuild" =: True
           <> "title" =: name
