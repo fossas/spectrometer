@@ -59,6 +59,8 @@ common deps
     , fused-effects                ^>=1.0.2.0
     , fused-effects-exceptions     ^>=1.0.0.0
     , git-config                   ^>=0.1.2
+    , http-client                  ^>=0.6.4.1
+    , http-types                   ^>=0.12.3
     , megaparsec                   ^>=8.0
     , modern-uri                   ^>=0.3.1
     , mtl                          ^>=2.2.2

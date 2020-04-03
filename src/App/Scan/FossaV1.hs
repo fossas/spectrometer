@@ -1,11 +1,16 @@
 module App.Scan.FossaV1
   ( uploadAnalysis
+  , UploadResponse(..)
+  , FossaError(..)
   ) where
 
+import Control.Carrier.Error.Either
 import Data.List (isInfixOf)
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Text.Encoding (encodeUtf8)
 import Effect.Logger
+import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
+import qualified Network.HTTP.Types as HTTP
 import Prologue
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
@@ -18,17 +23,37 @@ cliVersion = "spectrometer"
 uploadUrl :: Url 'Https
 uploadUrl = https "app.fossa.com" /: "api" /: "builds" /: "custom"
 
+newtype FossaReq m a = FossaReq { runFossaReq :: ErrorC FossaError m a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance (Algebra sig m, Effect sig, MonadIO m) => MonadHttp (FossaReq m) where
+  handleHttpException = FossaReq . throwError . mangleError
+
+data UploadResponse = UploadResponse
+  { uploadLocator :: Text
+  , uploadError   :: Maybe Text
+  } deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON UploadResponse where
+  parseJSON = withObject "UploadResponse" $ \obj ->
+    UploadResponse <$> obj .: "locator"
+                   <*> obj .:? "error"
+
+data FossaError
+  = InvalidProjectOrRevision
+  | NoPermission
+  | JsonDeserializeError String
+  | OtherError HttpException
+  deriving (Show, Generic)
+
 -- TODO: IOExceptions?
-uploadAnalysis ::
-  ( Has Logger sig m
-  , MonadIO m
-  )
-  => Text -- api key
+uploadAnalysis
+  :: Text -- api key
   -> Text -- project name
   -> Text -- project revision
   -> [ProjectClosure]
-  -> m ()
-uploadAnalysis key name revision closures = do
+  -> IO (Either FossaError UploadResponse)
+uploadAnalysis key name revision closures = runError . runFossaReq $ do
   let filteredClosures = filter (isProductionPath . closureModuleDir) closures
       sourceUnits = map toSourceUnit filteredClosures
       opts = "locator" =: (renderLocator (Locator "custom" name (Just revision)))
@@ -36,8 +61,18 @@ uploadAnalysis key name revision closures = do
           <> "managedBuild" =: True
           <> "title" =: name
           <> header "Authorization" ("token " <> encodeUtf8 key)
-  resp <- runReq defaultHttpConfig $ req POST uploadUrl (ReqBodyJson sourceUnits) bsResponse opts
-  logInfo ("Response from core: " <> (pretty $ decodeUtf8 $ responseBody resp))
+  resp <- req POST uploadUrl (ReqBodyJson sourceUnits) jsonResponse opts
+  pure (responseBody resp)
+
+mangleError :: HttpException -> FossaError
+mangleError err = case err of
+  VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException resp _)) ->
+    case HTTP.responseStatus resp of
+      HTTP.Status 429 _ -> InvalidProjectOrRevision
+      HTTP.Status 403 _ -> NoPermission
+      _                 -> OtherError err
+  JsonHttpException msg -> JsonDeserializeError msg
+  _ -> OtherError err
 
 -- we specifically want Rel paths here: parent directories shouldn't affect path
 -- filtering

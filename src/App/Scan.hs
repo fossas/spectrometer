@@ -15,7 +15,7 @@ import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
-import App.Scan.FossaV1 (uploadAnalysis)
+import App.Scan.FossaV1 (uploadAnalysis, FossaError(..), UploadResponse(..))
 import App.Scan.Project (mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
@@ -111,9 +111,18 @@ scan basedir outFile fossaApiKey = do
 
   logSticky ""
 
-  -- TODO: prevent empty uploads
-  for_ fossaApiKey $ \key ->
-    uploadAnalysis key (inferredName inferred) (inferredRevision inferred) closures
+  for_ fossaApiKey $ \key -> do
+    maybeResp <- liftIO $ uploadAnalysis key (inferredName inferred) (inferredRevision inferred) closures
+    case maybeResp of
+      Left InvalidProjectOrRevision -> logError "FOSSA error: Invalid project or revision"
+      Left NoPermission -> logError "FOSSA error: No permission to upload"
+      Left (JsonDeserializeError msg) -> logError $ "FOSSA error: Couldn't deserialize API response: " <> pretty msg
+      Left (OtherError exc) -> do
+        logError "FOSSA error: other unknown error. See debug log for details"
+        logDebug (viaShow exc)
+      Right resp -> do
+        logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
+        traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
 buildResult :: [ProjectClosure] -> [ProjectFailure] -> Value
 buildResult closures failures = object
