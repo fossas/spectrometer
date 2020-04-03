@@ -61,12 +61,12 @@ projectThree = ManifestProject { projectName     = "platform/bootable/recovery"
                                , projectRevision = Nothing
                                , projectRemote   = Just "othersource"
                                }
--- <project path="cts" name="platform/cts" groups="cts,pdk-cw-fs,pdk-fs" />
+-- <project path="cts" name="platform/cts" groups="cts,pdk-cw-fs,pdk-fs" remote="othersource" revision="1111"/>
 projectFour :: ManifestProject
 projectFour = ManifestProject { projectName    = "platform/cts"
                              , projectPath     = Just "cts"
-                             , projectRevision = Nothing
-                             , projectRemote   = Nothing
+                             , projectRevision = Just "1111"
+                             , projectRemote   = Just "othersource"
                              }
 -- <project path="dalvik" name="platform/dalvik" groups="pdk-cw-fs,pdk-fs" />
 projectFive :: ManifestProject
@@ -106,8 +106,8 @@ dependencyThree = Dependency { dependencyType = GooglesourceType
 dependencyFour :: Dependency
 dependencyFour = Dependency { dependencyType = GooglesourceType
                             , dependencyName = "platform/cts"
-                            , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
-                            , dependencyLocations = ["https://android.googlesource.com/platform/cts"]
+                            , dependencyVersion = Just (CEq "1111")
+                            , dependencyLocations = ["https://android.othersource.com/platform/cts"]
                             , dependencyTags = M.empty
                             }
 
