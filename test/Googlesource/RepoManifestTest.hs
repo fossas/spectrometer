@@ -83,7 +83,7 @@ dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = GooglesourceType
                            , dependencyName = "platform/art"
                            , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
-                           , dependencyLocations = ["art"]
+                           , dependencyLocations = ["https://android.googlesource.com/platform/art"]
                            , dependencyTags = M.empty
                            }
 
@@ -91,7 +91,7 @@ dependencyTwo :: Dependency
 dependencyTwo = Dependency { dependencyType = GooglesourceType
                            , dependencyName = "platform/bionic"
                            , dependencyVersion = Just (CEq "57b7d1574276f5e7f895c884df29f45859da74b6")
-                           , dependencyLocations = ["bionic"]
+                           , dependencyLocations = ["https://android.googlesource.com/platform/bionic"]
                            , dependencyTags = M.empty
                            }
 
@@ -99,7 +99,7 @@ dependencyThree :: Dependency
 dependencyThree = Dependency { dependencyType = GooglesourceType
                              , dependencyName = "platform/bootable/recovery"
                              , dependencyVersion = Just (CEq "google/android-6.0.1_r74")
-                             , dependencyLocations = ["bootable/recovery"]
+                             , dependencyLocations = ["https://android.othersource.com/platform/bootable/recovery"]
                              , dependencyTags = M.empty
                              }
 
@@ -107,7 +107,7 @@ dependencyFour :: Dependency
 dependencyFour = Dependency { dependencyType = GooglesourceType
                             , dependencyName = "platform/cts"
                             , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
-                            , dependencyLocations = ["cts"]
+                            , dependencyLocations = ["https://android.googlesource.com/platform/cts"]
                             , dependencyTags = M.empty
                             }
 
@@ -115,7 +115,7 @@ dependencyFive :: Dependency
 dependencyFive = Dependency { dependencyType = GooglesourceType
                             , dependencyName = "platform/dalvik"
                             , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
-                            , dependencyLocations = ["dalvik"]
+                            , dependencyLocations = ["https://android.googlesource.com/platform/dalvik"]
                             , dependencyTags = M.empty
                             }
 

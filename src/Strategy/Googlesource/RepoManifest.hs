@@ -105,6 +105,15 @@ revisionForProject project manifest =
   <|> (remoteForProject project manifest >>= remoteRevision)
   <|> (manifestDefault manifest >>= defaultRevision)
 
+-- The URL for a project will be the project's name appended to the project's repo's fetch attribute
+urlForProject :: ManifestProject -> RepoManifest -> Maybe Text
+urlForProject project manifest =
+  case remote of
+    Nothing -> Nothing
+    (Just r) -> Just ((remoteFetch r) <> "/" <> projectName project)
+  where
+    remote = remoteForProject project manifest
+
 remoteForProject :: ManifestProject -> RepoManifest -> Maybe ManifestRemote
 remoteForProject project manifest =
   remoteNameString >>= \(name :: Text) -> remoteByName name manifest
@@ -121,14 +130,15 @@ validatedProjects manifest =
   where
     validated = [validatedProject mp manifest | mp <- manifestProjects manifest]
 
--- TODO: We're stubbing the URL with the projectPathOrName
 validatedProject :: ManifestProject -> RepoManifest -> Maybe ValidatedProject
 validatedProject project manifest =
-  case revision of
-    Nothing -> Nothing
-    (Just r) -> Just (ValidatedProject (projectName project) (projectPathOrName project) (projectPathOrName project) r)
+  case (revision, url) of
+    (_, Nothing) -> Nothing
+    (Nothing, _) -> Nothing
+    ((Just r), (Just u)) -> Just (ValidatedProject (projectName project) (projectPathOrName project) u r)
   where
     revision = revisionForProject project manifest
+    url = urlForProject project manifest
 
 instance FromXML RepoManifest where
   parseElement el = do
