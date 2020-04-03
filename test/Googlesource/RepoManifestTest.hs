@@ -45,7 +45,7 @@ projectOne :: ManifestProject
 projectOne = ManifestProject { projectName     = "platform/art"
                              , projectPath     = Just "art"
                              , projectRevision = Nothing
-                             , projectRemote   = Nothing
+                             , projectRemote   = Just "aosp"
                              }
 -- <project path="bionic" name="platform/bionic" groups="pdk" revision="57b7d1574276f5e7f895c884df29f45859da74b6" />
 projectTwo :: ManifestProject
@@ -53,6 +53,13 @@ projectTwo = ManifestProject { projectName     = "platform/bionic"
                              , projectPath     = Just "bionic"
                              , projectRevision = Just "57b7d1574276f5e7f895c884df29f45859da74b6"
                              , projectRemote   = Nothing
+                             }
+-- <project path="bionic" name="platform/bionic" groups="pdk" revision="57b7d1574276f5e7f895c884df29f45859da74b6" remote="aosp" />
+projectTwoWithRemote :: ManifestProject
+projectTwoWithRemote = ManifestProject { projectName     = "platform/bionic"
+                             , projectPath     = Just "bionic"
+                             , projectRevision = Just "57b7d1574276f5e7f895c884df29f45859da74b6"
+                             , projectRemote   = Just "aosp"
                              }
 -- <project path="bootable/recovery" name="platform/bootable/recovery" groups="pdk" remote="othersource" />
 projectThree :: ManifestProject
@@ -122,20 +129,56 @@ dependencyFive = Dependency { dependencyType = GooglesourceType
 spec_analyze :: Spec
 spec_analyze = do
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
+  noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
+  noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")
 
   describe "repo manifest analyzer" $ do
-    it "reads a file and constructs a dependency list" $ do
-      case parseXML basicManifest of
-        Right manifest -> do
-          (manifestProjects manifest) `shouldMatchList` basicProjectList
-          (manifestDefault manifest) `shouldBe` Just basicDefault
-          (manifestRemotes manifest) `shouldMatchList` basicRemoteList
-        Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+    describe "for a sane manifest" $ do
+      it "reads a file and constructs a dependency list" $ do
+        case parseXML basicManifest of
+          Right manifest -> do
+            (manifestProjects manifest) `shouldMatchList` basicProjectList
+            (manifestDefault manifest) `shouldBe` Just basicDefault
+            (manifestRemotes manifest) `shouldMatchList` basicRemoteList
+          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+
+    describe "for a manifest with no default remote" $ do
+      it "reads a file and constructs a dependency list" $ do
+        case parseXML noDefaultRemoteManifest of
+          Right manifest -> do
+            (manifestProjects manifest) `shouldMatchList` [projectOne, projectTwoWithRemote, projectThree, projectFour, projectFive]
+            (manifestRemotes manifest) `shouldMatchList` basicRemoteList
+          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+
+    describe "for a manifest with no default revision" $ do
+      it "reads a file and constructs a dependency list" $ do
+        case parseXML noDefaultRevisionManifest of
+          Right manifest -> do
+            (manifestProjects manifest) `shouldMatchList` basicProjectList
+            (manifestRemotes manifest) `shouldMatchList` basicRemoteList
+          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
   describe "repo manifest buildGraph" $ do
-    it "builds a graph properly" $ do
-      case parseXML basicManifest of
-        Right manifest -> do
-          let graph = buildGraph manifest
-          expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] graph
-        Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+    describe "for a sane manifest" $ do 
+      it "builds a graph properly" $ do
+        case parseXML basicManifest of
+          Right manifest -> do
+            let graph = buildGraph manifest
+            expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] graph
+          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+
+    describe "for a manifest with no default remote" $ do
+      it "finds the projects with remotes specified" $ do
+        case parseXML noDefaultRemoteManifest of
+          Right manifest -> do
+            let graph = buildGraph manifest
+            expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
+          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+
+    describe "for a manifest with no default revision" $ do
+      it "finds the projects with remotes specified" $ do
+        case parseXML noDefaultRevisionManifest of
+          Right manifest -> do
+            let graph = buildGraph manifest
+            expectDirect [dependencyTwo, dependencyThree, dependencyFour] graph
+          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
