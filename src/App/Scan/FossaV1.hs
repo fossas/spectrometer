@@ -7,7 +7,6 @@ module App.Scan.FossaV1
 import Control.Carrier.Error.Either
 import Data.List (isInfixOf)
 import Data.Text.Encoding (encodeUtf8)
-import Effect.Logger
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
 import qualified Network.HTTP.Types as HTTP
