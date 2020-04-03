@@ -105,23 +105,23 @@ revisionForProject project manifest =
   <|> (remoteForProject project manifest >>= remoteRevision)
   <|> (manifestDefault manifest >>= defaultRevision)
 
--- The URL for a project will be the project's name appended to the project's repo's fetch attribute
+-- The URL for a project is the project's name appended to the fetch attribute of the project's remote
 urlForProject :: ManifestProject -> RepoManifest -> Maybe Text
 urlForProject project manifest =
   case remote of
     Nothing -> Nothing
-    (Just r) -> Just ((remoteFetch r) <> "/" <> projectName project)
+    (Just r) -> Just (remoteFetch r <> "/" <> projectName project)
   where
     remote = remoteForProject project manifest
 
 remoteForProject :: ManifestProject -> RepoManifest -> Maybe ManifestRemote
 remoteForProject project manifest =
-  remoteNameString >>= \(name :: Text) -> remoteByName name manifest
+  remoteNameString >>= remoteByName manifest
   where
     remoteNameString = projectRemote project <|> (manifestDefault manifest >>= defaultRemote)
 
-remoteByName :: Text -> RepoManifest -> Maybe ManifestRemote
-remoteByName remoteNameString manifest =
+remoteByName :: RepoManifest -> Text -> Maybe ManifestRemote
+remoteByName manifest remoteNameString =
   find (\r -> remoteName r == remoteNameString) (manifestRemotes manifest)
 
 validatedProjects :: RepoManifest -> [ValidatedProject]
@@ -135,7 +135,7 @@ validatedProject project manifest =
   case (revision, url) of
     (_, Nothing) -> Nothing
     (Nothing, _) -> Nothing
-    ((Just r), (Just u)) -> Just (ValidatedProject (projectName project) (projectPathOrName project) u r)
+    (Just r, Just u) -> Just (ValidatedProject (projectName project) (projectPathOrName project) u r)
   where
     revision = revisionForProject project manifest
     url = urlForProject project manifest
