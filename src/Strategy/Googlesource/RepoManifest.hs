@@ -35,18 +35,34 @@ discover = walk $ \_ _ files -> do
 
   walkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsXML @RepoManifest file
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
+analyze file = do
+  manifest <- readContentsXML @RepoManifest file
+  let projects = validatedProjects manifest
+  case projects of
+    Nothing -> fail "Error parsing repo manifest"
+    (Just ps) -> pure $ mkProjectClosure file ps
 
-mkProjectClosure :: Path Rel File -> RepoManifest -> ProjectClosureBody
-mkProjectClosure file manifest = ProjectClosureBody
+  -- mkProjectClosure file <$> readContentsXML @RepoManifest file
+
+-- fail :: MonadFail m => String -> m a
+
+-- fail "something didn't validate"
+
+-- readContents
+-- validation
+-- pattern match on the result of validation
+--   error case: 
+
+mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
+mkProjectClosure file projects = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies
   , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph manifest
+    { dependenciesGraph    = buildGraph projects
     , dependenciesOptimal  = NotOptimal
     , dependenciesComplete = NotComplete
     }
@@ -124,14 +140,16 @@ remoteByName :: RepoManifest -> Text -> Maybe ManifestRemote
 remoteByName manifest remoteNameString =
   find (\r -> remoteName r == remoteNameString) (manifestRemotes manifest)
 
-validatedProjects :: RepoManifest -> [ValidatedProject]
-validatedProjects manifest =
-  catMaybes validated
-  where
-    validated = [validatedProject mp manifest | mp <- manifestProjects manifest]
 
-validatedProject :: ManifestProject -> RepoManifest -> Maybe ValidatedProject
-validatedProject project manifest =
+-- Traversable
+-- sequenceA :: [Maybe a] -> Maybe [a]
+
+validatedProjects :: RepoManifest -> Maybe [ValidatedProject]
+validatedProjects manifest =
+    traverse (validatedProject manifest) (manifestProjects manifest)
+
+validatedProject :: RepoManifest -> ManifestProject -> Maybe ValidatedProject
+validatedProject manifest project =
   case (revision, url) of
     (_, Nothing) -> Nothing
     (Nothing, _) -> Nothing
@@ -164,10 +182,9 @@ instance FromXML ManifestProject where
                     <*> optional (attr "remote" el)
                     <*> optional (attr "revision" el)
 
-buildGraph :: RepoManifest -> Graphing Dependency
-buildGraph manifest = unfold projects (const []) toDependency
+buildGraph :: [ValidatedProject] -> Graphing Dependency
+buildGraph projects = unfold projects (const []) toDependency
     where
-    projects = validatedProjects manifest
     toDependency ValidatedProject{..} =
       Dependency { dependencyType = GooglesourceType
                  , dependencyName = validatedProjectName
