@@ -43,7 +43,7 @@ analyze file = do
   let projects = validatedProjects manifest
   case projects of
     Nothing -> fail "Error parsing repo manifest"
-    (Just ps) -> pure $ mkProjectClosure file ps
+    Just ps -> pure $ mkProjectClosure file ps
 
 mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
 mkProjectClosure file projects = ProjectClosureBody
@@ -117,7 +117,7 @@ urlForProject :: RepoManifest -> ManifestProject -> Maybe Text
 urlForProject manifest project =
   case remote of
     Nothing -> Nothing
-    (Just r) -> Just (remoteFetch r <> "/" <> projectName project)
+    Just r -> Just $ remoteFetch r <> "/" <> projectName project
   where
     remote = remoteForProject manifest project
 
@@ -140,7 +140,7 @@ validatedProject manifest project =
   case (revision, url) of
     (_, Nothing) -> Nothing
     (Nothing, _) -> Nothing
-    (Just r, Just u) -> Just (ValidatedProject (projectName project) (projectPathOrName project) u r)
+    (Just r, Just u) -> Just $ ValidatedProject (projectName project) (projectPathOrName project) u r
   where
     revision = revisionForProject manifest project
     url = urlForProject manifest project
