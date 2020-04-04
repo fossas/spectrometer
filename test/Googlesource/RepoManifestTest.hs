@@ -126,6 +126,41 @@ dependencyFive = Dependency { dependencyType = GooglesourceType
                             , dependencyTags = M.empty
                             }
 
+validatedProjectOne :: ValidatedProject
+validatedProjectOne = ValidatedProject { validatedProjectName = "platform/art"
+                                       , validatedProjectPath = "art"
+                                       , validatedProjectUrl = "https://android.googlesource.com/platform/art"
+                                       , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
+                                       }
+
+validatedProjectTwo :: ValidatedProject
+validatedProjectTwo = ValidatedProject { validatedProjectName = "platform/bionic"
+                                       , validatedProjectPath = "bionic"
+                                       , validatedProjectUrl = "https://android.googlesource.com/platform/bionic"
+                                       , validatedProjectRevision = "57b7d1574276f5e7f895c884df29f45859da74b6"
+                                       }
+
+validatedProjectThree :: ValidatedProject
+validatedProjectThree = ValidatedProject { validatedProjectName = "platform/bootable/recovery"
+                                       , validatedProjectPath = "bootable/recovery"
+                                       , validatedProjectUrl = "https://android.othersource.com/platform/bootable/recovery"
+                                       , validatedProjectRevision = "google/android-6.0.1_r74"
+                                       }
+
+validatedProjectFour :: ValidatedProject
+validatedProjectFour = ValidatedProject { validatedProjectName = "platform/cts"
+                                       , validatedProjectPath = "cts"
+                                       , validatedProjectUrl = "https://android.othersource.com/platform/cts"
+                                       , validatedProjectRevision = "1111"
+                                       }
+
+validatedProjectFive :: ValidatedProject
+validatedProjectFive = ValidatedProject { validatedProjectName = "platform/dalvik"
+                                       , validatedProjectPath = "dalvik"
+                                       , validatedProjectUrl = "https://android.googlesource.com/platform/dalvik"
+                                       , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
+                                       }
+
 spec_analyze :: Spec
 spec_analyze = do
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
@@ -163,22 +198,28 @@ spec_analyze = do
       it "builds a graph properly" $ do
         case parseXML basicManifest of
           Right manifest -> do
-            let graph = buildGraph manifest
+            let projects = case validatedProjects manifest of
+                        Nothing -> []
+                        (Just ps) -> ps
+            let graph = buildGraph projects
+            let vps = validatedProject manifest <$> manifestProjects manifest
+            vps `shouldMatchList` [Just validatedProjectOne, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Just validatedProjectFive]
             expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] graph
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
     describe "for a manifest with no default remote" $ do
-      it "finds the projects with remotes specified" $ do
+      it "returns nothing for validatedProject on a project with no remote attr" $ do
         case parseXML noDefaultRemoteManifest of
           Right manifest -> do
-            let graph = buildGraph manifest
-            expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
+            let vps = validatedProject manifest <$> manifestProjects manifest
+            vps `shouldMatchList` [Just validatedProjectOne, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
+
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
     describe "for a manifest with no default revision" $ do
       it "finds the projects with remotes specified" $ do
         case parseXML noDefaultRevisionManifest of
           Right manifest -> do
-            let graph = buildGraph manifest
-            expectDirect [dependencyTwo, dependencyThree, dependencyFour] graph
+            let vps = validatedProject manifest <$> manifestProjects manifest
+            vps `shouldMatchList` [Nothing, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
