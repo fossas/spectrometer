@@ -2,11 +2,14 @@ module Strategy.Googlesource.RepoManifest
   ( discover
   , buildGraph
   , analyze
+  , validatedProject
+  , validatedProjects
 
   , RepoManifest(..)
   , ManifestRemote(..)
   , ManifestDefault(..)
   , ManifestProject(..)
+  , ValidatedProject(..)
 
   , mkProjectClosure
   ) where
@@ -15,7 +18,6 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
-import Data.Maybe (catMaybes)
 
 import DepTypes
 import Discovery.Walk
@@ -42,17 +44,6 @@ analyze file = do
   case projects of
     Nothing -> fail "Error parsing repo manifest"
     (Just ps) -> pure $ mkProjectClosure file ps
-
-  -- mkProjectClosure file <$> readContentsXML @RepoManifest file
-
--- fail :: MonadFail m => String -> m a
-
--- fail "something didn't validate"
-
--- readContents
--- validation
--- pattern match on the result of validation
---   error case: 
 
 mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
 mkProjectClosure file projects = ProjectClosureBody
@@ -115,23 +106,23 @@ projectPathOrName (ManifestProject { projectPath = Just path }) = path
 --   That leaves these error cases:
 --   * If the project does not have a remote attribute and there is no default remote, then blow up
 --   * If the project does not have a revision and there is no default revision from either its remote or the default, then blow up
-revisionForProject :: ManifestProject -> RepoManifest -> Maybe Text
-revisionForProject project manifest =
+revisionForProject :: RepoManifest -> ManifestProject -> Maybe Text
+revisionForProject manifest project =
       projectRevision project
-  <|> (remoteForProject project manifest >>= remoteRevision)
+  <|> (remoteForProject manifest project >>= remoteRevision)
   <|> (manifestDefault manifest >>= defaultRevision)
 
 -- The URL for a project is the project's name appended to the fetch attribute of the project's remote
-urlForProject :: ManifestProject -> RepoManifest -> Maybe Text
-urlForProject project manifest =
+urlForProject :: RepoManifest -> ManifestProject -> Maybe Text
+urlForProject manifest project =
   case remote of
     Nothing -> Nothing
     (Just r) -> Just (remoteFetch r <> "/" <> projectName project)
   where
-    remote = remoteForProject project manifest
+    remote = remoteForProject manifest project
 
-remoteForProject :: ManifestProject -> RepoManifest -> Maybe ManifestRemote
-remoteForProject project manifest =
+remoteForProject :: RepoManifest -> ManifestProject -> Maybe ManifestRemote
+remoteForProject manifest project =
   remoteNameString >>= remoteByName manifest
   where
     remoteNameString = projectRemote project <|> (manifestDefault manifest >>= defaultRemote)
@@ -139,10 +130,6 @@ remoteForProject project manifest =
 remoteByName :: RepoManifest -> Text -> Maybe ManifestRemote
 remoteByName manifest remoteNameString =
   find (\r -> remoteName r == remoteNameString) (manifestRemotes manifest)
-
-
--- Traversable
--- sequenceA :: [Maybe a] -> Maybe [a]
 
 validatedProjects :: RepoManifest -> Maybe [ValidatedProject]
 validatedProjects manifest =
@@ -155,8 +142,8 @@ validatedProject manifest project =
     (Nothing, _) -> Nothing
     (Just r, Just u) -> Just (ValidatedProject (projectName project) (projectPathOrName project) u r)
   where
-    revision = revisionForProject project manifest
-    url = urlForProject project manifest
+    revision = revisionForProject manifest project
+    url = urlForProject manifest project
 
 instance FromXML RepoManifest where
   parseElement el = do
