@@ -44,9 +44,6 @@ analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path 
 analyze file = do
   projects <- nestedValidatedProjects file
   pure $ mkProjectClosure file projects
-  -- case projects of
-  --   Nothing -> fail "Error parsing repo manifest"
-  --   Just ps -> pure $ mkProjectClosure file ps
 
 nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects file = do
@@ -58,17 +55,15 @@ nestedValidatedProjects file = do
     (_, Nothing) -> fail "Error"
     (Just ps, Just ips) -> pure $ ps ++ ips
 
+-- If a manifest has an include tag, the included manifest will be found in "manifests/<name attribute>" relative 
+-- to the original manifest file.
 validatedProjectsFromIncludes :: (MonadFail m) => RepoManifest -> Path Rel Dir -> m [ValidatedProject]
 validatedProjectsFromIncludes manifest parentDir = do
+    let dirPath = toFilePath parentDir
     let manifestIncludeFiles = map includeName $ manifestIncludes manifest
-    manifestFiles <- traverse (\file -> parseRelFile $ T.unpack file) manifestIncludeFiles
-    let manifestPaths = map (\file -> parentDir </> $(mkRelDir "manifests") </> file) manifestFiles
-    nestedVps <- traverse nestedValidatedProjects manifestPaths
+    manifestFiles <- traverse (\file -> parseRelFile (dirPath ++ T.unpack file)) manifestIncludeFiles
+    nestedVps <- traverse nestedValidatedProjects manifestFiles
     pure $ concat nestedVps
-    -- pure $ concat allVps
-    -- case allVPs of
-    --   Nothing -> Nothing
-    --   Just vps -> Just $ concat vps
 
 mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
 mkProjectClosure file projects = ProjectClosureBody
