@@ -20,6 +20,7 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 
 import DepTypes
 import Discovery.Walk
@@ -42,26 +43,32 @@ discover = walk $ \_ _ files -> do
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
 analyze file = do
   projects <- nestedValidatedProjects file
-  case projects of
-    Nothing -> fail "Error parsing repo manifest"
-    Just ps -> pure $ mkProjectClosure file ps
+  pure $ mkProjectClosure file projects
+  -- case projects of
+  --   Nothing -> fail "Error parsing repo manifest"
+  --   Just ps -> pure $ mkProjectClosure file ps
 
 nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects file = do
   manifest <- readContentsXML @RepoManifest file
-  validatedIncludedProjects <- validatedProjectsFromIncludes manifest $ parent file
+  let validatedIncludedProjects = validatedProjectsFromIncludes manifest $ parent file
   let validatedDirectProjects = validatedProjects manifest
   case (validatedDirectProjects, validatedIncludedProjects) of
-    (Nothing, _) -> Nothing
-    (_, Nothing) -> Nothing
+    (Nothing, _) -> fail "Error"
+    (_, Nothing) -> fail "Error"
     (Just ps, Just ips) -> pure $ ps ++ ips
 
- validatedProjectsFromIncludes :: RepoManifest -> Path Rel Dir -> Maybe [ValidatedProject]
- validatedProjectsFromIncludes manifest parentDir = do
-    manifestIncludeFiles = map includeName $ manifestIncludes manifest
-    manifestPaths = map  (parentDir </> "manifests" </>) manifestIncludeFiles
-    validatedProjects <- map nestedValidatedProjects manifestPaths
-    flatten validatedProjects
+validatedProjectsFromIncludes :: (MonadFail m) => RepoManifest -> Path Rel Dir -> m [ValidatedProject]
+validatedProjectsFromIncludes manifest parentDir = do
+    let manifestIncludeFiles = map includeName $ manifestIncludes manifest
+    manifestFiles <- traverse (\file -> parseRelFile $ T.unpack file) manifestIncludeFiles
+    let manifestPaths = map (\file -> parentDir </> $(mkRelDir "manifests") </> file) manifestFiles
+    nestedVps <- traverse nestedValidatedProjects manifestPaths
+    pure $ concat nestedVps
+    -- pure $ concat allVps
+    -- case allVPs of
+    --   Nothing -> Nothing
+    --   Just vps -> Just $ concat vps
 
 mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
 mkProjectClosure file projects = ProjectClosureBody
