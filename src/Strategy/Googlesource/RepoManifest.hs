@@ -41,11 +41,27 @@ discover = walk $ \_ _ files -> do
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
 analyze file = do
-  manifest <- readContentsXML @RepoManifest file
-  let projects = validatedProjects manifest
+  projects <- nestedValidatedProjects file
   case projects of
     Nothing -> fail "Error parsing repo manifest"
     Just ps -> pure $ mkProjectClosure file ps
+
+nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m [ValidatedProject]
+nestedValidatedProjects file = do
+  manifest <- readContentsXML @RepoManifest file
+  validatedIncludedProjects <- validatedProjectsFromIncludes manifest $ parent file
+  let validatedDirectProjects = validatedProjects manifest
+  case (validatedDirectProjects, validatedIncludedProjects) of
+    (Nothing, _) -> Nothing
+    (_, Nothing) -> Nothing
+    (Just ps, Just ips) -> pure $ ps ++ ips
+
+ validatedProjectsFromIncludes :: RepoManifest -> Path Rel Dir -> Maybe [ValidatedProject]
+ validatedProjectsFromIncludes manifest parentDir = do
+    manifestIncludeFiles = map includeName $ manifestIncludes manifest
+    manifestPaths = map  (parentDir </> "manifests" </>) manifestIncludeFiles
+    validatedProjects <- map nestedValidatedProjects manifestPaths
+    flatten validatedProjects
 
 mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
 mkProjectClosure file projects = ProjectClosureBody
@@ -68,6 +84,7 @@ data RepoManifest = RepoManifest
   { manifestDefault  :: Maybe ManifestDefault
   , manifestRemotes  :: [ManifestRemote]
   , manifestProjects :: [ManifestProject]
+  , manifestIncludes :: [ManifestInclude]
   } deriving (Eq, Ord, Show, Generic)
 
 data ManifestRemote = ManifestRemote
@@ -87,6 +104,8 @@ data ManifestProject = ManifestProject
   , projectRemote   :: Maybe Text
   , projectRevision :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
+
+data ManifestInclude = ManifestInclude { includeName :: Text } deriving (Eq, Ord, Show, Generic)
 
 data ValidatedProject = ValidatedProject
   { validatedProjectName     :: Text
@@ -152,6 +171,7 @@ instance FromXML RepoManifest where
     RepoManifest <$> optional (child "default" el)
                  <*> children "remote" el
                  <*> children "project" el
+                 <*> children "include" el
 
 instance FromXML ManifestDefault where
   parseElement el = do
@@ -170,6 +190,10 @@ instance FromXML ManifestProject where
                     <*> optional (attr "path" el)
                     <*> optional (attr "remote" el)
                     <*> optional (attr "revision" el)
+
+instance FromXML ManifestInclude where
+  parseElement el = do
+    ManifestInclude <$> attr "name" el
 
 buildGraph :: [ValidatedProject] -> Graphing Dependency
 buildGraph projects = unfold projects (const []) toDependency
