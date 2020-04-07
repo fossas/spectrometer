@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Googlesource.RepoManifest
   ( discover
   , buildGraph
@@ -26,15 +28,15 @@ import Graphing (Graphing, unfold)
 import Parse.XML
 import Types
 
--- TODO: This should look in a specific location, not walk through the filesystem.
---       To find the file, parse .repo/manifest.xml, which will point at the true manifest,
---       which is typically found in .repo/manifests/default.xml.
+-- We're looking for a file called "manifest.xml" in a directory called ".repo"
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
   case find (\f -> (==) "manifest.xml" (fileName f)) files of
     Nothing -> pure ()
-    Just file -> runSimpleStrategy "googlesource-repomanifest" GooglesourceGroup $ analyze file
-
+    Just file ->
+      if (dirname $ parent file) == $(mkRelDir ".repo") then
+        runSimpleStrategy "googlesource-repomanifest" GooglesourceGroup $ analyze file
+        else pure ()
   walkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
