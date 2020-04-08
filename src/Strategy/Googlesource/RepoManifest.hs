@@ -48,22 +48,30 @@ analyze file = do
 nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects file = do
   manifest <- readContentsXML @RepoManifest file
-  let validatedIncludedProjects = validatedProjectsFromIncludes manifest $ parent file
+  validatedIncludedProjects <- validatedProjectsFromIncludes manifest $ parent file
   let validatedDirectProjects = validatedProjects manifest
-  case (validatedDirectProjects, validatedIncludedProjects) of
-    (Nothing, _) -> fail "Error"
-    (_, Nothing) -> fail "Error"
-    (Just ps, Just ips) -> pure $ ps ++ ips
+  case validatedDirectProjects of
+    Nothing -> fail "Error"
+    Just ps -> pure $ ps ++ validatedIncludedProjects
 
 -- If a manifest has an include tag, the included manifest will be found in "manifests/<name attribute>" relative 
 -- to the original manifest file.
-validatedProjectsFromIncludes :: (MonadFail m) => RepoManifest -> Path Rel Dir -> m [ValidatedProject]
+-- A minimal manifest with an include tag will look like this:
+-- <manifest>
+--   <include name="default.xml" />
+-- </manifest>
+-- If you see that, you need to look for `manifests/default.xml`, where the manifests directory will
+-- be a sibling to the original manifest you were parsing.
+validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => RepoManifest -> Path Rel Dir -> m [ValidatedProject]
 validatedProjectsFromIncludes manifest parentDir = do
     let dirPath = toFilePath parentDir
-    let manifestIncludeFiles = map includeName $ manifestIncludes manifest
-    manifestFiles <- traverse (\file -> parseRelFile (dirPath ++ T.unpack file)) manifestIncludeFiles
-    nestedVps <- traverse nestedValidatedProjects manifestFiles
-    pure $ concat nestedVps
+        manifestIncludeFiles :: [Text]
+        manifestIncludeFiles = map includeName $ manifestIncludes manifest
+        manifestFiles :: Maybe [Path Rel File]
+        manifestFiles = traverse (\file -> parseRelFile (dirPath ++ T.unpack file)) manifestIncludeFiles
+    case manifestFiles of
+      Nothing -> fail "Error"
+      (Just (fs :: [Path Rel File])) -> concat <$> traverse nestedValidatedProjects fs
 
 mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
 mkProjectClosure file projects = ProjectClosureBody
