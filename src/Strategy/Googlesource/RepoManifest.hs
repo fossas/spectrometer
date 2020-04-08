@@ -68,7 +68,7 @@ validatedProjectsFromIncludes manifest parentDir = do
         manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest
         manifestFiles :: Maybe [Path Rel File]
-        manifestFiles = traverse (\file -> parseRelFile (dirPath ++ T.unpack file)) manifestIncludeFiles
+        manifestFiles = traverse (\file -> parseRelFile (dirPath ++ "manifests/" ++ T.unpack file)) manifestIncludeFiles
     case manifestFiles of
       Nothing -> fail "Error"
       (Just (fs :: [Path Rel File])) -> concat <$> traverse nestedValidatedProjects fs
