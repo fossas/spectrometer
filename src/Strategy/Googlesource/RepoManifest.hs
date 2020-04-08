@@ -31,14 +31,14 @@ import Types
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subDirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> (==) "manifest.xml" (fileName f)) files of
     Nothing -> pure ()
     Just file ->
       if (dirname $ parent file) == $(mkRelDir ".repo") then
         runSimpleStrategy "googlesource-repomanifest" GooglesourceGroup $ analyze file
         else pure ()
-  walkSkipAll subDirs
+  walkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
 analyze file = do
