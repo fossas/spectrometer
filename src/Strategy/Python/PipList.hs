@@ -25,7 +25,7 @@ discover = walk $ \dir _ files -> do
     Nothing -> pure ()
     Just _ -> runSimpleStrategy "python-piplist" PythonGroup $ analyze dir
 
-  walkContinue
+  pure WalkContinue
 
 pipListCmd :: Command
 pipListCmd = Command
