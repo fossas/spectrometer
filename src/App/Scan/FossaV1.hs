@@ -4,6 +4,7 @@ module App.Scan.FossaV1
   , FossaError(..)
   ) where
 
+import App.Scan.Project
 import Control.Carrier.Error.Either
 import Data.List (isInfixOf)
 import Data.Text.Encoding (encodeUtf8)
@@ -13,7 +14,6 @@ import qualified Network.HTTP.Types as HTTP
 import Prologue
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
-import Types
 
 -- TODO: git commit?
 cliVersion :: Text
@@ -49,11 +49,11 @@ uploadAnalysis
   :: Text -- api key
   -> Text -- project name
   -> Text -- project revision
-  -> [ProjectClosure]
+  -> [Project]
   -> IO (Either FossaError UploadResponse)
-uploadAnalysis key name revision closures = runError . runFossaReq $ do
-  let filteredClosures = filter (isProductionPath . closureModuleDir) closures
-      sourceUnits = map toSourceUnit filteredClosures
+uploadAnalysis key name revision projects = runError . runFossaReq $ do
+  let filteredProjects = filter (isProductionPath . projectPath) projects
+      sourceUnits = fromMaybe [] $ traverse toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" name (Just revision))
           <> "v" =: cliVersion
           <> "managedBuild" =: True

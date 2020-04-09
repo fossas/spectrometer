@@ -10,13 +10,12 @@ import Control.Carrier.Error.Either
 import Control.Effect.Exception as Exc
 import Control.Carrier.Output.IO
 import Control.Concurrent
-import qualified Data.Sequence as S
 import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
 import App.Scan.FossaV1 (uploadAnalysis, FossaError(..), UploadResponse(..))
-import App.Scan.Project (mkProjects)
+import App.Scan.Project (Project, mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
 import Control.Carrier.Threaded
@@ -26,6 +25,7 @@ import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec (ExecErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
+import qualified Srclib.Converter as Srclib
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
@@ -99,7 +99,8 @@ scan basedir outFile fossaApiKey = do
 
   logSticky "[ Combining Analyses ]"
 
-  let result = buildResult closures failures
+  let projects = mkProjects closures
+      result = buildResult projects failures
   liftIO $ case outFile of
     Nothing -> BL.putStr (encode result)
     Just path -> liftIO (encodeFile path result)
@@ -112,7 +113,7 @@ scan basedir outFile fossaApiKey = do
   logSticky ""
 
   for_ fossaApiKey $ \key -> do
-    maybeResp <- liftIO $ uploadAnalysis key (inferredName inferred) (inferredRevision inferred) closures
+    maybeResp <- liftIO $ uploadAnalysis key (inferredName inferred) (inferredRevision inferred) projects
     case maybeResp of
       Left InvalidProjectOrRevision -> logError "FOSSA error: Invalid project or revision"
       Left NoPermission -> logError "FOSSA error: No permission to upload"
@@ -124,10 +125,11 @@ scan basedir outFile fossaApiKey = do
         logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
         traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-buildResult :: [ProjectClosure] -> [ProjectFailure] -> Value
-buildResult closures failures = object
-  [ "projects" .= mkProjects (S.fromList closures)
+buildResult :: [Project] -> [ProjectFailure] -> Value
+buildResult projects failures = object
+  [ "projects" .= projects
   , "failures" .= map renderFailure failures
+  , "sourceUnits" .= fromMaybe [] (traverse Srclib.toSourceUnit projects)
   ]
 
 renderFailure :: ProjectFailure -> Value

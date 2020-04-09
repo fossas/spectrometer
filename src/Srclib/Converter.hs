@@ -5,6 +5,7 @@ module Srclib.Converter
 import Prelude
 
 import qualified Algebra.Graph.AdjacencyMap as AM
+import App.Scan.Project
 import Control.Applicative ((<|>))
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -13,41 +14,46 @@ import DepTypes
 import Graphing (Graphing)
 import qualified Graphing
 import Srclib.Types
-import Types
 
-toSourceUnit :: ProjectClosure -> SourceUnit
-toSourceUnit ProjectClosure{..} = SourceUnit
-  { sourceUnitName = renderedPath
-  , sourceUnitType = SourceUnitTypeDummyCLI
-  , sourceUnitManifest = renderedPath
-  , sourceUnitBuild = SourceUnitBuild
-    { buildArtifact = "default"
-    , buildSucceeded = True
-    , buildImports = imports
-    , buildDependencies = deps
+toSourceUnit :: Project -> Maybe SourceUnit
+toSourceUnit Project{..} = do
+  bestStrategy <- safeHead projectStrategies
+
+  let renderedPath = Text.pack (show projectPath) <> "/" <> projStrategyName bestStrategy
+
+      graph :: Graphing Dependency
+      graph = projStrategyGraph bestStrategy
+
+      filteredGraph :: Graphing Dependency
+      filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
+
+      locatorGraph :: Graphing Locator
+      locatorGraph = Graphing.gmap toLocator filteredGraph
+
+      locatorAdjacent :: AM.AdjacencyMap Locator
+      locatorAdjacent = Graphing.graphingAdjacent locatorGraph
+
+      deps :: [SourceUnitDependency]
+      deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
+
+      imports :: [Locator]
+      imports = Set.toList $ Graphing.graphingDirect locatorGraph
+
+  pure $ SourceUnit
+    { sourceUnitName = renderedPath
+    , sourceUnitType = SourceUnitTypeDummyCLI
+    , sourceUnitManifest = renderedPath
+    , sourceUnitBuild = SourceUnitBuild
+      { buildArtifact = "default"
+      , buildSucceeded = True
+      , buildImports = imports
+      , buildDependencies = deps
+      }
     }
-  }
   where
-    imports :: [Locator]
-    imports = Set.toList $ Graphing.graphingDirect locatorGraph
-
-    deps :: [SourceUnitDependency]
-    deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
-
-    locatorAdjacent :: AM.AdjacencyMap Locator
-    locatorAdjacent = Graphing.graphingAdjacent locatorGraph
-
-    locatorGraph :: Graphing Locator
-    locatorGraph = Graphing.gmap toLocator filteredGraph
-
-    filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
-
-    graph :: Graphing Dependency
-    graph = dependenciesGraph $ closureDependencies
-
-    renderedPath :: Text
-    renderedPath = Text.pack (show closureModuleDir) <> "/" <> closureStrategyName
+    safeHead :: [a] -> Maybe a
+    safeHead (x:_) = Just x
+    safeHead _ = Nothing
 
 mkSourceUnitDependency :: AM.AdjacencyMap Locator -> Locator -> SourceUnitDependency
 mkSourceUnitDependency gr locator = SourceUnitDependency
