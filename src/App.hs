@@ -21,8 +21,10 @@ commands = hsubparser scanCommand
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
   where
-  scanOptsParser = ScanCmdOpts <$> basedirOpt <*> debugOpt <*> outputOpt
+  scanOptsParser = ScanCmdOpts <$> basedirOpt <*> debugOpt <*> outputOpt <*> sherlockCmdPath <*> sherlockApiKey
 
   basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
   debugOpt = switch (long "debug" <> help "Enable debug logging")
   outputOpt = optional (strOption (long "outfile" <> short 'o' <> metavar "FILE" <> help "Output results to a file (default: stdout). Relative paths are relative to the scan root."))
+  sherlockCmdPath = optional (strOption (long "sherlock-cmd-path" <> metavar "STRING" <> help "Path to the sherlock-cli executable"))
+  sherlockApiKey = optional (strOption (long "sherlock-api-key" <> metavar "STRING" <> help "API key for Sherlock API"))

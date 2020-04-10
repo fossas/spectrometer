@@ -14,6 +14,7 @@ import qualified Data.Sequence as S
 import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
+import Control.Concurrent.Async (concurrently_)
 
 import App.Scan.Project (mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
@@ -22,9 +23,10 @@ import Control.Carrier.Threaded
 import qualified Data.ByteString.Lazy as BL
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import Effect.Exec (ExecErr(..))
+import Effect.Exec (ExecErr(..), runExecIO)
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
+import qualified RunSherlock as RunSherlock
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
@@ -56,6 +58,8 @@ data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , cmdDebug   :: Bool
   , cmdOutFile :: Maybe FilePath
+  , sherlockCmdPath :: Maybe String
+  , sherlockApiKey :: Maybe String
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
@@ -64,9 +68,15 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
-  scan basedir cmdOutFile
-    & withLogger (bool SevInfo SevDebug cmdDebug)
-    & runThreaded
+  let runSherlock = RunSherlock.scan basedir sherlockCmdPath sherlockApiKey
+        & runError @ExecErr
+        & runExecIO
+
+      runScan = scan basedir cmdOutFile
+        & withLogger (bool SevInfo SevDebug cmdDebug)
+        & runThreaded
+
+  concurrently_ runSherlock runScan
 
 validateDir :: FilePath -> IO (Path Abs Dir)
 validateDir dir = do

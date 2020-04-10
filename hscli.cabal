@@ -110,6 +110,7 @@ library
     Graphing
     Parse.XML
     Prologue
+    RunSherlock
     Strategy.Carthage
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
