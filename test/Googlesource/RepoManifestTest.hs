@@ -14,6 +14,9 @@ import DepTypes
 import Parse.XML
 import Strategy.Googlesource.RepoManifest
 import Test.Tasty.Hspec
+import Effect.ReadFS
+import Control.Carrier.Error.Either
+import Control.Carrier.Fail.Either
 
 -- <remote name="aosp" fetch="https://android.googlesource.com" />
 remoteOne :: ManifestRemote
@@ -166,7 +169,7 @@ spec_analyze = do
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
   noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")
-  manifestWithInclude <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-with-include.xml")
+  projectsForManifestWithIncludes <- runIO $ runFail $ runError @ReadFSErr $ runReadFSIO $ nestedValidatedProjects $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml")
 
   describe "repo manifest analyzer" $ do
     describe "for a sane manifest" $ do
@@ -195,7 +198,7 @@ spec_analyze = do
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
   describe "repo manifest buildGraph" $ do
-    describe "for a sane manifest" $ do 
+    describe "for a sane manifest" $ do
       it "builds a graph properly" $ do
         case parseXML basicManifest of
           Right manifest -> do
@@ -227,12 +230,7 @@ spec_analyze = do
 
     describe "for a manifest with an include tag" $ do
       it "reads both files and gets the dependencies from the included file" $ do
-        let manifestFile = parseRelFile "test/Googlesource/testdata/manifest-with-include.xml"
-        case manifestFile of
-          Left _ -> expectationFailure("could not parse manifest file path")
-          Right (f :: (Path Rel File)) -> do
-            let projects :: Maybe [ValidatedProject]
-                projects = nestedValidatedProjects f
-            case projects of
-              Nothing -> expectationFailure("could not parse nested manifest")
-              Just ps -> ps `shouldMatchList` [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
+        case projectsForManifestWithIncludes of
+          Left _ -> expectationFailure("could not parse nested manifest")
+          Right (Left _) -> expectationFailure("could not parse nested manifest, second level")
+          Right (Right ps) -> ps `shouldMatchList` [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
