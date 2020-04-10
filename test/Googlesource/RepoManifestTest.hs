@@ -166,6 +166,7 @@ spec_analyze = do
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
   noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")
+  manifestWithInclude <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-with-include.xml")
 
   describe "repo manifest analyzer" $ do
     describe "for a sane manifest" $ do
@@ -223,3 +224,15 @@ spec_analyze = do
             let vps = validatedProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Nothing, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+
+    describe "for a manifest with an include tag" $ do
+      it "reads both files and gets the dependencies from the included file" $ do
+        let manifestFile = parseRelFile "test/Googlesource/testdata/manifest-with-include.xml"
+        case manifestFile of
+          Left _ -> expectationFailure("could not parse manifest file path")
+          Right (f :: (Path Rel File)) -> do
+            let projects :: Maybe [ValidatedProject]
+                projects = nestedValidatedProjects f
+            case projects of
+              Nothing -> expectationFailure("could not parse nested manifest")
+              Just ps -> ps `shouldMatchList` [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]

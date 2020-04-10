@@ -6,6 +6,7 @@ module Strategy.Googlesource.RepoManifest
   , analyze
   , validatedProject
   , validatedProjects
+  , nestedValidatedProjects
 
   , RepoManifest(..)
   , ManifestRemote(..)
