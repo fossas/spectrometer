@@ -65,8 +65,10 @@ validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m,
 validatedProjectsFromIncludes manifest parentDir = do
     let manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest
+        pathRelativeToManifestDir :: Text -> Maybe (Path Rel File)
+        pathRelativeToManifestDir = \file -> (parentDir </>) <$> parseRelFile ("manifests/" ++ T.unpack file)
         manifestFiles :: Maybe [Path Rel File]
-        manifestFiles = traverse (\file -> (parentDir </>) <$> parseRelFile ("manifests/" ++ T.unpack file)) manifestIncludeFiles
+        manifestFiles = traverse pathRelativeToManifestDir manifestIncludeFiles
     case manifestFiles of
       Nothing -> fail "Error"
       (Just (fs :: [Path Rel File])) -> concat <$> traverse nestedValidatedProjects fs
