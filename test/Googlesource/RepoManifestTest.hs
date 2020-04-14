@@ -202,7 +202,7 @@ spec_analyze = do
       it "builds a graph properly" $ do
         case parseXML basicManifest of
           Right manifest -> do
-            let projects = case validatedProjects manifest of
+            let projects = case validateProjects manifest of
                         Nothing -> []
                         (Just ps) -> ps
             let graph = buildGraph projects

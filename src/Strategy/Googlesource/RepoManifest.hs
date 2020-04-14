@@ -5,7 +5,7 @@ module Strategy.Googlesource.RepoManifest
   , buildGraph
   , analyze
   , validatedProject
-  , validatedProjects
+  , validateProjects
   , nestedValidatedProjects
 
   , RepoManifest(..)
@@ -48,7 +48,7 @@ nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Monad
 nestedValidatedProjects file = do
   manifest <- readContentsXML @RepoManifest file
   validatedIncludedProjects <- validatedProjectsFromIncludes manifest $ parent file
-  let validatedDirectProjects = validatedProjects manifest
+  let validatedDirectProjects = validateProjects manifest
   case validatedDirectProjects of
     Nothing -> fail "Error"
     Just ps -> pure $ ps ++ validatedIncludedProjects
@@ -158,8 +158,8 @@ remoteByName :: RepoManifest -> Text -> Maybe ManifestRemote
 remoteByName manifest remoteNameString =
   find (\r -> remoteName r == remoteNameString) (manifestRemotes manifest)
 
-validatedProjects :: RepoManifest -> Maybe [ValidatedProject]
-validatedProjects manifest =
+validateProjects :: RepoManifest -> Maybe [ValidatedProject]
+validateProjects manifest =
     traverse (validatedProject manifest) (manifestProjects manifest)
 
 validatedProject :: RepoManifest -> ManifestProject -> Maybe ValidatedProject
