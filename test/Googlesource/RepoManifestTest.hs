@@ -206,16 +206,16 @@ spec_analyze = do
                         Nothing -> []
                         (Just ps) -> ps
             let graph = buildGraph projects
-            let vps = validatedProject manifest <$> manifestProjects manifest
+            let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Just validatedProjectOne, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Just validatedProjectFive]
             expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] graph
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
     describe "for a manifest with no default remote" $ do
-      it "returns nothing for validatedProject on a project with no remote attr" $ do
+      it "returns nothing for validateProject on a project with no remote attr" $ do
         case parseXML noDefaultRemoteManifest of
           Right manifest -> do
-            let vps = validatedProject manifest <$> manifestProjects manifest
+            let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Just validatedProjectOne, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
 
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
@@ -224,7 +224,7 @@ spec_analyze = do
       it "finds the projects with remotes specified" $ do
         case parseXML noDefaultRevisionManifest of
           Right manifest -> do
-            let vps = validatedProject manifest <$> manifestProjects manifest
+            let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Nothing, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 

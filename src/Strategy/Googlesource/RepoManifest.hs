@@ -4,7 +4,7 @@ module Strategy.Googlesource.RepoManifest
   ( discover
   , buildGraph
   , analyze
-  , validatedProject
+  , validateProject
   , validateProjects
   , nestedValidatedProjects
 
@@ -160,10 +160,10 @@ remoteByName manifest remoteNameString =
 
 validateProjects :: RepoManifest -> Maybe [ValidatedProject]
 validateProjects manifest =
-    traverse (validatedProject manifest) (manifestProjects manifest)
+    traverse (validateProject manifest) (manifestProjects manifest)
 
-validatedProject :: RepoManifest -> ManifestProject -> Maybe ValidatedProject
-validatedProject manifest project = do
+validateProject :: RepoManifest -> ManifestProject -> Maybe ValidatedProject
+validateProject manifest project = do
   revision <- revisionForProject manifest project
   url <- urlForProject manifest project
   pure $ ValidatedProject (projectName project) (projectPathOrName project) url revision
