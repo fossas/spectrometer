@@ -5,13 +5,23 @@ module App.TestCmd
 import Prologue
 
 import App.Scan.ProjectInference
-import Control.Effect.Lift
+import Control.Carrier.Error.Either
+import Control.Concurrent (threadDelay)
+import qualified Control.Concurrent.Async as Async
 import qualified Data.Text as T
+import Data.Text.IO (hPutStrLn)
 import Effect.Logger
 import qualified App.Scan.FossaV1 as Fossa
 import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Environment (getEnv)
+import System.Exit (exitFailure)
+
+testTimeoutSeconds :: Int
+testTimeoutSeconds = 600
+
+pollDelaySeconds :: Int
+pollDelaySeconds = 8
 
 testMain :: IO ()
 testMain = do
@@ -19,53 +29,83 @@ testMain = do
   hSetBuffering stderr NoBuffering
 
   basedir <- getCurrentDir
-
+ 
   -- FIXME
-  apiKey <- getEnv "FOSSA_API_KEY"
-  test basedir (T.pack apiKey)
-    & withLogger SevInfo
+  apiKey <- T.pack <$> getEnv "FOSSA_API_KEY"
 
-test ::
-  ( Has (Lift IO) sig m
-  , Has Logger sig m
-  , Effect sig
-  , MonadIO m
-  )
-  => Path Abs Dir
-  -> Text -- ^ api key
+  result <- timeout testTimeoutSeconds $ runError @TestError $ withLogger SevInfo $ do
+    inferred <- inferProject basedir
+
+    let name = inferredName inferred
+        revision = inferredRevision inferred
+   
+    logInfo $ "Using project name: " <> pretty (inferredName inferred)
+    logInfo $ "Using project name: " <> pretty (inferredRevision inferred)
+
+    logSticky "[ Waiting for build completion... ]"
+
+    waitForBuild apiKey name revision
+
+    logSticky "[ Waiting for issue scan completion... ]"
+    issues <- waitForIssues apiKey name revision
+
+    if null (Fossa.issuesIssues issues)
+      then logInfo "Test passed! 0 issues found"
+      else logError "Test failed: issues found"
+
+    logSticky ""
+
+  case result of
+    Nothing -> do
+      hPutStrLn stderr "Timed out while waiting for issues scan"
+      exitFailure
+    Just (Left err) -> do
+      hPutStrLn stderr "An error occurred while retrieving issues scan"
+      hPutStrLn stderr $ T.pack (show err)
+      exitFailure
+    Just (Right ()) -> pure ()
+
+
+data TestError
+  = TestErrorFossa Fossa.FossaError
+  | NotFinished Fossa.BuildStatus
+  deriving (Show, Generic)
+
+waitForBuild
+  :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
+  => Text -- ^ api key
+  -> Text -- ^ name
+  -> Text -- ^ revision
   -> m ()
-test basedir key = do
-  inferred <- inferProject basedir
+waitForBuild key name revision = do
+  maybeBuild <- liftIO $ Fossa.getLatestBuild key name revision
+  case maybeBuild of
+    Left err -> throwError (TestErrorFossa err)
+    Right build -> do
+      case Fossa.buildTaskStatus (Fossa.buildTask build) of
+        Fossa.StatusSucceeded -> pure ()
+        otherStatus -> do
+          logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
+          liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
+          waitForBuild key name revision
 
-  logInfo $ "Using project name: " <> pretty (inferredName inferred)
-  logInfo $ "Using project name: " <> pretty (inferredRevision inferred)
- 
-  logSticky "[ Waiting for build completion... ]"
- 
-  status <- liftIO $ Fossa.waitForBuild key (inferredName inferred) (inferredRevision inferred)
-  case status of
-    Left err -> do
-      logError $ "Error occurred when checking for build completion"
-      logError $ viaShow err
-      --liftIO $ exitFailure
-    Right Fossa.StatusSucceeded -> pure ()
-    Right otherStatus -> do
-      logError $ "Timed out waiting for build completion. Most recent status: " <> viaShow otherStatus
-      --liftIO $ exitFailure
- 
-  logSticky "[ Waiting for issue scan... ]"
+waitForIssues
+  :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
+  => Text -- ^ api key
+  -> Text -- ^ name
+  -> Text -- ^ revision
+  -> m Fossa.Issues
+waitForIssues key name revision = do
+  result <- liftIO $ Fossa.getIssues key name revision
+  case result of
+    Left err -> throwError (TestErrorFossa err)
+    Right issues ->
+      case Fossa.issuesStatus issues of
+        "WAITING" -> waitForIssues key name revision
+        _ -> pure issues
 
-  issues <- liftIO $ Fossa.waitForIssues key (inferredName inferred) (inferredRevision inferred)
-  case issues of
-    Left err -> do
-      logError $ "Error occurred when checking for issue scan completion"
-      logError $ viaShow err
-    Right (Fossa.Issues { Fossa.issuesIssues = issuesList, Fossa.issuesStatus = "SCANNED" }) -> do
-      if null issuesList
-        then logInfo "Test passed! 0 issues found"
-        else logError "Test failed: issues found"
-    Right _ -> do
-      logError $ "Timed out waiting for issue scan completion"
-      --liftIO $ exitFailure
-
-  logSticky ""
+timeout
+  :: Int -- ^ number of seconds before timeout
+  -> IO a
+  -> IO (Maybe a)
+timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) *> pure Nothing)

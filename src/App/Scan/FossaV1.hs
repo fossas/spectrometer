@@ -4,9 +4,11 @@ module App.Scan.FossaV1
   , FossaError(..)
   , fossaReq
 
-  , waitForBuild
+  , getLatestBuild
+  , Build(..)
+  , BuildTask(..)
   , BuildStatus(..)
-  , waitForIssues
+  , getIssues
   , Issues(..)
   , Issue(..)
   , IssueType(..)
@@ -17,10 +19,10 @@ module App.Scan.FossaV1
 
 import App.Scan.Project
 import Control.Carrier.Error.Either
-import Control.Retry
 import Data.List (isInfixOf)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
+import Effect.Logger
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
 import qualified Network.HTTP.Types as HTTP
@@ -120,38 +122,8 @@ isProductionPath path = not $ any (`isInfixOf` toFilePath path)
 
 -----
 
-timeoutSeconds :: Int
-timeoutSeconds = 60
-
-pollDelaySeconds :: Int
-pollDelaySeconds = 8
-
-buildRetryPolicy :: RetryPolicy
-buildRetryPolicy = limitRetriesByCumulativeDelay (timeoutSeconds * 1_000_000) $ constantDelay (pollDelaySeconds * 1_000_000)
-
 buildsEndpoint :: Int -> Locator -> Url 'Https
 buildsEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
-
-retry :: RetryPolicy -> (a -> Bool) -> IO a -> IO a
-retry policy shouldRetry act = retrying policy (\_ -> pure . shouldRetry) (\_ -> act)
-
-waitForBuild
-  :: Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
-  -> IO (Either FossaError BuildStatus)
-waitForBuild key name revision = retry buildRetryPolicy shouldRetry $ do
-  build <- getLatestBuild key name revision
-  pure (buildTaskStatus . buildTask <$> build)
-  where
-    shouldRetry :: Either FossaError BuildStatus -> Bool
-    shouldRetry (Left _) = False
-    shouldRetry (Right status) =
-      case status of
-        StatusCreated -> True
-        StatusAssigned -> True
-        StatusRunning -> True
-        _ -> False
 
 data BuildStatus
   = StatusSucceeded
@@ -203,20 +175,6 @@ getLatestBuild key name revision = fossaReq $ do
   pure (responseBody response)
 
 ----------
-
-waitForIssues
-  :: Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
-  -> IO (Either FossaError Issues)
-waitForIssues key name revision = retry buildRetryPolicy shouldRetry $ getIssues key name revision
-  where
-    shouldRetry :: Either FossaError Issues -> Bool
-    shouldRetry (Left _) = False
-    shouldRetry (Right issues) =
-      case issuesStatus issues of
-        "WAITING" -> True
-        _ -> False
 
 issuesEndpoint :: Int -> Locator -> Url 'Https
 issuesEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
