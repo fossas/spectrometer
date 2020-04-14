@@ -32,11 +32,11 @@ import Types
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
-  case find (\f -> "manifest.xml" == (fileName f)) files of
+discover = walk $ \_ subdirs files ->
+  case find (\f -> "manifest.xml" == fileName f) files of
     Nothing -> walkContinue
-    Just file -> do
-      if (dirname $ parent file) == $(mkRelDir ".repo") then do
+    Just file ->
+      if dirname (parent file) == $(mkRelDir ".repo") then do
         runSimpleStrategy "googlesource-repomanifest" GooglesourceGroup $ analyze file
         walkSkipAll subdirs
       else walkContinue
@@ -53,7 +53,7 @@ nestedValidatedProjects file = do
     Nothing -> fail "Error"
     Just ps -> pure $ ps ++ validatedIncludedProjects
 
--- If a manifest has an include tag, the included manifest will be found in "manifests/<name attribute>" relative 
+-- If a manifest has an include tag, the included manifest will be found in "manifests/<name attribute>" relative
 -- to the original manifest file.
 -- A minimal manifest with an include tag will look like this:
 -- <manifest>
@@ -125,8 +125,8 @@ data ValidatedProject = ValidatedProject
 
 -- If a project does not have a path, then use its name for the path
 projectPathOrName :: ManifestProject -> Text
-projectPathOrName (ManifestProject { projectPath = Nothing, projectName = name }) = name
-projectPathOrName (ManifestProject { projectPath = Just path }) = path
+projectPathOrName ManifestProject { projectPath = Nothing, projectName = name } = name
+projectPathOrName ManifestProject { projectPath = Just path } = path
 
 -- A project's revision comes from the first of these that we encounter:
 --   * If the project has a revision attribute, then use that
@@ -169,32 +169,32 @@ validateProject manifest project = do
   pure $ ValidatedProject (projectName project) (projectPathOrName project) url revision
 
 instance FromXML RepoManifest where
-  parseElement el = do
+  parseElement el =
     RepoManifest <$> optional (child "default" el)
                  <*> children "remote" el
                  <*> children "project" el
                  <*> children "include" el
 
 instance FromXML ManifestDefault where
-  parseElement el = do
+  parseElement el =
     ManifestDefault <$> optional (attr "remote" el)
                     <*> optional (attr "revision" el)
 
 instance FromXML ManifestRemote where
-  parseElement el = do
+  parseElement el =
     ManifestRemote <$> attr "name" el
                    <*> attr "fetch" el
                    <*> optional (attr "revision" el)
 
 instance FromXML ManifestProject where
-  parseElement el = do
+  parseElement el =
     ManifestProject <$> attr "name" el
                     <*> optional (attr "path" el)
                     <*> optional (attr "remote" el)
                     <*> optional (attr "revision" el)
 
 instance FromXML ManifestInclude where
-  parseElement el = do
+  parseElement el =
     ManifestInclude <$> attr "name" el
 
 buildGraph :: [ValidatedProject] -> Graphing Dependency
@@ -203,7 +203,7 @@ buildGraph projects = unfold projects (const []) toDependency
     toDependency ValidatedProject{..} =
       Dependency { dependencyType = GooglesourceType
                  , dependencyName = validatedProjectName
-                 , dependencyVersion = Just (CEq $ validatedProjectRevision)
+                 , dependencyVersion = Just (CEq validatedProjectRevision)
                  , dependencyLocations = [validatedProjectUrl]
                  , dependencyTags = M.empty
                  }
