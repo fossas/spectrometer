@@ -63,11 +63,10 @@ nestedValidatedProjects file = do
 -- be a sibling to the original manifest you were parsing.
 validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => RepoManifest -> Path Rel Dir -> m [ValidatedProject]
 validatedProjectsFromIncludes manifest parentDir = do
-    let dirPath = toFilePath parentDir
-        manifestIncludeFiles :: [Text]
+    let manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest
         manifestFiles :: Maybe [Path Rel File]
-        manifestFiles = traverse (\file -> parseRelFile (dirPath ++ "manifests/" ++ T.unpack file)) manifestIncludeFiles
+        manifestFiles = traverse (\file -> (parentDir </>) <$> parseRelFile ("manifests/" ++ T.unpack file)) manifestIncludeFiles
     case manifestFiles of
       Nothing -> fail "Error"
       (Just (fs :: [Path Rel File])) -> concat <$> traverse nestedValidatedProjects fs
