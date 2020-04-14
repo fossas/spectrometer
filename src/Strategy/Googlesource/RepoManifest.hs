@@ -33,7 +33,7 @@ import Types
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ subdirs files -> do
-  case find (\f -> (==) "manifest.xml" (fileName f)) files of
+  case find (\f -> "manifest.xml" == (fileName f)) files of
     Nothing -> walkContinue
     Just file -> do
       if (dirname $ parent file) == $(mkRelDir ".repo") then do
@@ -42,9 +42,7 @@ discover = walk $ \_ subdirs files -> do
       else walkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
-analyze file = do
-  projects <- nestedValidatedProjects file
-  pure $ mkProjectClosure file projects
+analyze file = mkProjectClosure file <$> nestedValidatedProjects file
 
 nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects file = do
@@ -146,12 +144,9 @@ revisionForProject manifest project =
 
 -- The URL for a project is the project's name appended to the fetch attribute of the project's remote
 urlForProject :: RepoManifest -> ManifestProject -> Maybe Text
-urlForProject manifest project =
-  case remote of
-    Nothing -> Nothing
-    Just r -> Just $ remoteFetch r <> "/" <> projectName project
-  where
-    remote = remoteForProject manifest project
+urlForProject manifest project = do
+  remote <- remoteForProject manifest project
+  pure $ remoteFetch remote <> "/" <> projectName project
 
 remoteForProject :: RepoManifest -> ManifestProject -> Maybe ManifestRemote
 remoteForProject manifest project =
@@ -168,14 +163,10 @@ validatedProjects manifest =
     traverse (validatedProject manifest) (manifestProjects manifest)
 
 validatedProject :: RepoManifest -> ManifestProject -> Maybe ValidatedProject
-validatedProject manifest project =
-  case (revision, url) of
-    (_, Nothing) -> Nothing
-    (Nothing, _) -> Nothing
-    (Just r, Just u) -> Just $ ValidatedProject (projectName project) (projectPathOrName project) u r
-  where
-    revision = revisionForProject manifest project
-    url = urlForProject manifest project
+validatedProject manifest project = do
+  revision <- revisionForProject manifest project
+  url <- urlForProject manifest project
+  pure $ ValidatedProject (projectName project) (projectPathOrName project) url revision
 
 instance FromXML RepoManifest where
   parseElement el = do
