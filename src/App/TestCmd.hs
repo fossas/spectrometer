@@ -61,15 +61,18 @@ testMain = do
       exitFailure
     Just (Left err) -> do
       hPutStrLn stderr "An error occurred while retrieving issues scan"
-      hPutStrLn stderr $ T.pack (show err)
+      hPutStrLn stderr $ renderTestError err
       exitFailure
     Just (Right ()) -> pure ()
-
 
 data TestError
   = TestErrorFossa Fossa.FossaError
   | NotFinished Fossa.BuildStatus
   deriving (Show, Generic)
+
+renderTestError :: TestError -> Text
+renderTestError (TestErrorFossa err) = "An API error occurred: " <> T.pack (show err)
+renderTestError (NotFinished status) = "The build didn't complete in time. Last status: " <> T.pack (show status)
 
 waitForBuild
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
