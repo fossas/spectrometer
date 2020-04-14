@@ -116,8 +116,8 @@ scan basedir outFile fossaApiKey = do
   for_ fossaApiKey $ \key -> do
     maybeResp <- liftIO $ uploadAnalysis key (inferredName inferred) (inferredRevision inferred) projects
     case maybeResp of
-      Left InvalidProjectOrRevision -> logError "FOSSA error: Invalid project or revision"
-      Left NoPermission -> logError "FOSSA error: No permission to upload"
+      Left (InvalidProjectOrRevision _) -> logError "FOSSA error: Invalid project or revision"
+      Left (NoPermission _) -> logError "FOSSA error: No permission to upload"
       Left (JsonDeserializeError msg) -> logError $ "FOSSA error: Couldn't deserialize API response: " <> pretty msg
       Left (OtherError exc) -> do
         logError "FOSSA error: other unknown error. See debug log for details"

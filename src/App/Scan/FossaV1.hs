@@ -2,11 +2,24 @@ module App.Scan.FossaV1
   ( uploadAnalysis
   , UploadResponse(..)
   , FossaError(..)
+  , fossaReq
+
+  , waitForBuild
+  , BuildStatus(..)
+  , waitForIssues
+  , Issues(..)
+  , Issue(..)
+  , IssueType(..)
+  , IssueRule(..)
+
+  , getOrganizationId
   ) where
 
 import App.Scan.Project
 import Control.Carrier.Error.Either
+import Control.Retry
 import Data.List (isInfixOf)
+import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
@@ -21,6 +34,13 @@ cliVersion = "spectrometer"
 
 uploadUrl :: Url 'Https
 uploadUrl = https "app.fossa.com" /: "api" /: "builds" /: "custom"
+ 
+-- FIXME: we only want to include organizationId for "archive" and "custom"
+-- TODO: need to normalize "git" projects
+-- render a locator for use in fossa API urls
+renderLocatorUrl :: Int -> Locator -> Text
+renderLocatorUrl orgId Locator{..} =
+  locatorFetcher <> "+" <> T.pack (show orgId) <> "/" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
 
 newtype FossaReq m a = FossaReq { runFossaReq :: ErrorC FossaError m a }
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -39,11 +59,14 @@ instance FromJSON UploadResponse where
                    <*> obj .:? "error"
 
 data FossaError
-  = InvalidProjectOrRevision
-  | NoPermission
+  = InvalidProjectOrRevision HttpException
+  | NoPermission HttpException
   | JsonDeserializeError String
   | OtherError HttpException
   deriving (Show, Generic)
+
+fossaReq :: FossaReq m a -> m (Either FossaError a)
+fossaReq = runError . runFossaReq
 
 uploadAnalysis
   :: Text -- api key
@@ -51,7 +74,7 @@ uploadAnalysis
   -> Text -- project revision
   -> [Project]
   -> IO (Either FossaError UploadResponse)
-uploadAnalysis key name revision projects = runError . runFossaReq $ do
+uploadAnalysis key name revision projects = fossaReq $ do
   let filteredProjects = filter (isProductionPath . projectPath) projects
       sourceUnits = fromMaybe [] $ traverse toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" name (Just revision))
@@ -66,8 +89,8 @@ mangleError :: HttpException -> FossaError
 mangleError err = case err of
   VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException resp _)) ->
     case HTTP.responseStatus resp of
-      HTTP.Status 429 _ -> InvalidProjectOrRevision
-      HTTP.Status 403 _ -> NoPermission
+      HTTP.Status 404 _ -> InvalidProjectOrRevision err
+      HTTP.Status 403 _ -> NoPermission err
       _                 -> OtherError err
   JsonHttpException msg -> JsonDeserializeError msg
   _ -> OtherError err
@@ -94,3 +117,192 @@ isProductionPath path = not $ any (`isInfixOf` toFilePath path)
   , "Carthage/"
   , "Checkouts/"
   ]
+
+-----
+
+timeoutSeconds :: Int
+timeoutSeconds = 60
+
+pollDelaySeconds :: Int
+pollDelaySeconds = 8
+
+buildRetryPolicy :: RetryPolicy
+buildRetryPolicy = limitRetriesByCumulativeDelay (timeoutSeconds * 1_000_000) $ constantDelay (pollDelaySeconds * 1_000_000)
+
+buildsEndpoint :: Int -> Locator -> Url 'Https
+buildsEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
+
+retry :: RetryPolicy -> (a -> Bool) -> IO a -> IO a
+retry policy shouldRetry act = retrying policy (\_ -> pure . shouldRetry) (\_ -> act)
+
+waitForBuild
+  :: Text -- ^ api key
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
+  -> IO (Either FossaError BuildStatus)
+waitForBuild key name revision = retry buildRetryPolicy shouldRetry $ do
+  build <- getLatestBuild key name revision
+  pure (buildTaskStatus . buildTask <$> build)
+  where
+    shouldRetry :: Either FossaError BuildStatus -> Bool
+    shouldRetry (Left _) = False
+    shouldRetry (Right status) =
+      case status of
+        StatusCreated -> True
+        StatusAssigned -> True
+        StatusRunning -> True
+        _ -> False
+
+data BuildStatus
+  = StatusSucceeded
+  | StatusFailed
+  | StatusCreated
+  | StatusAssigned
+  | StatusRunning
+  | StatusUnknown Text
+  deriving (Eq, Ord, Show, Generic)
+
+data Build = Build
+  { buildId :: Int
+  , buildError :: Maybe Text
+  , buildTask :: BuildTask
+  } deriving (Eq, Ord, Show, Generic)
+
+data BuildTask = BuildTask
+  { buildTaskStatus :: BuildStatus
+  } deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON Build where
+  parseJSON = withObject "Build" $ \obj ->
+    Build <$> obj .: "id"
+          <*> obj .:? "error"
+          <*> obj .: "task"
+
+instance FromJSON BuildTask where
+  parseJSON = withObject "BuildTask" $ \obj ->
+    BuildTask <$> obj .: "status"
+
+instance FromJSON BuildStatus where
+  parseJSON = withText "BuildStatus" $ \case
+    "SUCCEEDED" -> pure StatusSucceeded
+    "FAILED" -> pure StatusFailed
+    "CREATED" -> pure StatusCreated
+    "ASSIGNED" -> pure StatusAssigned
+    "RUNNING" -> pure StatusRunning
+    other -> pure $ StatusUnknown other
+
+getLatestBuild
+  :: Text -- ^ api key
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
+  -> IO (Either FossaError Build)
+getLatestBuild key name revision = fossaReq $ do
+  let opts = header "Authorization" ("token " <> encodeUtf8 key)
+  Organization orgId <- responseBody <$> req GET organizationEndpoint NoReqBody jsonResponse opts
+  response <- req GET (buildsEndpoint orgId (Locator "custom" name (Just revision))) NoReqBody jsonResponse opts
+  pure (responseBody response)
+
+----------
+
+waitForIssues
+  :: Text -- ^ api key
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
+  -> IO (Either FossaError Issues)
+waitForIssues key name revision = retry buildRetryPolicy shouldRetry $ getIssues key name revision
+  where
+    shouldRetry :: Either FossaError Issues -> Bool
+    shouldRetry (Left _) = False
+    shouldRetry (Right issues) =
+      case issuesStatus issues of
+        "WAITING" -> True
+        _ -> False
+
+issuesEndpoint :: Int -> Locator -> Url 'Https
+issuesEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
+
+getIssues
+  :: Text -- ^ api key
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
+  -> IO (Either FossaError Issues)
+getIssues key name revision = fossaReq $ do
+  let opts = header "Authorization" ("token " <> encodeUtf8 key)
+  Organization orgId <- responseBody <$> req GET organizationEndpoint NoReqBody jsonResponse opts
+  response <- req GET (issuesEndpoint orgId (Locator "custom" name (Just revision))) NoReqBody jsonResponse opts
+  pure (responseBody response)
+
+data Issues = Issues
+  { issuesCount :: Int
+  , issuesIssues :: [Issue]
+  , issuesStatus :: Text
+  } deriving (Eq, Ord, Show, Generic)
+
+data IssueType
+  = IssuePolicyConflict
+  | IssuePolicyFlag
+  | IssueVulnerability
+  | IssueUnlicensedDependency
+  | IssueOutdatedDependency
+  | IssueOther Text
+  deriving (Eq, Ord, Show, Generic)
+
+data Issue = Issue
+  { issueId :: Int
+  , issueResolved :: Bool
+  , issueRevisionId :: Text
+  , issueType :: IssueType
+  , issueRule :: Maybe IssueRule
+  } deriving (Eq, Ord, Show, Generic)
+
+data IssueRule = IssueRule
+  { ruleLicenseId :: Maybe Text
+  } deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON Issues where
+  parseJSON = withObject "Issues" $ \obj ->
+    Issues <$> obj .: "count"
+           <*> obj .: "issues"
+           <*> obj .: "status"
+
+instance FromJSON Issue where
+  parseJSON = withObject "Issue" $ \obj ->
+    Issue <$> obj .: "id"
+           <*> obj .: "resolved"
+           <*> obj .: "revisionId"
+           <*> obj .: "type"
+           <*> obj .:? "rule"
+
+instance FromJSON IssueType where
+  parseJSON = withText "IssueType" $ \case
+    "policy_conflict" -> pure IssuePolicyConflict
+    "policy_flag" -> pure IssuePolicyFlag
+    "vulnerability" -> pure IssueVulnerability
+    "unlicensed_dependency" -> pure IssueUnlicensedDependency
+    "outdated_dependency" -> pure IssueOutdatedDependency
+    other -> pure (IssueOther other)
+
+instance FromJSON IssueRule where
+  parseJSON = withObject "IssueRule" $ \obj ->
+    IssueRule <$> obj .:? "licenseId"
+
+----------
+
+data Organization = Organization
+  { organizationId :: Int
+  } deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON Organization where
+  parseJSON = withObject "Organization" $ \obj ->
+    Organization <$> obj .: "organizationId"
+
+organizationEndpoint :: Url 'Https
+organizationEndpoint = https "app.fossa.com" /: "api" /: "cli" /: "organization"
+
+getOrganizationId
+  :: Text -- ^ api key
+  -> IO (Either FossaError Issues)
+getOrganizationId key = fossaReq $ do
+  let opts = header "Authorization" ("token " <> encodeUtf8 key)
+  response <- req GET organizationEndpoint NoReqBody jsonResponse opts
+  pure (responseBody response)

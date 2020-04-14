@@ -71,6 +71,7 @@ common deps
     , prettyprinter                ^>=1.6
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , req                          ^>=3.1.0
+    , retry                        ^>=0.8.1.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , text                         ^>=1.2.3
@@ -97,6 +98,7 @@ library
     App.Scan.GraphMangler
     App.Scan.Project
     App.Scan.ProjectInference
+    App.TestCmd
     AppLicense
     AppLicense.Scan
     Control.Carrier.Output.IO
