@@ -106,14 +106,16 @@ renderedIssues issues = rendered
       ]
 
     renderIssue :: Fossa.Issue -> Doc ann
-    renderIssue issue = hsep (map format [name, revision, fromMaybe "" (Fossa.ruleLicenseId =<< Fossa.issueRule issue)])
+    renderIssue issue = hsep (map format [name, revision, license])
       where
         format :: Text -> Doc ann
         format = fill padding . pretty
 
         locatorSplit = T.split (\c -> c == '$' || c == '+') (Fossa.issueRevisionId issue)
+
         name = fromMaybe (Fossa.issueRevisionId issue) (locatorSplit !? 1)
         revision = fromMaybe "" (locatorSplit !? 2)
+        license = fromMaybe "" (Fossa.ruleLicenseId =<< Fossa.issueRule issue)
 
         (!?) :: [a] -> Int -> Maybe a
         xs !? ix
@@ -121,8 +123,8 @@ renderedIssues issues = rendered
           | otherwise = Just (xs Unsafe.!! ix)
 
 data TestError
-  = TestErrorAPI Fossa.FossaError
-  | TestBuildFailed
+  = TestErrorAPI Fossa.FossaError -- ^ we encountered an API request error
+  | TestBuildFailed -- ^ we encountered the FAILED status on a build
   deriving (Show, Generic)
 
 renderTestError :: TestError -> Text
