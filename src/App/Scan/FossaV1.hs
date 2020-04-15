@@ -12,6 +12,7 @@ module App.Scan.FossaV1
   , Issues(..)
   , Issue(..)
   , IssueType(..)
+  , renderIssueType
   , IssueRule(..)
 
   , getOrganizationId
@@ -204,6 +205,15 @@ data IssueType
   | IssueOutdatedDependency
   | IssueOther Text
   deriving (Eq, Ord, Show, Generic)
+
+renderIssueType :: IssueType -> Text
+renderIssueType = \case
+  IssuePolicyConflict -> "Denied by Policy"
+  IssuePolicyFlag -> "Denied by Policy"
+  IssueVulnerability -> "Denied by Policy"
+  IssueUnlicensedDependency -> "Denied by Policy"
+  IssueOutdatedDependency -> "Denied by Policy"
+  IssueOther other -> other
 
 data Issue = Issue
   { issueId :: Int

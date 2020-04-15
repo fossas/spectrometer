@@ -8,6 +8,7 @@ import App.Scan.ProjectInference
 import Control.Carrier.Error.Either
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
+import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
@@ -33,7 +34,7 @@ testMain = do
   -- FIXME
   apiKey <- T.pack <$> getEnv "FOSSA_API_KEY"
 
-  result <- timeout testTimeoutSeconds $ runError @TestError $ withLogger SevInfo $ do
+  result <- timeout testTimeoutSeconds $ withLogger SevInfo $ runError @TestError $ do
     inferred <- inferProject basedir
 
     let name = inferredName inferred
@@ -48,31 +49,66 @@ testMain = do
 
     logSticky "[ Waiting for issue scan completion... ]"
     issues <- waitForIssues apiKey name revision
+    logSticky ""
 
     if null (Fossa.issuesIssues issues)
       then logInfo "Test passed! 0 issues found"
-      else logError "Test failed: issues found"
-
-    logSticky ""
+      else do
+        traverse_ (logError . pretty) (renderedIssues issues)
+        throwError NonEmptyIssues
 
   case result of
     Nothing -> do
       hPutStrLn stderr "Timed out while waiting for issues scan"
       exitFailure
     Just (Left err) -> do
-      hPutStrLn stderr "An error occurred while retrieving issues scan"
       hPutStrLn stderr $ renderTestError err
       exitFailure
     Just (Right ()) -> pure ()
 
+renderedIssues :: Fossa.Issues -> [Text]
+renderedIssues issues = rendered
+  where
+    issuesList = Fossa.issuesIssues issues
+
+    categorize :: Ord k => (v -> k) -> [v] -> Map k [v]
+    categorize f = M.fromListWith (++) . map (\v -> (f v, [v]))
+
+    issuesByType :: Map Fossa.IssueType [Fossa.Issue]
+    issuesByType = categorize Fossa.issueType issuesList
+
+    rendered = concatMap (\(ty, iss) -> renderHeader ty ++ map renderIssue iss ++ ["\n"]) (M.toList issuesByType)
+
+    renderHeader ty =
+      [ "========================================================================"
+      , Fossa.renderIssueType ty
+      , "========================================================================"
+      , case ty of
+          Fossa.IssuePolicyConflict -> "Dependency\tRevision\tLicense"
+          Fossa.IssuePolicyFlag -> "Dependency\tRevision\tLicense"
+          _ -> "Dependency\tRevision"
+      , ""
+      ]
+
+    renderIssue :: Fossa.Issue -> Text
+    renderIssue issue = revision <> "\t" <> fromMaybe "" (Fossa.ruleLicenseId =<< Fossa.issueRule issue)
+      where
+        revision =
+          case T.split (\c -> c == '$' || c == '+') (Fossa.issueRevisionId issue) of
+            (_:name:version:_) -> name <> " " <> version
+            (_:name:_) -> name
+            _ -> Fossa.issueRevisionId issue
+
 data TestError
   = TestErrorFossa Fossa.FossaError
   | NotFinished Fossa.BuildStatus
+  | NonEmptyIssues
   deriving (Show, Generic)
 
 renderTestError :: TestError -> Text
 renderTestError (TestErrorFossa err) = "An API error occurred: " <> T.pack (show err)
 renderTestError (NotFinished status) = "The build didn't complete in time. Last status: " <> T.pack (show status)
+renderTestError NonEmptyIssues = "Test failed: issues found."
 
 waitForBuild
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
