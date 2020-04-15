@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Go.GoList
   ( discover
   , analyze
@@ -16,18 +18,18 @@ import Data.Text.Encoding (decodeUtf8)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Go.Types
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
     Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
 
-  walkSkipNamed ["vendor/"] subdirs
+  pure $ WalkSkipSome [$(mkRelDir "vendor")]
 
 data Require = Require
   { reqPackage :: Text
@@ -78,11 +80,11 @@ mkProjectClosure dir graph = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Has (LabeledGrapher GolangPackage) sig m => [Require] -> m ()
+buildGraph :: Has GolangGrapher sig m => [Require] -> m ()
 buildGraph = traverse_ go
   where
 
-  go :: Has (LabeledGrapher GolangPackage) sig m => Require -> m ()
+  go :: Has GolangGrapher sig m => Require -> m ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
     direct pkg

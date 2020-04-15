@@ -21,7 +21,7 @@ import Discovery.Walk
 import DepTypes
 import Graphing (Graphing)
 import Effect.Exec
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Types
 
@@ -31,7 +31,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command
@@ -83,13 +83,14 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
     where
     applyLabel :: PipLabel -> Dependency -> Dependency
     applyLabel (PipSource loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
-    applyLabel (PipEnvironment env) dep = dep { dependencyTags = M.insertWith (<>) "environment" [env] (dependencyTags dep) }
+    applyLabel (PipEnvironment env) dep = dep { dependencyEnvironments = env : dependencyEnvironments dep }
 
     start = Dependency
       { dependencyType = PipType
       , dependencyName = pipPkgName pkg
       , dependencyVersion = Just (CEq (pipPkgVersion pkg))
       , dependencyLocations = []
+      , dependencyEnvironments = []
       , dependencyTags = M.empty
       }
 
@@ -98,32 +99,32 @@ data PipPkg = PipPkg
   , pipPkgVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel PipPkg = PipLabel
+type PipGrapher = LabeledGrapher PipPkg PipLabel
 
 data PipLabel =
     PipSource Text -- location
-  | PipEnvironment Text -- production, development
+  | PipEnvironment DepEnvironment
   deriving (Eq, Ord, Show, Generic)
 
-buildNodes :: forall sig m. Has (LabeledGrapher PipPkg) sig m => PipfileLock -> m ()
+buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> m ()
 buildNodes PipfileLock{..} = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
       indexBy ix = M.fromList . map (\v -> (ix v, v))
 
       sourcesMap = indexBy sourceName (fileSources fileMeta)
 
-  _ <- M.traverseWithKey (addWithLabel "development" sourcesMap) fileDevelop
-  _ <- M.traverseWithKey (addWithLabel "production" sourcesMap) fileDefault
+  _ <- M.traverseWithKey (addWithEnv EnvDevelopment sourcesMap) fileDevelop
+  _ <- M.traverseWithKey (addWithEnv EnvProduction sourcesMap) fileDefault
   pure ()
 
   where
 
-  addWithLabel :: Text -- env name: production, development
+  addWithEnv :: DepEnvironment
                -> Map Text PipfileSource
                -> Text -- dep name
                -> PipfileDep
                -> m ()
-  addWithLabel env sourcesMap depName dep = do
+  addWithEnv env sourcesMap depName dep = do
     let pkg = PipPkg depName (T.drop 2 (fileDepVersion dep))
     -- TODO: reachable instead of direct
     direct pkg
@@ -135,7 +136,7 @@ buildNodes PipfileLock{..} = do
         Just source -> label pkg (PipSource (sourceUrl source))
         Nothing -> pure ()
 
-buildEdges :: Has (LabeledGrapher PipPkg) sig m => [PipenvGraphDep] -> m ()
+buildEdges :: Has PipGrapher sig m => [PipenvGraphDep] -> m ()
 buildEdges pipenvDeps = do
   traverse_ (direct . mkPkg) pipenvDeps
   traverse_ mkEdges pipenvDeps
@@ -145,7 +146,7 @@ buildEdges pipenvDeps = do
   mkPkg :: PipenvGraphDep -> PipPkg
   mkPkg dep = PipPkg (depName dep) (depInstalled dep)
 
-  mkEdges :: Has (LabeledGrapher PipPkg) sig m => PipenvGraphDep -> m ()
+  mkEdges :: Has PipGrapher sig m => PipenvGraphDep -> m ()
   mkEdges parentDep =
     forM_ (depDependencies parentDep) $ \childDep -> do
       edge (mkPkg parentDep) (mkPkg childDep)

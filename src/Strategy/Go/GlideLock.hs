@@ -17,7 +17,8 @@ import qualified Data.Text as T
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -26,7 +27,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-glidelock" GolangGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 analyze :: ( Has ReadFS sig m , Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file
@@ -45,7 +46,7 @@ mkProjectClosure file lock = ProjectClosureBody
     }
 
 buildGraph :: GlideLockfile -> Graphing Dependency
-buildGraph lockfile = unfold direct (const []) toDependency
+buildGraph lockfile = Graphing.fromList (map toDependency direct)
   where
   direct = imports lockfile
   toDependency GlideDep{..}  =
@@ -53,6 +54,7 @@ buildGraph lockfile = unfold direct (const []) toDependency
                , dependencyName = depName
                , dependencyVersion = Just (CEq $ T.pack (show depVersion))
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }
 

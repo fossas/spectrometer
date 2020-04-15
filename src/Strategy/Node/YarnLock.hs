@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Node.YarnLock
   ( discover
   , analyze
@@ -20,12 +22,12 @@ import Graphing (Graphing)
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "yarn.lock") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-yarnlock" NodejsGroup $ analyze file
 
-  walkSkipNamed ["node_modules/"] subdirs
+  pure (WalkSkipSome [$(mkRelDir "node_modules")])
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze lockfile = do
@@ -64,7 +66,7 @@ buildGraph lockfile = run . evalGrapher $
                , dependencyName =
                    case YL.name key of
                      YL.SimplePackageKey name -> name
-                     YL.ScopedPackageKey scope name -> scope <> "/" <> name
+                     YL.ScopedPackageKey scope name -> "@" <> scope <> "/" <> name
                , dependencyVersion = Just (CEq (YL.version package))
                , dependencyLocations =
                    case YL.remote package of
@@ -73,5 +75,6 @@ buildGraph lockfile = run . evalGrapher $
                      YL.FileRemote url _ -> [url]
                      YL.FileRemoteNoIntegrity url -> [url]
                      YL.GitRemote url rev -> [url <> "@" <> rev]
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }

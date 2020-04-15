@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Go.GopkgToml
   ( discover
 
@@ -20,19 +22,19 @@ import qualified Toml
 
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Strategy.Go.Types
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.toml") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkgtoml" GolangGroup $ analyze file
 
-  walkSkipNamed ["vendor/"] subdirs
+  pure $ WalkSkipSome [$(mkRelDir "vendor")]
 
 gopkgCodec :: TomlCodec Gopkg
 gopkgCodec = Gopkg
@@ -91,10 +93,10 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Has (LabeledGrapher GolangPackage) sig m => Gopkg -> m ()
+buildGraph :: Has GolangGrapher sig m => Gopkg -> m ()
 buildGraph = void . M.traverseWithKey go . resolve
   where
-  go :: Has (LabeledGrapher GolangPackage) sig m => Text -> PkgConstraint -> m ()
+  go :: Has GolangGrapher sig m => Text -> PkgConstraint -> m ()
   go name PkgConstraint{..} = do
     let pkg = mkGolangPackage name
 

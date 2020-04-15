@@ -14,7 +14,8 @@ import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Parse.XML
 import Types
 
@@ -24,7 +25,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-packagesconfig" DotnetGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 instance FromXML PackagesConfig where
   parseElement el = PackagesConfig <$> children "package" el
@@ -60,12 +61,13 @@ data NuGetDependency = NuGetDependency
   } deriving (Eq, Ord, Show, Generic)
 
 buildGraph :: PackagesConfig -> Graphing Dependency
-buildGraph config = unfold (deps config) (const []) toDependency
+buildGraph = Graphing.fromList . map toDependency . deps
     where
     toDependency NuGetDependency{..} =
       Dependency { dependencyType = NuGetType
                , dependencyName = depID
                , dependencyVersion = Just (CEq depVersion)
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }

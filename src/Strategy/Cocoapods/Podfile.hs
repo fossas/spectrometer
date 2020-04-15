@@ -18,7 +18,8 @@ import qualified Data.Text as T
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Types
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
@@ -30,7 +31,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "cocoapods-podfile" CocoapodsGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser parsePodfile file
@@ -49,7 +50,7 @@ mkProjectClosure file podfile = ProjectClosureBody
     }
 
 buildGraph :: Podfile -> Graphing Dependency
-buildGraph podfile = unfold direct (const []) toDependency
+buildGraph podfile = Graphing.fromList (map toDependency direct)
     where
     direct = pods podfile
     toDependency Pod{..} =
@@ -61,6 +62,7 @@ buildGraph podfile = unfold direct (const []) toDependency
                  , dependencyLocations = case M.lookup SourceProperty properties of 
                                             Just repo -> [repo]
                                             _ -> [source podfile]
+                 , dependencyEnvironments = []
                  , dependencyTags = M.empty
                  }
 

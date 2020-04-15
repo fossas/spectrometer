@@ -19,7 +19,7 @@ import qualified Data.Char as C
 
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Types
@@ -33,7 +33,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "cocoapods-podfilelock" CocoapodsGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser findSections file
@@ -54,7 +54,7 @@ mkProjectClosure file sections = ProjectClosureBody
 newtype PodfilePkg = PodfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel PodfilePkg = PodfileLabel
+type PodfileGrapher = LabeledGrapher PodfilePkg PodfileLabel
 
 newtype PodfileLabel =
     PodfileVersion Text
@@ -70,6 +70,7 @@ toDependency pkg = foldr applyLabel start
     , dependencyName = pkgName pkg
     , dependencyVersion = Nothing
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }
 
@@ -80,12 +81,12 @@ buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
   traverse_ addSection sections
   where
-  addSection :: Has (LabeledGrapher PodfilePkg) sig m => Section -> m ()
+  addSection :: Has PodfileGrapher sig m => Section -> m ()
   addSection (DependencySection deps) = traverse_ (direct . PodfilePkg . depName) deps
   addSection (PodSection pods) = traverse_ addSpec pods
   addSection _ = pure ()
 
-  addSpec :: Has (LabeledGrapher PodfilePkg) sig m => Pod -> m ()
+  addSpec :: Has PodfileGrapher sig m => Pod -> m ()
   addSpec pod = do
     let pkg = PodfilePkg (name pod)
     -- add edges between spec and specdeps

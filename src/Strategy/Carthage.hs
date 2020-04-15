@@ -26,12 +26,12 @@ import qualified Graphing as G
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files ->
+discover = walk $ \_ _ files ->
   case find (\f -> fileName f == "Cartfile.resolved") files of
-    Nothing -> walkContinue
+    Nothing -> pure WalkContinue
     Just file -> do
       runSimpleStrategy "carthage-lock" CarthageGroup $ fmap (mkProjectClosure file) (analyze file)
-      walkSkipAll subdirs
+      pure WalkSkipAll
 
 mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
@@ -117,6 +117,7 @@ toDependency entry = Dependency
   , dependencyName = entryToDepName entry
   , dependencyVersion = Just (CEq (resolvedVersion entry))
   , dependencyTags = M.empty
+  , dependencyEnvironments = []
   , dependencyLocations = [] -- TODO: git location?
   }
 

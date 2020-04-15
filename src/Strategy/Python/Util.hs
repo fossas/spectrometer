@@ -20,16 +20,18 @@ import           Text.Megaparsec.Char
 import qualified Text.URI as URI
 
 import DepTypes
-import Graphing
+import Graphing (Graphing)
+import qualified Graphing
 
 buildGraph :: [Req] -> Graphing Dependency
-buildGraph xs = unfold xs (const []) toDependency
+buildGraph = Graphing.fromList . map toDependency
   where
   toDependency req =
     Dependency { dependencyType = PipType
                , dependencyName = depName req
                , dependencyVersion = depVersion req
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = maybe M.empty toTags (depMarker req)
                }
 

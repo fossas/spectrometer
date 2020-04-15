@@ -19,7 +19,7 @@ import qualified Data.Text as T
 import qualified Data.Char as C
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Types
@@ -33,7 +33,7 @@ discover = walk $ \_ _ files -> do
     when (fileName f == "Gemfile.lock") $
       runSimpleStrategy "ruby-gemfilelock" RubyGroup $ analyze f
 
-  walkContinue
+  pure WalkContinue
 
 type Remote = Text
 type Revision = Text
@@ -80,7 +80,7 @@ mkProjectClosure file sections = ProjectClosureBody
 data GemfilePkg = GemfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel GemfilePkg = GemfileLabel
+type GemfileGrapher = LabeledGrapher GemfilePkg GemfileLabel
 
 data GemfileLabel =
     GemfileVersion Text
@@ -98,6 +98,7 @@ toDependency pkg = foldr applyLabel start
     , dependencyName = pkgName pkg
     , dependencyVersion = Nothing
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }
 
@@ -112,7 +113,7 @@ buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
   traverse_ addSection sections
   where
-  addSection :: Has (LabeledGrapher GemfilePkg) sig m => Section -> m ()
+  addSection :: Has GemfileGrapher sig m => Section -> m ()
   addSection (DependencySection deps) = traverse_ (direct . GemfilePkg . directName) deps
   addSection (GitSection remote revision branch specs) =
     traverse_ (addSpec (GitRemote remote (revision <|> branch))) specs
@@ -122,7 +123,7 @@ buildGraph sections = run . withLabeling toDependency $
     traverse_ (addSpec (OtherRemote remote)) specs
   addSection UnknownSection{} = pure ()
 
-  addSpec :: Has (LabeledGrapher GemfilePkg) sig m => GemfileLabel -> Spec -> m ()
+  addSpec :: Has GemfileGrapher sig m => GemfileLabel -> Spec -> m ()
   addSpec remoteLabel spec = do
     let pkg = GemfilePkg (specName spec)
     -- add edges between spec and specdeps

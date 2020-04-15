@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Go.Gomod
   ( discover
   , analyze
@@ -21,19 +23,19 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Strategy.Go.Types
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gomod" GolangGroup $ analyze file
 
-  walkSkipNamed ["vendor/"] subdirs
+  pure $ WalkSkipSome [$(mkRelDir "vendor")]
 
 data Statement =
     RequireStatement Text Text -- ^ package, version
@@ -201,11 +203,11 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Has (LabeledGrapher GolangPackage) sig m => Gomod -> m ()
+buildGraph :: Has GolangGrapher sig m => Gomod -> m ()
 buildGraph = traverse_ go . resolve
   where
 
-  go :: Has (LabeledGrapher GolangPackage) sig m => Require -> m ()
+  go :: Has GolangGrapher sig m => Require -> m ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
 

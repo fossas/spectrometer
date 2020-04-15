@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Node.NpmLock
   ( discover
   , analyze
@@ -14,18 +16,18 @@ import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "package-lock.json") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "npm-packagelock" NodejsGroup $ analyze file
 
-  walkSkipNamed ["node_modules/"] subdirs
+  pure (WalkSkipSome [$(mkRelDir "node_modules")])
 
 data NpmPackageJson = NpmPackageJson
   { packageName         :: Text
@@ -76,9 +78,9 @@ data NpmPackage = NpmPackage
   , pkgVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel NpmPackage = NpmPackageLabel
+type NpmGrapher = LabeledGrapher NpmPackage NpmPackageLabel
 
-data NpmPackageLabel = NpmPackageEnv Text | NpmPackageLocation Text
+data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
   deriving (Eq, Ord, Show, Generic)
 
 buildGraph :: NpmPackageJson -> Graphing Dependency
@@ -88,16 +90,16 @@ buildGraph packageJson = run . withLabeling toDependency $ do
   pure ()
 
   where
-  addDirect :: Has (LabeledGrapher NpmPackage) sig m => Text -> NpmDep -> m ()
+  addDirect :: Has NpmGrapher sig m => Text -> NpmDep -> m ()
   addDirect name NpmDep{depVersion} = direct (NpmPackage name depVersion)
 
-  addDep :: Has (LabeledGrapher NpmPackage) sig m => Text -> NpmDep -> m ()
+  addDep :: Has NpmGrapher sig m => Text -> NpmDep -> m ()
   addDep name NpmDep{..} = do
     let pkg = NpmPackage name depVersion
 
     case depDev of
-      Just True -> label pkg (NpmPackageEnv "development")
-      _         -> label pkg (NpmPackageEnv "production")
+      Just True -> label pkg (NpmPackageEnv EnvDevelopment)
+      _         -> label pkg (NpmPackageEnv EnvProduction)
 
     traverse_ (label pkg . NpmPackageLocation) depResolved
 
@@ -117,7 +119,7 @@ buildGraph packageJson = run . withLabeling toDependency $ do
   toDependency pkg = foldr addLabel (start pkg)
 
   addLabel :: NpmPackageLabel -> Dependency -> Dependency
-  addLabel (NpmPackageEnv env) dep = dep { dependencyTags = M.insertWith (++) "environment" [env] (dependencyTags dep) }
+  addLabel (NpmPackageEnv env) dep = dep { dependencyEnvironments = env : dependencyEnvironments dep }
   addLabel (NpmPackageLocation loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
 
   start :: NpmPackage -> Dependency
@@ -126,5 +128,6 @@ buildGraph packageJson = run . withLabeling toDependency $ do
     , dependencyName = pkgName
     , dependencyVersion = Just $ CEq pkgVersion
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }

@@ -16,7 +16,8 @@ import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
-import Graphing
+import Graphing (Graphing)
+import qualified Graphing
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -25,7 +26,7 @@ discover = walk $ \dir _ files -> do
     Nothing -> pure ()
     Just _ -> runSimpleStrategy "python-piplist" PythonGroup $ analyze dir
 
-  walkContinue
+  pure WalkContinue
 
 pipListCmd :: Command
 pipListCmd = Command
@@ -51,13 +52,14 @@ mkProjectClosure dir deps = ProjectClosureBody
     }
 
 buildGraph :: [PipListDep] -> Graphing Dependency
-buildGraph xs = unfold xs (const []) toDependency
+buildGraph = Graphing.fromList . map toDependency
   where
   toDependency PipListDep{..} =
     Dependency { dependencyType = PipType
                , dependencyName = depName
                , dependencyVersion = Just (CEq depVersion)
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }
 

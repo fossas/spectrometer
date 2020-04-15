@@ -21,7 +21,8 @@ import DepTypes
 import qualified Data.Text as T
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Parse.XML
 import Types
 
@@ -31,7 +32,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-nuspec" DotnetGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file
@@ -104,7 +105,7 @@ instance FromXML NuGetDependency where
                     <*> attr "version" el
 
 buildGraph :: Nuspec -> Graphing Dependency
-buildGraph project = unfold direct (const []) toDependency
+buildGraph project = Graphing.fromList (map toDependency direct)
     where
     direct = concatMap dependencies (groups project)
     toDependency NuGetDependency{..} =
@@ -112,5 +113,6 @@ buildGraph project = unfold direct (const []) toDependency
                  , dependencyName = depID
                  , dependencyVersion = Just (CEq depVersion)
                  , dependencyLocations = []
+                 , dependencyEnvironments = []
                  , dependencyTags = M.empty
                  }
