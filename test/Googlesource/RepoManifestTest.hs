@@ -95,6 +95,7 @@ dependencyOne = Dependency { dependencyType = GooglesourceType
                            , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
                            , dependencyLocations = ["https://android.googlesource.com/platform/art"]
                            , dependencyTags = M.empty
+                           , dependencyEnvironments = [EnvProduction]
                            }
 
 dependencyTwo :: Dependency
@@ -103,6 +104,7 @@ dependencyTwo = Dependency { dependencyType = GooglesourceType
                            , dependencyVersion = Just (CEq "57b7d1574276f5e7f895c884df29f45859da74b6")
                            , dependencyLocations = ["https://android.googlesource.com/platform/bionic"]
                            , dependencyTags = M.empty
+                           , dependencyEnvironments = [EnvProduction]
                            }
 
 dependencyThree :: Dependency
@@ -111,6 +113,7 @@ dependencyThree = Dependency { dependencyType = GooglesourceType
                              , dependencyVersion = Just (CEq "google/android-6.0.1_r74")
                              , dependencyLocations = ["https://android.othersource.com/platform/bootable/recovery"]
                              , dependencyTags = M.empty
+                             , dependencyEnvironments = [EnvProduction]
                              }
 
 dependencyFour :: Dependency
@@ -119,6 +122,7 @@ dependencyFour = Dependency { dependencyType = GooglesourceType
                             , dependencyVersion = Just (CEq "1111")
                             , dependencyLocations = ["https://android.othersource.com/platform/cts"]
                             , dependencyTags = M.empty
+                            , dependencyEnvironments = [EnvProduction]
                             }
 
 dependencyFive :: Dependency
@@ -127,6 +131,7 @@ dependencyFive = Dependency { dependencyType = GooglesourceType
                             , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
                             , dependencyLocations = ["https://android.googlesource.com/platform/dalvik"]
                             , dependencyTags = M.empty
+                            , dependencyEnvironments = [EnvProduction]
                             }
 
 validatedProjectOne :: ValidatedProject
