@@ -158,7 +158,9 @@ waitForIssues key name revision = do
     Left err -> throwError (TestErrorAPI err)
     Right issues ->
       case Fossa.issuesStatus issues of
-        "WAITING" -> waitForIssues key name revision
+        "WAITING" -> do
+          liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
+          waitForIssues key name revision
         _ -> pure issues
 
 timeout
