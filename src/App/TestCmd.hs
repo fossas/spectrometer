@@ -3,6 +3,7 @@ module App.TestCmd
   ) where
 
 import Prologue
+import qualified Prelude as Unsafe
 
 import App.Scan.ProjectInference
 import Control.Carrier.Error.Either
@@ -54,7 +55,7 @@ testMain = do
     if null (Fossa.issuesIssues issues)
       then logInfo "Test passed! 0 issues found"
       else do
-        traverse_ (logError . pretty) (renderedIssues issues)
+        logError (renderedIssues issues)
         throwError NonEmptyIssues
 
   case result of
@@ -66,9 +67,10 @@ testMain = do
       exitFailure
     Just (Right ()) -> pure ()
 
-renderedIssues :: Fossa.Issues -> [Text]
+renderedIssues :: Fossa.Issues -> Doc ann
 renderedIssues issues = rendered
   where
+    issuesList :: [Fossa.Issue]
     issuesList = Fossa.issuesIssues issues
 
     categorize :: Ord k => (v -> k) -> [v] -> Map k [v]
@@ -77,36 +79,48 @@ renderedIssues issues = rendered
     issuesByType :: Map Fossa.IssueType [Fossa.Issue]
     issuesByType = categorize Fossa.issueType issuesList
 
-    rendered = concatMap (\(ty, iss) -> renderHeader ty ++ map renderIssue iss ++ ["\n"]) (M.toList issuesByType)
+    renderSingle :: Fossa.IssueType -> [Fossa.Issue] -> Doc ann
+    renderSingle ty rawIssues =
+      renderHeader ty <> line <> vsep (map renderIssue rawIssues)
 
-    renderHeader ty =
+    rendered :: Doc ann
+    rendered = vsep
+      [renderSingle ty rawIssues | (ty,rawIssues) <- M.toList issuesByType]
+
+    renderHeader ty = vsep
       [ "========================================================================"
-      , Fossa.renderIssueType ty
+      , pretty $ Fossa.renderIssueType ty
       , "========================================================================"
-      , case ty of
-          Fossa.IssuePolicyConflict -> "Dependency\tRevision\tLicense"
-          Fossa.IssuePolicyFlag -> "Dependency\tRevision\tLicense"
-          _ -> "Dependency\tRevision"
+      , hsep $ map (fill 20) $ case ty of
+          Fossa.IssuePolicyConflict -> ["Dependency", "Revision", "License"]
+          Fossa.IssuePolicyFlag -> ["Dependency", "Revision", "License"]
+          _ -> ["Dependency", "Revision"]
       , ""
       ]
 
-    renderIssue :: Fossa.Issue -> Text
-    renderIssue issue = revision <> "\t" <> fromMaybe "" (Fossa.ruleLicenseId =<< Fossa.issueRule issue)
+    renderIssue :: Fossa.Issue -> Doc ann
+    renderIssue issue = hsep (map format [name, revision, fromMaybe "" (Fossa.ruleLicenseId =<< Fossa.issueRule issue)])
       where
-        revision =
-          case T.split (\c -> c == '$' || c == '+') (Fossa.issueRevisionId issue) of
-            (_:name:version:_) -> name <> " " <> version
-            (_:name:_) -> name
-            _ -> Fossa.issueRevisionId issue
+        format :: Text -> Doc ann
+        format = fill 15 . pretty
+
+        locatorSplit = T.split (\c -> c == '$' || c == '+') (Fossa.issueRevisionId issue)
+        name = fromMaybe (Fossa.issueRevisionId issue) (locatorSplit !? 1)
+        revision = fromMaybe "" (locatorSplit !? 2)
+
+        (!?) :: [a] -> Int -> Maybe a
+        xs !? ix
+          | length xs <= ix = Nothing
+          | otherwise = Just (xs Unsafe.!! ix)
 
 data TestError
-  = TestErrorFossa Fossa.FossaError
+  = TestErrorAPI Fossa.FossaError
   | NotFinished Fossa.BuildStatus
   | NonEmptyIssues
   deriving (Show, Generic)
 
 renderTestError :: TestError -> Text
-renderTestError (TestErrorFossa err) = "An API error occurred: " <> T.pack (show err)
+renderTestError (TestErrorAPI err) = "An API error occurred: " <> T.pack (show err)
 renderTestError (NotFinished status) = "The build didn't complete in time. Last status: " <> T.pack (show status)
 renderTestError NonEmptyIssues = "Test failed: issues found."
 
@@ -119,7 +133,7 @@ waitForBuild
 waitForBuild key name revision = do
   maybeBuild <- liftIO $ Fossa.getLatestBuild key name revision
   case maybeBuild of
-    Left err -> throwError (TestErrorFossa err)
+    Left err -> throwError (TestErrorAPI err)
     Right build -> do
       case Fossa.buildTaskStatus (Fossa.buildTask build) of
         Fossa.StatusSucceeded -> pure ()
@@ -137,7 +151,7 @@ waitForIssues
 waitForIssues key name revision = do
   result <- liftIO $ Fossa.getIssues key name revision
   case result of
-    Left err -> throwError (TestErrorFossa err)
+    Left err -> throwError (TestErrorAPI err)
     Right issues ->
       case Fossa.issuesStatus issues of
         "WAITING" -> waitForIssues key name revision
