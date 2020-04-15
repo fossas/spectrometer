@@ -141,7 +141,7 @@ data Build = Build
   , buildTask :: BuildTask
   } deriving (Eq, Ord, Show, Generic)
 
-data BuildTask = BuildTask
+newtype BuildTask = BuildTask
   { buildTaskStatus :: BuildStatus
   } deriving (Eq, Ord, Show, Generic)
 
@@ -223,7 +223,7 @@ data Issue = Issue
   , issueRule :: Maybe IssueRule
   } deriving (Eq, Ord, Show, Generic)
 
-data IssueRule = IssueRule
+newtype IssueRule = IssueRule
   { ruleLicenseId :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
@@ -256,7 +256,7 @@ instance FromJSON IssueRule where
 
 ----------
 
-data Organization = Organization
+newtype Organization = Organization
   { organizationId :: Int
   } deriving (Eq, Ord, Show, Generic)
 
