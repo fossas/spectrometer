@@ -82,13 +82,13 @@ renderedIssues issues = rendered
     issuesByType :: Map Fossa.IssueType [Fossa.Issue]
     issuesByType = categorize Fossa.issueType issuesList
 
-    renderSingle :: Fossa.IssueType -> [Fossa.Issue] -> Doc ann
-    renderSingle ty rawIssues =
-      renderHeader ty <> line <> vsep (map renderIssue rawIssues) <> line
+    renderSection :: Fossa.IssueType -> [Fossa.Issue] -> Doc ann
+    renderSection issueType rawIssues =
+      renderHeader issueType <> line <> vsep (map renderIssue rawIssues) <> line
 
     rendered :: Doc ann
     rendered = vsep
-      [renderSingle ty rawIssues | (ty,rawIssues) <- M.toList issuesByType]
+      [renderSection issueType rawIssues | (issueType,rawIssues) <- M.toList issuesByType]
 
     renderHeader :: Fossa.IssueType -> Doc ann
     renderHeader ty = vsep
