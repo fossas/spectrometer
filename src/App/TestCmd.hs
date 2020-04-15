@@ -70,6 +70,9 @@ testMain = do
 renderedIssues :: Fossa.Issues -> Doc ann
 renderedIssues issues = rendered
   where
+    padding :: Int
+    padding = 20
+
     issuesList :: [Fossa.Issue]
     issuesList = Fossa.issuesIssues issues
 
@@ -81,7 +84,7 @@ renderedIssues issues = rendered
 
     renderSingle :: Fossa.IssueType -> [Fossa.Issue] -> Doc ann
     renderSingle ty rawIssues =
-      renderHeader ty <> line <> vsep (map renderIssue rawIssues)
+      renderHeader ty <> line <> vsep (map renderIssue rawIssues) <> line
 
     rendered :: Doc ann
     rendered = vsep
@@ -91,7 +94,7 @@ renderedIssues issues = rendered
       [ "========================================================================"
       , pretty $ Fossa.renderIssueType ty
       , "========================================================================"
-      , hsep $ map (fill 20) $ case ty of
+      , hsep $ map (fill padding) $ case ty of
           Fossa.IssuePolicyConflict -> ["Dependency", "Revision", "License"]
           Fossa.IssuePolicyFlag -> ["Dependency", "Revision", "License"]
           _ -> ["Dependency", "Revision"]
@@ -102,7 +105,7 @@ renderedIssues issues = rendered
     renderIssue issue = hsep (map format [name, revision, fromMaybe "" (Fossa.ruleLicenseId =<< Fossa.issueRule issue)])
       where
         format :: Text -> Doc ann
-        format = fill 15 . pretty
+        format = fill padding . pretty
 
         locatorSplit = T.split (\c -> c == '$' || c == '+') (Fossa.issueRevisionId issue)
         name = fromMaybe (Fossa.issueRevisionId issue) (locatorSplit !? 1)

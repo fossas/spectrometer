@@ -209,10 +209,10 @@ data IssueType
 renderIssueType :: IssueType -> Text
 renderIssueType = \case
   IssuePolicyConflict -> "Denied by Policy"
-  IssuePolicyFlag -> "Denied by Policy"
-  IssueVulnerability -> "Denied by Policy"
-  IssueUnlicensedDependency -> "Denied by Policy"
-  IssueOutdatedDependency -> "Denied by Policy"
+  IssuePolicyFlag -> "Flagged by Policy"
+  IssueVulnerability -> "Vulnerability"
+  IssueUnlicensedDependency -> "Unlicensed Dependency"
+  IssueOutdatedDependency -> "Outdated Dependency"
   IssueOther other -> other
 
 data Issue = Issue
