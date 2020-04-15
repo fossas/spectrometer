@@ -43,7 +43,7 @@ testMain = do
           revision = inferredRevision inferred
 
       logInfo $ "Using project name: " <> pretty (inferredName inferred)
-      logInfo $ "Using project name: " <> pretty (inferredRevision inferred)
+      logInfo $ "Using project revision: " <> pretty (inferredRevision inferred)
 
       logSticky "[ Waiting for build completion... ]"
 
