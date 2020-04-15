@@ -32,14 +32,14 @@ import Types
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files ->
+discover = walk $ \_ _ files ->
   case find (\f -> "manifest.xml" == fileName f) files of
-    Nothing -> walkContinue
+    Nothing -> pure WalkContinue
     Just file ->
       if dirname (parent file) == $(mkRelDir ".repo") then do
         runSimpleStrategy "googlesource-repomanifest" GooglesourceGroup $ analyze file
-        walkSkipAll subdirs
-      else walkContinue
+        pure WalkSkipAll
+      else pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> nestedValidatedProjects file
@@ -207,4 +207,5 @@ buildGraph projects = unfold projects (const []) toDependency
                  , dependencyVersion = Just (CEq validatedProjectRevision)
                  , dependencyLocations = [validatedProjectUrl]
                  , dependencyTags = M.empty
+                 , dependencyEnvironments = [EnvProduction]
                  }
