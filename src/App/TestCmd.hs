@@ -90,6 +90,7 @@ renderedIssues issues = rendered
     rendered = vsep
       [renderSingle ty rawIssues | (ty,rawIssues) <- M.toList issuesByType]
 
+    renderHeader :: Fossa.IssueType -> Doc ann
     renderHeader ty = vsep
       [ "========================================================================"
       , pretty $ Fossa.renderIssueType ty
