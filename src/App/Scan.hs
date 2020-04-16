@@ -60,6 +60,16 @@ data ScanCmdOpts = ScanCmdOpts
   , cmdOutFile :: Maybe FilePath
   , sherlockCmdPath :: Maybe String
   , sherlockApiKey :: Maybe String
+  , nomosCmdPath :: Maybe String
+  , iprCmdPath :: Maybe String
+  , scotlandYardUrl :: Maybe String
+  , sherlockUrl :: Maybe String
+  , sherlockClientToken :: Maybe String
+  , sherlockSecret :: Maybe String
+  , organizationID :: Maybe String
+  , projectId :: Maybe String
+  , revisionId :: Maybe String
+  , pathfinderCmdPath :: Maybe String
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
