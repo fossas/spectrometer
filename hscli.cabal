@@ -111,6 +111,7 @@ library
     Parse.XML
     Prologue
     RunSherlock
+    ScotlandYard
     Strategy.Carthage
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock

@@ -27,6 +27,7 @@ import Effect.Exec (ExecErr(..), runExecIO)
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
 import qualified RunSherlock as RunSherlock
+import qualified ScotlandYard as SY
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
@@ -78,7 +79,9 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
-  let runSherlock = RunSherlock.scan basedir sherlockCmdPath sherlockApiKey
+  scanId <- SY.createScan scotlandYardUrl
+
+  let runSherlock = RunSherlock.scan basedir sherlockCmdPath sherlockApiKey sherlockUrl sherlockClientToken sherlockSecret scanId
         & runError @ExecErr
         & runExecIO
 
