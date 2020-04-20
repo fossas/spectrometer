@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 
 module RunIPR.RunIPRTest
   ( spec_run
@@ -8,17 +9,24 @@ import Prologue
 import VPSScan.RunIPR as RunIPR
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.Map.Strict as M
+
 
 import Test.Tasty.Hspec
 
+licenseExpressionOne :: IprLicenseExpression
+licenseExpressionOne = RunIPR.IprLicenseExpression 0 "Public-domain"
+licenseExpressionTwo :: IprLicenseExpression
+licenseExpressionTwo = RunIPR.IprLicenseExpression 1 "Public-domain"
+
 fileOne :: IprFile
-fileOne = RunIPR.IprFile "epub/content.opf"
+fileOne = RunIPR.IprFile "epub/content.opf" $ M.fromList [("0", licenseExpressionOne), ("1", licenseExpressionTwo)]
 fileTwo :: IprFile
-fileTwo = RunIPR.IprFile  "epub/css/core.css"
+fileTwo = RunIPR.IprFile  "epub/css/core.css" M.empty
 fileThree :: IprFile
-fileThree = RunIPR.IprFile "epub/css/local.css"
+fileThree = RunIPR.IprFile "epub/css/local.css" M.empty
 fileFour :: IprFile
-fileFour = RunIPR.IprFile "epub/text/chapter-1.xhtml"
+fileFour = RunIPR.IprFile "epub/text/chapter-1.xhtml" M.empty
 
 basicResultFileList :: [IprFile]
 basicResultFileList = [fileOne, fileTwo, fileThree, fileFour]
@@ -31,5 +39,5 @@ spec_run = do
       case eitherDecode $ basicResult of
         Right result ->
           iprResponseFiles result `shouldBe` basicResultFileList
-        Left _ -> expectationFailure (T.unpack ("could not parse IPR result"))
+        Left err -> expectationFailure (T.unpack ("could not parse IPR result") <> err)
 
