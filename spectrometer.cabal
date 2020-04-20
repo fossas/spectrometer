@@ -1,5 +1,5 @@
 cabal-version:      2.4
-name:               hscli
+name:               spectrometer
 version:            0.1.0.0
 license:            MPL-2.0
 build-type:         Simple
@@ -156,21 +156,26 @@ library
 
   hs-source-dirs:  src
 
+executable fossa
+  import:         lang
+  main-is:        Main.hs
+  hs-source-dirs: app/fossa
+  build-depends:  spectrometer
+  ghc-options:    -threaded -with-rtsopts=-N
+
 executable hscli
   import:         lang
   main-is:        Main.hs
-  hs-source-dirs: app
-  build-depends:  hscli
+  hs-source-dirs: app/hscli
+  build-depends:  spectrometer
   ghc-options:    -threaded -with-rtsopts=-N
 
 executable pathfinder
   import:         lang
   main-is:        Main.hs
-  hs-source-dirs: licenseApp
-  build-depends:  hscli
-  ghc-options:
-    -flate-specialise -fspecialize-aggressively -O -threaded
-    -with-rtsopts=-N
+  hs-source-dirs: app/pathfinder
+  build-depends:  spectrometer
+  ghc-options:    -threaded -with-rtsopts=-N
 
 test-suite tests
   import:             lang
@@ -211,7 +216,7 @@ test-suite tests
 
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
   build-depends:
-    , hscli
+    , spectrometer
     , hspec-megaparsec  ^>=2.1
     , tasty             ^>=1.2.3
     , tasty-hspec       ^>=1.1.5.1
