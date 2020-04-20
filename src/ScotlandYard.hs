@@ -3,16 +3,22 @@ where
 import Prologue
 
 import Control.Carrier.Error.Either
-import Effect.Exec
+import Effect.HTTP
 
-createScan :: (Has Exec sig m, Has (Error ExecErr) sig m) => Maybe String -> m String
+createScan :: (Has (Error HTTPErr) sig m) => Maybe String -> m String
 createScan scotlandYardUri = do
   case scotlandYardUri of 
-    Nothing -> return ""
+    Nothing -> throwError (NoUrlError "No URL provided for Scotland Yard API")
     Just uri -> do
       -- TODO: Actually make the post
-      pure "1234"
+      return "1234"
 
-postIprResults :: (Has Exec sig m, has (Error ExecErr) sig m) => String -> String -> m ()
-postIprResults resJSON scanId = do
-  pure ()
+-- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
+-- post the IRP result to the "Upload Scan Data" endpoint on Scotland Yard
+-- POST /scans/{scanID}/discovered_licenses
+postIprResults :: (Has (Error HTTPErr) sig m) => Maybe String -> String -> String -> m ()
+postIprResults scotlandYardUri resJSON scanId = do
+  case scotlandYardUri of
+    Nothing -> throwError (NoUrlError "No URL provided for Scotland Yard API")
+    Just uri -> do
+      pure ()
