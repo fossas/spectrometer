@@ -61,28 +61,9 @@ data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , cmdDebug   :: Bool
   , cmdOutFile :: Maybe FilePath
-  , sherlockCmdPathO :: Maybe String
-  , sherlockApiKeyO :: Maybe String
-  , nomosCmdPathO :: Maybe String
-  , iprCmdPathO :: Maybe String
-  , scotlandYardUrlO :: Maybe String
-  , sherlockUrlO :: Maybe String
-  , sherlockClientTokenO :: Maybe String
-  , sherlockSecretO :: Maybe String
-  , organizationIDO :: Maybe String
-  , projectIdO :: Maybe String
-  , revisionIdO :: Maybe String
-  , pathfinderCmdPathO :: Maybe String
-  } deriving (Eq, Ord, Show, Generic)
-
-data SherlockOpts = SherlockOpts
-  { baseDir :: Path Abs Dir
-  , sherlockCmdPath :: String
-  , sherlockApiKey :: String
-  , sherlockUrl :: String
-  , sherlockClientToken :: String
-  , sherlockSecret :: String
-  , scanId :: String
+  , scotlandYardUrl :: Maybe String
+  , sherlockOpts :: Maybe RunSherlock.SherlockOpts
+  , iprOpts :: Maybe RunIPR.IPROpts
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
@@ -91,14 +72,17 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
-  -- scanId <- runError @HTTPErr $ SY.createScan scotlandYardUrl
+  scanId <- runError @HTTPErr $ SY.createScan scotlandYardUrl
 
-  -- let (iprOpts, sherlockOpts) = case sequenceA [sherlockCmdPathO, sherlockApiKeyO, sherlockUrlO, sherlockClientTokenO, sherlockSecretO, nomosCmdPathOptO, iprCmdPathOptO, projectIdO, revisionIdO, pathfinderCmdPathO] of
-  --   Nothing -> (Nothing, Nothing)
-  --   Just [sherlockCmdPath, sherlockApiKey, sherlockUrl, sherlockClientToken, sherlockSecret, nomosCmdPathOpt, iprCmdPathOpt, projectId, revisionId, pathfinderCmdPath] ->
-  --     let ipr = RunIPR.IprOpts <$> basedir <*> iprCmdPath <*> nomosCmdPath <*> pathfinderCmdPath
-  --         sherlock = SherlockOpts <$> basedir <*> sherlockCmdPath <*> sherlockApiKey <*> sherlockUrl <*> sherlockClientToken <*> sherlockSecret <*> scanId
-  --     (Just ipr, Just sherlock)
+  case scanId of
+    Left _ -> pure ()
+    Right s ->  do
+      case (sherlockOpts, iprOpts) of
+        (Just sherlock, Just ipr) -> do
+          runError @ExecErr $ runExecIO $ RunIPR.scan basedir ipr 
+          runError @ExecErr $ runExecIO $ RunSherlock.scan basedir s sherlock
+          pure ()
+        _ -> pure ()
 
   let runScan = scan basedir cmdOutFile
         & withLogger (bool SevInfo SevDebug cmdDebug)

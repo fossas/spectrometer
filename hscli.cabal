@@ -7,8 +7,73 @@ extra-source-files:
   scripts/*.jar
   scripts/*.gradle
 
-common lang
-  build-depends:      base >=4.12 && <4.14
+library
+  exposed-modules:
+    App
+    App.Scan
+    App.Scan.Graph
+    App.Scan.GraphBuilder
+    App.Scan.GraphMangler
+    App.Scan.Project
+    App.Scan.ProjectInference
+    AppLicense
+    AppLicense.Scan
+    Control.Carrier.Output.IO
+    Control.Carrier.TaskPool
+    Control.Carrier.Threaded
+    Control.Effect.Output
+    Control.Effect.TaskPool
+    Control.Effect.Threaded
+    DepTypes
+    Discovery.Walk
+    Effect.Exec
+    Effect.Grapher
+    Effect.HTTP
+    Effect.Logger
+    Effect.ReadFS
+    Graphing
+    Parse.XML
+    Prologue
+    Strategy.Carthage
+    Strategy.Cocoapods.Podfile
+    Strategy.Cocoapods.PodfileLock
+    Strategy.Go.GlideLock
+    Strategy.Go.GoList
+    Strategy.Go.Gomod
+    Strategy.Go.GopkgLock
+    Strategy.Go.GopkgToml
+    Strategy.Go.Transitive
+    Strategy.Go.Types
+    Strategy.Gradle
+    Strategy.Maven.Plugin
+    Strategy.Maven.PluginStrategy
+    Strategy.Maven.Pom
+    Strategy.Maven.Pom.Closure
+    Strategy.Maven.Pom.PomFile
+    Strategy.Maven.Pom.Resolver
+    Strategy.Node.NpmList
+    Strategy.Node.NpmLock
+    Strategy.Node.PackageJson
+    Strategy.Node.YarnLock
+    Strategy.NuGet.Nuspec
+    Strategy.NuGet.PackageReference
+    Strategy.NuGet.PackagesConfig
+    Strategy.NuGet.Paket
+    Strategy.NuGet.ProjectAssetsJson
+    Strategy.NuGet.ProjectJson
+    Strategy.Python.Pipenv
+    Strategy.Python.PipList
+    Strategy.Python.ReqTxt
+    Strategy.Python.SetupPy
+    Strategy.Python.Util
+    Strategy.Ruby.BundleShow
+    Strategy.Ruby.GemfileLock
+    Types
+    VPSScan.RunIPR
+    VPSScan.RunSherlock
+    VPSScan.ScotlandYard
+
+  hs-source-dirs:     src
   default-language:   Haskell2010
   default-extensions:
     NoImplicitPrelude
@@ -46,12 +111,12 @@ common lang
     -Wincomplete-record-updates -Wmissing-home-modules
     -Wmissing-export-lists -Wredundant-constraints
 
-common deps
   build-depends:
     , aeson                        ^>=1.4.5
     , algebraic-graphs             ^>=0.5
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.13.2.3
+    , base                         >=4.12     && <4.14
     , bytestring                   ^>=0.10.8
     , containers                   ^>=0.6.0
     , file-embed                   ^>=0.0.11
@@ -80,101 +145,101 @@ common deps
     , yaml                         ^>=0.11.1
     , yarn-lock                    ^>=0.6.2
 
-library
-  import:          lang
-  import:          deps
-
-  -- cabal-fmt: expand src
-  exposed-modules:
-    App
-    App.Scan
-    App.Scan.Graph
-    App.Scan.GraphBuilder
-    App.Scan.GraphMangler
-    App.Scan.Project
-    App.Scan.ProjectInference
-    AppLicense
-    AppLicense.Scan
-    Control.Carrier.Output.IO
-    Control.Carrier.TaskPool
-    Control.Carrier.Threaded
-    Control.Effect.Output
-    Control.Effect.TaskPool
-    Control.Effect.Threaded
-    DepTypes
-    Discovery.Walk
-    Effect.Exec
-    Effect.Grapher
-    Effect.Logger
-    Effect.ReadFS
-    Graphing
-    Parse.XML
-    Prologue
-    VPSScan.RunSherlock
-    VPSScan.RunIPR
-    VPSScan.ScotlandYard
-    Strategy.Carthage
-    Strategy.Cocoapods.Podfile
-    Strategy.Cocoapods.PodfileLock
-    Strategy.Go.GlideLock
-    Strategy.Go.GoList
-    Strategy.Go.Gomod
-    Strategy.Go.GopkgLock
-    Strategy.Go.GopkgToml
-    Strategy.Go.Transitive
-    Strategy.Go.Types
-    Strategy.Gradle
-    Strategy.Maven.Plugin
-    Strategy.Maven.PluginStrategy
-    Strategy.Maven.Pom
-    Strategy.Maven.Pom.Closure
-    Strategy.Maven.Pom.PomFile
-    Strategy.Maven.Pom.Resolver
-    Strategy.Node.NpmList
-    Strategy.Node.NpmLock
-    Strategy.Node.PackageJson
-    Strategy.Node.YarnLock
-    Strategy.NuGet.Nuspec
-    Strategy.NuGet.PackageReference
-    Strategy.NuGet.PackagesConfig
-    Strategy.NuGet.Paket
-    Strategy.NuGet.ProjectAssetsJson
-    Strategy.NuGet.ProjectJson
-    Strategy.Python.PipList
-    Strategy.Python.Pipenv
-    Strategy.Python.ReqTxt
-    Strategy.Python.SetupPy
-    Strategy.Python.Util
-    Strategy.Ruby.BundleShow
-    Strategy.Ruby.GemfileLock
-    Types
-
-  hs-source-dirs:  src
-
 executable hscli
-  import:         lang
-  main-is:        Main.hs
-  hs-source-dirs: app
-  build-depends:  hscli
-  ghc-options:    -threaded -with-rtsopts=-N
+  main-is:            Main.hs
+  hs-source-dirs:     app
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    AllowAmbiguousTypes
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    InstanceSigs
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    NumericUnderscores
+    OverloadedLabels
+    OverloadedStrings
+    PolyKinds
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StrictData
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    UndecidableInstances
 
-executable pathfinder
-  import:         lang
-  main-is:        Main.hs
-  hs-source-dirs: licenseApp
-  build-depends:  hscli
   ghc-options:
-    -flate-specialise -fspecialize-aggressively -O -threaded
+    -Wall -Wincomplete-uni-patterns -Wcompat
+    -Wincomplete-record-updates -Wmissing-home-modules
+    -Wmissing-export-lists -Wredundant-constraints -threaded
     -with-rtsopts=-N
 
-test-suite tests
-  import:             lang
-  import:             deps
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     test
-  main-is:            test.hs
+  build-depends:
+    , base   >=4.12 && <4.14
+    , hscli
 
-  -- cabal-fmt: expand test
+executable pathfinder
+  main-is:            Main.hs
+  hs-source-dirs:     licenseApp
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    AllowAmbiguousTypes
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    InstanceSigs
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    NumericUnderscores
+    OverloadedLabels
+    OverloadedStrings
+    PolyKinds
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StrictData
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    UndecidableInstances
+
+  ghc-options:
+    -Wall -Wincomplete-uni-patterns -Wcompat
+    -Wincomplete-record-updates -Wmissing-home-modules
+    -Wmissing-export-lists -Wredundant-constraints -flate-specialise
+    -fspecialize-aggressively -O -threaded -with-rtsopts=-N
+
+  build-depends:
+    , base   >=4.12 && <4.14
+    , hscli
+
+test-suite tests
+  type:               exitcode-stdio-1.0
+  main-is:            test.hs
+  build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
+  hs-source-dirs:     test
   other-modules:
     Carthage.CarthageTest
     Cocoapods.PodfileLockTest
@@ -195,8 +260,8 @@ test-suite tests
     NuGet.PaketTest
     NuGet.ProjectAssetsJsonTest
     NuGet.ProjectJsonTest
-    Python.PipListTest
     Python.PipenvTest
+    Python.PipListTest
     Python.ReqTxtTest
     Python.RequirementsTest
     Python.SetupPyTest
@@ -204,9 +269,77 @@ test-suite tests
     Ruby.GemfileLockTest
     RunIPR.RunIPRTest
 
-  build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    AllowAmbiguousTypes
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    InstanceSigs
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    NumericUnderscores
+    OverloadedLabels
+    OverloadedStrings
+    PolyKinds
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StrictData
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    UndecidableInstances
+
+  ghc-options:
+    -Wall -Wincomplete-uni-patterns -Wcompat
+    -Wincomplete-record-updates -Wmissing-home-modules
+    -Wmissing-export-lists -Wredundant-constraints
+
   build-depends:
+    , aeson                        ^>=1.4.5
+    , algebraic-graphs             ^>=0.5
+    , async                        ^>=2.2.2
+    , attoparsec                   ^>=0.13.2.3
+    , base                         >=4.12     && <4.14
+    , bytestring                   ^>=0.10.8
+    , containers                   ^>=0.6.0
+    , file-embed                   ^>=0.0.11
+    , filepath                     ^>=1.4.2.1
+    , fused-effects                ^>=1.0.2.0
+    , fused-effects-exceptions     ^>=1.0.0.0
+    , git-config                   ^>=0.1.2
     , hscli
-    , hspec-megaparsec  ^>=2.1
-    , tasty             ^>=1.2.3
-    , tasty-hspec       ^>=1.1.5.1
+    , hspec-megaparsec             ^>=2.1
+    , megaparsec                   ^>=8.0
+    , modern-uri                   ^>=0.3.1
+    , mtl                          ^>=2.2.2
+    , optics                       ^>=0.2
+    , optparse-applicative         ^>=0.15.1
+    , path                         ^>=0.7
+    , path-io                      ^>=1.6.0
+    , prettyprinter                ^>=1.6
+    , prettyprinter-ansi-terminal  ^>=1.1.1
+    , stm                          ^>=2.5.0
+    , stm-chans                    ^>=3.0.0
+    , tasty                        ^>=1.2.3
+    , tasty-hspec                  ^>=1.1.5.1
+    , text                         ^>=1.2.3
+    , time                         ^>=1.9.3
+    , tomland                      ^>=1.2.0
+    , typed-process                ^>=0.2.6
+    , unordered-containers         ^>=0.2.10
+    , vector                       ^>=0.12.0.3
+    , xml                          ^>=1.3.14
+    , yaml                         ^>=0.11.1
+    , yarn-lock                    ^>=0.6.2

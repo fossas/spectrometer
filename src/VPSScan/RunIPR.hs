@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module VPSScan.RunIPR ( scan, IprOpts, IprResponse(..), IprFile(..), IprLicenseExpression(..) ) where
+module VPSScan.RunIPR ( scan, IPROpts(..), IprResponse(..), IprFile(..), IprLicenseExpression(..) ) where
 import Prologue
 import qualified Data.HashMap.Strict as HM
 import Data.Aeson.Types
@@ -8,15 +8,14 @@ import Data.Aeson.Types
 import Control.Carrier.Error.Either
 import Effect.Exec
 
-data IprOpts = IprOpts
-  { baseDir :: Path Abs Dir
-  , iprCmdPath :: String
+data IPROpts = IPROpts
+  { iprCmdPath :: String
   , nomosCmdPath :: String
   , pathfinderCmdPath :: String
   } deriving (Eq, Ord, Show, Generic)
 
-scan :: (Has Exec sig m, Has (Error ExecErr) sig m) => IprOpts -> m IprResponse
-scan IprOpts{..} = do
+scan :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Abs Dir -> IPROpts -> m IprResponse
+scan baseDir IPROpts{..} = do
   let c :: [String]
       c = [iprCmdPath]
       iprCommand :: Command
