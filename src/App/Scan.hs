@@ -24,10 +24,12 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec (ExecErr(..), runExecIO)
+import Effect.HTTP (HTTPErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
 import qualified RunSherlock as RunSherlock
 import qualified ScotlandYard as SY
+import qualified RunIPR as RunIPR
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
@@ -59,18 +61,28 @@ data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , cmdDebug   :: Bool
   , cmdOutFile :: Maybe FilePath
-  , sherlockCmdPath :: Maybe String
-  , sherlockApiKey :: Maybe String
-  , nomosCmdPath :: Maybe String
-  , iprCmdPath :: Maybe String
-  , scotlandYardUrl :: Maybe String
-  , sherlockUrl :: Maybe String
-  , sherlockClientToken :: Maybe String
-  , sherlockSecret :: Maybe String
-  , organizationID :: Maybe String
-  , projectId :: Maybe String
-  , revisionId :: Maybe String
-  , pathfinderCmdPath :: Maybe String
+  , sherlockCmdPathO :: Maybe String
+  , sherlockApiKeyO :: Maybe String
+  , nomosCmdPathO :: Maybe String
+  , iprCmdPathO :: Maybe String
+  , scotlandYardUrlO :: Maybe String
+  , sherlockUrlO :: Maybe String
+  , sherlockClientTokenO :: Maybe String
+  , sherlockSecretO :: Maybe String
+  , organizationIDO :: Maybe String
+  , projectIdO :: Maybe String
+  , revisionIdO :: Maybe String
+  , pathfinderCmdPathO :: Maybe String
+  } deriving (Eq, Ord, Show, Generic)
+
+data SherlockOpts = SherlockOpts
+  { baseDir :: Path Abs Dir
+  , sherlockCmdPath :: String
+  , sherlockApiKey :: String
+  , sherlockUrl :: String
+  , sherlockClientToken :: String
+  , sherlockSecret :: String
+  , scanId :: String
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
@@ -79,17 +91,20 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
-  scanId <- SY.createScan scotlandYardUrl
+  -- scanId <- runError @HTTPErr $ SY.createScan scotlandYardUrl
 
-  let runSherlock = RunSherlock.scan basedir sherlockCmdPath sherlockApiKey sherlockUrl sherlockClientToken sherlockSecret scanId
-        & runError @ExecErr
-        & runExecIO
+  let (iprOpts, sherlockOpts) = case sequenceA [sherlockCmdPathO, sherlockApiKeyO, sherlockUrlO, sherlockClientTokenO, sherlockSecretO, nomosCmdPathOptO, iprCmdPathOptO, projectIdO, revisionIdO, pathfinderCmdPathO] of
+    Nothing -> (Nothing, Nothing)
+    Just [sherlockCmdPath, sherlockApiKey, sherlockUrl, sherlockClientToken, sherlockSecret, nomosCmdPathOpt, iprCmdPathOpt, projectId, revisionId, pathfinderCmdPath] ->
+      let ipr = RunIPR.IprOpts <$> basedir <*> iprCmdPath <*> nomosCmdPath <*> pathfinderCmdPath
+          sherlock = SherlockOpts <$> basedir <*> sherlockCmdPath <*> sherlockApiKey <*> sherlockUrl <*> sherlockClientToken <*> sherlockSecret <*> scanId
+      (Just ipr, Just sherlock)
 
-      runScan = scan basedir cmdOutFile
+  let runScan = scan basedir cmdOutFile
         & withLogger (bool SevInfo SevDebug cmdDebug)
         & runThreaded
-
-  concurrently_ runSherlock runScan
+  runScan
+  
 
 validateDir :: FilePath -> IO (Path Abs Dir)
 validateDir dir = do
