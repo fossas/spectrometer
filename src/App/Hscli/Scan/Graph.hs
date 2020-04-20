@@ -1,4 +1,4 @@
-module App.Scan.Graph
+module App.Hscli.Scan.Graph
   ( Graph()
   , DepRef()
 

@@ -3,7 +3,7 @@ module Main (main) where
 
 import Prelude
 
-import App (appMain)
+import App.Hscli.Main (appMain)
 
 main :: IO ()
 main = appMain

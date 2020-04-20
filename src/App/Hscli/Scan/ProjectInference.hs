@@ -1,5 +1,6 @@
 {-# language QuasiQuotes #-}
-module App.Scan.ProjectInference
+
+module App.Hscli.Scan.ProjectInference
   ( inferProject
   , InferredProject(..)
   ) where

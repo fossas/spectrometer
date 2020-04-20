@@ -89,17 +89,17 @@ library
 
   -- cabal-fmt: expand src
   exposed-modules:
-    App
-    App.Scan
-    App.Scan.FossaV1
-    App.Scan.Graph
-    App.Scan.GraphBuilder
-    App.Scan.GraphMangler
-    App.Scan.Project
-    App.Scan.ProjectInference
-    App.TestCmd
-    AppLicense
-    AppLicense.Scan
+    App.Hscli.Main
+    App.Hscli.Scan
+    App.Hscli.Scan.FossaV1
+    App.Hscli.Scan.Graph
+    App.Hscli.Scan.GraphBuilder
+    App.Hscli.Scan.GraphMangler
+    App.Hscli.Scan.Project
+    App.Hscli.Scan.ProjectInference
+    App.Hscli.TestCmd
+    App.Pathfinder.Main
+    App.Pathfinder.Scan
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
@@ -216,7 +216,7 @@ test-suite tests
 
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
   build-depends:
-    , spectrometer
     , hspec-megaparsec  ^>=2.1
+    , spectrometer
     , tasty             ^>=1.2.3
     , tasty-hspec       ^>=1.1.5.1

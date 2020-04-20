@@ -3,7 +3,7 @@ module Main (main) where
 
 import Prelude
 
-import AppLicense (appMain)
+import App.Pathfinder.Main (appMain)
 
 main :: IO ()
 main = appMain

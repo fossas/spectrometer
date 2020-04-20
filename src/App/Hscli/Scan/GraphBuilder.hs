@@ -1,5 +1,5 @@
 -- | Legacy/deprecated GraphBuilder interface. Kept for compatibility with old code
-module App.Scan.GraphBuilder
+module App.Hscli.Scan.GraphBuilder
   ( GraphBuilder(..)
   , addNode
   , addEdge
@@ -13,7 +13,7 @@ import Prologue hiding (parent)
 
 import Control.Algebra
 import Control.Carrier.State.Strict
-import qualified App.Scan.Graph as G
+import qualified App.Hscli.Scan.Graph as G
 import DepTypes
 
 data GraphBuilder m k

@@ -1,5 +1,5 @@
 
-module App
+module App.Hscli.Main
   ( appMain
   ) where
 
@@ -7,8 +7,8 @@ import Prologue
 
 import Options.Applicative
 
-import App.Scan (ScanCmdOpts(..), scanMain)
-import App.TestCmd (testMain)
+import App.Hscli.Scan (ScanCmdOpts(..), scanMain)
+import App.Hscli.TestCmd (testMain)
 
 appMain :: IO ()
 appMain = join (customExecParser (prefs showHelpOnEmpty) opts)

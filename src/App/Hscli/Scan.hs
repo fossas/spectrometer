@@ -1,5 +1,5 @@
 
-module App.Scan
+module App.Hscli.Scan
   ( scanMain
   , ScanCmdOpts(..)
   ) where
@@ -14,9 +14,9 @@ import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
-import App.Scan.FossaV1 (uploadAnalysis, FossaError(..), UploadResponse(..))
-import App.Scan.Project (Project, mkProjects)
-import App.Scan.ProjectInference (InferredProject(..), inferProject)
+import App.Hscli.Scan.FossaV1 (uploadAnalysis, FossaError(..), UploadResponse(..))
+import App.Hscli.Scan.Project (Project, mkProjects)
+import App.Hscli.Scan.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
 import Control.Carrier.Threaded
 import qualified Data.ByteString.Lazy as BL

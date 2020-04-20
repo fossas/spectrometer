@@ -1,4 +1,4 @@
-module App.Scan.GraphMangler
+module App.Hscli.Scan.GraphMangler
   ( graphingToGraph
   ) where
 
@@ -11,8 +11,8 @@ import Control.Algebra
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-import App.Scan.GraphBuilder
-import qualified App.Scan.Graph as G
+import App.Hscli.Scan.GraphBuilder
+import qualified App.Hscli.Scan.Graph as G
 import DepTypes
 import Graphing (Graphing(..))
 

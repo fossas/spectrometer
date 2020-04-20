@@ -1,11 +1,12 @@
-module App.TestCmd
+
+module App.Hscli.TestCmd
   ( testMain
   ) where
 
 import Prologue
 import qualified Prelude as Unsafe
 
-import App.Scan.ProjectInference
+import App.Hscli.Scan.ProjectInference
 import Control.Carrier.Error.Either
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
@@ -13,7 +14,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
-import qualified App.Scan.FossaV1 as Fossa
+import qualified App.Hscli.Scan.FossaV1 as Fossa
 import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Environment (getEnv)
