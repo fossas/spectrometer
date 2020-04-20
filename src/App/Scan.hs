@@ -27,9 +27,9 @@ import Effect.Exec (ExecErr(..), runExecIO)
 import Effect.HTTP (HTTPErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
-import qualified RunSherlock as RunSherlock
-import qualified ScotlandYard as SY
-import qualified RunIPR as RunIPR
+import qualified VPSScan.RunSherlock as RunSherlock
+import qualified VPSScan.ScotlandYard as SY
+import qualified VPSScan.RunIPR as RunIPR
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
@@ -93,12 +93,12 @@ scanMain ScanCmdOpts{..} = do
 
   -- scanId <- runError @HTTPErr $ SY.createScan scotlandYardUrl
 
-  let (iprOpts, sherlockOpts) = case sequenceA [sherlockCmdPathO, sherlockApiKeyO, sherlockUrlO, sherlockClientTokenO, sherlockSecretO, nomosCmdPathOptO, iprCmdPathOptO, projectIdO, revisionIdO, pathfinderCmdPathO] of
-    Nothing -> (Nothing, Nothing)
-    Just [sherlockCmdPath, sherlockApiKey, sherlockUrl, sherlockClientToken, sherlockSecret, nomosCmdPathOpt, iprCmdPathOpt, projectId, revisionId, pathfinderCmdPath] ->
-      let ipr = RunIPR.IprOpts <$> basedir <*> iprCmdPath <*> nomosCmdPath <*> pathfinderCmdPath
-          sherlock = SherlockOpts <$> basedir <*> sherlockCmdPath <*> sherlockApiKey <*> sherlockUrl <*> sherlockClientToken <*> sherlockSecret <*> scanId
-      (Just ipr, Just sherlock)
+  -- let (iprOpts, sherlockOpts) = case sequenceA [sherlockCmdPathO, sherlockApiKeyO, sherlockUrlO, sherlockClientTokenO, sherlockSecretO, nomosCmdPathOptO, iprCmdPathOptO, projectIdO, revisionIdO, pathfinderCmdPathO] of
+  --   Nothing -> (Nothing, Nothing)
+  --   Just [sherlockCmdPath, sherlockApiKey, sherlockUrl, sherlockClientToken, sherlockSecret, nomosCmdPathOpt, iprCmdPathOpt, projectId, revisionId, pathfinderCmdPath] ->
+  --     let ipr = RunIPR.IprOpts <$> basedir <*> iprCmdPath <*> nomosCmdPath <*> pathfinderCmdPath
+  --         sherlock = SherlockOpts <$> basedir <*> sherlockCmdPath <*> sherlockApiKey <*> sherlockUrl <*> sherlockClientToken <*> sherlockSecret <*> scanId
+  --     (Just ipr, Just sherlock)
 
   let runScan = scan basedir cmdOutFile
         & withLogger (bool SevInfo SevDebug cmdDebug)

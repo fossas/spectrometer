@@ -1,4 +1,4 @@
-module RunSherlock ( scan ) where
+module VPSScan.RunSherlock ( scan ) where
 import Prologue
 
 import Control.Carrier.Error.Either

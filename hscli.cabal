@@ -110,8 +110,9 @@ library
     Graphing
     Parse.XML
     Prologue
-    RunSherlock
-    ScotlandYard
+    VPSScan.RunSherlock
+    VPSScan.RunIPR
+    VPSScan.ScotlandYard
     Strategy.Carthage
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
@@ -201,6 +202,7 @@ test-suite tests
     Python.SetupPyTest
     Ruby.BundleShowTest
     Ruby.GemfileLockTest
+    RunIPR.RunIPRTest
 
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
   build-depends:

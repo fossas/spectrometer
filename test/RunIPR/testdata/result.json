@@ -1,0 +1,73 @@
+{
+  "Files": [
+    {
+      "Path": "epub/content.opf",
+      "Copyrights": {},
+      "LicenseExpressions": {
+        "0": {
+          "LicenseExpressionInstanceID": 0,
+          "Expression": "Public-domain",
+          "Licenses": [
+            {
+              "ID": "Public-domain",
+              "Notes": {}
+            }
+          ],
+          "Declaration": null,
+          "Verbatim": "in this ebook edition are believed to be in the U.S. public domain.",
+          "OffsetStart": 552,
+          "OffsetEnd": 619
+        },
+        "1": {
+          "LicenseExpressionInstanceID": 1,
+          "Expression": "Public-domain",
+          "Licenses": [
+            {
+              "ID": "Public-domain",
+              "Notes": {}
+            }
+          ],
+          "Declaration": null,
+          "Verbatim": "is released under the terms in the CC0 1.0 Universal Public Domain",
+          "OffsetStart": 639,
+          "OffsetEnd": 705
+        }
+      },
+      "Associations": {}
+    },
+    {
+      "Path": "epub/css/core.css",
+      "Copyrights": {},
+      "LicenseExpressions": {},
+      "Associations": {}
+    },
+    {
+      "Path": "epub/css/local.css",
+      "Copyrights": {},
+      "LicenseExpressions": {},
+      "Associations": {}
+    },
+    {
+      "Path": "epub/text/chapter-1.xhtml",
+      "Copyrights": {},
+      "LicenseExpressions": {},
+      "Associations": {}
+    }
+  ],
+  "DeclaredProjectLicense": null,
+  "ConcludedProjectLicense": {
+    "Filepath": "epub/content.opf",
+    "LicenseExpressionInstanceID": 3,
+    "Expression": "CC0-1.0",
+    "Licenses": [
+      {
+        "ID": "CC0-1.0",
+        "Notes": {}
+      }
+    ],
+    "Declaration": null,
+    "Verbatim": "creativecommons.org/publicdomain/zero/1.0",
+    "OffsetStart": 739,
+    "OffsetEnd": 780
+  }
+}

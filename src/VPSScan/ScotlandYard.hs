@@ -1,4 +1,4 @@
-module ScotlandYard (createScan, postIprResults)
+module VPSScan.ScotlandYard (createScan, postIprResults)
 where
 import Prologue
 
