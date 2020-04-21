@@ -6,10 +6,9 @@ import Effect.Exec
 
 data SherlockOpts = SherlockOpts
   { sherlockCmdPath :: String
-  , sherlockApiKey :: String
   , sherlockUrl :: String
   , sherlockClientToken :: String
-  , sherlockSecret :: String
+  , sherlockClientID :: String
   } deriving (Eq, Ord, Show, Generic)
 
 scan :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Abs Dir -> String -> SherlockOpts -> m ()
@@ -22,8 +21,7 @@ scan baseDir scanId opts@SherlockOpts{..}  = do
   pure ()
 
 sherlockCmdArgs :: String -> SherlockOpts -> [String]
-sherlockCmdArgs scanId SherlockOpts{..} = [ "--sherlock-api-key", sherlockApiKey
-                                          , "--scan-id", scanId
+sherlockCmdArgs scanId SherlockOpts{..} = [ "--scan-id", scanId
                                           , "--sherlock-client-token", sherlockClientToken
-                                          , "--sherlock-secret", sherlockSecret
+                                          , "--sherlock-client-id", sherlockClientID
                                           ]
