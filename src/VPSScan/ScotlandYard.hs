@@ -4,6 +4,7 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import Effect.HTTP
+import qualified Data.Text as T
 
 data ScotlandYardOpts = ScotlandYardOpts
   { scotlandYardUrl :: String
@@ -26,6 +27,6 @@ createScan opts = do
 postIprResults :: (Has (Error HTTPErr) sig m) => Maybe String -> String -> String -> m ()
 postIprResults scotlandYardUri resJSON scanId = do
   case scotlandYardUri of
-    Nothing -> throwError (NoUrlError "No URL provided for Scotland Yard API")
-    Just uri -> do
+    Nothing -> throwError (NoUrlError $ T.pack $ "No URL provided for Scotland Yard API: " ++ resJSON ++ scanId)
+    Just _ -> do
       pure ()
