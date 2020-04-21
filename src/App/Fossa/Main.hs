@@ -6,6 +6,7 @@ module App.Fossa.Main
 import Prologue
 
 import App.Fossa.Analyze (analyzeMain, ScanDestination(..))
+import App.Fossa.Analyze.FossaV1 (ProjectMetadata(..))
 import App.Fossa.Test (testMain)
 import Effect.Logger
 import Network.HTTP.Req (useURI, https, Url, Scheme(..))
@@ -30,15 +31,15 @@ appMain = do
   case optCommand of
     AnalyzeCommand AnalyzeOptions{..} ->
       if analyzeOutput
-        then analyzeMain logSeverity OutputStdout
+        then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision
         else case maybeApiKey of
           Nothing -> die "A FOSSA API key is required to run this command"
-          Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key)
+          Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
 
     TestCommand TestOptions{..} ->
       case maybeApiKey of
         Nothing -> die "A FOSSA API key is required to run this command"
-        Just key -> testMain optBaseUrl key logSeverity testTimeout
+        Just key -> testMain optBaseUrl key logSeverity testTimeout optProjectName optProjectRevision
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO (Path Abs Dir)
@@ -56,6 +57,8 @@ opts =
     <$> switch (long "debug" <> help "Enable debug logging")
     <*> strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
     <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value (https "app.fossa.com"))
+    <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
+    <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> comm
     <**> helper
 
@@ -86,6 +89,18 @@ analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
+    <*> metadataOpts
+
+metadataOpts :: Parser ProjectMetadata
+metadataOpts =
+  ProjectMetadata
+    <$> optional (strOption (long "title" <> help "the title of the FOSSA project. (default: the project name)"))
+    <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
+    <*> optional (strOption (long "project-url" <> help "this repository's home page"))
+    <*> optional (strOption (long "jira-project-key" <> help "this repository's JIRA project key"))
+    <*> optional (strOption (long "link" <> help "a link to attach to the current build"))
+    <*> optional (strOption (long "team" <> help "this repository's team inside your organization"))
+    <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
 
 testOpts :: Parser TestOptions
 testOpts =
@@ -96,6 +111,8 @@ data CmdOptions = CmdOptions
   { optDebug   :: Bool
   , optBasedir :: FilePath
   , optBaseUrl :: Url 'Https
+  , optProjectName :: Maybe Text
+  , optProjectRevision :: Maybe Text
   , optCommand :: Command
   }
 
@@ -105,6 +122,7 @@ data Command
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool
+  , analyzeMetadata :: ProjectMetadata
   }
 
 data TestOptions = TestOptions

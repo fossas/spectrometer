@@ -12,7 +12,7 @@ import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
 
-import App.Fossa.Analyze.FossaV1 (fossaReq, uploadAnalysis, FossaError(..), UploadResponse(..))
+import App.Fossa.Analyze.FossaV1 (ProjectRevision(..), ProjectMetadata, fossaReq, uploadAnalysis, FossaError(..), UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.Analyze.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
@@ -53,14 +53,14 @@ import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
 data ScanDestination
-  = UploadScan (Url 'Https) Text -- ^ upload to fossa with provided api key and base url
+  = UploadScan (Url 'Https) Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
   deriving (Eq, Ord, Show, Generic)
  
-analyzeMain :: Severity -> ScanDestination -> IO ()
-analyzeMain logSeverity destination = do
+analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> IO ()
+analyzeMain logSeverity destination name revision = do
   basedir <- getCurrentDir
-  runThreaded $ withLogger logSeverity $ analyze basedir destination
+  runThreaded $ withLogger logSeverity $ analyze basedir destination name revision
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -71,8 +71,10 @@ analyze ::
   )
   => Path Abs Dir
   -> ScanDestination
+  -> Maybe Text -- ^ cli override for name
+  -> Maybe Text -- ^ cli override for revision
   -> m ()
-analyze basedir destination = do
+analyze basedir destination overrideName overrideRevision = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
@@ -86,13 +88,17 @@ analyze basedir destination = do
  
   case destination of
     OutputStdout -> liftIO $ BL.putStr (encode result)
-    UploadScan baseurl apiKey -> do
+    UploadScan baseurl apiKey metadata -> do
       inferred <- inferProject basedir
+      let revision = ProjectRevision
+            (fromMaybe (inferredName inferred) overrideName)
+            (fromMaybe (inferredRevision inferred) overrideRevision)
+
       logInfo ""
-      logInfo ("Inferred project name: `" <> pretty (inferredName inferred) <> "`")
-      logInfo ("Inferred revision: `" <> pretty (inferredRevision inferred) <> "`")
+      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
      
-      maybeResp <- fossaReq $ uploadAnalysis baseurl apiKey (inferredName inferred) (inferredRevision inferred) projects
+      maybeResp <- fossaReq $ uploadAnalysis baseurl apiKey revision metadata projects
       case maybeResp of
         Left (InvalidProjectOrRevision _) -> logError "FOSSA error: Invalid project or revision"
         Left (NoPermission _) -> logError "FOSSA error: No permission to upload"

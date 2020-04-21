@@ -1,9 +1,10 @@
 module App.Fossa.Analyze.FossaV1
   ( uploadAnalysis
   , UploadResponse(..)
+  , ProjectRevision(..)
+  , ProjectMetadata(..)
   , FossaError(..)
   , fossaReq
-  , APIOptions(..)
 
   , getLatestBuild
   , Build(..)
@@ -31,11 +32,7 @@ import qualified Network.HTTP.Types as HTTP
 import Prologue
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
-
-data APIOptions = APIOptions
-  { apiBaseUrl :: Url 'Https
-  , apiKey :: Text
-  }
+import Data.Maybe (catMaybes)
 
 newtype FossaReq a = FossaReq { unFossaReq :: ErrorC FossaError IO a }
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -77,23 +74,49 @@ data FossaError
   | OtherError HttpException
   deriving (Show, Generic)
 
+data ProjectRevision = ProjectRevision
+  { projectName :: Text
+  , projectRevision :: Text
+  } deriving (Eq, Ord, Show, Generic)
+
+data ProjectMetadata = ProjectMetadata
+  { projectTitle :: Maybe Text
+  , projectBranch :: Maybe Text
+  , projectUrl :: Maybe Text
+  , projectJiraKey :: Maybe Text
+  , projectLink :: Maybe Text
+  , projectTeam :: Maybe Text
+  , projectPolicy :: Maybe Text
+  } deriving (Eq, Ord, Show, Generic)
+
 uploadAnalysis
-  :: Url 'Https -- base url
-  -> Text -- api key
-  -> Text -- project name
-  -> Text -- project revision
+  :: Url 'Https -- ^ base url
+  -> Text -- ^ api key
+  -> ProjectRevision
+  -> ProjectMetadata
   -> [Project]
   -> FossaReq UploadResponse
-uploadAnalysis baseurl key name revision projects = do
+uploadAnalysis baseurl key ProjectRevision{..} metadata projects = do
   let filteredProjects = filter (isProductionPath . projectPath) projects
       sourceUnits = fromMaybe [] $ traverse toSourceUnit filteredProjects
-      opts = "locator" =: renderLocator (Locator "custom" name (Just revision))
+      opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "v" =: cliVersion
           <> "managedBuild" =: True
-          <> "title" =: name
+          <> "title" =: fromMaybe projectName (projectTitle metadata)
           <> header "Authorization" ("token " <> encodeUtf8 key)
+          <> mkMetadataOpts metadata
   resp <- req POST (uploadUrl baseurl) (ReqBodyJson sourceUnits) jsonResponse opts
   pure (responseBody resp)
+
+mkMetadataOpts :: ProjectMetadata -> Option scheme
+mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes $
+  [ ("branch" =:) <$> projectBranch
+  , ("projectURL" =:) <$> projectUrl
+  , ("jiraProjectKey" =:) <$> projectJiraKey
+  , ("link" =:) <$> projectLink
+  , ("team" =:) <$> projectTeam
+  , ("policy" =:) <$> projectPolicy
+  ]
 
 mangleError :: HttpException -> FossaError
 mangleError err = case err of
@@ -174,13 +197,12 @@ instance FromJSON BuildStatus where
 getLatestBuild
   :: Url 'Https
   -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
+  -> ProjectRevision
   -> FossaReq Build
-getLatestBuild baseurl key name revision = do
+getLatestBuild baseurl key ProjectRevision{..} = do
   let opts = header "Authorization" ("token " <> encodeUtf8 key)
   Organization orgId <- responseBody <$> req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
-  response <- req GET (buildsEndpoint orgId (Locator "custom" name (Just revision))) NoReqBody jsonResponse opts
+  response <- req GET (buildsEndpoint orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------
@@ -191,13 +213,12 @@ issuesEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: render
 getIssues
   :: Url 'Https
   -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
+  -> ProjectRevision
   -> FossaReq Issues
-getIssues baseurl key name revision = do
+getIssues baseurl key ProjectRevision{..} = do
   let opts = header "Authorization" ("token " <> encodeUtf8 key)
   Organization orgId <- responseBody <$> req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
-  response <- req GET (issuesEndpoint orgId (Locator "custom" name (Just revision))) NoReqBody jsonResponse opts
+  response <- req GET (issuesEndpoint orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 data Issues = Issues
