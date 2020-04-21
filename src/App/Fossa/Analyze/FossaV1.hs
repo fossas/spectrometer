@@ -3,6 +3,7 @@ module App.Fossa.Analyze.FossaV1
   , UploadResponse(..)
   , FossaError(..)
   , fossaReq
+  , APIOptions(..)
 
   , getLatestBuild
   , Build(..)
@@ -31,25 +32,33 @@ import Prologue
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 
+data APIOptions = APIOptions
+  { apiBaseUrl :: Url 'Https
+  , apiKey :: Text
+  }
+
+newtype FossaReq a = FossaReq { unFossaReq :: ErrorC FossaError IO a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance MonadHttp FossaReq where
+  handleHttpException = FossaReq . throwError . mangleError
+
+fossaReq :: MonadIO m => FossaReq a -> m (Either FossaError a)
+fossaReq = liftIO . runError @FossaError . unFossaReq
+
 -- TODO: git commit?
 cliVersion :: Text
 cliVersion = "spectrometer"
 
-uploadUrl :: Url 'Https
-uploadUrl = https "app.fossa.com" /: "api" /: "builds" /: "custom"
- 
+uploadUrl :: Url scheme -> Url scheme
+uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
+
 -- FIXME: we only want to include organizationId for "archive" and "custom"
 -- TODO: need to normalize "git" projects
 -- render a locator for use in fossa API urls
 renderLocatorUrl :: Int -> Locator -> Text
 renderLocatorUrl orgId Locator{..} =
   locatorFetcher <> "+" <> T.pack (show orgId) <> "/" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
-
-newtype FossaReq m a = FossaReq { runFossaReq :: ErrorC FossaError m a }
-  deriving (Functor, Applicative, Monad, MonadIO)
-
-instance (Algebra sig m, Effect sig, MonadIO m) => MonadHttp (FossaReq m) where
-  handleHttpException = FossaReq . throwError . mangleError
 
 data UploadResponse = UploadResponse
   { uploadLocator :: Text
@@ -68,16 +77,14 @@ data FossaError
   | OtherError HttpException
   deriving (Show, Generic)
 
-fossaReq :: FossaReq m a -> m (Either FossaError a)
-fossaReq = runError . runFossaReq
-
 uploadAnalysis
-  :: Text -- api key
+  :: Url 'Https -- base url
+  -> Text -- api key
   -> Text -- project name
   -> Text -- project revision
   -> [Project]
-  -> IO (Either FossaError UploadResponse)
-uploadAnalysis key name revision projects = fossaReq $ do
+  -> FossaReq UploadResponse
+uploadAnalysis baseurl key name revision projects = do
   let filteredProjects = filter (isProductionPath . projectPath) projects
       sourceUnits = fromMaybe [] $ traverse toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" name (Just revision))
@@ -85,7 +92,7 @@ uploadAnalysis key name revision projects = fossaReq $ do
           <> "managedBuild" =: True
           <> "title" =: name
           <> header "Authorization" ("token " <> encodeUtf8 key)
-  resp <- req POST uploadUrl (ReqBodyJson sourceUnits) jsonResponse opts
+  resp <- req POST (uploadUrl baseurl) (ReqBodyJson sourceUnits) jsonResponse opts
   pure (responseBody resp)
 
 mangleError :: HttpException -> FossaError
@@ -165,13 +172,14 @@ instance FromJSON BuildStatus where
     other -> pure $ StatusUnknown other
 
 getLatestBuild
-  :: Text -- ^ api key
+  :: Url 'Https
+  -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
-  -> IO (Either FossaError Build)
-getLatestBuild key name revision = fossaReq $ do
+  -> FossaReq Build
+getLatestBuild baseurl key name revision = do
   let opts = header "Authorization" ("token " <> encodeUtf8 key)
-  Organization orgId <- responseBody <$> req GET organizationEndpoint NoReqBody jsonResponse opts
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
   response <- req GET (buildsEndpoint orgId (Locator "custom" name (Just revision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
@@ -181,13 +189,14 @@ issuesEndpoint :: Int -> Locator -> Url 'Https
 issuesEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
 
 getIssues
-  :: Text -- ^ api key
+  :: Url 'Https
+  -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
-  -> IO (Either FossaError Issues)
-getIssues key name revision = fossaReq $ do
+  -> FossaReq Issues
+getIssues baseurl key name revision = do
   let opts = header "Authorization" ("token " <> encodeUtf8 key)
-  Organization orgId <- responseBody <$> req GET organizationEndpoint NoReqBody jsonResponse opts
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
   response <- req GET (issuesEndpoint orgId (Locator "custom" name (Just revision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
@@ -264,13 +273,14 @@ instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
     Organization <$> obj .: "organizationId"
 
-organizationEndpoint :: Url 'Https
-organizationEndpoint = https "app.fossa.com" /: "api" /: "cli" /: "organization"
+organizationEndpoint :: Url scheme -> Url scheme
+organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
 
 getOrganizationId
-  :: Text -- ^ api key
-  -> IO (Either FossaError Issues)
-getOrganizationId key = fossaReq $ do
+  :: Url 'Https
+  -> Text -- ^ api key
+  -> FossaReq Issues
+getOrganizationId baseurl key = do
   let opts = header "Authorization" ("token " <> encodeUtf8 key)
-  response <- req GET organizationEndpoint NoReqBody jsonResponse opts
+  response <- req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
   pure (responseBody response)

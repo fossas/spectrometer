@@ -6,6 +6,7 @@ module App.Fossa.Test
 import Prologue
 import qualified Prelude as Unsafe
 
+import qualified App.Fossa.Analyze.FossaV1 as Fossa
 import App.Fossa.Analyze.ProjectInference
 import Control.Carrier.Error.Either
 import Control.Concurrent (threadDelay)
@@ -14,7 +15,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
-import qualified App.Fossa.Analyze.FossaV1 as Fossa
+import Network.HTTP.Req
 import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)
@@ -22,8 +23,8 @@ import System.Exit (exitSuccess, exitFailure)
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
 
-testMain :: Text {- api key -} -> Severity -> Int {- timeout (seconds) -} -> IO ()
-testMain apiKey logSeverity timeoutSeconds = do
+testMain :: Url 'Https {- api base url -} -> Text {- api key -} -> Severity -> Int {- timeout (seconds) -} -> IO ()
+testMain baseurl apiKey logSeverity timeoutSeconds = do
   basedir <- getCurrentDir
 
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
@@ -38,10 +39,10 @@ testMain apiKey logSeverity timeoutSeconds = do
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild apiKey name revision
+      waitForBuild baseurl apiKey name revision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues apiKey name revision
+      issues <- waitForIssues baseurl apiKey name revision
       logSticky ""
 
       if null (Fossa.issuesIssues issues)
@@ -124,12 +125,13 @@ renderTestError TestBuildFailed = "The build failed. Check the FOSSA webapp for 
 
 waitForBuild
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
-  => Text -- ^ api key
+  => Url 'Https
+  -> Text -- ^ api key
   -> Text -- ^ name
   -> Text -- ^ revision
   -> m ()
-waitForBuild key name revision = do
-  maybeBuild <- liftIO $ Fossa.getLatestBuild key name revision
+waitForBuild baseurl key name revision = do
+  maybeBuild <- Fossa.fossaReq $ Fossa.getLatestBuild baseurl key name revision
   case maybeBuild of
     Left err -> throwError (TestErrorAPI err)
     Right build -> do
@@ -139,23 +141,24 @@ waitForBuild key name revision = do
         otherStatus -> do
           logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
           liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-          waitForBuild key name revision
+          waitForBuild baseurl key name revision
 
 waitForIssues
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
-  => Text -- ^ api key
+  => Url 'Https
+  -> Text -- ^ api key
   -> Text -- ^ name
   -> Text -- ^ revision
   -> m Fossa.Issues
-waitForIssues key name revision = do
-  result <- liftIO $ Fossa.getIssues key name revision
+waitForIssues baseurl key name revision = do
+  result <- Fossa.fossaReq $ Fossa.getIssues baseurl key name revision
   case result of
     Left err -> throwError (TestErrorAPI err)
     Right issues ->
       case Fossa.issuesStatus issues of
         "WAITING" -> do
           liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-          waitForIssues key name revision
+          waitForIssues baseurl key name revision
         _ -> pure issues
 
 timeout

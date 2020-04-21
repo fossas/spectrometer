@@ -12,7 +12,7 @@ import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
 
-import App.Fossa.Analyze.FossaV1 (uploadAnalysis, FossaError(..), UploadResponse(..))
+import App.Fossa.Analyze.FossaV1 (fossaReq, uploadAnalysis, FossaError(..), UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.Analyze.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
@@ -23,6 +23,7 @@ import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec (ExecErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
+import Network.HTTP.Req
 import qualified Srclib.Converter as Srclib
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
@@ -52,7 +53,7 @@ import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
 data ScanDestination
-  = UploadScan Text -- ^ upload to fossa with provided api key
+  = UploadScan (Url 'Https) Text -- ^ upload to fossa with provided api key and base url
   | OutputStdout
   deriving (Eq, Ord, Show, Generic)
  
@@ -85,13 +86,13 @@ analyze basedir destination = do
  
   case destination of
     OutputStdout -> liftIO $ BL.putStr (encode result)
-    UploadScan apiKey -> do
+    UploadScan baseurl apiKey -> do
       inferred <- inferProject basedir
       logInfo ""
       logInfo ("Inferred project name: `" <> pretty (inferredName inferred) <> "`")
       logInfo ("Inferred revision: `" <> pretty (inferredRevision inferred) <> "`")
      
-      maybeResp <- liftIO $ uploadAnalysis apiKey (inferredName inferred) (inferredRevision inferred) projects
+      maybeResp <- fossaReq $ uploadAnalysis baseurl apiKey (inferredName inferred) (inferredRevision inferred) projects
       case maybeResp of
         Left (InvalidProjectOrRevision _) -> logError "FOSSA error: Invalid project or revision"
         Left (NoPermission _) -> logError "FOSSA error: No permission to upload"

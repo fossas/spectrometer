@@ -8,11 +8,13 @@ import Prologue
 import App.Fossa.Analyze (analyzeMain, ScanDestination(..))
 import App.Fossa.Test (testMain)
 import Effect.Logger
+import Network.HTTP.Req (useURI, https, Url, Scheme(..))
 import Options.Applicative
 import Path.IO (resolveDir', doesDirExist, setCurrentDir)
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import qualified Data.Text as T
+import Text.URI (mkURI)
 
 appMain :: IO ()
 appMain = do
@@ -31,12 +33,12 @@ appMain = do
         then analyzeMain logSeverity OutputStdout
         else case maybeApiKey of
           Nothing -> die "A FOSSA API key is required to run this command"
-          Just key -> analyzeMain logSeverity (UploadScan key)
+          Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key)
 
     TestCommand TestOptions{..} ->
       case maybeApiKey of
         Nothing -> die "A FOSSA API key is required to run this command"
-        Just key -> testMain key logSeverity testTimeout
+        Just key -> testMain optBaseUrl key logSeverity testTimeout
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO (Path Abs Dir)
@@ -53,8 +55,18 @@ opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
     <*> strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
+    <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value (https "app.fossa.com"))
     <*> comm
     <**> helper
+
+urlOption :: Mod OptionFields (Url scheme) -> Parser (Url scheme)
+urlOption = option parseUrl
+  where
+    parseUrl :: ReadM (Url scheme)
+    parseUrl = maybeReader (\s -> mkURI (T.pack s) >>= useURI >>= \res ->
+                               case res of
+                                 Left (url,_) -> pure $ coerce url
+                                 Right (url,_) -> pure $ coerce url)
 
 comm :: Parser Command
 comm = hsubparser
@@ -83,6 +95,7 @@ testOpts =
 data CmdOptions = CmdOptions
   { optDebug   :: Bool
   , optBasedir :: FilePath
+  , optBaseUrl :: Url 'Https
   , optCommand :: Command
   }
 
