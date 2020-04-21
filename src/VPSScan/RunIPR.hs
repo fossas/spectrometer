@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module VPSScan.RunIPR ( scan, IPROpts(..), IprResponse(..), IprFile(..), IprLicenseExpression(..) ) where
+module VPSScan.RunIPR ( scan, IPROpts(..), IprResponse(..), IprFile(..), IprLicenseExpression(..), IprLicense(..) ) where
 import Prologue
 
 import Control.Carrier.Error.Either
@@ -35,16 +35,16 @@ data IprFile = IprFile
 data IprLicenseExpression = IprLicenseExpression
   { iprLicenseExpressionInstanceID :: Int
   , iprLicenseExpressionExpression :: String
-  -- , iprLicenseExpressionLicenses :: [IprLicense]
-  -- , iprLicenseExpressionDeclaration :: String
-  -- , iprLicenseExpressionVerbatim :: String
-  -- , iprLicenseExpressionOffsetStart :: Int
-  -- , iprLicenseExpresseionOffsetEnd :: Int
+  , iprLicenseExpressionLicenses :: [IprLicense]
+  , iprLicenseExpressionDeclaration :: Maybe String
+  , iprLicenseExpressionVerbatim :: String
+  , iprLicenseExpressionOffsetStart :: Int
+  , iprLicenseExpresseionOffsetEnd :: Int
   } deriving (Eq, Ord, Show, Generic)
 
 data IprLicense = IprLicense
   { iprLicenseId :: String 
-  , iprLicenseNotes :: String
+  -- , iprLicenseNotes :: String
   } deriving (Eq, Ord, Show, Generic)
 
 instance FromJSON IprResponse where
@@ -55,12 +55,6 @@ instance FromJSON IprFile where
   parseJSON = withObject "IprFile" $ \obj ->
     IprFile <$> obj .: "Path"
             <*> obj .: "LicenseExpressions"
-            -- <*> parseLicenseExpressions obj 
-
--- parseLicenseExpressions :: Object -> Parser [IprLicenseExpression]
--- parseLicenseExpressions = 
---   for (HM.toList objs) $ \(_, obj) ->
---     parseJSON @IprLicenseExpression obj
 
 -- in this case, obj is a HashMap with a key we don't care about
 -- and a value that contains the data for license expressiosn
@@ -68,3 +62,13 @@ instance FromJSON IprLicenseExpression where
   parseJSON = withObject "IprLicenseExpression" $ \obj ->
       IprLicenseExpression <$> obj .: "LicenseExpressionInstanceID"
                            <*> obj .: "Expression"
+                           <*> obj .: "Licenses"
+                           <*> obj .: "Declaration"
+                           <*> obj .: "Verbatim"
+                           <*> obj .: "OffsetStart"
+                           <*> obj .: "OffsetEnd"
+
+instance FromJSON IprLicense where
+  parseJSON = withObject "IprLicense" $ \obj ->
+    IprLicense <$> obj .: "ID"
+              --  <*> obj .: "Notes"

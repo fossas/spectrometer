@@ -14,10 +14,13 @@ import qualified Data.Map.Strict as M
 
 import Test.Tasty.Hspec
 
+licenseOne :: IprLicense
+licenseOne = RunIPR.IprLicense "Public-domain"
+
 licenseExpressionOne :: IprLicenseExpression
-licenseExpressionOne = RunIPR.IprLicenseExpression 0 "Public-domain"
+licenseExpressionOne = RunIPR.IprLicenseExpression 0 "Public-domain" [licenseOne] Nothing "in this ebook edition are believed to be in the U.S. public domain." 552 619
 licenseExpressionTwo :: IprLicenseExpression
-licenseExpressionTwo = RunIPR.IprLicenseExpression 1 "Public-domain"
+licenseExpressionTwo = RunIPR.IprLicenseExpression 1 "Public-domain" [licenseOne] Nothing "is released under the terms in the CC0 1.0 Universal Public Domain" 639 705
 
 fileOne :: IprFile
 fileOne = RunIPR.IprFile "epub/content.opf" $ M.fromList [("0", licenseExpressionOne), ("1", licenseExpressionTwo)]
