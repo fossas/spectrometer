@@ -1,4 +1,4 @@
-module App.Fossa.Analyze.FossaV1
+module App.Fossa.FossaAPIV1
   ( uploadAnalysis
   , UploadResponse(..)
   , ProjectRevision(..)

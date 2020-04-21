@@ -12,9 +12,9 @@ import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
 
-import App.Fossa.Analyze.FossaV1 (ProjectRevision(..), ProjectMetadata, fossaReq, uploadAnalysis, FossaError(..), UploadResponse(..))
+import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, fossaReq, uploadAnalysis, FossaError(..), UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
-import App.Fossa.Analyze.ProjectInference (InferredProject(..), inferProject)
+import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
 import Control.Carrier.Threaded
 import qualified Data.ByteString.Lazy as BL

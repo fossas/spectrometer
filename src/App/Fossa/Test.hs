@@ -6,8 +6,8 @@ module App.Fossa.Test
 import Prologue
 import qualified Prelude as Unsafe
 
-import qualified App.Fossa.Analyze.FossaV1 as Fossa
-import App.Fossa.Analyze.ProjectInference
+import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.ProjectInference
 import Control.Carrier.Error.Either
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async

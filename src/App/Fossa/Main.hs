@@ -6,7 +6,7 @@ module App.Fossa.Main
 import Prologue
 
 import App.Fossa.Analyze (analyzeMain, ScanDestination(..))
-import App.Fossa.Analyze.FossaV1 (ProjectMetadata(..))
+import App.Fossa.FossaAPIV1 (ProjectMetadata(..))
 import App.Fossa.Test (testMain)
 import Effect.Logger
 import Network.HTTP.Req (useURI, https, Url, Scheme(..))
