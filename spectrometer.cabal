@@ -89,7 +89,9 @@ library
 
   -- cabal-fmt: expand src
   exposed-modules:
+    App.Fossa.Analyze
     App.Fossa.Main
+    App.Fossa.Test
     App.Hscli.Main
     App.Hscli.Scan
     App.Hscli.Scan.FossaV1

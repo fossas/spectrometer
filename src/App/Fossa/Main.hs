@@ -5,7 +5,8 @@ module App.Fossa.Main
 
 import Prologue
 
-import App.Fossa.Test
+import App.Fossa.Analyze (analyzeMain, ScanDestination(..))
+import App.Fossa.Test (testMain)
 import Effect.Logger
 import Options.Applicative
 import Path.IO (resolveDir', doesDirExist, setCurrentDir)
@@ -25,8 +26,13 @@ appMain = do
   setCurrentDir basedir
 
   case optCommand of
-    AnalyzeCommand{} -> undefined
-   
+    AnalyzeCommand AnalyzeOptions{..} ->
+      if analyzeOutput
+        then analyzeMain logSeverity OutputStdout
+        else case maybeApiKey of
+          Nothing -> die "A FOSSA API key is required to run this command"
+          Just key -> analyzeMain logSeverity (UploadScan key)
+
     TestCommand TestOptions{..} ->
       case maybeApiKey of
         Nothing -> die "A FOSSA API key is required to run this command"
