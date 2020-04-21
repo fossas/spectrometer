@@ -153,8 +153,8 @@ isProductionPath path = not $ any (`isInfixOf` toFilePath path)
 
 -----
 
-buildsEndpoint :: Int -> Locator -> Url 'Https
-buildsEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
+buildsEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
+buildsEndpoint baseurl orgId locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
 
 data BuildStatus
   = StatusSucceeded
@@ -202,7 +202,7 @@ getLatestBuild
 getLatestBuild baseurl key ProjectRevision{..} = do
   let opts = header "Authorization" ("token " <> encodeUtf8 key)
   Organization orgId <- responseBody <$> req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
-  response <- req GET (buildsEndpoint orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  response <- req GET (buildsEndpoint baseurl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------
