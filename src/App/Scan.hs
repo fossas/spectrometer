@@ -14,7 +14,6 @@ import qualified Data.Sequence as S
 import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
-import Control.Concurrent.Async (concurrently_)
 
 import App.Scan.Project (mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
@@ -74,15 +73,15 @@ scanMain ScanCmdOpts{..} = do
 
   scanId <- runError @HTTPErr $ SY.createScan scotlandYardUrl
 
-  case scanId of
-    Left _ -> pure ()
+  _ <- case scanId of
+    Left _ -> pure $ Right ()
     Right s ->  do
       case (sherlockOpts, iprOpts) of
-        (Just sherlock, Just ipr) -> do
-          runError @ExecErr $ runExecIO $ RunIPR.scan basedir ipr 
-          runError @ExecErr $ runExecIO $ RunSherlock.scan basedir s sherlock
+        (Just sherlock, Just ipr) -> runError @ExecErr $ runExecIO $ do
+          _ <- RunIPR.scan basedir ipr 
+          _ <- RunSherlock.scan basedir s sherlock
           pure ()
-        _ -> pure ()
+        _ -> pure $ Right ()
 
   let runScan = scan basedir cmdOutFile
         & withLogger (bool SevInfo SevDebug cmdDebug)
