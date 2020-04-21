@@ -1,4 +1,4 @@
-module App.Hscli.Scan.Graph
+module App.Fossa.Analyze.Graph
   ( Graph()
   , DepRef()
 

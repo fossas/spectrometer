@@ -6,7 +6,7 @@ module App.Fossa.Test
 import Prologue
 import qualified Prelude as Unsafe
 
-import App.Hscli.Scan.ProjectInference
+import App.Fossa.Analyze.ProjectInference
 import Control.Carrier.Error.Either
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
@@ -14,7 +14,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
-import qualified App.Hscli.Scan.FossaV1 as Fossa
+import qualified App.Fossa.Analyze.FossaV1 as Fossa
 import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)

@@ -1,4 +1,4 @@
-module App.Hscli.Scan.FossaV1
+module App.Fossa.Analyze.FossaV1
   ( uploadAnalysis
   , UploadResponse(..)
   , FossaError(..)
@@ -18,7 +18,7 @@ module App.Hscli.Scan.FossaV1
   , getOrganizationId
   ) where
 
-import App.Hscli.Scan.Project
+import App.Fossa.Analyze.Project
 import Control.Carrier.Error.Either
 import Data.List (isInfixOf)
 import qualified Data.Text as T
