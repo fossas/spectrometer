@@ -2,6 +2,7 @@
 module App.Scan
   ( scanMain
   , ScanCmdOpts(..)
+  , VPSOpts(..)
   ) where
 
 import Prologue
@@ -60,9 +61,13 @@ data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , cmdDebug   :: Bool
   , cmdOutFile :: Maybe FilePath
-  , sherlockOpts :: Maybe RunSherlock.SherlockOpts
-  , iprOpts :: Maybe RunIPR.IPROpts
-  , scotlandYardOpts :: Maybe ScotlandYard.ScotlandYardOpts
+  , scanVpsOpts :: Maybe VPSOpts
+  } deriving (Eq, Ord, Show, Generic)
+
+data VPSOpts = VPSOpts
+  { vpsSherlock :: RunSherlock.SherlockOpts
+  , vpsIpr :: RunIPR.IPROpts
+  , vpsScotlandYard :: ScotlandYard.ScotlandYardOpts
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
@@ -71,6 +76,7 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
+{-
   scanId <- runError @HTTPErr $ ScotlandYard.createScan scotlandYardOpts
 
   _ <- case scanId of
@@ -87,6 +93,8 @@ scanMain ScanCmdOpts{..} = do
         & withLogger (bool SevInfo SevDebug cmdDebug)
         & runThreaded
   runScan
+-}
+  undefined
   
 
 validateDir :: FilePath -> IO (Path Abs Dir)

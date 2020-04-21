@@ -1,10 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module VPSScan.RunIPR ( scan, IPROpts(..), IprResponse(..), IprFile(..), IprLicenseExpression(..), IprLicense(..) ) where
+import VPSScan.ScotlandYard
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Text as T
+import qualified Data.Vector as V
 import Prologue
 
 import Control.Carrier.Error.Either
 import Effect.Exec
+import Network.HTTP.Req (HttpException)
 
 data IPROpts = IPROpts
   { iprCmdPath :: String
@@ -12,16 +17,45 @@ data IPROpts = IPROpts
   , pathfinderCmdPath :: String
   } deriving (Eq, Ord, Show, Generic)
 
-scan :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Abs Dir -> IPROpts -> m IprResponse
-scan baseDir opts@IPROpts{..} = do
+scan :: (Has Exec sig m, Has (Error ExecErr) sig m, Has (Error HttpException) sig m, MonadIO m) => Path Abs Dir -> Text -> ScotlandYardOpts -> IPROpts -> m ()
+scan baseDir scanId scotlandYardOpts@ScotlandYardOpts{..} opts@IPROpts{..} = do
   let c :: [String]
       c = [iprCmdPath]
       iprCommand :: Command
       iprCommand = Command c [] Never
-  execJson baseDir iprCommand $ iprCmdArgs opts
+
+  (value :: Value) <- execJson baseDir iprCommand $ iprCmdArgs opts
+
+  let maybeExtracted = extractNonEmptyFiles value
+  case maybeExtracted of
+    Nothing -> throwError (CommandParseError (T.pack iprCmdPath) "Couldn't extract files from command output")
+    Just extracted -> do
+      res <- runHTTP (postIprResults scotlandYardOpts scanId extracted)
+      case res of
+        Left err -> throwError err
+        Right a -> pure a
 
 iprCmdArgs :: IPROpts -> [String]
 iprCmdArgs IPROpts{..} = ["-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
+
+extractNonEmptyFiles :: Value -> Maybe Array
+extractNonEmptyFiles (Object obj) = do
+  files <- HM.lookup "Files" obj
+  filesAsArray <- case files of
+    Array filesArray -> Just filesArray
+    _ -> Nothing
+
+  let filtered = V.filter hasLicenses filesAsArray
+
+      hasLicenses :: Value -> Bool
+      hasLicenses (Object file) =
+        case HM.lookup "LicenseExpressions" file of
+          Just (Object expressions) -> not (HM.null expressions)
+          _ -> False
+      hasLicenses _ = False
+
+  pure filtered
+extractNonEmptyFiles _ = Nothing
 
 -- mkFileList :: IprResponse -> IprResponse
 -- mkFileList iprOutput = IprResponse iprOutput
