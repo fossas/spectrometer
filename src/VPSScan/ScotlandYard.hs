@@ -1,15 +1,22 @@
-module VPSScan.ScotlandYard (createScan, postIprResults)
+module VPSScan.ScotlandYard (createScan, postIprResults, ScotlandYardOpts(..))
 where
 import Prologue
 
 import Control.Carrier.Error.Either
 import Effect.HTTP
 
-createScan :: (Has (Error HTTPErr) sig m) => Maybe String -> m String
-createScan scotlandYardUri = do
-  case scotlandYardUri of 
+data ScotlandYardOpts = ScotlandYardOpts
+  { scotlandYardUrl :: String
+  , organizationID :: String
+  , projectID :: String
+  , revisionID :: String
+  } deriving (Eq, Ord, Show, Generic)
+
+createScan :: (Has (Error HTTPErr) sig m) => Maybe ScotlandYardOpts -> m String
+createScan opts = do
+  case opts of 
     Nothing -> throwError (NoUrlError "No URL provided for Scotland Yard API")
-    Just uri -> do
+    Just _ -> do
       -- TODO: Actually make the post
       return "1234"
 

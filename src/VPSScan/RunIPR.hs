@@ -2,8 +2,6 @@
 
 module VPSScan.RunIPR ( scan, IPROpts(..), IprResponse(..), IprFile(..), IprLicenseExpression(..) ) where
 import Prologue
-import qualified Data.HashMap.Strict as HM
-import Data.Aeson.Types
 
 import Control.Carrier.Error.Either
 import Effect.Exec

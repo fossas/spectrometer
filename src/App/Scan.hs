@@ -27,7 +27,7 @@ import Effect.HTTP (HTTPErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
 import qualified VPSScan.RunSherlock as RunSherlock
-import qualified VPSScan.ScotlandYard as SY
+import qualified VPSScan.ScotlandYard as ScotlandYard
 import qualified VPSScan.RunIPR as RunIPR
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
@@ -60,9 +60,9 @@ data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , cmdDebug   :: Bool
   , cmdOutFile :: Maybe FilePath
-  , scotlandYardUrl :: Maybe String
   , sherlockOpts :: Maybe RunSherlock.SherlockOpts
   , iprOpts :: Maybe RunIPR.IPROpts
+  , scotlandYardOpts :: Maybe ScotlandYard.ScotlandYardOpts
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
@@ -71,7 +71,7 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
-  scanId <- runError @HTTPErr $ SY.createScan scotlandYardUrl
+  scanId <- runError @HTTPErr $ ScotlandYard.createScan scotlandYardOpts
 
   _ <- case scanId of
     Left _ -> pure $ Right ()
