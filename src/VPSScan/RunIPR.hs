@@ -13,12 +13,15 @@ data IPROpts = IPROpts
   } deriving (Eq, Ord, Show, Generic)
 
 scan :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Abs Dir -> IPROpts -> m IprResponse
-scan baseDir IPROpts{..} = do
+scan baseDir opts@IPROpts{..} = do
   let c :: [String]
       c = [iprCmdPath]
       iprCommand :: Command
       iprCommand = Command c [] Never
-  execJson baseDir iprCommand [nomosCmdPath, pathfinderCmdPath]
+  execJson baseDir iprCommand $ iprCmdArgs opts
+
+iprCmdArgs :: IPROpts -> [String]
+iprCmdArgs IPROpts{..} = ["-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
 
 -- mkFileList :: IprResponse -> IprResponse
 -- mkFileList iprOutput = IprResponse iprOutput
