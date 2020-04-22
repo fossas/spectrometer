@@ -58,9 +58,9 @@ syOpts = ScotlandYard.ScotlandYardOpts
                      <*> revisionIDOpt
                   where
                     scotlandYardUrlOpt = urlOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service (only necessary for vendored package scans)")
-                    organizationIDOpt = strOption (long "organization-id" <> metavar "STRING" <> help "Organization ID (only necessary for vendored package scans)")
-                    projectIDOpt = strOption (long "project-id" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
-                    revisionIDOpt = strOption (long "revision-id" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
+                    organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID (only necessary for vendored package scans)")
+                    projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
+                    revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
 
 -- FIXME remove me when this is rebased
 urlOption :: Mod OptionFields (Url scheme) -> Parser (Url scheme)
