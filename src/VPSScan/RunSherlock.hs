@@ -3,6 +3,7 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import Effect.Exec
+import qualified Data.Text as T
 
 data SherlockOpts = SherlockOpts
   { sherlockCmdPath :: String
@@ -11,13 +12,13 @@ data SherlockOpts = SherlockOpts
   , sherlockClientID :: String
   } deriving (Eq, Ord, Show, Generic)
 
-scan :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Abs Dir -> String -> SherlockOpts -> m ()
+scan :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Abs Dir -> Text -> SherlockOpts -> m ()
 scan baseDir scanId opts@SherlockOpts{..}  = do
   let c :: [String]
       c = [sherlockCmdPath]
       sherlockCommand :: Command
       sherlockCommand = Command c [] Never
-  _ <- execThrow baseDir sherlockCommand $ sherlockCmdArgs scanId opts
+  _ <- execThrow baseDir sherlockCommand $ sherlockCmdArgs (T.unpack scanId) opts
   pure ()
 
 sherlockCmdArgs :: String -> SherlockOpts -> [String]

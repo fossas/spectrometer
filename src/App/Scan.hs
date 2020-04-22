@@ -24,9 +24,10 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec (ExecErr(..), runExecIO)
-import Effect.HTTP (HTTPErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
+import Network.HTTP.Req (HttpException)
+
 import qualified VPSScan.RunSherlock as RunSherlock
 import qualified VPSScan.ScotlandYard as ScotlandYard
 import qualified VPSScan.RunIPR as RunIPR
@@ -75,25 +76,26 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stdout NoBuffering
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
+  _ <- case scanVpsOpts of
+    Nothing -> undefined
+    Just vpsOpts ->  do
+      let scotlandYardOpts = vpsScotlandYard vpsOpts
+          iprOpts = vpsIpr vpsOpts
+          sherlockOpts = vpsSherlock vpsOpts
+      scanResponse <- ScotlandYard.runHTTP (ScotlandYard.createScan scotlandYardOpts)
 
-{-
-  scanId <- runError @HTTPErr $ ScotlandYard.createScan scotlandYardOpts
-
-  _ <- case scanId of
-    Left _ -> pure $ Right ()
-    Right s ->  do
-      case (sherlockOpts, iprOpts) of
-        (Just sherlock, Just ipr) -> runError @ExecErr $ runExecIO $ do
-          _ <- RunIPR.scan basedir ipr 
-          _ <- RunSherlock.scan basedir s sherlock
-          pure ()
-        _ -> pure $ Right ()
+      case scanResponse of
+        Left _ -> pure $ Right ()
+        Right sResponse ->  do
+          let s = ScotlandYard.scanId sResponse
+          _ <- runExecIO $ runError @ExecErr $ runError @HttpException $ RunIPR.scan basedir s scotlandYardOpts iprOpts
+          _ <- runExecIO $ runError @ExecErr $ RunSherlock.scan basedir s sherlockOpts
+          pure $ Right ()
 
   let runScan = scan basedir cmdOutFile
         & withLogger (bool SevInfo SevDebug cmdDebug)
         & runThreaded
   runScan
--}
   undefined
   
 

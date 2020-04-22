@@ -4,6 +4,7 @@ module VPSScan.ScotlandYard
   , ScotlandYardOpts(..)
   , HTTP(..)
   , runHTTP
+  , ScanResponse(..)
   )
 where
 import Prologue
@@ -54,5 +55,5 @@ createScan ScotlandYardOpts{..} = do
 -- POST /scans/{scanID}/discovered_licenses
 postIprResults :: ToJSON a => ScotlandYardOpts -> Text -> a -> HTTP ()
 postIprResults ScotlandYardOpts{..} scanId value = do
-  req POST (scanDataEndpoint scotlandYardUrl projectID scanId) (ReqBodyJson value) ignoreResponse mempty
+  _ <- req POST (scanDataEndpoint scotlandYardUrl projectID scanId) (ReqBodyJson value) ignoreResponse mempty
   pure ()
