@@ -76,28 +76,31 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stdout NoBuffering
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
-  _ <- case scanVpsOpts of
+  case scanVpsOpts of
     Nothing -> undefined
     Just vpsOpts ->  do
+      putStrLn "Starting VPS scan"
       let scotlandYardOpts = vpsScotlandYard vpsOpts
           iprOpts = vpsIpr vpsOpts
           sherlockOpts = vpsSherlock vpsOpts
+      putStrLn "about to hit Scotland Yard " 
       scanResponse <- ScotlandYard.runHTTP (ScotlandYard.createScan scotlandYardOpts)
+      putStrLn $ "Scan response: " ++ show scanResponse
 
-      case scanResponse of
+      _ <- case scanResponse of
         Left _ -> pure $ Right ()
         Right sResponse ->  do
           let s = ScotlandYard.scanId sResponse
+          putStrLn $ "scanId: " ++ show s
           _ <- runExecIO $ runError @ExecErr $ runError @HttpException $ RunIPR.scan basedir s scotlandYardOpts iprOpts
           _ <- runExecIO $ runError @ExecErr $ RunSherlock.scan basedir s sherlockOpts
           pure $ Right ()
+      undefined
 
-  let runScan = scan basedir cmdOutFile
-        & withLogger (bool SevInfo SevDebug cmdDebug)
-        & runThreaded
-  runScan
-  undefined
-  
+  -- let runScan = scan basedir cmdOutFile
+  --       & withLogger (bool SevInfo SevDebug cmdDebug)
+  --       & runThreaded
+  -- runScan
 
 validateDir :: FilePath -> IO (Path Abs Dir)
 validateDir dir = do

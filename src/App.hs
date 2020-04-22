@@ -53,11 +53,13 @@ runIPROpts = RunIPR.IPROpts
 syOpts :: Parser (ScotlandYard.ScotlandYardOpts)
 syOpts = ScotlandYard.ScotlandYardOpts
                      <$> scotlandYardUrlOpt
+                     <*> scotlandYardPort
                      <*> organizationIDOpt
                      <*> projectIDOpt
                      <*> revisionIDOpt
                   where
                     scotlandYardUrlOpt = urlOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service (only necessary for vendored package scans)")
+                    scotlandYardPort = option auto (long "scotland-yard-port" <> metavar "Port" <> help "Port for Scotland yard service" <> value 8080)
                     organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID (only necessary for vendored package scans)")
                     projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
                     revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")

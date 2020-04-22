@@ -11,9 +11,11 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import Network.HTTP.Req
+import Debug.Trace
 
 data ScotlandYardOpts = ScotlandYardOpts
   { scotlandYardUrl :: Url 'Https
+  , scotlandYardPort :: Int
   , organizationID :: Text
   , projectID :: Text
   , revisionID :: Text
@@ -47,7 +49,10 @@ instance FromJSON ScanResponse where
 createScan :: ScotlandYardOpts -> HTTP ScanResponse
 createScan ScotlandYardOpts{..} = do
   let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID]
-  resp <- req POST (createScanEndpoint scotlandYardUrl projectID) (ReqBodyJson body) jsonResponse mempty
+  traceM $ "SY URL" ++ show scotlandYardUrl
+  traceM $ "projectID" ++ show projectID
+  traceM $ "About to hit SY" ++ (show $ (createScanEndpoint scotlandYardUrl projectID))
+  resp <- req POST (createScanEndpoint scotlandYardUrl projectID) (ReqBodyJson body) jsonResponse $ port scotlandYardPort
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
@@ -55,5 +60,5 @@ createScan ScotlandYardOpts{..} = do
 -- POST /scans/{scanID}/discovered_licenses
 postIprResults :: ToJSON a => ScotlandYardOpts -> Text -> a -> HTTP ()
 postIprResults ScotlandYardOpts{..} scanId value = do
-  _ <- req POST (scanDataEndpoint scotlandYardUrl projectID scanId) (ReqBodyJson value) ignoreResponse mempty
+  _ <- req POST (scanDataEndpoint scotlandYardUrl projectID scanId) (ReqBodyJson value) ignoreResponse $ port scotlandYardPort
   pure ()
