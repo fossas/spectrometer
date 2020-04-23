@@ -95,7 +95,7 @@ scanMain ScanCmdOpts{..} = do
           _ <- runExecIO $ runError @ExecErr $ runError @HttpException $ RunIPR.scan basedir s scotlandYardOpts iprOpts
           _ <- runExecIO $ runError @ExecErr $ RunSherlock.scan basedir s sherlockOpts
           pure $ Right ()
-      undefined
+      pure ()
 
   -- let runScan = scan basedir cmdOutFile
   --       & withLogger (bool SevInfo SevDebug cmdDebug)
