@@ -36,7 +36,7 @@ scan baseDir scanId scotlandYardOpts@ScotlandYardOpts{..} opts@IPROpts{..} = do
         Right a -> pure a
 
 iprCmdArgs :: Path Abs Dir -> IPROpts -> [String]
-iprCmdArgs baseDir IPROpts{..} = ["-target", (show baseDir), "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
+iprCmdArgs baseDir IPROpts{..} = ["-target", (toFilePath baseDir), "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
 
 extractNonEmptyFiles :: Value -> Maybe Array
 extractNonEmptyFiles (Object obj) = do
