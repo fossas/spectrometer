@@ -8,30 +8,14 @@ module App.Scan
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Exception as Exc
-import Control.Carrier.Output.IO
-import Control.Concurrent
-import qualified Data.Sequence as S
 import Path.IO
-import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (exitFailure, die)
 
-import App.Scan.Project (mkProjects)
-import App.Scan.ProjectInference (InferredProject(..), inferProject)
-import Control.Carrier.TaskPool
-import Control.Carrier.Threaded
-import qualified Data.ByteString.Lazy as BL
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal
-import Effect.Exec (ExecErr(..), runExecIO)
-import Effect.Logger
-import Effect.ReadFS (ReadFSErr(..))
 import Network.HTTP.Req (HttpException)
 
 import VPSScan.RunSherlock
 import VPSScan.ScotlandYard
 import VPSScan.RunIPR
-import Types
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
