@@ -39,7 +39,7 @@ scanMain opts@ScanCmdOpts{..} = do
       print err
       exitFailure
     Right _ -> pure ()
-   
+
 ----- main logic
 
 data VPSError
