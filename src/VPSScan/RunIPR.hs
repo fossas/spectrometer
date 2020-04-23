@@ -1,6 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module VPSScan.RunIPR ( scan, IPROpts(..), IprResponse(..), IprFile(..), IprLicenseExpression(..), IprLicense(..) ) where
+module VPSScan.RunIPR
+  ( scan
+  , IPROpts(..)
+  , IprResponse(..)
+  , IprFile(..)
+  , IprLicenseExpression(..)
+  , IprLicense(..)
+
+  , IPR(..)
+  , IPRC(..)
+  , execIPR
+  , IPRError(..)
+  ) where
+
 import VPSScan.ScotlandYard
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
@@ -109,3 +122,40 @@ instance FromJSON IprLicense where
   parseJSON = withObject "IprLicense" $ \obj ->
     IprLicense <$> obj .: "ID"
               --  <*> obj .: "Notes"
+
+----- ipr effect
+
+data IPRError
+  = NoFilesEntryInOutput
+  | IPRCommandFailed Text
+  deriving (Eq, Ord, Show, Generic)
+
+data IPR m k
+  = ExecIPR (Path Abs Dir) IPROpts (Either IPRError Array -> m k)
+  deriving Generic1
+
+instance HFunctor IPR
+instance Effect IPR
+
+execIPR :: Has IPR sig m => Path Abs Dir -> IPROpts -> m (Either IPRError Array)
+execIPR basedir iprOpts = send (ExecIPR basedir iprOpts pure)
+
+----- production ipr interpreter
+ 
+newtype IPRC m a = IPRC { runIPR :: m a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance (Algebra sig m, MonadIO m, Effect sig) => Algebra (IPR :+: sig) (IPRC m) where
+  alg (R other) = IPRC (alg (handleCoercible other))
+  alg (L (ExecIPR basedir opts@IPROpts{..} k)) = (k =<<) . IPRC $ do
+    let iprCommand :: Command
+        iprCommand = Command [iprCmdPath] [] Never
+
+    maybeValue <- runError @ExecErr $ runExecIO $ execJson basedir iprCommand $ iprCmdArgs opts
+    case maybeValue of
+      Left err -> pure (Left (IPRCommandFailed (T.pack (show err))))
+      Right value -> do
+        let maybeExtracted = extractNonEmptyFiles value
+        case maybeExtracted of
+          Nothing -> pure (Left NoFilesEntryInOutput)
+          Just extracted -> pure (Right extracted)

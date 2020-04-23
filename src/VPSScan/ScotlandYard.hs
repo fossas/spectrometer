@@ -5,13 +5,18 @@ module VPSScan.ScotlandYard
   , HTTP(..)
   , runHTTP
   , ScanResponse(..)
+
+  , ScotlandYard(..)
+  , ScotlandYardC(..)
+  , createScotlandYardScan
+  , uploadIPRResults
   )
 where
 import Prologue
 
+import Control.Algebra
 import Control.Carrier.Error.Either
 import Network.HTTP.Req
-import Debug.Trace
 
 data ScotlandYardOpts = ScotlandYardOpts
   { scotlandYardUrl :: Url 'Https
@@ -39,7 +44,7 @@ scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 scanDataEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
 
 data ScanResponse = ScanResponse
-  { scanId :: Text
+  { responseScanId :: Text
   } deriving (Eq, Ord, Show, Generic)
 
 instance FromJSON ScanResponse where
@@ -62,3 +67,29 @@ postIprResults :: ToJSON a => ScotlandYardOpts -> Text -> a -> HTTP ()
 postIprResults ScotlandYardOpts{..} scanId value = do
   _ <- req POST (scanDataEndpoint scotlandYardUrl projectID scanId) (ReqBodyJson value) ignoreResponse $ port scotlandYardPort
   pure ()
+
+----- scotland yard effect
+
+data ScotlandYard m k
+  = CreateScotlandYardScan ScotlandYardOpts (Either HttpException ScanResponse -> m k) -- TODO: add Scotland yard error type
+  | UploadIPRResults ScotlandYardOpts Text Array (Either HttpException () -> m k) -- TODO: add scotland yard error type
+  deriving Generic1
+
+instance HFunctor ScotlandYard
+instance Effect ScotlandYard
+
+createScotlandYardScan :: Has ScotlandYard sig m => ScotlandYardOpts -> m (Either HttpException ScanResponse)
+createScotlandYardScan opts = send (CreateScotlandYardScan opts pure)
+
+uploadIPRResults :: Has ScotlandYard sig m => ScotlandYardOpts -> Text -> Array -> m (Either HttpException ())
+uploadIPRResults opts scanId value = send (UploadIPRResults opts scanId value pure)
+
+----- scotland yard production interpreter
+
+newtype ScotlandYardC m a = ScotlandYardC { runScotlandYard :: m a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance (Algebra sig m, MonadIO m) => Algebra (ScotlandYard :+: sig) (ScotlandYardC m) where
+  alg (R other) = ScotlandYardC (alg (handleCoercible other))
+  alg (L (CreateScotlandYardScan scotlandYardOpts k)) = (k =<<) . ScotlandYardC $ runHTTP $ createScan scotlandYardOpts
+  alg (L (UploadIPRResults scotlandYardOpts scanId value k)) = (k =<<) . ScotlandYardC $ runHTTP $ postIprResults scotlandYardOpts scanId value

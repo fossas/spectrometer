@@ -81,7 +81,7 @@ scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan
                    <$> basedirOpt
                    <*> debugOpt
                    <*> outputOpt
-                   <*> optional vpsOpts
+                   <*> vpsOpts
 
   basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
   debugOpt = switch (long "debug" <> help "Enable debug logging")
