@@ -23,8 +23,8 @@ data IPROpts = IPROpts
   , pathfinderCmdPath :: String
   } deriving (Eq, Ord, Show, Generic)
 
-iprCmdArgs :: IPROpts -> [String]
-iprCmdArgs IPROpts{..} = ["-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
+iprCmdArgs :: Path Abs Dir -> IPROpts -> [String]
+iprCmdArgs baseDir IPROpts{..} = ["-target", (toFilePath baseDir), "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
 
 extractNonEmptyFiles :: Value -> Maybe Array
 extractNonEmptyFiles (Object obj) = do
@@ -73,7 +73,7 @@ instance (Algebra sig m, MonadIO m, Effect sig) => Algebra (IPR :+: sig) (IPRC m
     let iprCommand :: Command
         iprCommand = Command [iprCmdPath] [] Never
 
-    maybeValue <- runError @ExecErr $ runExecIO $ execJson basedir iprCommand $ iprCmdArgs opts
+    maybeValue <- runError @ExecErr $ runExecIO $ execJson basedir iprCommand $ iprCmdArgs basedir opts
     case maybeValue of
       Left err -> pure (Left (IPRCommandFailed (T.pack (show err))))
       Right value -> do
