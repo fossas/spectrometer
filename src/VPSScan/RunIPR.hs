@@ -24,7 +24,7 @@ scan baseDir scanId scotlandYardOpts@ScotlandYardOpts{..} opts@IPROpts{..} = do
       iprCommand :: Command
       iprCommand = Command c [] Never
 
-  (value :: Value) <- execJson baseDir iprCommand $ iprCmdArgs opts
+  (value :: Value) <- execJson baseDir iprCommand $ iprCmdArgs baseDir opts
 
   let maybeExtracted = extractNonEmptyFiles value
   case maybeExtracted of
@@ -35,8 +35,8 @@ scan baseDir scanId scotlandYardOpts@ScotlandYardOpts{..} opts@IPROpts{..} = do
         Left err -> throwError err
         Right a -> pure a
 
-iprCmdArgs :: IPROpts -> [String]
-iprCmdArgs IPROpts{..} = ["-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
+iprCmdArgs :: Path Abs Dir -> IPROpts -> [String]
+iprCmdArgs baseDir IPROpts{..} = ["-target", (show baseDir), "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
 
 extractNonEmptyFiles :: Value -> Maybe Array
 extractNonEmptyFiles (Object obj) = do
