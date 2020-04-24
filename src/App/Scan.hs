@@ -8,6 +8,7 @@ module App.Scan
 import Prologue
 
 import Control.Carrier.Error.Either
+import Control.Carrier.Trace.Printing
 import Path.IO
 import System.Exit (exitFailure, die)
 
@@ -31,7 +32,7 @@ data VPSOpts = VPSOpts
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do
   basedir <- validateDir cmdBasedir
-  result <- runError @VPSError $ runScotlandYard $ runSherlock $ runIPR $ vpsScan basedir opts
+  result <- runError @VPSError $ runScotlandYard $ runSherlock $ runIPR $ runTrace $ vpsScan basedir opts
   case result of
     Left err -> do
       print err
@@ -52,21 +53,22 @@ vpsScan ::
   , Has IPR sig m
   , Has Sherlock sig m
   , Has (Error VPSError) sig m
+  , Has Trace sig m
   ) => Path Abs Dir -> ScanCmdOpts -> m ()
 vpsScan basedir ScanCmdOpts{..} = do
   let VPSOpts{..} = scanVpsOpts
   response <- tagError Couldn'tGetScanId =<< createScotlandYardScan vpsScotlandYard
  
-  traceM $ "Running scan on directory " ++ show basedir
+  trace $ "Running scan on directory " ++ show basedir
   let scanId = responseScanId response
-  traceM $ "Scan ID from Scotland yard is " ++ show scanId
-  traceM "Starting IPR scan"
+  trace $ "Scan ID from Scotland yard is " ++ show scanId
+  trace "Starting IPR scan"
   iprResult <- tagError IPRFailed =<< execIPR basedir vpsIpr
-  traceM "IPR scan completed. Posting results to Scotland Yard"
+  trace "IPR scan completed. Posting results to Scotland Yard"
   tagError Couldn'tUpload =<< uploadIPRResults vpsScotlandYard scanId iprResult
-  traceM "Running Sherlock scan"
+  trace "Running Sherlock scan"
   tagError SherlockFailed =<< execSherlock basedir scanId vpsSherlock
-  traceM "Scan complete"
+  trace "Scan complete"
 
 tagError :: Has (Error e') sig m => (e -> e') -> Either e a -> m a
 tagError f (Left e) = throwError (f e)
