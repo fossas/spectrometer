@@ -118,6 +118,7 @@ library
     Effect.Logger
     Effect.ReadFS
     Graphing
+    OptionExtensions
     Parse.XML
     Prologue
     Srclib.Converter

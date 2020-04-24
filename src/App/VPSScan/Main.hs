@@ -7,12 +7,10 @@ import Prologue
 import Options.Applicative
 
 import App.VPSScan.Scan (VPSOpts(..), ScanCmdOpts(..), scanMain)
-import Network.HTTP.Req (Url, useURI)
-import Text.URI (mkURI)
-import qualified Data.Text as T
 import qualified App.VPSScan.Scan.RunSherlock as RunSherlock
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
 import qualified App.VPSScan.Scan.ScotlandYard as ScotlandYard
+import OptionExtensions
 
 appMain :: IO ()
 appMain = join (customExecParser (prefs showHelpOnEmpty) opts)
@@ -62,16 +60,6 @@ syOpts = ScotlandYard.ScotlandYardOpts
                     organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID (only necessary for vendored package scans)")
                     projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
                     revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
-
--- FIXME remove me when this is rebased
-urlOption :: Mod OptionFields (Url scheme) -> Parser (Url scheme)
-urlOption = option parseUrl
-  where
-    parseUrl :: ReadM (Url scheme)
-    parseUrl = maybeReader (\s -> mkURI (T.pack s) >>= useURI >>=
-                              \case
-                                 Left (url,_) -> pure $ coerce url
-                                 Right (url,_) -> pure $ coerce url)
 
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
