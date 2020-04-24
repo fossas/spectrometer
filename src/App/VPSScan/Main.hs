@@ -32,10 +32,10 @@ runSherlockOpts = RunSherlock.SherlockOpts
                   <*> sherlockClientTokenOpt
                   <*> sherlockClientIDOpt
                 where
-                    sherlockCmdPathOpt = strOption (long "sherlock-cli" <> metavar "STRING" <> help "Path to the sherlock-cli executable (only necessary for vendored package scans)")
-                    sherlockUrlOpt = strOption(long "sherlock-url" <> metavar "STRING" <> help "URL for Sherlock service (only necessary for vendored package scans)")
-                    sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock (only necessary for vendored package scans)")
-                    sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock (only necessary for vendored package scans)")
+                    sherlockCmdPathOpt = strOption (long "sherlock-cli" <> metavar "STRING" <> help "Path to the sherlock-cli executable")
+                    sherlockUrlOpt = strOption(long "sherlock-url" <> metavar "STRING" <> help "URL for Sherlock service")
+                    sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock")
+                    sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock")
 
 runIPROpts :: Parser RunIPR.IPROpts
 runIPROpts = RunIPR.IPROpts
@@ -43,9 +43,9 @@ runIPROpts = RunIPR.IPROpts
                   <*> nomosCmdPathOpt
                   <*> pathfinderCmdPathOpt
                 where
-                    iprCmdPathOpt = strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable (only necessary for vendored package scans)")
-                    nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable (only necessary for vendored package scans)")
-                    pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable (only necessary for vendored package scans)")
+                    iprCmdPathOpt = strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable")
+                    nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
+                    pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
 
 syOpts :: Parser ScotlandYard.ScotlandYardOpts
 syOpts = ScotlandYard.ScotlandYardOpts
@@ -55,11 +55,11 @@ syOpts = ScotlandYard.ScotlandYardOpts
                      <*> projectIDOpt
                      <*> revisionIDOpt
                   where
-                    scotlandYardUrlOpt = urlOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service (only necessary for vendored package scans)")
+                    scotlandYardUrlOpt = urlOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
                     scotlandYardPort = option auto (long "scotland-yard-port" <> metavar "Port" <> help "Port for Scotland yard service" <> value 8080)
-                    organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID (only necessary for vendored package scans)")
-                    projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
-                    revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Project ID (only necessary for vendored package scans")
+                    organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID")
+                    projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
+                    revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
