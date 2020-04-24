@@ -33,7 +33,6 @@ extractNonEmptyFiles (Object obj) = do
     _ -> Nothing
 
   let filtered = V.filter hasLicenses filesAsArray
-
       hasLicenses :: Value -> Bool
       hasLicenses (Object file) =
         case HM.lookup "LicenseExpressions" file of
@@ -62,7 +61,7 @@ execIPR :: Has IPR sig m => Path Abs Dir -> IPROpts -> m (Either IPRError Array)
 execIPR basedir iprOpts = send (ExecIPR basedir iprOpts pure)
 
 ----- production ipr interpreter
- 
+
 newtype IPRC m a = IPRC { runIPR :: m a }
   deriving (Functor, Applicative, Monad, MonadIO)
 

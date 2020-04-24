@@ -57,7 +57,7 @@ vpsScan ::
 vpsScan basedir ScanCmdOpts{..} = do
   let VPSOpts{..} = scanVpsOpts
   response <- tagError Couldn'tGetScanId =<< createScotlandYardScan vpsScotlandYard
- 
+
   trace $ "Running scan on directory " ++ show basedir
   let scanId = responseScanId response
   trace $ "Scan ID from Scotland yard is " ++ show scanId
