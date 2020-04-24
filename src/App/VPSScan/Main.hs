@@ -39,7 +39,7 @@ runSherlockOpts = RunSherlock.SherlockOpts
                     sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock (only necessary for vendored package scans)")
                     sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock (only necessary for vendored package scans)")
 
-runIPROpts :: Parser (RunIPR.IPROpts)
+runIPROpts :: Parser RunIPR.IPROpts
 runIPROpts = RunIPR.IPROpts
                   <$> iprCmdPathOpt
                   <*> nomosCmdPathOpt
@@ -49,7 +49,7 @@ runIPROpts = RunIPR.IPROpts
                     nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable (only necessary for vendored package scans)")
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable (only necessary for vendored package scans)")
 
-syOpts :: Parser (ScotlandYard.ScotlandYardOpts)
+syOpts :: Parser ScotlandYard.ScotlandYardOpts
 syOpts = ScotlandYard.ScotlandYardOpts
                      <$> scotlandYardUrlOpt
                      <*> scotlandYardPort
@@ -68,8 +68,8 @@ urlOption :: Mod OptionFields (Url scheme) -> Parser (Url scheme)
 urlOption = option parseUrl
   where
     parseUrl :: ReadM (Url scheme)
-    parseUrl = maybeReader (\s -> mkURI (T.pack s) >>= useURI >>= \res ->
-                               case res of
+    parseUrl = maybeReader (\s -> mkURI (T.pack s) >>= useURI >>=
+                              \case
                                  Left (url,_) -> pure $ coerce url
                                  Right (url,_) -> pure $ coerce url)
 
