@@ -30,13 +30,6 @@ data VPSOpts = VPSOpts
   , vpsScotlandYard :: ScotlandYardOpts
   } deriving (Eq, Ord, Show, Generic)
 
-      --putStrLn "Starting VPS scan"
-      --let scotlandYardOpts = vpsScotlandYard vpsOpts
-          --iprOpts = vpsIpr vpsOpts
-          --sherlockOpts = vpsSherlock vpsOpts
-      --putStrLn "about to hit Scotland Yard "
-      --scanResponse <- ScotlandYard.runHTTP (ScotlandYard.createScan scotlandYardOpts)
-      --putStrLn $ "Scan response: " ++ show scanResponse
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do
   basedir <- validateDir cmdBasedir
