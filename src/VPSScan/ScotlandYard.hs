@@ -54,9 +54,6 @@ instance FromJSON ScanResponse where
 createScan :: ScotlandYardOpts -> HTTP ScanResponse
 createScan ScotlandYardOpts{..} = do
   let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID]
-  traceM $ "SY URL" ++ show scotlandYardUrl
-  traceM $ "projectID" ++ show projectID
-  traceM $ "About to hit SY" ++ (show $ (createScanEndpoint scotlandYardUrl projectID))
   resp <- req POST (createScanEndpoint scotlandYardUrl projectID) (ReqBodyJson body) jsonResponse $ port scotlandYardPort
   pure (responseBody resp)
 
