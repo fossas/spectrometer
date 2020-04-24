@@ -28,7 +28,6 @@ library
     Discovery.Walk
     Effect.Exec
     Effect.Grapher
-    Effect.HTTP
     Effect.Logger
     Effect.ReadFS
     Graphing
