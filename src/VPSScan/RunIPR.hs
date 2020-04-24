@@ -2,7 +2,6 @@
 
 module VPSScan.RunIPR
   ( IPROpts(..)
-
   , IPR(..)
   , IPRC(..)
   , execIPR

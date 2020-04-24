@@ -1,7 +1,6 @@
 module VPSScan.RunSherlock
   ( scan
   , SherlockOpts(..)
-
   , Sherlock(..)
   , SherlockC(..)
   , SherlockError(..)

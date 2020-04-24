@@ -5,7 +5,6 @@ module VPSScan.ScotlandYard
   , HTTP(..)
   , runHTTP
   , ScanResponse(..)
-
   , ScotlandYard(..)
   , ScotlandYardC(..)
   , createScotlandYardScan
