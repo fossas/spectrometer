@@ -79,10 +79,6 @@ scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan
   where
   scanOptsParser = ScanCmdOpts
                    <$> basedirOpt
-                   <*> debugOpt
-                   <*> outputOpt
                    <*> vpsOpts
 
   basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
-  debugOpt = switch (long "debug" <> help "Enable debug logging")
-  outputOpt = optional (strOption (long "outfile" <> short 'o' <> metavar "FILE" <> help "Output results to a file (default: stdout). Relative paths are relative to the scan root."))

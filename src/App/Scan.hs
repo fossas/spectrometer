@@ -19,8 +19,6 @@ import VPSScan.RunIPR
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
-  , cmdDebug   :: Bool
-  , cmdOutFile :: Maybe FilePath
   , scanVpsOpts :: VPSOpts
   } deriving (Eq, Ord, Show, Generic)
 
