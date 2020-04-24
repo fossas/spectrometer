@@ -16,7 +16,7 @@ appMain :: IO ()
 appMain = join (customExecParser (prefs showHelpOnEmpty) opts)
 
 opts :: ParserInfo (IO ())
-opts = info (commands <**> helper) (fullDesc <> header "hscli - fossa-cli, but functional")
+opts = info (commands <**> helper) (fullDesc <> header "vpscli -- FOSSA Vendored Package Scan CLI")
 
 commands :: Parser (IO ())
 commands = hsubparser scanCommand
