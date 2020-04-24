@@ -175,6 +175,7 @@ spec_analyze = do
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
   noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")
   projectsForManifestWithIncludes <- runIO $ runFail $ runError @ReadFSErr $ runReadFSIO $ nestedValidatedProjects $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml")
+  relativeRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml")
 
   describe "repo manifest analyzer" $ do
     describe "for a sane manifest" $ do
@@ -197,6 +198,14 @@ spec_analyze = do
     describe "for a manifest with no default revision" $ do
       it "reads a file and constructs a dependency list" $ do
         case parseXML noDefaultRevisionManifest of
+          Right manifest -> do
+            (manifestProjects manifest) `shouldMatchList` basicProjectList
+            (manifestRemotes manifest) `shouldMatchList` basicRemoteList
+          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+
+    describe "for a manifest with a relative remote" $ do
+      it "should get the remote URL from the manifest.git config file" $ do
+        case parseXML relativeRemoteManifest of
           Right manifest -> do
             (manifestProjects manifest) `shouldMatchList` basicProjectList
             (manifestRemotes manifest) `shouldMatchList` basicRemoteList
