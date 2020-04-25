@@ -174,7 +174,7 @@ spec_analyze = do
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
   noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")
-  projectsForManifestWithIncludes <- runIO $ runFail $ runError @ReadFSErr $ runReadFSIO $ nestedValidatedProjects $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml")
+  projectsForManifestWithIncludes <- runIO $ runFail $ runError @ReadFSErr $ runReadFSIO $ nestedValidatedProjects $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml") $(mkRelDir "test/Googlesource/testdata")
   relativeRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml")
 
   describe "repo manifest analyzer" $ do
