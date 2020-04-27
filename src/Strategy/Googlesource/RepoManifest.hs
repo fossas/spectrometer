@@ -22,7 +22,6 @@ import Prologue
 import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import Control.Monad.Catch (MonadThrow)
 
 import DepTypes
 import Discovery.Walk
@@ -49,30 +48,35 @@ analyze file = mkProjectClosure file <$> nestedValidatedProjects (parent file) f
 nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do
   manifest <- readContentsXML @RepoManifest file
-  let manifestWithFixedRemotes = fixRelativeRemotes manifest rootDir
+  manifestWithFixedRemotes <- fixRelativeRemotes manifest rootDir
   validatedIncludedProjects <- validatedProjectsFromIncludes manifestWithFixedRemotes (parent file) rootDir
   let validatedDirectProjects = validateProjects manifestWithFixedRemotes
   case validatedDirectProjects of
     Nothing -> fail "Error"
     Just ps -> pure $ ps ++ validatedIncludedProjects
 
-fixRelativeRemotes :: RepoManifest -> Path Rel Dir -> RepoManifest
+fixRelativeRemotes :: (MonadFail m) => RepoManifest -> Path Rel Dir -> m RepoManifest
 fixRelativeRemotes manifest rootDir = do
   let remotes = manifestRemotes manifest
-      -- TODO: This is not what I want.
-      fixedRemotes = sequenceA $ map (maybe $ fixRelativeRemote rootDir) remotes
+  let fixedRemotes = sequenceA $ map (fixRelativeRemote rootDir) remotes
   case fixedRemotes of
-    -- TODO: I should throw something here
-    Nothing -> manifest
-    Just fixed -> manifest { manifestRemotes = fixed }
+    Nothing -> fail "Error getting fixed remotes"
+    Just fixed -> pure $ manifest { manifestRemotes = fixed }
+  -- pure $ manifest { manifestRemotes = fixedRemotes }
 
 -- mkURI returns m URI, where m is a MonadThrow. https://hackage.haskell.org/package/modern-uri-0.3.2.0/docs/Text-URI.html#t:URI
-fixRelativeRemote :: (MonadThrow m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
+-- fixRelativeRemote :: (MonadCatch m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
+-- fixRelativeRemote rootDir remote =  do
+--   uri <- (mkURI $ remoteFetch remote) -- `catch` (\(e :: ParseException) -> Nothing)
+--   case (uriScheme uri) of
+--     Nothing -> pure $ fixRemote rootDir remote
+--     Just _ -> pure $ remote
+fixRelativeRemote :: Path Rel Dir -> ManifestRemote -> Maybe ManifestRemote
 fixRelativeRemote rootDir remote =  do
-  uri <- mkURI $ remoteFetch remote
+  uri <- (mkURI $ remoteFetch remote) -- `catch` (\(e :: ParseException) -> Nothing)
   case (uriScheme uri) of
-    Nothing -> pure $ fixRemote rootDir remote
-    Just _ -> pure remote
+      Nothing -> pure $ fixRemote rootDir remote
+      Just _ -> pure $ remote
 
 fixRemote :: Path Rel Dir -> ManifestRemote -> ManifestRemote
 fixRemote rootDir remote =
