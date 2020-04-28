@@ -16,7 +16,7 @@ data SherlockOpts = SherlockOpts
   , sherlockUrl :: String
   , sherlockClientToken :: String
   , sherlockClientID :: String
-  , organizationID :: Text
+  , organizationID :: Int
   , projectID :: Text
   , revisionID :: Text
   } deriving (Eq, Ord, Show, Generic)
@@ -26,9 +26,9 @@ sherlockCmdArgs scanId SherlockOpts{..} = [ "--scan-id", scanId
                                           , "--sherlock-api-secret-key", sherlockClientToken
                                           , "--sherlock-api-client-id", sherlockClientID
                                           , "--sherlock-api-host", sherlockUrl
-                                          , "--organization-id", T.unpack organizationID
-                                          , "--project-id", T.unpack projectID
-                                          , "--revision-id", T.unpack revisionID
+                                          , "--organization-id", show organizationID
+                                          , "--project-id",  T.unpack projectID
+                                          , "--revision-id",  T.unpack revisionID
                                           ]
 
 ----- sherlock effect

@@ -20,7 +20,7 @@ import Network.HTTP.Req
 data ScotlandYardOpts = ScotlandYardOpts
   { scotlandYardUrl :: Url 'Https
   , scotlandYardPort :: Int
-  , organizationID :: Text
+  , organizationID :: Int
   , projectID :: Text
   , revisionID :: Text
   } deriving (Eq, Ord, Show, Generic)
@@ -52,8 +52,8 @@ instance FromJSON ScanResponse where
 
 createScan :: ScotlandYardOpts -> HTTP ScanResponse
 createScan ScotlandYardOpts{..} = do
-  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID]
-  resp <- req POST (createScanEndpoint scotlandYardUrl projectID) (ReqBodyJson body) jsonResponse $ port scotlandYardPort
+  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]
+  resp <- req POST (createScanEndpoint scotlandYardUrl projectID) (ReqBodyJson body) jsonResponse (port scotlandYardPort <> header "Content-Type" "application/json")
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,

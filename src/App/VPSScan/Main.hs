@@ -23,10 +23,14 @@ commands = hsubparser scanCommand
 
 
 vpsOpts :: Parser VPSOpts
-vpsOpts = VPSOpts <$> runSherlockOpts <*> runIPROpts <*> syOpts
+vpsOpts = VPSOpts <$> runSherlockOpts organizationIDOpt projectIDOpt revisionIDOpt <*> runIPROpts <*> syOpts organizationIDOpt projectIDOpt revisionIDOpt 
+            where
+              organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
+              projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
+              revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
-runSherlockOpts :: Parser (RunSherlock.SherlockOpts)
-runSherlockOpts = RunSherlock.SherlockOpts
+runSherlockOpts :: Parser Int -> Parser Text -> Parser Text -> Parser (RunSherlock.SherlockOpts)
+runSherlockOpts organizationIDOpt projectIDOpt revisionIDOpt = RunSherlock.SherlockOpts
                   <$> sherlockCmdPathOpt
                   <*> sherlockUrlOpt
                   <*> sherlockClientTokenOpt
@@ -39,9 +43,6 @@ runSherlockOpts = RunSherlock.SherlockOpts
                     sherlockUrlOpt = strOption(long "sherlock-url" <> metavar "STRING" <> help "URL for Sherlock service")
                     sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock")
                     sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock")
-                    organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID")
-                    projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
-                    revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
 runIPROpts :: Parser RunIPR.IPROpts
 runIPROpts = RunIPR.IPROpts
@@ -53,8 +54,9 @@ runIPROpts = RunIPR.IPROpts
                     nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
 
-syOpts :: Parser ScotlandYard.ScotlandYardOpts
-syOpts = ScotlandYard.ScotlandYardOpts
+-- org IDs are ints. project and revision IDs are strings
+syOpts :: Parser Int -> Parser Text -> Parser Text -> Parser ScotlandYard.ScotlandYardOpts
+syOpts organizationIDOpt projectIDOpt revisionIDOpt = ScotlandYard.ScotlandYardOpts
                      <$> scotlandYardUrlOpt
                      <*> scotlandYardPort
                      <*> organizationIDOpt
@@ -62,10 +64,7 @@ syOpts = ScotlandYard.ScotlandYardOpts
                      <*> revisionIDOpt
                   where
                     scotlandYardUrlOpt = urlOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
-                    scotlandYardPort = option auto (long "scotland-yard-port" <> metavar "Port" <> help "Port for Scotland yard service" <> value 8080)
-                    organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID")
-                    projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
-                    revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
+                    scotlandYardPort = option auto (long "scotland-yard-port" <> metavar "Port" <> help "Port for Scotland yard service" <> value 8675)
 
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
