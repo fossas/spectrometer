@@ -31,11 +31,17 @@ runSherlockOpts = RunSherlock.SherlockOpts
                   <*> sherlockUrlOpt
                   <*> sherlockClientTokenOpt
                   <*> sherlockClientIDOpt
+                  <*> organizationIDOpt
+                  <*> projectIDOpt
+                  <*> revisionIDOpt
                 where
                     sherlockCmdPathOpt = strOption (long "sherlock-cli" <> metavar "STRING" <> help "Path to the sherlock-cli executable")
                     sherlockUrlOpt = strOption(long "sherlock-url" <> metavar "STRING" <> help "URL for Sherlock service")
                     sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock")
                     sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock")
+                    organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID")
+                    projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
+                    revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
 runIPROpts :: Parser RunIPR.IPROpts
 runIPROpts = RunIPR.IPROpts

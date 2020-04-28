@@ -16,12 +16,19 @@ data SherlockOpts = SherlockOpts
   , sherlockUrl :: String
   , sherlockClientToken :: String
   , sherlockClientID :: String
+  , organizationID :: Text
+  , projectID :: Text
+  , revisionID :: Text
   } deriving (Eq, Ord, Show, Generic)
 
 sherlockCmdArgs :: String -> SherlockOpts -> [String]
 sherlockCmdArgs scanId SherlockOpts{..} = [ "--scan-id", scanId
-                                          , "--sherlock-client-token", sherlockClientToken
-                                          , "--sherlock-client-id", sherlockClientID
+                                          , "--sherlock-api-secret-key", sherlockClientToken
+                                          , "--sherlock-api-client-id", sherlockClientID
+                                          , "--sherlock-api-host", sherlockUrl
+                                          , "--organization-id", T.unpack organizationID
+                                          , "--project-id", T.unpack projectID
+                                          , "--revision-id", T.unpack revisionID
                                           ]
 
 ----- sherlock effect
@@ -49,7 +56,7 @@ instance (Algebra sig m, MonadIO m, Effect sig) => Algebra (Sherlock :+: sig) (S
   alg (R other) = SherlockC (alg (handleCoercible other))
   alg (L (ExecSherlock basedir scanId opts@SherlockOpts{..} k)) = (k =<<) . SherlockC $ do
     let sherlockCommand :: Command
-        sherlockCommand = Command [sherlockCmdPath] [] Never
+        sherlockCommand = Command [sherlockCmdPath] ["scan", toFilePath basedir] Never
     result <- runExecIO $ exec basedir sherlockCommand $ sherlockCmdArgs (T.unpack scanId) opts
     case result of
       Left err -> pure (Left (SherlockCommandFailed (T.pack (show err))))
