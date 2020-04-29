@@ -76,16 +76,22 @@ fixRemote rootDir remote = do
   unless exists (throwError MissingGitConfig)
 
   contents <- readContentsText (rootDir </> $(mkRelFile "manifests.git") </> relConfig)
+
   case parseConfig contents of
     Left err -> throwError (GitConfigParse (T.pack (errorBundlePretty err)))
-
     Right config -> do
       let maybeSection = find isOrigin config
       case maybeSection of
         Nothing -> throwError InvalidRemote
         Just (Section _ properties) ->
           case HM.lookup "url" properties of
-            Just url -> pure $ remote {remoteFetch = url}
+            Just remoteUrl -> 
+              case (mkURI remoteUrl, mkURI $ remoteFetch remote) of
+                (Just rUrl, Just fUrl) ->
+                  case rUrl `relativeTo` fUrl of
+                    Just url -> pure $ remote { remoteFetch = render url }
+                    Nothing -> throwError InvalidRemote
+                _ -> throwError InvalidRemote
             Nothing -> throwError InvalidRemote
 
   where
