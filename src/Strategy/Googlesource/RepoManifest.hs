@@ -1,4 +1,5 @@
 {-# language TemplateHaskell #-}
+{-# language QuasiQuotes #-}
 
 module Strategy.Googlesource.RepoManifest
   ( discover
@@ -30,6 +31,9 @@ import Graphing (Graphing, unfold)
 import Parse.XML
 import Types
 import Text.URI
+import Text.GitConfig.Parser (Section(..), parseConfig)
+import qualified Data.HashMap.Strict as HM
+import Text.Megaparsec (errorBundlePretty)
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -71,16 +75,38 @@ fixRelativeRemotes manifest rootDir = do
 --   case (uriScheme uri) of
 --     Nothing -> pure $ fixRemote rootDir remote
 --     Just _ -> pure $ remote
+-- fixRelativeRemote :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
 fixRelativeRemote :: Path Rel Dir -> ManifestRemote -> Maybe ManifestRemote
 fixRelativeRemote rootDir remote =  do
   uri <- (mkURI $ remoteFetch remote) -- `catch` (\(e :: ParseException) -> Nothing)
   case (uriScheme uri) of
-      Nothing -> pure $ fixRemote rootDir remote
-      Just _ -> pure $ remote
+    Nothing ->  pure $ fixRemote rootDir remote & runReadFSIO & runError @ReadFSErr & runError @ManifestGitConfigError
+    Just _ -> Just remote
 
-fixRemote :: Path Rel Dir -> ManifestRemote -> ManifestRemote
-fixRemote rootDir remote =
-  remote { remoteFetch = "http://fixed.com" }
+fixRemote :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
+fixRemote rootDir remote = do
+  let relConfig = [relfile|config|]
+
+  exists <- doesFileExist (rootDir </> "manifests.git" </> relConfig)
+  unless exists (throwError MissingGitConfig)
+
+  contents <- readContentsText (rootDir </> "manifests.git" </> relConfig)
+  case parseConfig contents of
+    Left err -> throwError (GitConfigParse (T.pack (errorBundlePretty err)))
+
+    Right config -> do
+      let maybeSection = find isOrigin config
+      case maybeSection of
+        Nothing -> throwError InvalidRemote
+        Just (Section _ properties) ->
+          case HM.lookup "url" properties of
+            Just url -> pure $ remote {remoteFetch = url}
+            Nothing -> throwError InvalidRemote
+
+  where
+  isOrigin :: Section -> Bool
+  isOrigin (Section ["remote", "origin"] _) = True
+  isOrigin _ = False
 
 -- If a manifest has an include tag, the included manifest will be found in "manifests/<name attribute>" relative
 -- to the original manifest file.
@@ -238,3 +264,13 @@ buildGraph projects = unfold projects (const []) toDependency
                  , dependencyTags = M.empty
                  , dependencyEnvironments = [EnvProduction]
                  }
+
+data ManifestGitConfigError =
+    InvalidRemote
+  | GitConfigParse Text
+  | MissingGitConfig
+  | MissingGitHead
+  | InvalidBranchName Text
+  | MissingBranch Text
+  | MissingGitDir
+  deriving (Eq, Ord, Show, Generic, Typeable)
