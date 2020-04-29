@@ -46,51 +46,36 @@ discover = walk $ \_ _ files ->
         pure WalkSkipAll
       else pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m, Effect sig) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> nestedValidatedProjects (parent file) file
 
-nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
+nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Effect sig, MonadFail m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do
   manifest <- readContentsXML @RepoManifest file
-  manifestWithFixedRemotes <- fixRelativeRemotes manifest rootDir
-  validatedIncludedProjects <- validatedProjectsFromIncludes manifestWithFixedRemotes (parent file) rootDir
-  let validatedDirectProjects = validateProjects manifestWithFixedRemotes
-  case validatedDirectProjects of
-    Nothing -> fail "Error"
-    Just ps -> pure $ ps ++ validatedIncludedProjects
+  manifestWithFixedRemotes <- runError @ManifestGitConfigError $ fixRelativeRemotes manifest rootDir
+  case manifestWithFixedRemotes of
+    Left _ -> fail "Error parsing remotes"
+    Right fixedManifest -> do
+      validatedIncludedProjects <- validatedProjectsFromIncludes fixedManifest (parent file) rootDir
+      let validatedDirectProjects = validateProjects fixedManifest
+      case validatedDirectProjects of
+        Nothing -> fail "Error"
+        Just ps -> pure $ ps ++ validatedIncludedProjects
 
-fixRelativeRemotes :: (MonadFail m) => RepoManifest -> Path Rel Dir -> m RepoManifest
+fixRelativeRemotes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => RepoManifest -> Path Rel Dir -> m RepoManifest
 fixRelativeRemotes manifest rootDir = do
   let remotes = manifestRemotes manifest
-  let fixedRemotes = sequenceA $ map (fixRelativeRemote rootDir) remotes
-  case fixedRemotes of
-    Nothing -> fail "Error getting fixed remotes"
-    Just fixed -> pure $ manifest { manifestRemotes = fixed }
-  -- pure $ manifest { manifestRemotes = fixedRemotes }
-
--- mkURI returns m URI, where m is a MonadThrow. https://hackage.haskell.org/package/modern-uri-0.3.2.0/docs/Text-URI.html#t:URI
--- fixRelativeRemote :: (MonadCatch m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
--- fixRelativeRemote rootDir remote =  do
---   uri <- (mkURI $ remoteFetch remote) -- `catch` (\(e :: ParseException) -> Nothing)
---   case (uriScheme uri) of
---     Nothing -> pure $ fixRemote rootDir remote
---     Just _ -> pure $ remote
--- fixRelativeRemote :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
-fixRelativeRemote :: Path Rel Dir -> ManifestRemote -> Maybe ManifestRemote
-fixRelativeRemote rootDir remote =  do
-  uri <- (mkURI $ remoteFetch remote) -- `catch` (\(e :: ParseException) -> Nothing)
-  case (uriScheme uri) of
-    Nothing ->  pure $ fixRemote rootDir remote & runReadFSIO & runError @ReadFSErr & runError @ManifestGitConfigError
-    Just _ -> Just remote
+  fixedRemotes <- sequenceA $ map (fixRemote rootDir) remotes
+  pure $ manifest {manifestRemotes = fixedRemotes}
 
 fixRemote :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
 fixRemote rootDir remote = do
   let relConfig = [relfile|config|]
 
-  exists <- doesFileExist (rootDir </> "manifests.git" </> relConfig)
+  exists <- doesFileExist (rootDir </> $(mkRelFile "manifests.git") </> relConfig)
   unless exists (throwError MissingGitConfig)
 
-  contents <- readContentsText (rootDir </> "manifests.git" </> relConfig)
+  contents <- readContentsText (rootDir </> $(mkRelFile "manifests.git") </> relConfig)
   case parseConfig contents of
     Left err -> throwError (GitConfigParse (T.pack (errorBundlePretty err)))
 
@@ -116,7 +101,7 @@ fixRemote rootDir remote = do
 -- </manifest>
 -- If you see that, you need to look for `manifests/default.xml`, where the manifests directory will
 -- be a sibling to the original manifest you were parsing.
-validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
+validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Effect sig, MonadFail m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
 validatedProjectsFromIncludes manifest parentDir rootDir = do
     let manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest
