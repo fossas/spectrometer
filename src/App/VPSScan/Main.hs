@@ -6,10 +6,9 @@ import Prologue
 
 import Options.Applicative
 
-import App.VPSScan.Scan (VPSOpts(..), ScanCmdOpts(..), scanMain)
-import qualified App.VPSScan.Scan.RunSherlock as RunSherlock
+import App.VPSScan.Scan (ScanCmdOpts(..), scanMain)
+import App.VPSScan.Types
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
-import qualified App.VPSScan.Scan.ScotlandYard as ScotlandYard
 import OptionExtensions
 
 appMain :: IO ()
@@ -23,21 +22,18 @@ commands = hsubparser scanCommand
 
 
 vpsOpts :: Parser VPSOpts
-vpsOpts = VPSOpts <$> runSherlockOpts organizationIDOpt projectIDOpt revisionIDOpt <*> runIPROpts <*> syOpts organizationIDOpt projectIDOpt revisionIDOpt 
+vpsOpts = VPSOpts <$> runSherlockOpts <*> runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt 
             where
               organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
-runSherlockOpts :: Parser Int -> Parser Text -> Parser Text -> Parser (RunSherlock.SherlockOpts)
-runSherlockOpts organizationIDOpt projectIDOpt revisionIDOpt = RunSherlock.SherlockOpts
+runSherlockOpts :: Parser (SherlockOpts)
+runSherlockOpts = SherlockOpts
                   <$> sherlockCmdPathOpt
                   <*> sherlockUrlOpt
                   <*> sherlockClientTokenOpt
                   <*> sherlockClientIDOpt
-                  <*> organizationIDOpt
-                  <*> projectIDOpt
-                  <*> revisionIDOpt
                 where
                     sherlockCmdPathOpt = strOption (long "sherlock-cli" <> metavar "STRING" <> help "Path to the sherlock-cli executable")
                     sherlockUrlOpt = strOption(long "sherlock-url" <> metavar "STRING" <> help "URL for Sherlock service")
@@ -55,13 +51,10 @@ runIPROpts = RunIPR.IPROpts
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
 
 -- org IDs are ints. project and revision IDs are strings
-syOpts :: Parser Int -> Parser Text -> Parser Text -> Parser ScotlandYard.ScotlandYardOpts
-syOpts organizationIDOpt projectIDOpt revisionIDOpt = ScotlandYard.ScotlandYardOpts
+syOpts :: Parser ScotlandYardOpts
+syOpts = ScotlandYardOpts
                      <$> scotlandYardUrlOpt
                      <*> scotlandYardPort
-                     <*> organizationIDOpt
-                     <*> projectIDOpt
-                     <*> revisionIDOpt
                   where
                     scotlandYardUrlOpt = urlOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
                     scotlandYardPort = option auto (long "scotland-yard-port" <> metavar "Port" <> help "Port for Scotland yard service" <> value 8675)

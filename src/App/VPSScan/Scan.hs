@@ -13,6 +13,7 @@ import System.Exit (exitFailure, die)
 
 import Network.HTTP.Req (HttpException)
 
+import App.VPSScan.Types
 import App.VPSScan.Scan.RunSherlock
 import App.VPSScan.Scan.ScotlandYard
 import App.VPSScan.Scan.RunIPR
@@ -20,12 +21,6 @@ import App.VPSScan.Scan.RunIPR
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , scanVpsOpts :: VPSOpts
-  } deriving (Eq, Ord, Show, Generic)
-
-data VPSOpts = VPSOpts
-  { vpsSherlock :: SherlockOpts
-  , vpsIpr :: IPROpts
-  , vpsScotlandYard :: ScotlandYardOpts
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
@@ -55,8 +50,8 @@ vpsScan ::
   , Has Trace sig m
   ) => Path Abs Dir -> ScanCmdOpts -> m ()
 vpsScan basedir ScanCmdOpts{..} = do
-  let VPSOpts{..} = scanVpsOpts
-  response <- tagError Couldn'tGetScanId =<< createScotlandYardScan vpsScotlandYard
+  let vpsOpts@VPSOpts{..} = scanVpsOpts
+  response <- tagError Couldn'tGetScanId =<< createScotlandYardScan vpsScotlandYard vpsOpts
 
   trace $ "Running scan on directory " ++ show basedir
   let scanId = responseScanId response
@@ -64,9 +59,9 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace "Starting IPR scan"
   iprResult <- tagError IPRFailed =<< execIPR basedir vpsIpr
   trace "IPR scan completed. Posting results to Scotland Yard"
-  tagError Couldn'tUpload =<< uploadIPRResults vpsScotlandYard scanId iprResult
+  tagError Couldn'tUpload =<< uploadIPRResults vpsScotlandYard vpsOpts scanId iprResult
   trace "Running Sherlock scan"
-  tagError SherlockFailed =<< execSherlock basedir scanId vpsSherlock
+  tagError SherlockFailed =<< execSherlock basedir scanId vpsSherlock vpsOpts
   trace "Scan complete"
 
 tagError :: Has (Error e') sig m => (e -> e') -> Either e a -> m a
