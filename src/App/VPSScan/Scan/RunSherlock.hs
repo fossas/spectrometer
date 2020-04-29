@@ -11,8 +11,8 @@ import Effect.Exec
 import qualified Data.Text as T
 import App.VPSScan.Types
 
-sherlockCmdArgs :: String -> SherlockOpts ->  VPSOpts -> [String]
-sherlockCmdArgs scanId SherlockOpts{..} VPSOpts{..} = [ "--scan-id", scanId
+sherlockCmdArgs :: String -> VPSOpts -> [String]
+sherlockCmdArgs scanId VPSOpts{..} = [ "--scan-id", scanId
                                           , "--sherlock-api-secret-key", sherlockClientToken
                                           , "--sherlock-api-client-id", sherlockClientID
                                           , "--sherlock-api-host", sherlockUrl
@@ -20,6 +20,7 @@ sherlockCmdArgs scanId SherlockOpts{..} VPSOpts{..} = [ "--scan-id", scanId
                                           , "--project-id",  T.unpack projectID
                                           , "--revision-id",  T.unpack revisionID
                                           ]
+                                          where SherlockOpts{..} = vpsSherlock
 
 ----- sherlock effect
 
@@ -28,11 +29,11 @@ data SherlockError
   deriving (Eq, Ord, Show, Generic)
 
 data Sherlock m k
-  = ExecSherlock (Path Abs Dir) Text SherlockOpts VPSOpts (Either SherlockError () -> m k)
+  = ExecSherlock (Path Abs Dir) Text VPSOpts (Either SherlockError () -> m k)
   deriving Generic1
 
-execSherlock :: Has Sherlock sig m => Path Abs Dir -> Text -> SherlockOpts -> VPSOpts -> m (Either SherlockError ())
-execSherlock basedir scanId sYopts vpsOpts = send (ExecSherlock basedir scanId sYopts vpsOpts pure)
+execSherlock :: Has Sherlock sig m => Path Abs Dir -> Text -> VPSOpts -> m (Either SherlockError ())
+execSherlock basedir scanId vpsOpts = send (ExecSherlock basedir scanId vpsOpts pure)
 
 instance HFunctor Sherlock
 instance Effect Sherlock
@@ -44,10 +45,11 @@ newtype SherlockC m a = SherlockC { runSherlock :: m a }
 
 instance (Algebra sig m, MonadIO m, Effect sig) => Algebra (Sherlock :+: sig) (SherlockC m) where
   alg (R other) = SherlockC (alg (handleCoercible other))
-  alg (L (ExecSherlock basedir scanId sYopts@SherlockOpts{..} vpsOpts@VPSOpts{..} k)) = (k =<<) . SherlockC $ do
-    let sherlockCommand :: Command
+  alg (L (ExecSherlock basedir scanId vpsOpts@VPSOpts{..} k)) = (k =<<) . SherlockC $ do
+    let SherlockOpts{..} = vpsSherlock
+        sherlockCommand :: Command
         sherlockCommand = Command [sherlockCmdPath] ["scan", toFilePath basedir] Never
-    result <- runExecIO $ exec basedir sherlockCommand $ sherlockCmdArgs (T.unpack scanId) sYopts vpsOpts
+    result <- runExecIO $ exec basedir sherlockCommand $ sherlockCmdArgs (T.unpack scanId) vpsOpts
     case result of
       Left err -> pure (Left (SherlockCommandFailed (T.pack (show err))))
       Right _ -> pure (Right ())

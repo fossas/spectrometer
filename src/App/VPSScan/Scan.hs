@@ -61,7 +61,7 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace "IPR scan completed. Posting results to Scotland Yard"
   tagError Couldn'tUpload =<< uploadIPRResults vpsScotlandYard vpsOpts scanId iprResult
   trace "Running Sherlock scan"
-  tagError SherlockFailed =<< execSherlock basedir scanId vpsSherlock vpsOpts
+  tagError SherlockFailed =<< execSherlock basedir scanId vpsOpts
   trace "Scan complete"
 
 tagError :: Has (Error e') sig m => (e -> e') -> Either e a -> m a
