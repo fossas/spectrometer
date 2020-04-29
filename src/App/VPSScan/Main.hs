@@ -22,13 +22,13 @@ commands = hsubparser scanCommand
 
 
 vpsOpts :: Parser VPSOpts
-vpsOpts = VPSOpts <$> runSherlockOpts <*> runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt 
+vpsOpts = VPSOpts <$> runSherlockOpts <*> runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
             where
               organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
-runSherlockOpts :: Parser (SherlockOpts)
+runSherlockOpts :: Parser SherlockOpts
 runSherlockOpts = SherlockOpts
                   <$> sherlockCmdPathOpt
                   <*> sherlockUrlOpt
@@ -65,5 +65,4 @@ scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan
   scanOptsParser = ScanCmdOpts
                    <$> basedirOpt
                    <*> vpsOpts
-
   basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")

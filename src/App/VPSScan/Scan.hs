@@ -52,15 +52,18 @@ vpsScan ::
 vpsScan basedir ScanCmdOpts{..} = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
   response <- tagError Couldn'tGetScanId =<< createScotlandYardScan vpsOpts
+  let scanId = responseScanId response
 
   trace $ "Running scan on directory " ++ show basedir
-  let scanId = responseScanId response
   trace $ "Scan ID from Scotland yard is " ++ show scanId
   trace "Starting IPR scan"
+
   iprResult <- tagError IPRFailed =<< execIPR basedir vpsIpr
   trace "IPR scan completed. Posting results to Scotland Yard"
+
   tagError Couldn'tUpload =<< uploadIPRResults vpsOpts scanId iprResult
   trace "Running Sherlock scan"
+
   tagError SherlockFailed =<< execSherlock basedir scanId vpsOpts
   trace "Scan complete"
 
