@@ -15,9 +15,7 @@ import System.Environment (lookupEnv)
 import System.Exit (die)
 import qualified Data.Text as T
 import OptionExtensions
-import Control.Monad.Except
-import Text.URI
-import Network.HTTP.Req (useURI, port)
+import Network.HTTP.Req (https)
 
 appMain :: IO ()
 appMain = do
@@ -27,7 +25,7 @@ appMain = do
   maybeApiKey <- fmap T.pack <$> lookupEnv "FOSSA_API_KEY"
 
   basedir <- validateDir optBasedir
- 
+
   setCurrentDir basedir
 
   case optCommand of
@@ -58,15 +56,14 @@ opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
     <*> strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
-    <*> urlOption (long "endpoint" <> metavar "Foo" <> help "The FOSSA API server base URL" <> value urlOpts)
+    <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value urlOpts)
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> comm
     <**> helper
-    where Just (Right defaultFossaUrl') = runExceptT $ mkURI "https://app.fossa.coma"
-          Just (Right defaultFossaUrl) = useURI defaultFossaUrl'
-          (url, _) = defaultFossaUrl
-          urlOpts = UrlOption url $ port 80
+    where
+      baseUrl = https "app.fossa.com"
+      urlOpts = UrlOption baseUrl $ mempty
 
 comm :: Parser Command
 comm = hsubparser
