@@ -21,7 +21,7 @@ import App.VPSScan.Scan.RunIPR
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , scanVpsOpts :: VPSOpts
-  } deriving (Eq, Ord, Show, Generic)
+  } 
 
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do

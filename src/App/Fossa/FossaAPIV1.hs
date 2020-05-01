@@ -33,6 +33,7 @@ import Prologue
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Data.Maybe (catMaybes)
+import OptionExtensions
 
 newtype FossaReq a = FossaReq { unFossaReq :: ErrorC FossaError IO a }
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -90,7 +91,7 @@ data ProjectMetadata = ProjectMetadata
   } deriving (Eq, Ord, Show, Generic)
 
 uploadAnalysis
-  :: Url 'Https -- ^ base url
+  :: UrlOption -- ^ base url
   -> Text -- ^ api key
   -> ProjectRevision
   -> ProjectMetadata
@@ -105,7 +106,7 @@ uploadAnalysis baseurl key ProjectRevision{..} metadata projects = do
           <> "title" =: fromMaybe projectName (projectTitle metadata)
           <> header "Authorization" ("token " <> encodeUtf8 key)
           <> mkMetadataOpts metadata
-  resp <- req POST (uploadUrl baseurl) (ReqBodyJson sourceUnits) jsonResponse opts
+  resp <- req POST (uploadUrl $ urlOptionUrl baseurl) (ReqBodyJson sourceUnits) jsonResponse opts
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Option scheme

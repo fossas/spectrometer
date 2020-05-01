@@ -19,12 +19,13 @@ import Network.HTTP.Req
 import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)
+import OptionExtensions
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
 
 testMain
-  :: Url 'Https -- ^ api base url
+  :: UrlOption -- ^ api base url
   -> Text -- ^ api key
   -> Severity
   -> Int -- ^ timeout (seconds)
@@ -47,10 +48,10 @@ testMain baseurl apiKey logSeverity timeoutSeconds overrideName overrideRevision
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild baseurl apiKey revision
+      waitForBuild (urlOptionUrl baseurl) apiKey revision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues baseurl apiKey revision
+      issues <- waitForIssues (urlOptionUrl baseurl) apiKey revision
       logSticky ""
 
       if null (Fossa.issuesIssues issues)
