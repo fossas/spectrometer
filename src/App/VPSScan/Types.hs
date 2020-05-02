@@ -9,7 +9,7 @@ import qualified App.VPSScan.Scan.RunIPR as RunIPR
 import OptionExtensions (UrlOption)
 
 data ScotlandYardOpts = ScotlandYardOpts
-  { scotlandYardUrl :: UrlOption }
+  { scotlandYardUrl :: UrlOption } deriving Generic
 
 data SherlockOpts = SherlockOpts
   { sherlockCmdPath :: String
@@ -25,4 +25,4 @@ data VPSOpts = VPSOpts
   , organizationID :: Int
   , projectID :: Text
   , revisionID :: Text
-  }
+  } deriving Generic

@@ -5,14 +5,14 @@ where
 import Prologue
 import Options.Applicative
 import qualified Data.Text as T
-import Network.HTTP.Req --(Url, Option, useURI)
+import Network.HTTP.Req
 import Text.URI (mkURI)
 
 data UrlOption = UrlOption
   { urlOptionUrl :: Url 'Https
   , urlOptionOptions :: Option 'Https
   }
-  -- deriving (Eq, Ord, Show, Generic)
+  deriving Generic
 
 urlOption :: Mod OptionFields UrlOption -> Parser UrlOption
 urlOption = option parseUrl
