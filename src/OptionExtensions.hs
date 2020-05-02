@@ -5,7 +5,7 @@ where
 import Prologue
 import Options.Applicative
 import qualified Data.Text as T
-import Network.HTTP.Req
+import Network.HTTP.Req (Url, useURI, Scheme( Https ), Option)
 import Text.URI (mkURI)
 
 data UrlOption = UrlOption
