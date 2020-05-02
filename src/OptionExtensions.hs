@@ -8,10 +8,10 @@ import qualified Data.Text as T
 import Network.HTTP.Req --(Url, Option, useURI)
 import Text.URI (mkURI)
 
-data UrlOption = UrlOption  
+data UrlOption = UrlOption
   { urlOptionUrl :: Url 'Https
   , urlOptionOptions :: Option 'Https
-  } 
+  }
   -- deriving (Eq, Ord, Show, Generic)
 
 urlOption :: Mod OptionFields UrlOption -> Parser UrlOption
