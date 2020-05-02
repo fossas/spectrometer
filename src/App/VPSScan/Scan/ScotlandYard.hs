@@ -56,7 +56,7 @@ createScan VPSOpts{..} = do
 postIprResults :: ToJSON a => VPSOpts -> Text -> a -> HTTP ()
 postIprResults VPSOpts{..} scanId value = do
   let ScotlandYardOpts{..} = vpsScotlandYard
-  _ <- req POST (scanDataEndpoint (urlOptionUrl scotlandYardUrl) projectID scanId) (ReqBodyJson value) ignoreResponse $ (urlOptionOptions scotlandYardUrl <> header "Content-Type" "application/json")
+  _ <- req POST (scanDataEndpoint (urlOptionUrl scotlandYardUrl) projectID scanId) (ReqBodyJson value) ignoreResponse (urlOptionOptions scotlandYardUrl <> header "Content-Type" "application/json")
   pure ()
 
 ----- scotland yard effect
