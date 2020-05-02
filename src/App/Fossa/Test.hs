@@ -15,7 +15,6 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
-import Network.HTTP.Req
 import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)
@@ -48,10 +47,10 @@ testMain baseurl apiKey logSeverity timeoutSeconds overrideName overrideRevision
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild (urlOptionUrl baseurl) apiKey revision
+      waitForBuild baseurl apiKey revision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues (urlOptionUrl baseurl) apiKey revision
+      issues <- waitForIssues baseurl apiKey revision
       logSticky ""
 
       if null (Fossa.issuesIssues issues)
@@ -134,7 +133,7 @@ renderTestError TestBuildFailed = "The build failed. Check the FOSSA webapp for 
 
 waitForBuild
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
-  => Url 'Https
+  => UrlOption
   -> Text -- ^ api key
   -> Fossa.ProjectRevision
   -> m ()
@@ -153,7 +152,7 @@ waitForBuild baseurl key revision = do
 
 waitForIssues
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
-  => Url 'Https
+  => UrlOption
   -> Text -- ^ api key
   -> Fossa.ProjectRevision
   -> m Fossa.Issues
