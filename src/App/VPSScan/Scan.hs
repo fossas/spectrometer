@@ -56,16 +56,36 @@ vpsScan basedir ScanCmdOpts{..} = do
 
   trace $ "Running scan on directory " ++ show basedir
   trace $ "Scan ID from Scotland yard is " ++ show scanId
-  trace "Starting IPR scan"
+  trace "[All] Running IPR and Sherlock scans in parallel"
+  runIPRScan basedir scanId vpsOpts
+  runSherlockScan basedir scanId vpsOpts
+  trace "[All] Scans complete"
+
+runSherlockScan ::
+  ( Has Sherlock sig m
+  , Has (Error VPSError) sig m
+  , Has Trace sig m
+  ) => Path Abs Dir -> Text -> VPSOpts -> m ()
+runSherlockScan basedir scanId vpsOpts = do
+  trace "[Sherlock] Starting Sherlock scan"
+  tagError SherlockFailed =<< execSherlock basedir scanId vpsOpts
+  trace "[Sherlock] Sherlock scan complete"
+
+runIPRScan ::
+  ( Has ScotlandYard sig m
+  , Has IPR sig m
+  , Has (Error VPSError) sig m
+  , Has Trace sig m
+  ) => Path Abs Dir ->  Text -> VPSOpts -> m ()
+runIPRScan basedir scanId vpsOpts@VPSOpts{..} = do
+  trace "[IPR] Starting IPR scan"
 
   iprResult <- tagError IPRFailed =<< execIPR basedir vpsIpr
-  trace "IPR scan completed. Posting results to Scotland Yard"
+  trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
   tagError Couldn'tUpload =<< uploadIPRResults vpsOpts scanId iprResult
-  trace "Running Sherlock scan"
-
-  tagError SherlockFailed =<< execSherlock basedir scanId vpsOpts
-  trace "Scan complete"
+  trace "[IPR] Post to Scotland Yard complete"
+  trace "[IPR] IPR scan complete"
 
 tagError :: Has (Error e') sig m => (e -> e') -> Either e a -> m a
 tagError f (Left e) = throwError (f e)
