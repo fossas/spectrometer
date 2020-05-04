@@ -49,6 +49,7 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
+import qualified Strategy.Scala as Scala
 import Types
 import OptionExtensions
 
@@ -167,40 +168,41 @@ renderCause e = fromMaybe renderSomeException $
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
-  [ GoList.discover
-  , Gomod.discover
-  , GopkgToml.discover
-  , GopkgLock.discover
-  , GlideLock.discover
+  --[ GoList.discover
+  --, Gomod.discover
+  --, GopkgToml.discover
+  --, GopkgLock.discover
+  --, GlideLock.discover
+--
+  --, Gradle.discover
+--
+  --, MavenPlugin.discover
+  --, MavenPom.discover
+--
+  --, PackageJson.discover
+  --, NpmLock.discover
+  --, NpmList.discover
+  --, YarnLock.discover
+--
+  --, PackagesConfig.discover
+  --, PackageReference.discover
+  --, ProjectAssetsJson.discover
+  --, ProjectJson.discover
+  --, Nuspec.discover
+--
+  --, Pipenv.discover
+  --, SetupPy.discover
+  --, ReqTxt.discover
+--
+  --, BundleShow.discover
+  --, GemfileLock.discover
+--
+  --, Carthage.discover
+--
+  --, Podfile.discover
+  --, PodfileLock.discover
 
-  , Gradle.discover
-
-  , MavenPlugin.discover
-  , MavenPom.discover
-
-  , PackageJson.discover
-  , NpmLock.discover
-  , NpmList.discover
-  , YarnLock.discover
-
-  , PackagesConfig.discover
-  , PackageReference.discover
-  , ProjectAssetsJson.discover
-  , ProjectJson.discover
-  , Nuspec.discover
-
-  , Pipenv.discover
-  , SetupPy.discover
-  , ReqTxt.discover
-
-  , BundleShow.discover
-  , GemfileLock.discover
-
-  , Carthage.discover
-
-  , Podfile.discover
-  , PodfileLock.discover
-  ]
+  [Scala.discover]
 
 updateProgress :: Has Logger sig m => Progress -> m ()
 updateProgress Progress{..} =
