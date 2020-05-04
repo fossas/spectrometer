@@ -110,7 +110,7 @@ uploadAnalysis baseurl key ProjectRevision{..} metadata projects = do
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Option scheme
-mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes $
+mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes 
   [ ("branch" =:) <$> projectBranch
   , ("projectURL" =:) <$> projectUrl
   , ("jiraProjectKey" =:) <$> projectJiraKey

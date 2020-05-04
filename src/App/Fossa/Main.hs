@@ -63,7 +63,7 @@ opts =
     <**> helper
     where
       baseUrl = https "app.fossa.com"
-      urlOpts = UrlOption baseUrl $ mempty
+      urlOpts = UrlOption baseUrl mempty
 
 comm :: Parser Command
 comm = hsubparser
