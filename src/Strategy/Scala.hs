@@ -23,7 +23,7 @@ discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover basedir =
   walk
     ( \_ _ files ->
-        case find (\f -> fileName f == "build.sbt" || fileName f == "build.scala") files of
+        case find (\f -> fileName f == "build.sbt") files of
           Nothing -> pure WalkContinue
           Just file -> do
             runStrategy "scala-sbt" ScalaGroup (analyze basedir file)
