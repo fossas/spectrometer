@@ -45,8 +45,8 @@ buildGlobalClosure files = do
   -- Because the group/artifact/version are required to match, we can just build edges between _coordinates_, rather than between _pom files_
   buildClosure :: Map (Path Abs File) Pom -> GlobalClosure
   buildClosure cache = GlobalClosure
-    { globalGraph = AM.overlay (AM.vertices (map pomCoord (M.elems cache))) $ AM.overlays
-        [AM.edge parentCoord (pomCoord pom)
+    { globalGraph = AM.overlay (AM.vertices (map pomCoord (M.elems cache))) $ AM.edges
+        [(parentCoord,pomCoord pom)
           | pom <- M.elems cache
           , Just parentCoord <- [pomParentCoord pom]]
     , globalPoms = indexBy (pomCoord . snd) (M.toList cache)

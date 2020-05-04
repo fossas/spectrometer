@@ -3,6 +3,7 @@ module Strategy.Scala
   )
 where
 
+import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Effect.Error
 import Control.Effect.Output
 import Data.Maybe (catMaybes)
@@ -12,10 +13,9 @@ import Data.Text.Lazy.Encoding (decodeUtf8)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
-import Graphing (Graphing)
 import Prologue
 import Strategy.Maven.Pom (mkProjectClosure)
-import Strategy.Maven.Pom.Closure (MavenProjectClosure (..), buildProjectClosures)
+import Strategy.Maven.Pom.Closure (buildProjectClosures)
 import Strategy.Maven.Pom.Resolver (GlobalClosure (..), buildGlobalClosure)
 import Types
 
