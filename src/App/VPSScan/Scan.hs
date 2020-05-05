@@ -9,7 +9,7 @@ import Prologue
 import Control.Carrier.Error.Either
 import Path.IO
 import System.Exit (exitFailure, die)
-import Control.Concurrent.Async (concurrently_)
+import Control.Concurrent.Async (concurrently)
 import Control.Carrier.Trace.Printing
 
 import Network.HTTP.Req (HttpException)
@@ -59,10 +59,13 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
   trace "[IPR] Starting IPR scan"
-  _ <- liftIO $ concurrently_
+  (iprResult, sherlockResult) <- liftIO $ concurrently
                 (runError @VPSError $ runIPR $ runScotlandYard $ runTrace $ runIPRScan basedir scanId vpsOpts)
                 (runError @VPSError $ runSherlock $ runTrace $ runSherlockScan basedir scanId vpsOpts)
-  trace "[All] Scans complete"
+  case (iprResult, sherlockResult) of
+    (Right _, Right _) -> trace "[All] Scans complete"
+    (Left err, _) -> throwError err
+    (_, Left err) -> throwError err
 
 runSherlockScan ::
   ( Has Sherlock sig m
@@ -80,7 +83,6 @@ runIPRScan ::
   , Has Trace sig m
   ) => Path Abs Dir ->  Text -> VPSOpts -> m ()
 runIPRScan basedir scanId vpsOpts@VPSOpts{..} = do
-
   iprResult <- tagError IPRFailed =<< execIPR basedir vpsIpr
   trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
