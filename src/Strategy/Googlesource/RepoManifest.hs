@@ -8,7 +8,6 @@ module Strategy.Googlesource.RepoManifest
   , validateProject
   , validateProjects
   , nestedValidatedProjects
-
   , RepoManifest(..)
   , ManifestRemote(..)
   , ManifestDefault(..)
@@ -54,7 +53,7 @@ nestedValidatedProjects rootDir file = do
   manifest <- readContentsXML @RepoManifest file
   manifestWithFixedRemotes <- runError @ManifestGitConfigError $ fixRelativeRemotes manifest rootDir
   case manifestWithFixedRemotes of
-    Left _ -> fail "Error parsing remotes"
+    Left err -> fail $ "Error parsing remotes: " ++ show err
     Right fixedManifest -> do
       validatedIncludedProjects <- validatedProjectsFromIncludes fixedManifest (parent file) rootDir
       let validatedDirectProjects = validateProjects fixedManifest
@@ -70,29 +69,30 @@ fixRelativeRemotes manifest rootDir = do
 
 fixRemote :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
 fixRemote rootDir remote = do
-  let relConfig = [relfile|config|]
+  let configFile = rootDir </> $(mkRelFile "manifests.git/config")
 
-  exists <- doesFileExist (rootDir </> $(mkRelFile "manifests.git") </> relConfig)
-  unless exists (throwError MissingGitConfig)
+  exists <- doesFileExist configFile
+  unless exists (throwError $ MissingGitConfig $ T.pack $ show configFile)
 
-  contents <- readContentsText (rootDir </> $(mkRelFile "manifests.git") </> relConfig)
+  contents <- readContentsText configFile
 
   case parseConfig contents of
     Left err -> throwError (GitConfigParse (T.pack (errorBundlePretty err)))
     Right config -> do
       let maybeSection = find isOrigin config
       case maybeSection of
-        Nothing -> throwError InvalidRemote
+        Nothing -> throwError $ InvalidRemote "No section found"
         Just (Section _ properties) ->
           case HM.lookup "url" properties of
-            Just remoteUrl -> 
+            Just remoteUrl ->
               case (mkURI remoteUrl, mkURI $ remoteFetch remote) of
                 (Just rUrl, Just fUrl) ->
-                  case rUrl `relativeTo` fUrl of
+                  case fUrl `relativeTo` rUrl of
                     Just url -> pure $ remote { remoteFetch = render url }
-                    Nothing -> throwError InvalidRemote
-                _ -> throwError InvalidRemote
-            Nothing -> throwError InvalidRemote
+                    -- Just url -> throwError $ InvalidRemote $ "relativeTo succeeded for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> (remoteFetch remote) <> " and url = " <> (T.pack $ show url)
+                    Nothing -> throwError $ InvalidRemote $ "relativeTo failed for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> (remoteFetch remote)
+                _ -> throwError $ InvalidRemote "mkURI failed"
+            Nothing -> throwError $ InvalidRemote "url lookup failed"
 
   where
   isOrigin :: Section -> Bool
@@ -193,7 +193,8 @@ revisionForProject manifest project =
 urlForProject :: RepoManifest -> ManifestProject -> Maybe Text
 urlForProject manifest project = do
   remote <- remoteForProject manifest project
-  pure $ remoteFetch remote <> "/" <> projectName project
+  let strippedRemoteFetch = T.dropWhileEnd (\c -> c == '/') $ remoteFetch remote
+  pure $ strippedRemoteFetch <> "/" <> projectName project
 
 remoteForProject :: RepoManifest -> ManifestProject -> Maybe ManifestRemote
 remoteForProject manifest project =
@@ -257,9 +258,9 @@ buildGraph projects = unfold projects (const []) toDependency
                  }
 
 data ManifestGitConfigError =
-    InvalidRemote
+    InvalidRemote Text
   | GitConfigParse Text
-  | MissingGitConfig
+  | MissingGitConfig Text
   | MissingGitHead
   | InvalidBranchName Text
   | MissingBranch Text

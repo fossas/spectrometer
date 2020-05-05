@@ -237,13 +237,13 @@ spec_analyze = do
     describe "for a manifest with an include tag" $ do
       it "reads both files and gets the dependencies from the included file" $ do
         case projectsForManifestWithIncludes of
-          Left _ -> expectationFailure("could not parse nested manifest")
+          Left err -> expectationFailure("could not parse nested manifest: " ++ show err)
           Right (Left _) -> expectationFailure("could not parse nested manifest, second level")
           Right (Right ps) -> ps `shouldMatchList` [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
 
     describe "for a manifest with a relative remote" $ do
       it "gets the remote from the git config" $ do
         case projectsForManifestWithRelativeRemote of
-          Left _ -> expectationFailure("could not parse nested manifest")
-          Right (Left _) -> expectationFailure("could not parse nested manifest, second level")
+          Left err -> expectationFailure("could not parse nested manifest: " ++ show err)
+          Right (Left err) -> expectationFailure("could not parse nested manifest, second level: " ++ show err)
           Right (Right ps) -> ps `shouldMatchList` [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
