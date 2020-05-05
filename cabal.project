@@ -10,4 +10,4 @@ source-repository-package
 source-repository-package
     type: git
     location: https://github.com/cnr/fused-effects-exceptions.git
-    tag: 4478543ce3d372fb2200a1b588492020d458eb39
+    tag: e8dc78e00da50f99c427a8b324e367eaf8ad0555
