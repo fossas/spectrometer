@@ -198,6 +198,7 @@ test-suite tests
   -- cabal-fmt: expand test
   other-modules:
     Carthage.CarthageTest
+    Clojure.ClojureTest
     Cocoapods.PodfileLockTest
     Cocoapods.PodfileTest
     Go.GlideLockTest

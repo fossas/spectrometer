@@ -11,6 +11,9 @@
 -- >   [org.clojure/spec.alpha "0.2.176"] nil}}
 module Strategy.Clojure
   ( discover,
+    buildGraph,
+    Deps (..),
+    ClojureDep (..),
   )
 where
 
@@ -103,7 +106,7 @@ buildEdges deps = M.traverseWithKey single (depsTree deps) *> pure ()
           buildEdges deeper
 
 toClojureNode :: ClojureDep -> ClojureNode
-toClojureNode dep = ClojureNode (depName dep) (depVersion dep)
+toClojureNode dep = ClojureNode (T.replace "/" ":" (depName dep)) (depVersion dep)
 
 toDependency :: ClojureNode -> Set ClojureLabel -> Dependency
 toDependency node = foldr applyLabel start
@@ -130,7 +133,7 @@ instance EDN.FromEDN ClojureDep where
     version <- EDN.vecGet 1 vec
     attributes <- ednVecToMap (V.drop 2 vec)
 
-    scope <- optional (EDN.mapGetSymbol "scope" attributes)
+    scope <- optional (EDN.mapGetKeyword "scope" attributes)
     pure (ClojureDep name version scope)
 
 -- in the input EDN, a dependency is a vector of values, like:
