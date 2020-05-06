@@ -58,7 +58,7 @@ nestedValidatedProjects rootDir file = do
       validatedIncludedProjects <- validatedProjectsFromIncludes fixedManifest (parent file) rootDir
       let validatedDirectProjects = validateProjects fixedManifest
       case validatedDirectProjects of
-        Nothing -> fail "Error"
+        Nothing -> fail "Error creating validated projects"
         Just ps -> pure $ ps ++ validatedIncludedProjects
 
 fixRelativeRemotes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => RepoManifest -> Path Rel Dir -> m RepoManifest
@@ -89,10 +89,9 @@ fixRemote rootDir remote = do
                 (Just rUrl, Just fUrl) ->
                   case fUrl `relativeTo` rUrl of
                     Just url -> pure $ remote { remoteFetch = render url }
-                    -- Just url -> throwError $ InvalidRemote $ "relativeTo succeeded for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> (remoteFetch remote) <> " and url = " <> (T.pack $ show url)
                     Nothing -> throwError $ InvalidRemote $ "relativeTo failed for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> (remoteFetch remote)
                 _ -> throwError $ InvalidRemote "mkURI failed"
-            Nothing -> throwError $ InvalidRemote "url lookup failed"
+            Nothing -> throwError $ InvalidRemote "url lookup failed in git remote failed -- no URL entry found"
 
   where
   isOrigin :: Section -> Bool
