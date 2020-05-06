@@ -1,3 +1,14 @@
+-- | The clojure strategy parses EDN from @lein deps :tree-data@
+--
+-- The output looks something like:
+--
+-- > {[clojure-complete "0.2.5" :exclusions [[org.clojure/clojure]]] nil,
+-- >  [koan-engine "0.2.5"] {[fresh "1.0.2"] nil},
+-- >  [lein-koan "0.1.5" :scope "test"] nil,
+-- >  [nrepl "0.6.0" :exclusions [[org.clojure/clojure]]] nil,
+-- >  [org.clojure/clojure "1.10.0"]
+-- >  {[org.clojure/core.specs.alpha "0.2.44"] nil,
+-- >   [org.clojure/spec.alpha "0.2.176"] nil}}
 module Strategy.Clojure
   ( discover,
   )
@@ -57,12 +68,14 @@ analyze file = do
     Left err -> throwError (CommandParseError "lein deps :tree-data" (T.pack err))
     Right deps -> pure (buildGraph deps)
 
+-- node type for our LabeledGrapher
 data ClojureNode = ClojureNode
   { nodeName :: Text,
     nodeVersion :: Text
   }
   deriving (Eq, Ord, Show, Generic)
 
+-- label type for our LabeledGrapher
 data ClojureLabel = ScopeLabel Text
   deriving (Eq, Ord, Show, Generic)
 
@@ -75,6 +88,7 @@ buildGraph deps = run . withLabeling toDependency $ do
 topLevelNodes :: Deps -> [ClojureNode]
 topLevelNodes = map toClojureNode . M.keys . depsTree
 
+-- recursively build edges and add labels to dependencies we encounter
 buildEdges :: Has (LabeledGrapher ClojureNode ClojureLabel) sig m => Deps -> m ()
 buildEdges deps = M.traverseWithKey single (depsTree deps) *> pure ()
   where
@@ -138,11 +152,13 @@ ednVecToMap = go M.empty
         value <- EDN.vecGet 1 vec
         go (M.insert key value m) (V.drop 2 vec)
 
+-- | The FromEDN type for lein deps output
 data Deps = Deps
   { depsTree :: Map ClojureDep (Maybe Deps)
   }
   deriving (Eq, Ord, Show, Generic)
 
+-- | A single dependency in the lein deps output
 data ClojureDep = ClojureDep
   { depName :: Text,
     depVersion :: Text,
