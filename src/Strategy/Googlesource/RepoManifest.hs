@@ -64,7 +64,7 @@ nestedValidatedProjects rootDir file = do
 fixRelativeRemotes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => RepoManifest -> Path Rel Dir -> m RepoManifest
 fixRelativeRemotes manifest rootDir = do
   let remotes = manifestRemotes manifest
-  fixedRemotes <- sequenceA $ map (fixRemote rootDir) remotes
+  fixedRemotes <- traverse (fixRemote rootDir) remotes
   pure $ manifest {manifestRemotes = fixedRemotes}
 
 fixRemote :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
@@ -89,7 +89,7 @@ fixRemote rootDir remote = do
                 (Just rUrl, Just fUrl) ->
                   case fUrl `relativeTo` rUrl of
                     Just url -> pure $ remote { remoteFetch = render url }
-                    Nothing -> throwError $ InvalidRemote $ "relativeTo failed for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> (remoteFetch remote)
+                    Nothing -> throwError $ InvalidRemote $ "relativeTo failed for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> remoteFetch remote
                 _ -> throwError $ InvalidRemote "mkURI failed"
             Nothing -> throwError $ InvalidRemote "url lookup failed in git remote failed -- no URL entry found"
 
@@ -111,7 +111,7 @@ validatedProjectsFromIncludes manifest parentDir rootDir = do
     let manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest
         pathRelativeToManifestDir :: Text -> Maybe (Path Rel File)
-        pathRelativeToManifestDir = \file -> (parentDir </>) <$> parseRelFile ("manifests/" ++ T.unpack file)
+        pathRelativeToManifestDir file = (parentDir </>) <$> parseRelFile ("manifests/" ++ T.unpack file)
         manifestFiles :: Maybe [Path Rel File]
         manifestFiles = traverse pathRelativeToManifestDir manifestIncludeFiles
     case manifestFiles of
@@ -192,7 +192,7 @@ revisionForProject manifest project =
 urlForProject :: RepoManifest -> ManifestProject -> Maybe Text
 urlForProject manifest project = do
   remote <- remoteForProject manifest project
-  let strippedRemoteFetch = T.dropWhileEnd (\c -> c == '/') $ remoteFetch remote
+  let strippedRemoteFetch = T.dropWhileEnd (== '/') $ remoteFetch remote
   pure $ strippedRemoteFetch <> "/" <> projectName project
 
 remoteForProject :: RepoManifest -> ManifestProject -> Maybe ManifestRemote
