@@ -46,20 +46,22 @@ discover = walk $ \_ _ files ->
       else pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m, Effect sig) => Path Rel File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> nestedValidatedProjects (parent file) file
 
-nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Effect sig, MonadFail m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
+analyze file = do
+  validatedProjects <- runError @ManifestGitConfigError $ nestedValidatedProjects (parent file) file
+  case validatedProjects of
+    Left err -> fail $ show err
+    Right projects -> pure $ mkProjectClosure file projects
+
+nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m, Effect sig, MonadFail m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do
   manifest <- readContentsXML @RepoManifest file
-  manifestWithFixedRemotes <- runError @ManifestGitConfigError $ fixRelativeRemotes manifest rootDir
-  case manifestWithFixedRemotes of
-    Left err -> fail $ "Error parsing remotes: " ++ show err
-    Right fixedManifest -> do
-      validatedIncludedProjects <- validatedProjectsFromIncludes fixedManifest (parent file) rootDir
-      let validatedDirectProjects = validateProjects fixedManifest
-      case validatedDirectProjects of
-        Nothing -> fail "Error creating validated projects"
-        Just ps -> pure $ ps ++ validatedIncludedProjects
+  manifestWithFixedRemotes <- fixRelativeRemotes manifest rootDir
+  validatedIncludedProjects <- validatedProjectsFromIncludes manifestWithFixedRemotes (parent file) rootDir
+  let validatedDirectProjects = validateProjects manifestWithFixedRemotes
+  case validatedDirectProjects of
+    Nothing -> fail "Error creating validated projects"
+    Just ps -> pure $ ps ++ validatedIncludedProjects
 
 fixRelativeRemotes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => RepoManifest -> Path Rel Dir -> m RepoManifest
 fixRelativeRemotes manifest rootDir = do
