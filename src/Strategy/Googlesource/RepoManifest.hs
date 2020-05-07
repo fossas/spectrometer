@@ -33,6 +33,7 @@ import Text.URI
 import Text.GitConfig.Parser (Section(..), parseConfig)
 import qualified Data.HashMap.Strict as HM
 import Text.Megaparsec (errorBundlePretty)
+import Effect.ErrorUtils (tagError)
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -69,6 +70,10 @@ fixRelativeRemotes manifest rootDir = do
   fixedRemotes <- traverse (fixRemote rootDir) remotes
   pure $ manifest {manifestRemotes = fixedRemotes}
 
+maybeToEither :: e -> Maybe a -> Either e a
+maybeToEither e Nothing = Left e
+maybeToEither _ (Just a) = Right a
+
 fixRemote :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
 fixRemote rootDir remote = do
   let configFile = rootDir </> $(mkRelFile "manifests.git/config")
@@ -77,23 +82,19 @@ fixRemote rootDir remote = do
   unless exists (throwError $ MissingGitConfig $ T.pack $ show configFile)
 
   contents <- readContentsText configFile
+  config <- tagError (GitConfigParse . T.pack . errorBundlePretty) (parseConfig contents)
 
-  case parseConfig contents of
-    Left err -> throwError (GitConfigParse (T.pack (errorBundlePretty err)))
-    Right config -> do
-      let maybeSection = find isOrigin config
-      case maybeSection of
-        Nothing -> throwError $ InvalidRemote "No section found"
-        Just (Section _ properties) ->
-          case HM.lookup "url" properties of
-            Just remoteUrl ->
-              case (mkURI remoteUrl, mkURI $ remoteFetch remote) of
-                (Just rUrl, Just fUrl) ->
-                  case fUrl `relativeTo` rUrl of
-                    Just url -> pure $ remote { remoteFetch = render url }
-                    Nothing -> throwError $ InvalidRemote $ "relativeTo failed for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> remoteFetch remote
-                _ -> throwError $ InvalidRemote "mkURI failed"
-            Nothing -> throwError $ InvalidRemote "url lookup failed in git remote failed -- no URL entry found"
+  let fixedUri :: Either Text URI
+      fixedUri = do
+        (Section _ properties) <- maybeToEither "No section found" $ find isOrigin config
+        remoteUrl <- maybeToEither "url lookup failed in git remote" (HM.lookup "url" properties)
+        rUrl <- maybeToEither "mkURI failed on rUrl" $ mkURI remoteUrl
+        fUrl <- maybeToEither "mkURI failed on remote fetch URL" $ mkURI $ remoteFetch remote
+        maybeToEither ("relativeTo failed for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> remoteFetch remote)
+                      (fUrl `relativeTo` rUrl)
+
+  url <- tagError InvalidRemote fixedUri
+  pure $ remote { remoteFetch = render url }
 
   where
   isOrigin :: Section -> Bool
@@ -108,7 +109,7 @@ fixRemote rootDir remote = do
 -- </manifest>
 -- If you see that, you need to look for `manifests/default.xml`, where the manifests directory will
 -- be a sibling to the original manifest you were parsing.
-validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Effect sig, MonadFail m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
+validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m, Effect sig, MonadFail m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
 validatedProjectsFromIncludes manifest parentDir rootDir = do
     let manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest
