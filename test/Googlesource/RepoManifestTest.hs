@@ -1,4 +1,5 @@
 {-# language TemplateHaskell #-}
+{-# language QuasiQuotes #-}
 
 module Googlesource.RepoManifestTest
   ( spec_analyze
@@ -14,6 +15,7 @@ import DepTypes
 import Parse.XML
 import Strategy.Googlesource.RepoManifest
 import Test.Tasty.Hspec
+import Text.URI.QQ
 import Effect.ReadFS
 import Control.Carrier.Error.Either
 import Control.Carrier.Fail.Either
@@ -137,35 +139,35 @@ dependencyFive = Dependency { dependencyType = GooglesourceType
 validatedProjectOne :: ValidatedProject
 validatedProjectOne = ValidatedProject { validatedProjectName = "platform/art"
                                        , validatedProjectPath = "art"
-                                       , validatedProjectUrl = "https://android.googlesource.com/platform/art"
+                                       , validatedProjectUrl = [uri|https://android.googlesource.com/platform/art|]
                                        , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
                                        }
 
 validatedProjectTwo :: ValidatedProject
 validatedProjectTwo = ValidatedProject { validatedProjectName = "platform/bionic"
                                        , validatedProjectPath = "bionic"
-                                       , validatedProjectUrl = "https://android.googlesource.com/platform/bionic"
+                                       , validatedProjectUrl = [uri|https://android.googlesource.com/platform/bionic|]
                                        , validatedProjectRevision = "57b7d1574276f5e7f895c884df29f45859da74b6"
                                        }
 
 validatedProjectThree :: ValidatedProject
 validatedProjectThree = ValidatedProject { validatedProjectName = "platform/bootable/recovery"
                                        , validatedProjectPath = "bootable/recovery"
-                                       , validatedProjectUrl = "https://android.othersource.com/platform/bootable/recovery"
+                                       , validatedProjectUrl = [uri|https://android.othersource.com/platform/bootable/recovery|]
                                        , validatedProjectRevision = "google/android-6.0.1_r74"
                                        }
 
 validatedProjectFour :: ValidatedProject
 validatedProjectFour = ValidatedProject { validatedProjectName = "platform/cts"
                                        , validatedProjectPath = "cts"
-                                       , validatedProjectUrl = "https://android.othersource.com/platform/cts"
+                                       , validatedProjectUrl = [uri|https://android.othersource.com/platform/cts|]
                                        , validatedProjectRevision = "1111"
                                        }
 
 validatedProjectFive :: ValidatedProject
 validatedProjectFive = ValidatedProject { validatedProjectName = "platform/dalvik"
                                        , validatedProjectPath = "dalvik"
-                                       , validatedProjectUrl = "https://android.googlesource.com/platform/dalvik"
+                                       , validatedProjectUrl = [uri|https://android.googlesource.com/platform/dalvik|]
                                        , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
                                        }
                                       

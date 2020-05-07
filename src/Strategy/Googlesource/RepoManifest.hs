@@ -168,7 +168,7 @@ data ManifestInclude = ManifestInclude { includeName :: Text } deriving (Eq, Ord
 data ValidatedProject = ValidatedProject
   { validatedProjectName     :: Text
   , validatedProjectPath     :: Text
-  , validatedProjectUrl      :: Text
+  , validatedProjectUrl      :: URI
   , validatedProjectRevision :: Text
   } deriving (Eq, Ord, Show, Generic)
 
@@ -192,11 +192,12 @@ revisionForProject manifest project =
   <|> (manifestDefault manifest >>= defaultRevision)
 
 -- The URL for a project is the project's name appended to the fetch attribute of the project's remote
-urlForProject :: RepoManifest -> ManifestProject -> Maybe Text
+urlForProject :: RepoManifest -> ManifestProject -> Maybe URI
 urlForProject manifest project = do
   remote <- remoteForProject manifest project
-  let strippedRemoteFetch = T.dropWhileEnd (== '/') $ remoteFetch remote
-  pure $ strippedRemoteFetch <> "/" <> projectName project
+  remoteUri <- mkURI $ remoteFetch remote
+  projectn <- mkURI $ projectName project
+  projectn `relativeTo` remoteUri
 
 remoteForProject :: RepoManifest -> ManifestProject -> Maybe ManifestRemote
 remoteForProject manifest project =
@@ -254,7 +255,7 @@ buildGraph projects = unfold projects (const []) toDependency
       Dependency { dependencyType = GooglesourceType
                  , dependencyName = validatedProjectName
                  , dependencyVersion = Just (CEq validatedProjectRevision)
-                 , dependencyLocations = [validatedProjectUrl]
+                 , dependencyLocations = [render validatedProjectUrl]
                  , dependencyTags = M.empty
                  , dependencyEnvironments = [EnvProduction]
                  }
