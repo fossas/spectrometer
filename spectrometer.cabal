@@ -115,6 +115,7 @@ library
     Control.Effect.Threaded
     DepTypes
     Discovery.Walk
+    Effect.ErrorUtils
     Effect.Exec
     Effect.Grapher
     Effect.Logger

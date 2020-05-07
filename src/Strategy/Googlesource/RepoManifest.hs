@@ -8,6 +8,7 @@ module Strategy.Googlesource.RepoManifest
   , validateProject
   , validateProjects
   , nestedValidatedProjects
+  , ManifestGitConfigError
   , RepoManifest(..)
   , ManifestRemote(..)
   , ManifestDefault(..)
@@ -47,7 +48,6 @@ discover = walk $ \_ _ files ->
       else pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m, Effect sig) => Path Rel File -> m ProjectClosureBody
-
 analyze file = do
   validatedProjects <- runError @ManifestGitConfigError $ nestedValidatedProjects (parent file) file
   case validatedProjects of

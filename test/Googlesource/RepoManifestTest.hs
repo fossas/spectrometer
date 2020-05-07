@@ -168,19 +168,23 @@ validatedProjectFive = ValidatedProject { validatedProjectName = "platform/dalvi
                                        , validatedProjectUrl = "https://android.googlesource.com/platform/dalvik"
                                        , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
                                        }
+                                      
+validatedProjectList :: [ValidatedProject]
+validatedProjectList = [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
 
 spec_analyze :: Spec
 spec_analyze = do
+  let runIt = runIO . runFail . runError @ReadFSErr . runError @ManifestGitConfigError . runReadFSIO
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
   noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")
-  projectsForManifestWithIncludes <- runIO $ runFail $ runError @ReadFSErr $ runReadFSIO $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata") $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml") 
-  projectsForManifestWithRelativeRemoteNoInclude <- runIO $ runFail $ runError @ReadFSErr $ runReadFSIO $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata/manifest-with-relative-remote-url") $(mkRelFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml") 
-  projectsForManifestWithRelativeRemoteWithInclude <- runIO $ runFail $ runError @ReadFSErr $ runReadFSIO $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata/manifest-with-relative-remote-url") $(mkRelFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml") 
+  projectsForManifestWithIncludes <- runIt $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata") $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml")
+  projectsForManifestWithRelativeRemoteNoInclude <- runIt $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata/manifest-with-relative-remote-url") $(mkRelFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml")
+  projectsForManifestWithRelativeRemoteWithInclude <- runIt $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata/manifest-with-relative-remote-url") $(mkRelFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml")
 
   describe "repo manifest analyzer" $ do
-    describe "for a sane manifest" $ 
-      it "reads a file and constructs a dependency list" $ 
+    describe "for a sane manifest" $
+      it "reads a file and constructs a dependency list" $
         case parseXML basicManifest of
           Right manifest -> do
             manifestProjects manifest `shouldMatchList` basicProjectList
@@ -188,16 +192,16 @@ spec_analyze = do
             manifestRemotes manifest `shouldMatchList` basicRemoteList
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
-    describe "for a manifest with no default remote" $ 
-      it "reads a file and constructs a dependency list" $ 
+    describe "for a manifest with no default remote" $
+      it "reads a file and constructs a dependency list" $
         case parseXML noDefaultRemoteManifest of
           Right manifest -> do
             manifestProjects manifest `shouldMatchList` [projectOne, projectTwoWithRemote, projectThree, projectFour, projectFive]
             manifestRemotes manifest `shouldMatchList` basicRemoteList
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
-    describe "for a manifest with no default revision" $ 
-      it "reads a file and constructs a dependency list" $ 
+    describe "for a manifest with no default revision" $
+      it "reads a file and constructs a dependency list" $
         case parseXML noDefaultRevisionManifest of
           Right manifest -> do
             manifestProjects manifest `shouldMatchList` basicProjectList
@@ -205,8 +209,8 @@ spec_analyze = do
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
   describe "repo manifest buildGraph" $ do
-    describe "for a sane manifest" $ 
-      it "builds a graph properly" $ 
+    describe "for a sane manifest" $
+      it "builds a graph properly" $
         case parseXML basicManifest of
           Right manifest -> do
             let projects = case validateProjects manifest of
@@ -218,8 +222,8 @@ spec_analyze = do
             expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] graph
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
-    describe "for a manifest with no default remote" $ 
-      it "returns nothing for validateProject on a project with no remote attr" $ 
+    describe "for a manifest with no default remote" $
+      it "returns nothing for validateProject on a project with no remote attr" $
         case parseXML noDefaultRemoteManifest of
           Right manifest -> do
             let vps = validateProject manifest <$> manifestProjects manifest
@@ -227,31 +231,29 @@ spec_analyze = do
 
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
-    describe "for a manifest with no default revision" $ 
-      it "finds the projects with remotes specified" $ 
+    describe "for a manifest with no default revision" $
+      it "finds the projects with remotes specified" $
         case parseXML noDefaultRevisionManifest of
           Right manifest -> do
             let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Nothing, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
           Left err -> expectationFailure $ T.unpack $ "could not parse repo manifest file: " <> xmlErrorPretty err
 
-    describe "for a manifest with an include tag" $ 
-      it "reads both files and gets the dependencies from the included file" $ 
-        case projectsForManifestWithIncludes of
-          Left err -> expectationFailure $ "could not parse nested manifest: " ++ show err
-          Right (Left _) -> expectationFailure "could not parse nested manifest, second level"
-          Right (Right ps) -> ps `shouldMatchList` [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
+    let withResult result f =
+          case result of
+            Left err -> expectationFailure $ "could not parse nested manifest: " ++ show err
+            Right (Left _) -> expectationFailure "could not parse nested manifest, second level"
+            Right (Right (Left _)) -> expectationFailure "could not parse nested manifest, third level"
+            Right (Right (Right res)) -> f res
 
-    describe "for a manifest with a relative remote and no include" $ 
-      it "gets the remote from the git config" $ 
-        case projectsForManifestWithRelativeRemoteNoInclude of
-          Left err -> expectationFailure("could not parse nested manifest: " ++ show err)
-          Right (Left err) -> expectationFailure("could not parse nested manifest, second level: " ++ show err)
-          Right (Right ps) -> ps `shouldMatchList` [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
+    describe "for a manifest with an include tag" $
+      it "reads both files and gets the dependencies from the included file" $
+        withResult projectsForManifestWithIncludes (`shouldMatchList` validatedProjectList)
 
-    describe "for a manifest with a relative remote and an include" $ 
-      it "gets the remote from the git config" $ 
-        case projectsForManifestWithRelativeRemoteWithInclude of
-          Left err -> expectationFailure("could not parse nested manifest: " ++ show err)
-          Right (Left err) -> expectationFailure("could not parse nested manifest, second level: " ++ show err)
-          Right (Right ps) -> ps `shouldMatchList` [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
+    describe "for a manifest with a relative remote and no include" $
+      it "gets the remote from the git config" $
+        withResult projectsForManifestWithRelativeRemoteNoInclude (`shouldMatchList` validatedProjectList)
+
+    describe "for a manifest with a relative remote and an include" $
+      it "gets the remote from the git config" $
+        withResult projectsForManifestWithRelativeRemoteWithInclude (`shouldMatchList` validatedProjectList)
