@@ -126,6 +126,7 @@ library
     Prologue
     Srclib.Converter
     Srclib.Types
+    Strategy.Cargo
     Strategy.Carthage
     Strategy.Clojure
     Strategy.Cocoapods.Podfile
