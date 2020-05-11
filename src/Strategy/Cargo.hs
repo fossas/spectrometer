@@ -174,8 +174,8 @@ kindToLabel :: Maybe T.Text -> CargoLabel
 kindToLabel (Just _) = CargoDepKind EnvDevelopment
 kindToLabel Nothing  = CargoDepKind EnvProduction
 
-addLabel_ :: Has (LabeledGrapher PackageId CargoLabel) sig m => NodeDependency -> m ()
-addLabel_ dep = do
+addLabel :: Has (LabeledGrapher PackageId CargoLabel) sig m => NodeDependency -> m ()
+addLabel dep = do
   let pkgId = nodePkg dep
   traverse_ (label pkgId . kindToLabel . nodeDepKind) $ nodeDepKinds dep
 
@@ -183,7 +183,7 @@ addEdge :: Has (LabeledGrapher PackageId CargoLabel) sig m => ResolveNode -> m (
 addEdge node = do
   let parentId = resolveNodeId node
   for_ (resolveNodeDeps node) $ \dep -> do
-    addLabel_ dep
+    addLabel dep
     edge parentId $ nodePkg dep
 
 buildGraph :: Has (LabeledGrapher PackageId CargoLabel) sig m => CargoMetadata -> m ()
