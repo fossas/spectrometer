@@ -197,6 +197,7 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
+    Cargo.MetadataTest
     Carthage.CarthageTest
     Clojure.ClojureTest
     Cocoapods.PodfileLockTest

@@ -1,6 +1,15 @@
 module Strategy.Cargo
   ( discover
-  , analyze
+  --
+  , CargoMetadata(..)
+  , NodeDependency(..)
+  , NodeDepKind(..)
+  -- , Package(..)
+  -- , PackageDependency(..)
+  , PackageId(..)
+  , Resolve(..)
+  , ResolveNode(..)
+  , buildGraph
   )
   where
 
