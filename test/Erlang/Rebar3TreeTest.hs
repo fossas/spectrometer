@@ -1,0 +1,109 @@
+module Erlang.Rebar3TreeTest
+  ( spec_analyze
+  ) where
+
+import Prologue
+
+import qualified Data.Map.Strict as M
+import qualified Data.Text.IO as TIO
+import Text.Megaparsec
+
+import DepTypes
+import Effect.Grapher
+import Graphing (Graphing)
+import Strategy.Erlang.Rebar3Tree
+
+import Test.Tasty.Hspec
+
+expected :: Graphing Dependency
+expected = run . evalGrapher $ do
+  direct $ Dependency { dependencyType = HexType
+                      , dependencyName = "one"
+                      , dependencyVersion = Just (CEq "1.0.0")
+                      , dependencyLocations = []
+                      , dependencyEnvironments = []
+                      , dependencyTags = M.empty
+                      }
+  direct $ Dependency { dependencyType = HexType
+                      , dependencyName = "two"
+                      , dependencyVersion = Just (CEq "2.0.0")
+                      , dependencyLocations = []
+                      , dependencyEnvironments = []
+                      , dependencyTags = M.empty
+                      }
+  direct $ Dependency { dependencyType = HexType
+                      , dependencyName = "three"
+                      , dependencyVersion = Just (CEq "3.0.0")
+                      , dependencyLocations = []
+                      , dependencyEnvironments = []
+                      , dependencyTags = M.empty
+                      }
+  direct $ Dependency { dependencyType = HexType
+                      , dependencyName = "four"
+                      , dependencyVersion = Just (CEq "4.0.0")
+                      , dependencyLocations = []
+                      , dependencyEnvironments = []
+                      , dependencyTags = M.empty
+                      }
+  direct $ Dependency { dependencyType = HexType
+                      , dependencyName = "five"
+                      , dependencyVersion = Just (CEq "5.0.0")
+                      , dependencyLocations = []
+                      , dependencyEnvironments = []
+                      , dependencyTags = M.empty
+                      }
+
+depOne :: Rebar3Dep
+depOne = Rebar3Dep 
+          { depName = "one"
+          , depVersion = "1.0.0"
+          , depLocation = "https://github.com/dep/one"
+          , subDeps = [depTwo, depFour]
+          }
+ 
+depTwo :: Rebar3Dep
+depTwo = Rebar3Dep 
+          { depName = "two"
+          , depVersion = "2.0.0"
+          , depLocation = "https://github.com/dep/two"
+          , subDeps = [depThree]
+          }         
+
+depThree :: Rebar3Dep
+depThree = Rebar3Dep 
+          { depName = "three"
+          , depVersion = "3.0.0"
+          , depLocation = "https://github.com/dep/three"
+          , subDeps = []
+          }         
+
+depFour :: Rebar3Dep
+depFour = Rebar3Dep 
+          { depName = "four"
+          , depVersion = "4.0.0"
+          , depLocation = "https://github.com/dep/four"
+          , subDeps = []
+          }         
+
+depFive :: Rebar3Dep
+depFive = Rebar3Dep 
+          { depName = "five"
+          , depVersion = "5.0.0"
+          , depLocation = "hex package"
+          , subDeps = []
+          }         
+
+spec_analyze :: Spec
+spec_analyze = do
+  contents <- runIO (TIO.readFile "test/Erlang/testdata/rebar3tree")
+
+  describe "rebar3 tree analyzer" $
+    it "produces the expected output" $ do
+      let result = buildGraph [depOne, depFive]
+      result `shouldBe` expected
+
+  describe "rebar3 tree parser" $ do
+    it "parses ideal rebar3 tree output" $ do
+      case runParser rebar3TreeParser "" contents of
+        Left failCode -> traceM $ show failCode
+        Right result -> result `shouldMatchList` [depOne, depFive]
