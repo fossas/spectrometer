@@ -114,8 +114,8 @@ discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files ->
   case find (\f -> fileName f == "Cargo.toml") files of
     Nothing -> pure WalkContinue
-    Just file -> do
-      runSimpleStrategy "rust-cargo" RustGroup $ fmap (mkProjectClosure dir) (analyze file)
+    Just _ -> do
+      runSimpleStrategy "rust-cargo" RustGroup $ fmap (mkProjectClosure dir) (analyze dir)
       pure WalkSkipAll
 
 cargoGenLockfileCmd :: Command
@@ -146,10 +146,10 @@ mkProjectClosure dir graph = ProjectClosureBody
     }
 
 analyze :: (Has Exec sig m, Has (Error ExecErr) sig m, Effect sig)
-  => Path Rel File -> m (Graphing Dependency)
-analyze manifest = do
-  _ <- execThrow (parent manifest) cargoGenLockfileCmd []
-  meta <- execJson @CargoMetadata (parent manifest) cargoMetadataCmd []
+  => Path Rel Dir -> m (Graphing Dependency)
+analyze manifestDir = do
+  _ <- execThrow manifestDir cargoGenLockfileCmd []
+  meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd []
   --
   withLabeling toDependency $ buildGraph meta
 
