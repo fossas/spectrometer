@@ -62,13 +62,13 @@ filter f gr = gr { graphingDirect = direct', graphingAdjacent = adjacent' }
 empty :: Graphing ty
 empty = Graphing S.empty AM.empty
 
--- | Strip a given item from the direct set, promote its immediate children to direct items
+-- | Strip all items from the direct set, promote their immediate children to direct items
 stripRoot :: Ord ty => Graphing ty -> Graphing ty
 stripRoot gr = gr { graphingDirect = direct' }
   where
-  topLayer = graphingDirect gr
-  newDirects = S.unions $ map (flip AM.postSet $ graphingAdjacent gr) $ S.toList topLayer
-  direct' = foldr S.insert S.empty newDirects
+  roots = S.toList $ graphingDirect gr
+  edgeSet root = AM.postSet root $ graphingAdjacent gr
+  direct' = S.unions $ map edgeSet roots
 
 -- | Add a direct dependency to this Graphing
 direct :: Ord ty => ty -> Graphing ty -> Graphing ty
