@@ -10,6 +10,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
 import DepTypes
+import Graphing
 import GraphUtil
 import Strategy.Cargo
 
@@ -46,9 +47,6 @@ clapDep = mkDep "clap" "2.33.0" [EnvProduction]
 jfmtId :: PackageId
 jfmtId = PackageId "jfmt" "1.0.0" "(path+file:///path/to/jfmt.rs)"
 
-jfmtDep :: Dependency
-jfmtDep = mkDep "jfmt" "1.0.0" []
-
 ansiTermNode :: ResolveNode
 ansiTermNode = ResolveNode ansiTermId []
 
@@ -73,9 +71,9 @@ spec_parse =
 spec_graph :: Test.Spec
 spec_graph = 
   Test.describe "cargo metadata graph" $ do
-    let graph = buildGraph expectedMetadata
+    let graph = pruneUnreachable $ buildGraph expectedMetadata
 
     Test.it "should build the correct graph" $ do
-      expectDeps [ansiTermDep, clapDep, jfmtDep] graph
-      expectEdges [(jfmtDep, clapDep), (clapDep, ansiTermDep)] graph
-      expectDirect [jfmtDep] graph
+      expectDeps [ansiTermDep, clapDep] graph
+      expectEdges [(clapDep, ansiTermDep)] graph
+      expectDirect [clapDep] graph

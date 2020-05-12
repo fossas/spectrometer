@@ -21,7 +21,7 @@ import qualified Data.Map.Strict as M
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
-import Graphing (Graphing)
+import Graphing (Graphing, stripRoot)
 import Types
 
 import qualified Data.Text as T
@@ -196,7 +196,7 @@ addEdge node = do
     edge parentId $ nodePkg dep
 
 buildGraph :: CargoMetadata -> Graphing Dependency
-buildGraph meta = run . withLabeling toDependency $ do
+buildGraph meta = stripRoot $ run . withLabeling toDependency $ do
   traverse_ direct $ metadataWorkspaceMembers meta
   traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
