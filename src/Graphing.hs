@@ -16,6 +16,7 @@ module Graphing
   , gmap
   , filter
   , pruneUnreachable
+  , stripRoot
 
   -- * Building simple Graphings
   , fromList
@@ -60,6 +61,14 @@ filter f gr = gr { graphingDirect = direct', graphingAdjacent = adjacent' }
 -- | The empty Graphing
 empty :: Graphing ty
 empty = Graphing S.empty AM.empty
+
+-- | Strip a given item from the direct set, promote its immediate children to direct items
+stripRoot :: Ord ty => Graphing ty -> Graphing ty
+stripRoot gr = gr { graphingDirect = direct' }
+  where
+  topLayer = graphingDirect gr
+  newDirects = S.unions $ map (flip AM.postSet $ graphingAdjacent gr) $ S.toList topLayer
+  direct' = foldr S.insert S.empty newDirects
 
 -- | Add a direct dependency to this Graphing
 direct :: Ord ty => ty -> Graphing ty -> Graphing ty
