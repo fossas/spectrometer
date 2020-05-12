@@ -154,13 +154,13 @@ mkProjectClosure dir graph = ProjectClosureBody
     , dependenciesComplete = Complete
     }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m, Effect sig)
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m)
   => Path Rel Dir -> m (Graphing Dependency)
 analyze manifestDir = do
   _ <- execThrow manifestDir cargoGenLockfileCmd []
   meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd []
   --
-  withLabeling toDependency $ buildGraph meta
+  pure $ buildGraph meta
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg = foldr applyLabel Dependency 
@@ -195,8 +195,8 @@ addEdge node = do
     addLabel dep
     edge parentId $ nodePkg dep
 
-buildGraph :: Has (LabeledGrapher PackageId CargoLabel) sig m => CargoMetadata -> m ()
-buildGraph meta = do
+buildGraph :: CargoMetadata -> Graphing Dependency
+buildGraph meta = run . withLabeling toDependency $ do
   traverse_ direct $ metadataWorkspaceMembers meta
   traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
