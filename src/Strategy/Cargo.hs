@@ -4,8 +4,6 @@ module Strategy.Cargo
   , CargoMetadata(..)
   , NodeDependency(..)
   , NodeDepKind(..)
-  -- , Package(..)
-  -- , PackageDependency(..)
   , PackageId(..)
   , Resolve(..)
   , ResolveNode(..)
@@ -26,9 +24,8 @@ import Types
 
 import qualified Data.Text as T
 
-data CargoLabel = 
-    CargoDepKind DepEnvironment
-  -- | CargoSource T.Text
+newtype CargoLabel = 
+  CargoDepKind DepEnvironment
   deriving (Eq, Ord, Show, Generic)
 
 data PackageId = PackageId
@@ -68,7 +65,7 @@ data ResolveNode = ResolveNode
   , resolveNodeDeps :: [NodeDependency]
   } deriving (Eq, Ord, Show, Generic)
 
-data Resolve = Resolve
+newtype Resolve = Resolve
   { resolvedNodes :: [ResolveNode] 
   } deriving (Eq, Ord, Show, Generic)
 
