@@ -16,7 +16,6 @@ import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, fossaReq, upl
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
-import Control.Carrier.Threaded
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal

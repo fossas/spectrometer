@@ -57,7 +57,7 @@ logSticky logLine = send (Log (LogSticky logLine))
 
 -- | Log a line to stdout. Usually, you want to use 'log', 'logInfo', ..., instead
 logStdout :: Has Logger sig m => Doc AnsiStyle -> m ()
-logStdout logLine = send (Log (LogStdout logLine) (pure ()))
+logStdout logLine = send (Log (LogStdout logLine))
 
 data Severity =
     SevTrace
