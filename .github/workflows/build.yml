@@ -60,18 +60,14 @@ jobs:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
         key: ${{ runner.os }}-v5-cabal-store
 
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal build --project-file=${{ matrix.project-file }} all --only-dependencies
-
     - name: Build
       run: |
-        cabal build --project-file=${{ matrix.project-file }}
+        cabal update
+        cabal build --project-file=${{ matrix.project-file }} all
 
     - name: Run tests
       run: |
-        cabal test --project-file=${{ matrix.project-file }}
+        cabal test --project-file=${{ matrix.project-file }} all
 
     - name: Find and move binaries (windows)
       if: ${{ contains(matrix.os, 'windows') }}
