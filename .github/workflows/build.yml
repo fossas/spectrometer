@@ -62,7 +62,7 @@ jobs:
     - name: Install dependencies
       run: |
         cabal update
-        cabal build --project-file=${{ matrix.project-file }} --only-dependencies
+        cabal build --project-file=${{ matrix.project-file }} all --only-dependencies
 
     - name: Build
       run: |
