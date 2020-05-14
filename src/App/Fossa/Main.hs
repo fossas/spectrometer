@@ -8,6 +8,7 @@ import Prologue
 import App.Fossa.Analyze (analyzeMain, ScanDestination(..))
 import App.Fossa.FossaAPIV1 (ProjectMetadata(..))
 import App.Fossa.Test (testMain)
+import Data.Maybe (isNothing)
 import Effect.Logger
 import Options.Applicative
 import Path.IO (resolveDir', doesDirExist, setCurrentDir)
@@ -30,16 +31,26 @@ appMain = do
 
   case optCommand of
     AnalyzeCommand AnalyzeOptions{..} ->
-      if analyzeOutput
+      if analyzeForceOutput && analyzeForceUpload
+        then die "Cannot force --output and --upload together"
+      else 
+      if shouldOutput analyzeForceOutput analyzeForceUpload
         then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision
-        else case maybeApiKey of
-          Nothing -> die "A FOSSA API key is required to run this command"
-          Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
+      else case maybeApiKey of
+        Nothing -> die "A FOSSA API key is required to run this command"
+        Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
+      where
+        inferredOutput = isNothing maybeApiKey
+        -- forceOutput forceUpload
+        shouldOutput std False = std || inferredOutput
+        shouldOutput False upload = not upload || inferredOutput
+        shouldOutput True True = error "Cannot force output and upload"
 
     TestCommand TestOptions{..} ->
       case maybeApiKey of
         Nothing -> die "A FOSSA API key is required to run this command"
         Just key -> testMain optBaseUrl key logSeverity testTimeout optProjectName optProjectRevision
+
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO (Path Abs Dir)
@@ -82,7 +93,8 @@ comm = hsubparser
 analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
-    <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
+    <$> switch (long "output" <> short 'o' <> help "Force the project to output to stdout instead of uploading results to FOSSA (cannot be combined with --upload)")
+    <*> switch (long "upload" <> short 'U' <> help "Force the project to upload results to FOSSA instead of reporting on stdout (cannot be combined with --output)")
     <*> metadataOpts
 
 metadataOpts :: Parser ProjectMetadata
@@ -115,7 +127,8 @@ data Command
   | TestCommand TestOptions
 
 data AnalyzeOptions = AnalyzeOptions
-  { analyzeOutput :: Bool
+  { analyzeForceOutput :: Bool
+  , analyzeForceUpload :: Bool
   , analyzeMetadata :: ProjectMetadata
   }
 
