@@ -13,8 +13,9 @@ me@mydesk:~/myproject$ fossa2 analyze -o
 ## Table of Contents
 
 1. [Installation](#installation)
-2. [Quickstart](#quickstart)
-3. [Supported Strategies](#)
+1. [Usage](#usage)
+3. [Supported Strategies](#supported-languagesmanagers)
+4. [Contributing/Building From Source](#contributingbuilding-from-source)
 
 ## Installation
 
@@ -32,7 +33,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.W
 The installer will report the installation path of the executable to make this
 easier.
 
-## Quickstart
+## Usage
 
 The tool requires little-to-no configuration to run on its own.
 
