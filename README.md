@@ -62,7 +62,7 @@ This not only lets you re-examine the results later, but allows you to check
 your output against your preset policies.
 
 **NOTE** If leaked, your FOSSA API key can grant an attacker access to your FOSSA
-projects, and should be kept secret.  For this reason, we reccommend supplying
+projects, and should be kept secret.  For this reason, we recommend supplying
 the API key with the environment variable, especially in a shared environment
 like a CI/CD server.
 
@@ -70,9 +70,9 @@ like a CI/CD server.
 
 A non-exhaustive list of supported languages and managers can be found
 [here](docs/strategies.md).  This list is a work-in-progress, as some existing 
-strategies are not yet documented, but are implmented.
+strategies are not yet documented, but are implemented.
 
-## Contributing/Building From Source
+## Building From Source
 
 ### Building
 
