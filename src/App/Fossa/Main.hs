@@ -24,22 +24,23 @@ appMain = do
 
   maybeApiKey <- checkAPIKey optAPIKey
 
-  basedir <- validateDir optBasedir
-
-  setCurrentDir basedir
-
   case optCommand of
-    AnalyzeCommand AnalyzeOptions{..} ->
+    AnalyzeCommand AnalyzeOptions{..} -> do
+      _ <- changeDir analyzeBaseDir
       if analyzeOutput
         then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision
         else case maybeApiKey of
           Nothing -> die "A FOSSA API key is required to run this command"
           Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
 
-    TestCommand TestOptions{..} ->
+    TestCommand TestOptions{..} -> do
+      _ <- changeDir testBaseDir
       case maybeApiKey of
         Nothing -> die "A FOSSA API key is required to run this command"
         Just key -> testMain optBaseUrl key logSeverity testTimeout optProjectName optProjectRevision
+
+changeDir :: FilePath -> IO ()
+changeDir path = validateDir path >>= setCurrentDir
 
 -- | Try to fetch FOSSA_API_KEY from env if not supplied from cmdline
 checkAPIKey :: Maybe Text -> IO (Maybe Text)
@@ -56,11 +57,13 @@ validateDir dir = do
 
   pure absolute
 
+baseDirArg :: Parser String
+baseDirArg = argument str (metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
+
 opts :: Parser CmdOptions
 opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
-    <*> strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
     <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value urlOpts)
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
@@ -89,6 +92,7 @@ analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
+    <*> baseDirArg
     <*> metadataOpts
 
 metadataOpts :: Parser ProjectMetadata
@@ -106,10 +110,10 @@ testOpts :: Parser TestOptions
 testOpts =
   TestOptions
     <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> baseDirArg
 
 data CmdOptions = CmdOptions
   { optDebug   :: Bool
-  , optBasedir :: FilePath
   , optBaseUrl :: UrlOption
   , optProjectName :: Maybe Text
   , optProjectRevision :: Maybe Text
@@ -123,9 +127,11 @@ data Command
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool
+  , analyzeBaseDir :: FilePath
   , analyzeMetadata :: ProjectMetadata
   }
 
 data TestOptions = TestOptions
   { testTimeout :: Int
+  , testBaseDir :: FilePath
   }
