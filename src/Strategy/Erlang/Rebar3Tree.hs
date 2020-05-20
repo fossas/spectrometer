@@ -18,7 +18,7 @@ import Text.Megaparsec.Char
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
-import Graphing (Graphing)
+import Graphing (Graphing, unfold)
 import qualified Graphing
 import Types
 
@@ -54,16 +54,18 @@ mkProjectClosure dir deps = ProjectClosureBody
     }
 
 buildGraph :: [Rebar3Dep] -> Graphing Dependency
-buildGraph = Graphing.fromList . map toDependency
-  where
-  toDependency Rebar3Dep{..} =
-    Dependency { dependencyType = HexType
-               , dependencyName = depName
-               , dependencyVersion = Just (CEq depVersion)
-               , dependencyLocations = []
-               , dependencyEnvironments = []
-               , dependencyTags = M.empty
-               }
+buildGraph deps = unfold direct deepList toDependency
+    where
+    direct = deps
+    deepList rebarDep = subDeps rebarDep
+    toDependency Rebar3Dep{..} =
+      Dependency { dependencyType = HexType
+                 , dependencyName = depName
+                 , dependencyVersion = Just (CEq depVersion)
+                 , dependencyLocations = []
+                 , dependencyEnvironments = []
+                 , dependencyTags = M.empty
+                 }
 
 data Rebar3Dep = Rebar3Dep
   { depName     :: Text
@@ -125,4 +127,5 @@ rebar3TreeParser = concat <$> ((try (rebarDep 0) <|> ignoredLine) `sepBy` eol) <
   rebarRecurse depth = do
     _ <- chunk "\n"
     deps <- rebarDep depth
+    _ <- traceM $ show deps
     pure deps

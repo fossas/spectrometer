@@ -12,40 +12,47 @@ import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Erlang.Rebar3Tree
+import GraphUtil
 
 import Test.Tasty.Hspec
 
-expected :: Graphing Dependency
-expected = run . evalGrapher $ do
-  direct $ Dependency { dependencyType = HexType
+dependencyOne :: Dependency
+dependencyOne = Dependency { dependencyType = HexType
                       , dependencyName = "one"
                       , dependencyVersion = Just (CEq "1.0.0")
                       , dependencyLocations = []
                       , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
-  direct $ Dependency { dependencyType = HexType
+
+dependencyTwo :: Dependency
+dependencyTwo = Dependency { dependencyType = HexType
                       , dependencyName = "two"
                       , dependencyVersion = Just (CEq "2.0.0")
                       , dependencyLocations = []
                       , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
-  direct $ Dependency { dependencyType = HexType
+dependencyThree :: Dependency
+dependencyThree = Dependency { dependencyType = HexType
                       , dependencyName = "three"
                       , dependencyVersion = Just (CEq "3.0.0")
                       , dependencyLocations = []
                       , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
-  direct $ Dependency { dependencyType = HexType
+
+dependencyFour :: Dependency
+dependencyFour = Dependency { dependencyType = HexType
                       , dependencyName = "four"
                       , dependencyVersion = Just (CEq "4.0.0")
                       , dependencyLocations = []
                       , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
-  direct $ Dependency { dependencyType = HexType
+
+dependencyFive :: Dependency
+dependencyFive = Dependency { dependencyType = HexType
                       , dependencyName = "five"
                       , dependencyVersion = Just (CEq "5.0.0")
                       , dependencyLocations = []
@@ -99,8 +106,10 @@ spec_analyze = do
 
   describe "rebar3 tree analyzer" $
     it "produces the expected output" $ do
-      let result = buildGraph [depOne, depFive]
-      result `shouldBe` expected
+      let res = buildGraph [depOne, depFive]
+      expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] res
+      expectDirect [dependencyOne, dependencyFive] res
+      expectEdges [(dependencyOne, dependencyTwo), (dependencyOne, dependencyFour), (dependencyTwo, dependencyThree)] res
 
   describe "rebar3 tree parser" $ do
     it "parses ideal rebar3 tree output" $ do
