@@ -92,8 +92,8 @@ analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
-    <*> baseDirArg
     <*> metadataOpts
+    <*> baseDirArg
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -127,8 +127,8 @@ data Command
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool
-  , analyzeBaseDir :: FilePath
   , analyzeMetadata :: ProjectMetadata
+  , analyzeBaseDir :: FilePath
   }
 
 data TestOptions = TestOptions
