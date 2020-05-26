@@ -26,7 +26,7 @@ appMain = do
 
   case optCommand of
     AnalyzeCommand AnalyzeOptions{..} -> do
-      _ <- changeDir analyzeBaseDir
+      changeDir analyzeBaseDir
       if analyzeOutput
         then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision
         else case maybeApiKey of
@@ -34,7 +34,7 @@ appMain = do
           Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
 
     TestCommand TestOptions{..} -> do
-      _ <- changeDir testBaseDir
+      changeDir testBaseDir
       case maybeApiKey of
         Nothing -> die "A FOSSA API key is required to run this command"
         Just key -> testMain optBaseUrl key logSeverity testTimeout optProjectName optProjectRevision
