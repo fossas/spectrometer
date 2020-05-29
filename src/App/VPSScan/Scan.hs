@@ -60,8 +60,7 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
   case vpsIpr of
-    Just _ ->
-      trace "[IPR] Starting IPR scan"
+    Just _ -> trace "[IPR] Starting IPR scan"
     Nothing -> trace "[IPR] IPR scan disabled"
 
   (iprResult, sherlockResult) <- liftIO $ concurrently
