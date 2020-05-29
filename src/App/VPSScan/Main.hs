@@ -22,11 +22,12 @@ commands = hsubparser scanCommand
 
 
 vpsOpts :: Parser VPSOpts
-vpsOpts = VPSOpts <$> runSherlockOpts <*> runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
+vpsOpts = VPSOpts <$> runSherlockOpts <*> iprOpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
             where
               organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
+              iprOpts = RunIPR.validateIprOpts <$> runIPROpts
 
 runSherlockOpts :: Parser SherlockOpts
 runSherlockOpts = SherlockOpts
@@ -40,17 +41,12 @@ runSherlockOpts = SherlockOpts
                     sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock")
                     sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock")
 
-runIPROpts :: Parser RunIPR.IPROpts
-runIPROpts = RunIPR.IPROpts
-                  <$> iprCmdPathOpt
-                  <*> nomosCmdPathOpt
-                  <*> pathfinderCmdPathOpt
-                  <*> iprEnabledOpt
-                where
-                    iprCmdPathOpt = optional $ strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable")
-                    nomosCmdPathOpt = optional $ strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
-                    pathfinderCmdPathOpt = optional $ strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
-                    iprEnabledOpt = not <$> (switch $ long "ipr-disabled" <> help "IPR scans will only be run if this flag is omitted and the ipr, nomossa and pathfinder options are passed in")
+runIPROpts :: Parser RunIPR.UnvalidatedIPROpts
+runIPROpts = RunIPR.UnvalidatedIPROpts <$> iprCmdPathOpt <*> nomossaCmdPathOpt <*> pathfinderCmdPathOpt
+  where
+    iprCmdPathOpt = optional (strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable"))
+    nomossaCmdPathOpt = optional (strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable"))
+    pathfinderCmdPathOpt = optional (strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")) 
 
 -- org IDs are ints. project and revision IDs are strings
 syOpts :: Parser ScotlandYardOpts

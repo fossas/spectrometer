@@ -59,10 +59,10 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace $ "Scan ID from Scotland yard is " ++ show scanId
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
-  if iprShouldRun vpsIpr
-    then trace "[IPR] Starting IPR scan"
-  else
-    trace "[IPR] IPR scan disabled"
+  case vpsIpr of
+    Just _ ->
+      trace "[IPR] Starting IPR scan"
+    Nothing -> trace "[IPR] IPR scan disabled"
 
   (iprResult, sherlockResult) <- liftIO $ concurrently
                 (runError @VPSError $ runIPR $ runScotlandYard $ runTrace $ runIPRScan basedir scanId vpsOpts)
@@ -88,7 +88,7 @@ runIPRScan ::
   , Has Trace sig m
   ) => Path Abs Dir ->  Text -> VPSOpts -> m ()
 runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
-  case validateIPROpts vpsIpr of
+  case vpsIpr of
     Just iprOpts -> do
       iprResult <- tagError IPRFailed =<< execIPR basedir iprOpts
       trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
