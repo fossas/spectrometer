@@ -12,6 +12,7 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -72,8 +73,14 @@ buildGraph deps = run . withLabeling toDependency $ do
     applyLabel (RebarSource src) dep = dep { dependencyLocations = src : dependencyLocations dep }
 
     start =
-      Dependency { dependencyType = HexType
-                 , dependencyName = depName pkg
+      Dependency { dependencyType =
+                      case T.isInfixOf (T.pack "github.com") (depLocation pkg) of
+                      True -> GitType
+                      False -> HexType
+                 , dependencyName =
+                      case T.isInfixOf (T.pack "github.com") (depLocation pkg) of
+                      True -> depLocation pkg
+                      False -> depName pkg
                  , dependencyVersion = Just (CEq (depVersion pkg))
                  , dependencyLocations = []
                  , dependencyEnvironments = []

@@ -17,8 +17,8 @@ import GraphUtil
 import Test.Tasty.Hspec
 
 dependencyOne :: Dependency
-dependencyOne = Dependency { dependencyType = HexType
-                      , dependencyName = "one"
+dependencyOne = Dependency { dependencyType = GitType
+                      , dependencyName = "https://github.com/dep/one"
                       , dependencyVersion = Just (CEq "1.0.0")
                       , dependencyLocations = []
                       , dependencyEnvironments = []
@@ -43,8 +43,8 @@ dependencyThree = Dependency { dependencyType = HexType
                       }
 
 dependencyFour :: Dependency
-dependencyFour = Dependency { dependencyType = HexType
-                      , dependencyName = "four"
+dependencyFour = Dependency { dependencyType = GitType
+                      , dependencyName = "https://github.com/dep/four"
                       , dependencyVersion = Just (CEq "4.0.0")
                       , dependencyLocations = []
                       , dependencyEnvironments = []
@@ -72,7 +72,7 @@ depTwo :: Rebar3Dep
 depTwo = Rebar3Dep 
           { depName = "two"
           , depVersion = "2.0.0"
-          , depLocation = "https://github.com/dep/two"
+          , depLocation = "hex package"
           , subDeps = [depThree]
           }         
 
@@ -80,7 +80,7 @@ depThree :: Rebar3Dep
 depThree = Rebar3Dep 
           { depName = "three"
           , depVersion = "3.0.0"
-          , depLocation = "https://github.com/dep/three"
+          , depLocation = "hex package"
           , subDeps = []
           }         
 
