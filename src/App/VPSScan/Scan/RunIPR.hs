@@ -6,8 +6,6 @@ module App.VPSScan.Scan.RunIPR
     IPRC (..),
     execIPR,
     IPRError (..),
-    UnvalidatedIPROpts (..),
-    validateIprOpts
   )
 where
 
@@ -18,26 +16,12 @@ import qualified Data.Vector as V
 import Prologue
 import Effect.Exec
 
-data UnvalidatedIPROpts = UnvalidatedIPROpts
-  { maybeIprCmdPath :: Maybe String,
-    maybeNomosCmdPath :: Maybe String,
-    maybePathfinderCmdPath :: Maybe String
-  }
-  deriving (Eq, Ord, Show, Generic)
-
 data IPROpts = IPROpts
   { iprCmdPath :: String,
     nomosCmdPath :: String,
     pathfinderCmdPath :: String
   }
   deriving (Eq, Ord, Show, Generic)
-
-validateIprOpts :: UnvalidatedIPROpts -> Maybe IPROpts
-validateIprOpts unvalidated =
-  case unvalidated of
-    (UnvalidatedIPROpts (Just iprPath) (Just nomosPath) (Just pathfinderPath)) ->
-      Just $ IPROpts iprPath nomosPath pathfinderPath
-    _ -> Nothing
 
 iprCmdArgs :: Path Abs Dir -> IPROpts -> [String]
 iprCmdArgs baseDir IPROpts {..} = ["-target", toFilePath baseDir, "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
