@@ -18,8 +18,8 @@ import Text.Megaparsec.Char
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
-import Graphing (Graphing, unfold)
-import qualified Graphing
+import Graphing (Graphing)
+import Effect.Grapher
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -53,19 +53,38 @@ mkProjectClosure dir deps = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
+type RebarGrapher = LabeledGrapher Rebar3Dep RebarLabel
+
+data RebarLabel =
+    RebarSource Text -- location
+  deriving (Eq, Ord, Show, Generic)
+
 buildGraph :: [Rebar3Dep] -> Graphing Dependency
-buildGraph deps = unfold direct deepList toDependency
-    where
-    direct = deps
-    deepList rebarDep = subDeps rebarDep
-    toDependency Rebar3Dep{..} =
+buildGraph deps = run . withLabeling toDependency $ do
+  traverse_ direct deps
+  traverse_ mkEdges deps
+
+  where
+  toDependency :: Rebar3Dep -> Set RebarLabel -> Dependency
+  toDependency pkg = foldr applyLabel start
+    where 
+    applyLabel :: RebarLabel -> Dependency -> Dependency
+    applyLabel (RebarSource src) dep = dep { dependencyLocations = src : dependencyLocations dep }
+
+    start =
       Dependency { dependencyType = HexType
-                 , dependencyName = depName
-                 , dependencyVersion = Just (CEq depVersion)
+                 , dependencyName = depName pkg
+                 , dependencyVersion = Just (CEq (depVersion pkg))
                  , dependencyLocations = []
                  , dependencyEnvironments = []
                  , dependencyTags = M.empty
                  }
+
+  mkEdges :: Has RebarGrapher sig m => Rebar3Dep -> m ()
+  mkEdges parentDep =
+    forM_ (subDeps parentDep) $ \childDep -> do
+      edge (parentDep) (childDep)
+      mkEdges childDep
 
 data Rebar3Dep = Rebar3Dep
   { depName     :: Text
@@ -127,5 +146,4 @@ rebar3TreeParser = concat <$> ((try (rebarDep 0) <|> ignoredLine) `sepBy` eol) <
   rebarRecurse depth = do
     _ <- chunk "\n"
     deps <- rebarDep depth
-    _ <- traceM $ show deps
     pure deps
