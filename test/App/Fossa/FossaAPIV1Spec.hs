@@ -12,7 +12,7 @@ import Prelude
 spec :: Spec
 spec = do
   describe "Issues ToJSON/FromJSON instances" $ do
-    it "are isomorphic" $ hedgehog $ do
+    it "are roundtrippable" $ hedgehog $ do
       issues <- forAll genIssues
       roundtripJson issues
 
