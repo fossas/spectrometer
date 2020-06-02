@@ -47,10 +47,7 @@ fossa2 analyze
 fossa2 analyze --fossa-api-key your-key-goes-here
 ```
 
-**NOTE:** If leaked, your FOSSA API key can grant an attacker access to your FOSSA
-projects, and should be kept secret.  For this reason, we recommend supplying
-the API key with the environment variable, especially in a shared environment
-like a CI/CD server.
+**NOTE:** *If leaked, your FOSSA API key can grant an attacker access to your FOSSA projects, and should be kept secret.  For this reason, we recommend the API key with the environment variable, especially in a shared environment like a CI/CD server.*
 
 By default, the program will analyze the current working directory.  If you need
 to run in a different directory, you can simply pass that directory as an argument.
