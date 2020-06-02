@@ -6,16 +6,19 @@ report dependency trees for many languages and package managers.  See the
 languages/managers.
 
 ```sh
-me@mydesk:~/myproject$ fossa2 analyze -o
-# Dependency analysis output
+export FOSSA_API_KEY=your-key-goes-here
+me@mydesk:~/myproject$ fossa2 analyze
 ```
+
+If you do not have an API key, please check the [FOSSA Documentation](https://docs.fossa.com/docs/api-reference)
+for instructions on creating API tokens.
 
 ## Table of Contents
 
 1. [Installation](#installation)
-1. [Basic Usage](#basic-usage)
-3. [Supported Strategies](#supported-languagesmanagers)
-4. [Contributing/Building From Source](#contributingbuilding-from-source)
+2. [Basic Usage](#basic-usage)
+3. [Supported Strategies](#supported-languages)
+4. [Contributing](#contributing)
 
 ## Installation
 
@@ -38,41 +41,40 @@ easier.
 The tool requires little-to-no configuration to run on its own.
 
 ```sh
-fossa2 analyze --output # Analyze the current working directory
-# OR
-fossa2 analyze --output --basedir /path/to/project  # Analyze a specific directory.
-```
-
-The `--output` flag tells the analyzer not to connect to a FOSSA server,
-instead printing out the analysis result to the console.
-
-While we're on the subject, you can (and should!) connect your output directly
-to your FOSSA server!  You can do this by simply supplying the FOSSA API key
-from your server ([more info](https://docs.fossa.com/docs/api-reference)) and
-using it as shown:
-
-```sh
 export FOSSA_API_KEY=your-key-goes-here
 fossa2 analyze
 # OR
 fossa2 analyze --fossa-api-key your-key-goes-here
 ```
 
-This not only lets you re-examine the results later, but allows you to check
-your output against your preset policies.
-
-**NOTE** If leaked, your FOSSA API key can grant an attacker access to your FOSSA
+**NOTE:** If leaked, your FOSSA API key can grant an attacker access to your FOSSA
 projects, and should be kept secret.  For this reason, we recommend supplying
 the API key with the environment variable, especially in a shared environment
 like a CI/CD server.
 
-## Supported Languages/Managers
+By default, the program will analyze the current working directory.  If you need
+to run in a different directory, you can simply pass that directory as an argument.
+
+```sh
+fossa2 analyze /path/to/project
+```
+
+The `--output` flag tells the analyzer not to connect to a FOSSA server,
+instead printing out the analysis result to the console.
+
+```sh
+fossa2 analyze --output
+# OR
+fossa2 analyze -o
+```
+
+## Supported Languages
 
 A non-exhaustive list of supported languages and managers can be found
 [here](docs/strategies.md).  This list is a work-in-progress, as some existing 
 strategies are not yet documented, but are implemented.
 
-## Building From Source
+## Contributing
 
 ### Building
 
