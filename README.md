@@ -88,7 +88,7 @@ In the base directory, run `cabal build`
 ### Running
 
 ```sh
-$ cabal run fossa -- analyze -d path/to/basedir/ -o
+$ cabal run fossa2 -- analyze -o path/to/basedir/
 ```
 
 This will produce analysis results on stdout
