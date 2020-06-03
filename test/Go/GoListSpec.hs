@@ -11,7 +11,7 @@ import qualified Data.Map.Strict as M
 
 import DepTypes
 import Control.Algebra
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Control.Carrier.Reader
 import Effect.Exec
 import Effect.Grapher
@@ -30,7 +30,7 @@ newtype ConstExecC m a = ConstExecC { runConstExecC :: ReaderC (BL.ByteString) m
 instance Algebra sig m => Algebra (Exec :+: sig) (ConstExecC m) where
   alg hdl sig ctx = ConstExecC $ case sig of
     R other -> alg (runConstExecC . hdl) (R other) ctx
-    L (Exec _ _ _) -> do
+    L (Exec _ _) -> do
       output <- ask
       pure (Right output <$ ctx)
 
@@ -64,7 +64,7 @@ spec = do
       let result =
             analyze testdir
               & runConstExec outputTrivial
-              & runError @ExecErr
+              & runDiagnostics
               & run
       case result of
         Left err -> expectationFailure ("analyze failed: " <> show err)
@@ -74,7 +74,7 @@ spec = do
       let result =
             analyze testdir
               & runConstExec outputComplex
-              & runError @ExecErr
+              & runDiagnostics
               & run
 
       case result of

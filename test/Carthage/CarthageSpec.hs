@@ -5,7 +5,7 @@ module Carthage.CarthageSpec
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Effect.ReadFS
 import qualified Graphing as G
 import GraphUtil
@@ -23,7 +23,7 @@ spec :: Spec
 spec = do
   let runIt f = analyze f
         & runReadFSIO
-        & runError @ReadFSErr
+        & runDiagnostics
 
   emptyResult <- runIO $ runIt testProjectEmpty
   complexResult <- runIO $ runIt testProjectComplex
