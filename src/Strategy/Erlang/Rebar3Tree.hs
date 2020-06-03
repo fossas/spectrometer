@@ -54,6 +54,12 @@ mkProjectClosure dir deps = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
+type RebarGrapher = LabeledGrapher Rebar3Dep RebarLabel
+
+data RebarLabel =
+    RebarSource Text -- location
+  deriving (Eq, Ord, Show, Generic)
+
 buildGraph :: [Rebar3Dep] -> Graphing Dependency
 buildGraph deps = run . withLabeling toDependency $ do
   traverse_ direct deps
