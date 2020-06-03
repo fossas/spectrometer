@@ -198,13 +198,13 @@ test-suite unit-tests
 
   -- cabal-fmt: expand test
   other-modules:
-<<<<<<< HEAD
     App.Fossa.FossaAPIV1Spec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
+    Erlang.Rebar3TreeSpec
     Go.GlideLockSpec
     Go.GoListSpec
     Go.GomodSpec
@@ -212,19 +212,6 @@ test-suite unit-tests
     Go.GopkgTomlSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
-=======
-    Carthage.CarthageTest
-    Cocoapods.PodfileLockTest
-    Cocoapods.PodfileTest
-    Erlang.Rebar3TreeTest
-    Go.GlideLockTest
-    Go.GoListTest
-    Go.GomodTest
-    Go.GopkgLockTest
-    Go.GopkgTomlTest
-    Googlesource.RepoManifestTest
-    Gradle.GradleTest
->>>>>>> initial parser and tests
     GraphUtil
     GraphingSpec
     Maven.PluginStrategySpec

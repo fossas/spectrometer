@@ -19,8 +19,7 @@ import Text.Megaparsec.Char
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
-import Graphing (Graphing)
-import Effect.Grapher
+import Graphing (Graphing, unfold)
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -54,44 +53,17 @@ mkProjectClosure dir deps = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
-type RebarGrapher = LabeledGrapher Rebar3Dep RebarLabel
-
-data RebarLabel =
-    RebarSource Text -- location
-  deriving (Eq, Ord, Show, Generic)
-
 buildGraph :: [Rebar3Dep] -> Graphing Dependency
-buildGraph deps = run . withLabeling toDependency $ do
-  traverse_ direct deps
-  traverse_ mkEdges deps
-
+buildGraph deps = unfold deps subDeps toDependency
   where
-  toDependency :: Rebar3Dep -> Set RebarLabel -> Dependency
-  toDependency pkg = foldr applyLabel start
-    where 
-    applyLabel :: RebarLabel -> Dependency -> Dependency
-    applyLabel (RebarSource src) dep = dep { dependencyLocations = src : dependencyLocations dep }
-
-    start =
-      Dependency { dependencyType =
-                      case T.isInfixOf (T.pack "github.com") (depLocation pkg) of
-                      True -> GitType
-                      False -> HexType
-                 , dependencyName =
-                      case T.isInfixOf (T.pack "github.com") (depLocation pkg) of
-                      True -> depLocation pkg
-                      False -> depName pkg
-                 , dependencyVersion = Just (CEq (depVersion pkg))
+  toDependency Rebar3Dep{..} = 
+    Dependency { dependencyType = if T.isInfixOf "github.com" depLocation then GitType else HexType
+                 , dependencyName = if T.isInfixOf "github.com" depLocation then depLocation else depName
+                 , dependencyVersion = Just (CEq depVersion)
                  , dependencyLocations = []
                  , dependencyEnvironments = []
                  , dependencyTags = M.empty
                  }
-
-  mkEdges :: Has RebarGrapher sig m => Rebar3Dep -> m ()
-  mkEdges parentDep =
-    forM_ (subDeps parentDep) $ \childDep -> do
-      edge (parentDep) (childDep)
-      mkEdges childDep
 
 data Rebar3Dep = Rebar3Dep
   { depName     :: Text

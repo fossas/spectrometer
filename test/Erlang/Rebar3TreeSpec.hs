@@ -1,5 +1,5 @@
-module Erlang.Rebar3TreeTest
-  ( spec_analyze
+module Erlang.Rebar3TreeSpec
+  ( spec
   ) where
 
 import Prologue
@@ -14,7 +14,7 @@ import Graphing (Graphing)
 import Strategy.Erlang.Rebar3Tree
 import GraphUtil
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = GitType
@@ -100,8 +100,8 @@ depFive = Rebar3Dep
           , subDeps = []
           }         
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   contents <- runIO (TIO.readFile "test/Erlang/testdata/rebar3tree")
 
   describe "rebar3 tree analyzer" $
