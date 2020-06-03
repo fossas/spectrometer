@@ -9,8 +9,7 @@ import qualified Data.Text.IO as TIO
 import Text.Megaparsec
 
 import DepTypes
-import Effect.Grapher
-import Graphing (Graphing)
+import Graphing()
 import Strategy.Erlang.Rebar3Tree
 import GraphUtil
 
