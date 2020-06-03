@@ -6,12 +6,13 @@ module App.VPSScan.Scan
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
+import Effect.Exec
 import Path.IO
 import System.Exit (exitFailure, die)
 import Control.Concurrent.Async (concurrently)
 import Control.Carrier.Trace.Printing
-import Effect.ErrorUtils (tagError)
+import qualified Data.Text as T
 
 import Network.HTTP.Req (HttpException)
 
@@ -28,25 +29,24 @@ data ScanCmdOpts = ScanCmdOpts
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do
   basedir <- validateDir cmdBasedir
-  result <- runError @VPSError $ runScotlandYard $ runTrace $ runIPR $ runSherlock $ vpsScan basedir opts
+  result <- runDiagnostics $ runTrace $ vpsScan basedir opts
   case result of
     Left err -> do
-      print err
+      putStrLn (T.unpack $ diagnosticBundlePretty err)
       exitFailure
     Right _ -> pure ()
 
 ----- main logic
 
 data VPSError
-  = IPRFailed IPRError
-  | SherlockFailed SherlockError
-  | Couldn'tGetScanId HttpException
+  = Couldn'tGetScanId HttpException
   | Couldn'tUpload HttpException
   deriving (Show, Generic)
 
+instance ToDiagnostic VPSError
+
 vpsScan ::
-  ( Has ScotlandYard sig m
-  , Has (Error VPSError) sig m
+  ( Has Diagnostics sig m
   , Has Trace sig m
   , MonadIO m
   ) => Path Abs Dir -> ScanCmdOpts -> m ()
@@ -63,33 +63,40 @@ vpsScan basedir ScanCmdOpts{..} = do
     Just _ -> trace "[IPR] Starting IPR scan"
     Nothing -> trace "[IPR] IPR scan disabled"
 
+  let runIt = runDiagnostics . runExecIO . runTrace
   (iprResult, sherlockResult) <- liftIO $ concurrently
-                (runError @VPSError $ runIPR $ runScotlandYard $ runTrace $ runIPRScan basedir scanId vpsOpts)
-                (runError @VPSError $ runSherlock $ runTrace $ runSherlockScan basedir scanId vpsOpts)
+                (runIt $ runIPRScan basedir scanId vpsOpts)
+                (runIt $ runSherlockScan basedir scanId vpsOpts)
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"
-    (Left err, _) -> throwError err
-    (_, Left err) -> throwError err
+    (Left err, _) -> do
+      trace "[IPR] Failed to scan"
+      trace (T.unpack $ diagnosticBundlePretty err)
+      liftIO exitFailure
+    (_, Left err) -> do
+      trace "[Sherlock] Failed to scan"
+      trace (T.unpack $ diagnosticBundlePretty err)
+      liftIO exitFailure
 
 runSherlockScan ::
-  ( Has Sherlock sig m
-  , Has (Error VPSError) sig m
+  ( Has Exec sig m
+  , Has Diagnostics sig m
   , Has Trace sig m
   ) => Path Abs Dir -> Text -> VPSOpts -> m ()
 runSherlockScan basedir scanId vpsOpts = do
-  tagError SherlockFailed =<< execSherlock basedir scanId vpsOpts
+  execSherlock basedir scanId vpsOpts
   trace "[Sherlock] Sherlock scan complete"
 
 runIPRScan ::
-  ( Has ScotlandYard sig m
-  , Has IPR sig m
-  , Has (Error VPSError) sig m
+  ( Has Diagnostics sig m
   , Has Trace sig m
+  , Has Exec sig m
+  , MonadIO m
   ) => Path Abs Dir ->  Text -> VPSOpts -> m ()
 runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
   case vpsIpr of
     Just iprOpts -> do
-      iprResult <- tagError IPRFailed =<< execIPR basedir iprOpts
+      iprResult <- execIPR basedir iprOpts
       trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
       tagError Couldn'tUpload =<< uploadIPRResults vpsOpts scanId iprResult

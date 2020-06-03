@@ -20,20 +20,15 @@ module Effect.ReadFS
 
     -- * Parsing file contents
     readContentsParser,
-    readContentsParser',
     readContentsJson,
-    readContentsJson',
     readContentsYaml,
-    readContentsYaml',
     readContentsXML,
-    readContentsXML',
     module X,
   )
 where
 
 import Control.Algebra as X
-import Control.Effect.Error
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Control.Exception as E
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -62,6 +57,9 @@ data ReadFSErr
     ResolveError FilePath FilePath Text
   deriving (Eq, Ord, Show, Generic, Typeable)
 
+-- FIXME
+instance ToDiagnostic ReadFSErr where
+
 instance E.Exception ReadFSErr
 
 -- | Read file contents into a strict 'ByteString'
@@ -69,7 +67,7 @@ readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteSt
 readContentsBS' path = send (ReadContentsBS' path)
 
 -- | Read file contents into a strict 'ByteString'
-readContentsBS :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path b File -> m ByteString
+readContentsBS :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m ByteString
 readContentsBS = fromEither <=< readContentsBS'
 
 -- | Read file contents into a strict 'Text'
@@ -77,7 +75,7 @@ readContentsText' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr Text
 readContentsText' path = send (ReadContentsText' path)
 
 -- | Read file contents into a strict 'Text'
-readContentsText :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path b File -> m Text
+readContentsText :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m Text
 readContentsText = fromEither <=< readContentsText'
 
 -- | Resolve a relative filepath to a file
@@ -85,7 +83,7 @@ resolveFile' :: Has ReadFS sig m => Path Abs Dir -> Text -> m (Either ReadFSErr 
 resolveFile' base path = send (ResolveFile' base path)
 
 -- | Resolve a relative filepath to a file
-resolveFile :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Abs Dir -> Text -> m (Path Abs File)
+resolveFile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
 resolveFile dir path = fromEither =<< resolveFile' dir path
 
 -- | Resolve a relative filepath to a directory
@@ -93,7 +91,7 @@ resolveDir' :: Has ReadFS sig m => Path Abs Dir -> Text -> m (Either ReadFSErr (
 resolveDir' base path = send (ResolveDir' base path)
 
 -- | Resolve a relative filepath to a directory
-resolveDir :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Abs Dir -> Text -> m (Path Abs Dir)
+resolveDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs Dir)
 resolveDir dir path = fromEither =<< resolveDir' dir path
 
 -- | Check whether a file exists
@@ -107,55 +105,39 @@ doesDirExist path = send (DoesDirExist path)
 type Parser = Parsec Void Text
 
 -- | Read from a file, parsing its contents
-readContentsParser :: forall a sig m b. (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Parser a -> Path b File -> m a
+readContentsParser :: forall a sig m b. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path b File -> m a
 readContentsParser parser file = do
   contents <- readContentsText file
   case runParser parser (toFilePath file) contents of
-    Left err -> throwError (FileParseError (toFilePath file) (T.pack (errorBundlePretty err)))
+    Left err -> fatal (FileParseError (toFilePath file) (T.pack (errorBundlePretty err)))
     Right a -> pure a
 
--- | Read from a file, parsing its contents
-readContentsParser' :: Has ReadFS sig m => Parser a -> Path b File -> m (Either ReadFSErr a)
-readContentsParser' parser file = runError $ readContentsParser parser file
-
 -- | Read JSON from a file
-readContentsJson :: (FromJSON a, Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path b File -> m a
+readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
 readContentsJson file = do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> throwError (FileParseError (toFilePath file) (T.pack err))
+    Left err -> fatal (FileParseError (toFilePath file) (T.pack err))
     Right a -> pure a
 
--- | Read JSON from a file
-readContentsJson' :: (FromJSON a, Has ReadFS sig m) => Path b File -> m (Either ReadFSErr a)
-readContentsJson' = runError . readContentsJson
-
 -- | Read YAML from a file
-readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path b File -> m a
+readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
 readContentsYaml file = do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> throwError (FileParseError (toFilePath file) (T.pack $ prettyPrintParseException err))
+    Left err -> fatal (FileParseError (toFilePath file) (T.pack $ prettyPrintParseException err))
     Right a -> pure a
 
--- | Read YAML from a file
-readContentsYaml' :: (FromJSON a, Has ReadFS sig m) => Path b File -> m (Either ReadFSErr a)
-readContentsYaml' = runError . readContentsYaml
-
 -- | Read XML from a file
-readContentsXML :: (FromXML a, Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path b File -> m a
+readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
 readContentsXML file = do
   contents <- readContentsText file
   case parseXML contents of
-    Left err -> throwError (FileParseError (toFilePath file) (xmlErrorPretty err))
+    Left err -> fatal (FileParseError (toFilePath file) (xmlErrorPretty err))
     Right a -> pure a
 
--- | Read XML from a file
-readContentsXML' :: (FromXML a, Has ReadFS sig m) => Path b File -> m (Either ReadFSErr a)
-readContentsXML' = runError . readContentsXML
-
 newtype ReadFSIOC m a = ReadFSIOC {runReadFSIO :: m a}
-  deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
+  deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadFail)
 
 instance (Algebra sig m, MonadIO m) => Algebra (ReadFS :+: sig) (ReadFSIOC m) where
   alg hdl sig ctx = ReadFSIOC $ do

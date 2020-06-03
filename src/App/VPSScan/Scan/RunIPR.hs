@@ -2,8 +2,6 @@
 
 module App.VPSScan.Scan.RunIPR
   ( IPROpts (..),
-    IPR (..),
-    IPRC (..),
     execIPR,
     IPRError (..),
   )
@@ -11,7 +9,7 @@ where
 
 import qualified Data.HashMap.Strict as HM
 import Control.Carrier.Error.Either
-import qualified Data.Text as T
+import Control.Effect.Diagnostics
 import qualified Data.Vector as V
 import Prologue
 import Effect.Exec
@@ -22,9 +20,6 @@ data IPROpts = IPROpts
     pathfinderCmdPath :: String
   }
   deriving (Eq, Ord, Show, Generic)
-
-iprCmdArgs :: Path Abs Dir -> IPROpts -> [String]
-iprCmdArgs baseDir IPROpts {..} = ["-target", toFilePath baseDir, "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
 
 extractNonEmptyFiles :: Value -> Maybe Value
 extractNonEmptyFiles (Object obj) = do
@@ -52,38 +47,24 @@ extractNonEmptyFiles (Object obj) = do
   Just $ object ["Files" .= filtered]
 extractNonEmptyFiles _ = Nothing
 
------ ipr effect
-
-data IPRError
-  = NoFilesEntryInOutput
-  | IPRCommandFailed Text
+data IPRError = NoFilesEntryInOutput
   deriving (Eq, Ord, Show, Generic)
 
-data IPR m k where
-  ExecIPR :: Path Abs Dir -> IPROpts -> IPR m (Either IPRError Value)
+-- FIXME
+instance ToDiagnostic IPRError where
 
-execIPR :: Has IPR sig m => Path Abs Dir -> IPROpts -> m (Either IPRError Value)
-execIPR basedir iprOpts = send (ExecIPR basedir iprOpts)
+execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> IPROpts -> m Value
+execIPR basedir iprOpts = do
+  value <- execJson basedir (iprCommand iprOpts)
+  let maybeExtracted = extractNonEmptyFiles value
+  case maybeExtracted of
+    Nothing -> fatal NoFilesEntryInOutput
+    Just extracted -> pure extracted
 
------ production ipr interpreter
-
-newtype IPRC m a = IPRC {runIPR :: m a}
-  deriving (Functor, Applicative, Monad, MonadIO)
-
-instance (Algebra sig m, MonadIO m) => Algebra (IPR :+: sig) (IPRC m) where
-  alg hdl sig ctx = IPRC $ case sig of
-    R other -> alg (runIPR . hdl) other ctx
-    L (ExecIPR basedir opts@IPROpts {..}) -> do
-      let iprCommand :: Command
-          iprCommand = Command [iprCmdPath] [] Never
-
-      maybeValue <- runError @ExecErr $ runExecIO $ execJson basedir iprCommand $ iprCmdArgs basedir opts
-      let result = case maybeValue of
-            Left err -> Left (IPRCommandFailed (T.pack (show err)))
-            Right value -> do
-              let maybeExtracted = extractNonEmptyFiles value
-              case maybeExtracted of
-                Nothing -> Left NoFilesEntryInOutput
-                Just extracted -> Right extracted
-
-      pure (result <$ ctx)
+iprCommand :: IPROpts -> Command
+iprCommand IPROpts {..} =
+  Command
+    { cmdName = iprCmdPath,
+      cmdArgs = ["-target", ".", "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath],
+      cmdAllowErr = Never
+    }

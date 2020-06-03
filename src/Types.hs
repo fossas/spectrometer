@@ -24,9 +24,8 @@ module Types
 import Prologue
 
 import Control.Algebra
-import Control.Carrier.Error.Either
-import Control.Carrier.Fail.Either
 import Control.Carrier.TaskPool
+import Control.Effect.Diagnostics
 import Control.Effect.Exception
 import Control.Carrier.Output.IO
 import DepTypes
@@ -56,9 +55,7 @@ runStrategy ::
   )
   => Text -> StrategyGroup -> OutputC ProjectClosureBody (TaskC m) () -> m ()
 runStrategy name strategyGroup act = forkTask $ do
-  let runIt = runError @ReadFSErr
-            . runError @ExecErr
-            . runFail
+  let runIt = runDiagnostics
             . runReadFSIO
             . runExecIO
             . runOutput @ProjectClosureBody
@@ -68,11 +65,9 @@ runStrategy name strategyGroup act = forkTask $ do
     case res of
       Left exc -> output (ProjectFailure strategyGroup name exc)
       Right (Left exc) -> output (ProjectFailure strategyGroup name (SomeException exc))
-      Right (Right (Left exc)) -> output (ProjectFailure strategyGroup name (SomeException exc))
-      Right (Right (Right (Left failmsg))) -> output (ProjectFailure strategyGroup name (SomeException (userError failmsg)))
-      Right (Right (Right (Right (bodies,())))) -> traverse_ (output . toProjectClosure strategyGroup name) bodies
+      Right (Right (bodies,())) -> traverse_ (output . toProjectClosure strategyGroup name) bodies
 
-type TaskC m = ExecIOC (ReadFSIOC (FailC (ErrorC ExecErr (ErrorC ReadFSErr m))))
+type TaskC m = ExecIOC (ReadFSIOC (DiagnosticsC m))
 
 type HasDiscover sig m =
   ( Has (Lift IO) sig m

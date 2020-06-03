@@ -19,9 +19,7 @@ import Control.Carrier.TaskPool
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import Effect.Exec (ExecErr(..))
 import Effect.Logger
-import Effect.ReadFS (ReadFSErr(..))
 import qualified Srclib.Converter as Srclib
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
@@ -123,7 +121,10 @@ renderFailure failure = object
   , "cause" .= renderCause (projectFailureCause failure)
   ]
 
+-- FIXME
 renderCause :: SomeException -> Value
+renderCause _ = "cause: rendered"
+{-
 renderCause e = fromMaybe renderSomeException $
       renderReadFSErr <$> fromException e
   <|> renderExecErr   <$> fromException e
@@ -164,6 +165,7 @@ renderCause e = fromMaybe renderSomeException $
       , "cmd"  .= cmd
       , "err"  .= err
       ]
+-}
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
