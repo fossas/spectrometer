@@ -25,7 +25,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files -> do
-  case find (\f -> fileName f `elem` ["rebar.config"]) files of
+  case find (\f -> (fileName f) == "rebar.config") files of
     Nothing -> pure ()
     Just _  -> runSimpleStrategy "erlang-rebar3tree" ErlangGroup $ analyze dir
 
@@ -53,12 +53,6 @@ mkProjectClosure dir deps = ProjectClosureBody
     , dependenciesOptimal  = NotOptimal
     , dependenciesComplete = NotComplete
     }
-
-type RebarGrapher = LabeledGrapher Rebar3Dep RebarLabel
-
-data RebarLabel =
-    RebarSource Text -- location
-  deriving (Eq, Ord, Show, Generic)
 
 buildGraph :: [Rebar3Dep] -> Graphing Dependency
 buildGraph deps = run . withLabeling toDependency $ do
@@ -112,10 +106,7 @@ rebar3TreeParser = concat <$> ((try (rebarDep 0) <|> ignoredLine) `sepBy` eol) <
 
   -- ignore content until the end of the line
   ignored :: Parser ()
-  ignored = do
-        i <- takeWhileP (Just "ignored") (not . isEndLine)
-        _ <- traceM $ show i
-        pure ()
+  ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
 
   ignoredLine :: Parser [Rebar3Dep]
   ignoredLine = do
@@ -131,11 +122,11 @@ rebar3TreeParser = concat <$> ((try (rebarDep 0) <|> ignoredLine) `sepBy` eol) <
   findLocation :: Parser Text
   findLocation = takeWhileP (Just "location") (/= ')')
 
-  rebarDep :: Integer -> Parser [Rebar3Dep]
+  rebarDep :: Int -> Parser [Rebar3Dep]
   rebarDep depth = do
     _ <- chunk " "
-    countSlash <- many "  │"
-    _ <- satisfy (\_ -> (fromIntegral (length countSlash)) == depth)
+    slashCount <- many "  │"
+    _ <- satisfy (\_ -> length slashCount == depth)
 
     _ <- chunk "  & " <|> chunk "  ├─ " <|> chunk " ├─ " <|> chunk " └─ " 
     dep <- findName
@@ -149,7 +140,7 @@ rebar3TreeParser = concat <$> ((try (rebarDep 0) <|> ignoredLine) `sepBy` eol) <
 
     pure [Rebar3Dep dep version location (concat deps)]
   
-  rebarRecurse :: Integer -> Parser [Rebar3Dep]
+  rebarRecurse :: Int -> Parser [Rebar3Dep]
   rebarRecurse depth = do
     _ <- chunk "\n"
     deps <- rebarDep depth
