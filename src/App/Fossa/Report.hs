@@ -1,9 +1,8 @@
 module App.Fossa.Report
-  ( reportMain,
+  ( todo, 
   )
 where
 
 import Prologue
 
-reportMain :: a -> IO ()
-reportMain = undefined
+todo = undefined
