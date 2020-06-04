@@ -5,4 +5,5 @@ where
 
 import Prologue
 
+todo :: a
 todo = undefined
