@@ -49,16 +49,13 @@ genAttribution =
     <*> genLicenseMap
 
 tuplify :: Monad m => m a -> m b -> m (a, b)
-tuplify a b = do
-  a' <- a
-  b' <- b
-  return (a', b')
+tuplify = liftA2 (,)
 
 genLicenseMap :: Gen (Map LicenseName LicenseContents)
 genLicenseMap = do
   let genName = LicenseName <$> arbitraryText
   let genContents = LicenseContents <$> arbitraryText
-  Gen.map defaultRange (tuplify genName genContents)
+  Gen.map defaultRange $ tuplify genName genContents
 
 arbitraryText :: Gen Text
 arbitraryText = Gen.text (Range.linear 3 25) Gen.unicodeAll
