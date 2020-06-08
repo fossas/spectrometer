@@ -39,26 +39,26 @@ testMain
   -> Maybe Text -- ^ cli override for name
   -> Maybe Text -- ^ cli override for revision
   -> IO ()
-testMain baseurl apiKey logSeverity timeoutSeconds outputType overrideName overrideRevision= do
+testMain baseurl apiKey logSeverity timeoutSeconds outputType overrideName overrideRevision = do
   basedir <- getCurrentDir
 
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
     result <- runError @TestError $ do
       inferred <- inferProject basedir
-      let revision = Fossa.ProjectRevision
-            (fromMaybe (inferredName inferred) overrideName)
-            (fromMaybe (inferredRevision inferred) overrideRevision)
+ 
+      let projectName = fromMaybe (inferredName inferred) overrideName
+          projectRevision = fromMaybe (inferredRevision inferred) overrideRevision
 
       logInfo ""
-      logInfo ("Using project name: `" <> pretty (Fossa.projectName revision) <> "`")
-      logInfo ("Using revision: `" <> pretty (Fossa.projectRevision revision) <> "`")
+      logInfo ("Using project name: `" <> pretty projectName <> "`")
+      logInfo ("Using revision: `" <> pretty projectRevision <> "`")
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild baseurl apiKey revision
+      waitForBuild baseurl apiKey projectName projectRevision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues baseurl apiKey revision
+      issues <- waitForIssues baseurl apiKey projectName projectRevision
       logSticky ""
 
       if null (Fossa.issuesIssues issues)
@@ -145,10 +145,11 @@ waitForBuild
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
   => UrlOption
   -> Text -- ^ api key
-  -> Fossa.ProjectRevision
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
   -> m ()
-waitForBuild baseurl key revision = do
-  maybeBuild <- Fossa.fossaReq $ Fossa.getLatestBuild baseurl key revision
+waitForBuild baseurl key projectName projectRevision = do
+  maybeBuild <- Fossa.fossaReq $ Fossa.getLatestBuild baseurl key projectName projectRevision
   case maybeBuild of
     Left err -> throwError (TestErrorAPI err)
     Right build -> do
@@ -158,23 +159,24 @@ waitForBuild baseurl key revision = do
         otherStatus -> do
           logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
           liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-          waitForBuild baseurl key revision
+          waitForBuild baseurl key projectName projectRevision
 
 waitForIssues
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
   => UrlOption
   -> Text -- ^ api key
-  -> Fossa.ProjectRevision
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
   -> m Fossa.Issues
-waitForIssues baseurl key revision = do
-  result <- Fossa.fossaReq $ Fossa.getIssues baseurl key revision
+waitForIssues baseurl key projectName projectRevision = do
+  result <- Fossa.fossaReq $ Fossa.getIssues baseurl key projectName projectRevision
   case result of
     Left err -> throwError (TestErrorAPI err)
     Right issues ->
       case Fossa.issuesStatus issues of
         "WAITING" -> do
           liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-          waitForIssues baseurl key revision
+          waitForIssues baseurl key projectName projectRevision
         _ -> pure issues
 
 timeout

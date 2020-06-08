@@ -28,10 +28,10 @@ appMain = do
     AnalyzeCommand AnalyzeOptions {..} -> do
       changeDir analyzeBaseDir
       if analyzeOutput
-        then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision
+        then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision analyzeBranch
         else do
           key <- requireKey maybeApiKey
-          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
+          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision analyzeBranch
     TestCommand TestOptions {..} -> do
       changeDir testBaseDir
       key <- requireKey maybeApiKey
@@ -117,6 +117,7 @@ analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
+    <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> baseDirArg
 
@@ -124,7 +125,6 @@ metadataOpts :: Parser ProjectMetadata
 metadataOpts =
   ProjectMetadata
     <$> optional (strOption (long "title" <> help "the title of the FOSSA project. (default: the project name)"))
-    <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> optional (strOption (long "project-url" <> help "this repository's home page"))
     <*> optional (strOption (long "jira-project-key" <> help "this repository's JIRA project key"))
     <*> optional (strOption (long "link" <> help "a link to attach to the current build"))
@@ -175,6 +175,7 @@ data ReportOptions = ReportOptions
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool,
+    analyzeBranch :: Maybe Text,
     analyzeMetadata :: ProjectMetadata,
     analyzeBaseDir :: FilePath
   }

@@ -81,11 +81,11 @@ data FossaError
 data ProjectRevision = ProjectRevision
   { projectName :: Text
   , projectRevision :: Text
+  , projectBranch :: Text
   } deriving (Eq, Ord, Show, Generic)
 
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
-  , projectBranch :: Maybe Text
   , projectUrl :: Maybe Text
   , projectJiraKey :: Maybe Text
   , projectLink :: Maybe Text
@@ -107,6 +107,7 @@ uploadAnalysis baseurl key ProjectRevision{..} metadata projects = do
           <> "v" =: cliVersion
           <> "managedBuild" =: True
           <> "title" =: fromMaybe projectName (projectTitle metadata)
+          <> "branch" =: projectBranch
           <> header "Authorization" ("token " <> encodeUtf8 key)
           <> mkMetadataOpts metadata
   resp <- req POST (uploadUrl $ urlOptionUrl baseurl) (ReqBodyJson sourceUnits) jsonResponse (urlOptionOptions baseurl <> opts)
@@ -114,8 +115,7 @@ uploadAnalysis baseurl key ProjectRevision{..} metadata projects = do
 
 mkMetadataOpts :: ProjectMetadata -> Option scheme
 mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes 
-  [ ("branch" =:) <$> projectBranch
-  , ("projectURL" =:) <$> projectUrl
+  [ ("projectURL" =:) <$> projectUrl
   , ("jiraProjectKey" =:) <$> projectJiraKey
   , ("link" =:) <$> projectLink
   , ("team" =:) <$> projectTeam
@@ -201,9 +201,10 @@ instance FromJSON BuildStatus where
 getLatestBuild
   :: UrlOption
   -> Text -- ^ api key
-  -> ProjectRevision
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
   -> FossaReq Build
-getLatestBuild baseurl key ProjectRevision{..} = do
+getLatestBuild baseurl key projectName projectRevision = do
   let url = urlOptionUrl baseurl
       opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
   Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
@@ -218,9 +219,10 @@ issuesEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: render
 getIssues
   :: UrlOption
   -> Text -- ^ api key
-  -> ProjectRevision
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
   -> FossaReq Issues
-getIssues baseurl key ProjectRevision{..} = do
+getIssues baseurl key projectName projectRevision = do
   let opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
       url = urlOptionUrl baseurl
   Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts

@@ -58,10 +58,10 @@ data ScanDestination
   | OutputStdout
   deriving (Generic)
  
-analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> IO ()
-analyzeMain logSeverity destination name revision = do
+analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> Maybe Text -> IO ()
+analyzeMain logSeverity destination name revision branch = do
   basedir <- getCurrentDir
-  withLogger logSeverity $ analyze basedir destination name revision
+  withLogger logSeverity $ analyze basedir destination name revision branch
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -72,8 +72,9 @@ analyze ::
   -> ScanDestination
   -> Maybe Text -- ^ cli override for name
   -> Maybe Text -- ^ cli override for revision
+  -> Maybe Text -- ^ cli override for branch
   -> m ()
-analyze basedir destination overrideName overrideRevision = do
+analyze basedir destination overrideName overrideRevision overrideBranch = do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
@@ -91,11 +92,13 @@ analyze basedir destination overrideName overrideRevision = do
       let revision = ProjectRevision
             (fromMaybe (inferredName inferred) overrideName)
             (fromMaybe (inferredRevision inferred) overrideRevision)
+            (fromMaybe (inferredBranch inferred) overrideBranch)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-     
+      logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
+
       maybeResp <- fossaReq $ uploadAnalysis baseurl apiKey revision metadata projects
       case maybeResp of
         Left (InvalidProjectOrRevision _) -> logError "FOSSA error: Invalid project or revision"
@@ -105,6 +108,8 @@ analyze basedir destination overrideName overrideRevision = do
           logError "Error when uploading to FOSSA:"
           logError (viaShow exc)
         Right resp -> do
+          logInfo "-----"
+          logInfo "View FOSSA Report: "
           logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 

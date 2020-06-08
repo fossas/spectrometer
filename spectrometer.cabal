@@ -122,6 +122,7 @@ library
     Effect.Logger
     Effect.ReadFS
     Graphing
+    Network.HTTP.Req.URI
     OptionExtensions
     Parse.XML
     Prologue

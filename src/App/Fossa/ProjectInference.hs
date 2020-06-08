@@ -1,11 +1,10 @@
-{-# language QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module App.Fossa.ProjectInference
-  ( inferProject
-  , InferredProject(..)
-  ) where
-
-import Prologue
+  ( inferProject,
+    InferredProject (..),
+  )
+where
 
 import Control.Algebra
 import Control.Effect.Diagnostics
@@ -16,13 +15,13 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Path.IO (getTempDir)
-import qualified System.FilePath.Posix as FP
-import Text.GitConfig.Parser (Section(..), parseConfig)
-import Text.Megaparsec (errorBundlePretty)
-
 import Effect.Exec
 import Effect.Logger
+import Path.IO (getTempDir)
+import Prologue
+import qualified System.FilePath.Posix as FP
+import Text.GitConfig.Parser (Section (..), parseConfig)
+import Text.Megaparsec (errorBundlePretty)
 import Effect.ReadFS
 
 inferProject :: (Has Logger sig m, MonadIO m) => Path Abs Dir -> m InferredProject
@@ -47,19 +46,37 @@ inferSVN :: (Has Exec sig m, Has Diagnostics sig m) => Path b Dir -> m InferredP
 inferSVN dir = do
   output <- execThrow dir svnCommand
   let props = toProps output
-  case (,) <$> lookup "Repository Root" props <*> lookup "Revision" props of
-    Just (name, rev) -> pure (InferredProject name rev)
+
+
+  let maybeProject = do
+        root <- lookup "Repository Root" props
+        revision <- lookup "Revision" props
+        url <- lookup "URL" props
+        relUrl <- lookup "Relative URL" props
+
+        let rootRelativeToUrl = dropPrefix url root
+
+        -- we need to trim off: the caret, the root (as relative to the url), and one of "/branches/" or "/"
+        let trimmedRelative =
+              dropPrefix "branches/"
+              . dropPrefix "/"
+              . dropPrefix rootRelativeToUrl
+              . dropPrefix "^" $ relUrl
+
+        pure $ InferredProject root revision (if T.null trimmedRelative then "trunk" else trimmedRelative)
+
+  case maybeProject of
     Nothing -> fatal (CommandParseError svnCommand "Invalid output (missing Repository Root or Revision)")
+    Just project -> pure project
 
-  where
-  toProps :: BL.ByteString -> [(Text, Text)]
-  toProps bs = mapMaybe toProp (T.lines (TL.toStrict (decodeUtf8 bs)))
-
-  toProp :: Text -> Maybe (Text, Text)
-  toProp propLine =
-    case T.splitOn ": " propLine of
-      [key, val] -> Just (key, val)
-      _ -> Nothing
+    where
+      toProps :: BL.ByteString -> [(Text, Text)]
+      toProps bs = mapMaybe toProp (T.lines (TL.toStrict (decodeUtf8 bs)))
+      toProp :: Text -> Maybe (Text, Text)
+      toProp propLine =
+        case T.splitOn ": " propLine of
+          [key, val] -> Just (key, val)
+          _ -> Nothing
 
 -- | Infer a default project name from the directory, and a default
 -- revision from the current time. Writes `.fossa.revision` to the system
@@ -72,8 +89,11 @@ inferDefault dir = liftIO $ do
   tmp <- getTempDir
   writeFile (fromAbsDir tmp FP.</> ".fossa.revision") (show time)
 
-  pure (InferredProject (T.pack name) (T.pack (show time)))
+  pure (InferredProject (T.pack name) (T.pack (show time)) "master")
 
+-- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
+dropPrefix :: Text -> Text -> Text
+dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)
 
 findGitDir :: Has ReadFS sig m => Path Abs Dir -> m (Maybe (Path Abs Dir))
 findGitDir dir = do
@@ -98,9 +118,9 @@ inferGit dir = do
   case foundGitDir of
     Nothing -> fatal MissingGitDir
     Just gitDir -> do
-      name     <- parseGitProjectName gitDir
-      revision <- parseGitProjectRevision gitDir
-      pure (InferredProject name revision)
+      name <- parseGitProjectName gitDir
+      (branch, revision) <- parseGitProjectRevision gitDir
+      pure (InferredProject name revision branch)
 
 parseGitProjectName ::
   ( Has ReadFS sig m
@@ -118,7 +138,6 @@ parseGitProjectName dir = do
 
   case parseConfig contents of
     Left err -> fatal (GitConfigParse (T.pack (errorBundlePretty err)))
-
     Right config -> do
       let maybeSection = find isOrigin config
       case maybeSection of
@@ -127,17 +146,16 @@ parseGitProjectName dir = do
           case HM.lookup "url" properties of
             Just url -> pure url
             Nothing -> fatal InvalidRemote
-
   where
-  isOrigin :: Section -> Bool
-  isOrigin (Section ["remote", "origin"] _) = True
-  isOrigin _ = False
+    isOrigin :: Section -> Bool
+    isOrigin (Section ["remote", "origin"] _) = True
+    isOrigin _ = False
 
 parseGitProjectRevision ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   )
-  => Path Abs Dir -> m Text
+  => Path Abs Dir -> m (Text, Text) -- branch, revision
 parseGitProjectRevision dir = do
   let relHead = [relfile|HEAD|]
 
@@ -145,23 +163,24 @@ parseGitProjectRevision dir = do
 
   unless headExists (fatal MissingGitHead)
 
-  contents <- removeNewlines . T.drop 5 <$> readContentsText (dir </> relHead)
+  rawPath <- removeNewlines . dropPrefix "ref: " <$> readContentsText (dir </> relHead)
 
-  case parseRelFile (T.unpack contents) of
+  case parseRelFile (T.unpack rawPath) of
+    Nothing -> fatal (InvalidBranchName rawPath)
     Just path -> do
       branchExists <- doesFileExist (dir </> path)
 
-      unless branchExists (fatal (MissingBranch contents))
+      unless branchExists (fatal (MissingBranch rawPath))
 
-      removeNewlines <$> readContentsText (dir </> path)
-
-    Nothing -> fatal (InvalidBranchName contents)
+      revision <- removeNewlines <$> readContentsText (dir </> path)
+      let branch = dropPrefix "refs/heads/" rawPath
+      pure (branch, revision)
 
 removeNewlines :: Text -> Text
 removeNewlines = T.replace "\r" "" . T.replace "\n" ""
 
-data InferenceError =
-    InvalidRemote
+data InferenceError
+  = InvalidRemote
   | GitConfigParse Text
   | MissingGitConfig
   | MissingGitHead
@@ -174,6 +193,8 @@ data InferenceError =
 instance ToDiagnostic InferenceError where
 
 data InferredProject = InferredProject
-  { inferredName     :: Text
-  , inferredRevision :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  { inferredName :: Text,
+    inferredRevision :: Text,
+    inferredBranch :: Text
+  }
+  deriving (Eq, Ord, Show, Generic)
