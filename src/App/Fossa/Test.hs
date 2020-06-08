@@ -9,7 +9,7 @@ import qualified Prelude as Unsafe
 
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
 import qualified Data.Map as M
@@ -43,7 +43,7 @@ testMain baseurl apiKey logSeverity timeoutSeconds outputType overrideName overr
   basedir <- getCurrentDir
 
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runError @TestError $ do
+    result <- runDiagnostics $ do
       inferred <- inferProject basedir
  
       let projectName = fromMaybe (inferredName inferred) overrideName
@@ -71,7 +71,7 @@ testMain baseurl apiKey logSeverity timeoutSeconds outputType overrideName overr
 
     case result of
       Left err -> do
-        logError $ pretty (renderTestError err)
+        logError $ pretty (diagnosticBundlePretty err)
         liftIO exitFailure
       Right _ -> liftIO exitSuccess
 
@@ -132,52 +132,47 @@ renderedIssues issues = rendered
           | length xs <= ix = Nothing
           | otherwise = Just (xs Unsafe.!! ix)
 
-data TestError
-  = TestErrorAPI Fossa.FossaError -- ^ we encountered an API request error
-  | TestBuildFailed -- ^ we encountered the FAILED status on a build
+data TestError = TestBuildFailed -- ^ we encountered the FAILED status on a build
   deriving (Show, Generic)
 
+-- FIXME
+instance ToDiagnostic TestError where
+
 renderTestError :: TestError -> Text
-renderTestError (TestErrorAPI err) = "An API error occurred: " <> T.pack (show err)
 renderTestError TestBuildFailed = "The build failed. Check the FOSSA webapp for more details."
 
 waitForBuild
-  :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
+  :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
   => UrlOption
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
   -> m ()
 waitForBuild baseurl key projectName projectRevision = do
-  maybeBuild <- Fossa.fossaReq $ Fossa.getLatestBuild baseurl key projectName projectRevision
-  case maybeBuild of
-    Left err -> throwError (TestErrorAPI err)
-    Right build -> do
-      case Fossa.buildTaskStatus (Fossa.buildTask build) of
-        Fossa.StatusSucceeded -> pure ()
-        Fossa.StatusFailed -> throwError TestBuildFailed
-        otherStatus -> do
-          logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
-          liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-          waitForBuild baseurl key projectName projectRevision
+  build <- Fossa.getLatestBuild baseurl key projectName projectRevision
+ 
+  case Fossa.buildTaskStatus (Fossa.buildTask build) of
+    Fossa.StatusSucceeded -> pure ()
+    Fossa.StatusFailed -> fatal TestBuildFailed
+    otherStatus -> do
+      logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
+      liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      waitForBuild baseurl key projectName projectRevision
 
 waitForIssues
-  :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
+  :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
   => UrlOption
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
   -> m Fossa.Issues
 waitForIssues baseurl key projectName projectRevision = do
-  result <- Fossa.fossaReq $ Fossa.getIssues baseurl key projectName projectRevision
-  case result of
-    Left err -> throwError (TestErrorAPI err)
-    Right issues ->
-      case Fossa.issuesStatus issues of
-        "WAITING" -> do
-          liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-          waitForIssues baseurl key projectName projectRevision
-        _ -> pure issues
+  issues <- Fossa.getIssues baseurl key projectName projectRevision
+  case Fossa.issuesStatus issues of
+    "WAITING" -> do
+      liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      waitForIssues baseurl key projectName projectRevision
+    _ -> pure issues
 
 timeout
   :: Int -- ^ number of seconds before timeout

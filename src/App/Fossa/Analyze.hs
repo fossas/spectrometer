@@ -12,10 +12,11 @@ import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
 
-import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, fossaReq, uploadAnalysis, FossaError(..), UploadResponse(..))
+import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, uploadAnalysis, UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
+import Control.Effect.Diagnostics
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -99,14 +100,9 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
       logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
 
-      maybeResp <- fossaReq $ uploadAnalysis baseurl apiKey revision metadata projects
-      case maybeResp of
-        Left (InvalidProjectOrRevision _) -> logError "FOSSA error: Invalid project or revision"
-        Left (NoPermission _) -> logError "FOSSA error: No permission to upload"
-        Left (JsonDeserializeError msg) -> logError $ "FOSSA error: Couldn't deserialize API response: " <> pretty msg
-        Left (OtherError exc) -> do
-          logError "Error when uploading to FOSSA:"
-          logError (viaShow exc)
+      uploadResult <- runDiagnostics $ uploadAnalysis baseurl apiKey revision metadata projects
+      case uploadResult of
+        Left err -> logError (pretty (diagnosticBundlePretty err))
         Right resp -> do
           logInfo "-----"
           logInfo "View FOSSA Report: "

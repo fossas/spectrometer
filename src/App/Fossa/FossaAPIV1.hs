@@ -18,13 +18,12 @@ module App.Fossa.FossaAPIV1
   , renderIssueType
   , IssueRule(..)
 
-  , getOrganizationId
   , getAttribution
   ) where
 
 import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Data.List (isInfixOf)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
@@ -38,14 +37,14 @@ import Srclib.Types
 import Data.Maybe (catMaybes)
 import OptionExtensions
 
-newtype FossaReq a = FossaReq { unFossaReq :: ErrorC FossaError IO a }
+newtype FossaReq m a = FossaReq { unFossaReq :: m a }
   deriving (Functor, Applicative, Monad, MonadIO)
 
-instance MonadHttp FossaReq where
-  handleHttpException = FossaReq . throwError . mangleError
+instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
+  handleHttpException = FossaReq . fatal . mangleError
 
-fossaReq :: MonadIO m => FossaReq a -> m (Either FossaError a)
-fossaReq = liftIO . runError @FossaError . unFossaReq
+fossaReq :: FossaReq m a -> m a
+fossaReq = unFossaReq
 
 -- TODO: git commit?
 cliVersion :: Text
@@ -78,6 +77,9 @@ data FossaError
   | OtherError HttpException
   deriving (Show, Generic)
 
+-- FIXME
+instance ToDiagnostic FossaError where
+
 data ProjectRevision = ProjectRevision
   { projectName :: Text
   , projectRevision :: Text
@@ -94,13 +96,14 @@ data ProjectMetadata = ProjectMetadata
   } deriving (Eq, Ord, Show, Generic)
 
 uploadAnalysis
-  :: UrlOption -- ^ base url
+  :: (Has Diagnostics sig m, MonadIO m)
+  => UrlOption -- ^ base url
   -> Text -- ^ api key
   -> ProjectRevision
   -> ProjectMetadata
   -> [Project]
-  -> FossaReq UploadResponse
-uploadAnalysis baseurl key ProjectRevision{..} metadata projects = do
+  -> m UploadResponse
+uploadAnalysis baseurl key ProjectRevision{..} metadata projects = fossaReq $ do
   let filteredProjects = filter (isProductionPath . projectPath) projects
       sourceUnits = fromMaybe [] $ traverse toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
@@ -199,12 +202,13 @@ instance FromJSON BuildStatus where
     other -> pure $ StatusUnknown other
 
 getLatestBuild
-  :: UrlOption
+  :: (Has Diagnostics sig m, MonadIO m)
+  => UrlOption
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
-  -> FossaReq Build
-getLatestBuild baseurl key projectName projectRevision = do
+  -> m Build
+getLatestBuild baseurl key projectName projectRevision = fossaReq $ do
   let url = urlOptionUrl baseurl
       opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
   Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
@@ -217,12 +221,13 @@ issuesEndpoint :: Int -> Locator -> Url 'Https
 issuesEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
 
 getIssues
-  :: UrlOption
+  :: (Has Diagnostics sig m, MonadIO m)
+  => UrlOption
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
-  -> FossaReq Issues
-getIssues baseurl key projectName projectRevision = do
+  -> m Issues
+getIssues baseurl key projectName projectRevision = fossaReq $ do
   let opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
       url = urlOptionUrl baseurl
   Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
@@ -329,11 +334,13 @@ attributionEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
 attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
 
 getAttribution
-  :: UrlOption
+  :: (Has Diagnostics sig m, MonadIO m)
+  => UrlOption
   -> Text -- ^ api key
-  -> ProjectRevision
-  -> FossaReq Attr.Attribution
-getAttribution baseurl key ProjectRevision{..} = do
+  -> Text -- ^ project name
+  -> Text -- ^ project revision
+  -> m Attr.Attribution
+getAttribution baseurl key project revision = fossaReq $ do
   let opts = urlOptionOptions baseurl 
         <> header "Authorization" ("token " <> encodeUtf8 key)
         <> "includeDeepDependencies" =: True
@@ -341,7 +348,7 @@ getAttribution baseurl key ProjectRevision{..} = do
         <> "includeDownloadUrl" =: True
       url = urlOptionUrl baseurl
   Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
-  response <- req GET (attributionEndpoint url orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  response <- req GET (attributionEndpoint url orgId (Locator "custom" project (Just revision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------
@@ -356,14 +363,3 @@ instance FromJSON Organization where
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
-
--- TODO: Is this used anywhere?
-getOrganizationId
-  :: UrlOption
-  -> Text -- ^ api key
-  -> FossaReq Issues
-getOrganizationId baseurl key = do
-  let opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
-      url = urlOptionUrl baseurl
-  response <- req GET (organizationEndpoint url) NoReqBody jsonResponse opts
-  pure (responseBody response)
