@@ -36,12 +36,12 @@ data Dependency
         depHash :: Maybe Text,
         depAuthors :: [Text],
         depDescription :: Maybe Text,
-        depLicenses :: [License],
+        depLicenses :: Maybe [License],
         depOtherLicenses :: [License],
-        depProjectUrl :: Text,
+        depProjectUrl :: Maybe Text,
         depDependencyPaths :: [Text],
-        depNotes :: [Maybe Text],
-        depDownloadUrl :: Text,
+        depNotes :: Maybe [Text],
+        depDownloadUrl :: Maybe Text,
         depTitle :: Text
       }
   deriving (Eq, Show, Ord)
@@ -49,7 +49,7 @@ data Dependency
 data License
   = License
       { licenseName :: LicenseName,
-        licenseAttribution :: LicenseContents
+        licenseAttribution :: Maybe LicenseContents
       }
   deriving (Eq, Show, Ord)
 
@@ -87,12 +87,12 @@ instance FromJSON Dependency where
       <*> obj .:? "hash"
       <*> obj .: "authors"
       <*> obj .:? "description"
-      <*> obj .: "licenses"
+      <*> obj .:? "licenses"
       <*> obj .: "otherLicenses"
-      <*> obj .: "projectUrl"
+      <*> obj .:? "projectUrl"
       <*> obj .: "dependencyPaths"
-      <*> obj .: "notes"
-      <*> obj .: "downloadUrl"
+      <*> obj .:? "notes"
+      <*> obj .:? "downloadUrl"
       <*> obj .: "title"
 
 instance ToJSON Dependency where
@@ -118,7 +118,7 @@ instance FromJSON License where
   parseJSON = withObject "License" $ \obj ->
     License
       <$> obj .: "name"
-      <*> obj .: "attribution"
+      <*> obj .:? "attribution"
 
 instance ToJSON License where
   toJSON License {..} =
