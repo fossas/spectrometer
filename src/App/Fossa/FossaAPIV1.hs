@@ -338,7 +338,7 @@ getAttribution baseurl key ProjectRevision{..} = do
         <> "includeHashAndVersionData" =: True
         <> "includeDownloadUrl" =: True
       url = urlOptionUrl baseurl
-  orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
   response <- req GET (attributionEndpoint orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 

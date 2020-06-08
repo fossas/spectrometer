@@ -31,16 +31,16 @@ data Dependency
   = Dependency
       { depPackage :: Text,
         depSource :: Text,
-        depVersion :: Text,
-        depIsGolang :: Bool,
-        depHash :: Text,
+        depVersion :: Maybe Text,
+        depIsGolang :: Maybe Bool,
+        depHash :: Maybe Text,
         depAuthors :: [Text],
         depDescription :: Maybe Text,
         depLicenses :: [License],
         depOtherLicenses :: [License],
         depProjectUrl :: Text,
         depDependencyPaths :: [Text],
-        depNotes :: [Text],
+        depNotes :: [Maybe Text],
         depDownloadUrl :: Text,
         depTitle :: Text
       }
@@ -82,9 +82,9 @@ instance FromJSON Dependency where
     Dependency
       <$> obj .: "package"
       <*> obj .: "source"
-      <*> obj .: "version"
-      <*> obj .: "isGolang"
-      <*> obj .: "hash"
+      <*> obj .:? "version"
+      <*> obj .:? "isGolang"
+      <*> obj .:? "hash"
       <*> obj .: "authors"
       <*> obj .:? "description"
       <*> obj .: "licenses"

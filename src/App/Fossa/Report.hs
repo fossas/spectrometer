@@ -23,6 +23,10 @@ import Data.Text.Lazy.Encoding (decodeUtf8)
 data ReportType =
     AttributionReport
 
+reportName :: ReportType -> Text
+reportName r = case r of
+  AttributionReport -> "attribution"
+
 getReport
   :: (Has (Error WaitError) sig m, MonadIO m)
   => (UrlOption -> Text -> Fossa.ProjectRevision -> Fossa.FossaReq a)
@@ -58,7 +62,7 @@ reportMain baseurl apiKey logSeverity timeoutSeconds reportType overrideName ove
 
   -- TODO: refactor this code duplicate from `fossa test`
   {-
-  Most of this module, and almost everything below this line has been copied
+  Most of this module (almost everything below this line) has been copied
   from App.Fossa.Test.  I wanted to push this out sooner, and refactoring
   everything right away was not appropriate for the timing of this command.
 
@@ -88,9 +92,11 @@ reportMain baseurl apiKey logSeverity timeoutSeconds reportType overrideName ove
       _ <- waitForIssues baseurl apiKey revision
       logSticky ""
 
+      logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
       jsonValue <- case reportType of
         AttributionReport ->
           getAttribution baseurl apiKey revision
+      logSticky ""
         
       logStdout . pretty . decodeUtf8 $ encode jsonValue
 
