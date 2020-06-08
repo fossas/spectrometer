@@ -34,14 +34,21 @@ import qualified Network.HTTP.Types as HTTP
 import Prologue
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
+import Text.URI (URI)
 import Data.Maybe (catMaybes)
-import OptionExtensions
 
 newtype FossaReq m a = FossaReq { unFossaReq :: m a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
 
 instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
   handleHttpException = FossaReq . fatal . mangleError
+
+-- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
+parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
+parseUri uri = case useURI uri of
+  Nothing -> undefined
+  Just (Left (url, options)) -> pure (coerce url, coerce options)
+  Just (Right (url, options)) -> pure (url, options)
 
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
@@ -75,6 +82,7 @@ data FossaError
   | NoPermission HttpException
   | JsonDeserializeError String
   | OtherError HttpException
+  | BadURI URI
   deriving (Show, Generic)
 
 -- FIXME
@@ -97,13 +105,15 @@ data ProjectMetadata = ProjectMetadata
 
 uploadAnalysis
   :: (Has Diagnostics sig m, MonadIO m)
-  => UrlOption -- ^ base url
+  => URI -- ^ base url
   -> Text -- ^ api key
   -> ProjectRevision
   -> ProjectMetadata
   -> [Project]
   -> m UploadResponse
-uploadAnalysis baseurl key ProjectRevision{..} metadata projects = fossaReq $ do
+uploadAnalysis baseUri key ProjectRevision{..} metadata projects = fossaReq $ do
+  (baseUrl, baseOptions) <- parseUri baseUri
+
   let filteredProjects = filter (isProductionPath . projectPath) projects
       sourceUnits = fromMaybe [] $ traverse toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
@@ -113,7 +123,7 @@ uploadAnalysis baseurl key ProjectRevision{..} metadata projects = fossaReq $ do
           <> "branch" =: projectBranch
           <> header "Authorization" ("token " <> encodeUtf8 key)
           <> mkMetadataOpts metadata
-  resp <- req POST (uploadUrl $ urlOptionUrl baseurl) (ReqBodyJson sourceUnits) jsonResponse (urlOptionOptions baseurl <> opts)
+  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOptions <> opts)
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Option scheme
@@ -203,35 +213,40 @@ instance FromJSON BuildStatus where
 
 getLatestBuild
   :: (Has Diagnostics sig m, MonadIO m)
-  => UrlOption
+  => URI
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
   -> m Build
-getLatestBuild baseurl key projectName projectRevision = fossaReq $ do
-  let url = urlOptionUrl baseurl
-      opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
-  response <- req GET (buildsEndpoint url orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+getLatestBuild baseUri key projectName projectRevision = fossaReq $ do
+  (baseUrl, baseOptions) <- parseUri baseUri
+
+  let opts = baseOptions <> header "Authorization" ("token " <> encodeUtf8 key)
+
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
+ 
+  response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------
 
-issuesEndpoint :: Int -> Locator -> Url 'Https
-issuesEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
+issuesEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
+issuesEndpoint baseUrl orgId locator = baseUrl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
 
 getIssues
   :: (Has Diagnostics sig m, MonadIO m)
-  => UrlOption
+  => URI
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
   -> m Issues
-getIssues baseurl key projectName projectRevision = fossaReq $ do
-  let opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
-      url = urlOptionUrl baseurl
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
-  response <- req GET (issuesEndpoint orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+getIssues baseUri key projectName projectRevision = fossaReq $ do
+  (baseUrl, baseOptions) <- parseUri baseUri
+ 
+  let opts = baseOptions <> header "Authorization" ("token " <> encodeUtf8 key)
+
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
+  response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 data Issues = Issues
@@ -335,20 +350,21 @@ attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: r
 
 getAttribution
   :: (Has Diagnostics sig m, MonadIO m)
-  => UrlOption
+  => URI
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
   -> m Attr.Attribution
-getAttribution baseurl key project revision = fossaReq $ do
-  let opts = urlOptionOptions baseurl 
+getAttribution baseUri key project revision = fossaReq $ do
+  (baseUrl, baseOptions) <- parseUri baseUri
+
+  let opts = baseOptions
         <> header "Authorization" ("token " <> encodeUtf8 key)
         <> "includeDeepDependencies" =: True
         <> "includeHashAndVersionData" =: True
         <> "includeDownloadUrl" =: True
-      url = urlOptionUrl baseurl
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
-  response <- req GET (attributionEndpoint url orgId (Locator "custom" project (Just revision))) NoReqBody jsonResponse opts
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" project (Just revision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------

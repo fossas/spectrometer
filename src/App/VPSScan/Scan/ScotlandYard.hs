@@ -8,19 +8,32 @@ module App.VPSScan.Scan.ScotlandYard
 where
 
 import App.VPSScan.Types
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Network.HTTP.Req
-import OptionExtensions (UrlOption (..))
+import Text.URI (URI)
 import Prologue
 
-newtype HTTP a = HTTP {unHTTP :: ErrorC HttpException IO a}
-  deriving (Functor, Applicative, Monad, MonadIO)
+newtype HTTP m a = HTTP {unHTTP :: m a}
+  deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
 
-runHTTP :: MonadIO m => HTTP a -> m (Either HttpException a)
-runHTTP = liftIO . runError @HttpException . unHTTP
+data HTTPRequestFailed = HTTPRequestFailed HttpException
+  deriving (Show, Generic)
 
-instance MonadHttp HTTP where
-  handleHttpException = HTTP . throwError
+-- FIXME
+instance ToDiagnostic HTTPRequestFailed where
+
+runHTTP :: HTTP m a -> m a
+runHTTP = unHTTP
+ 
+-- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
+parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
+parseUri uri = case useURI uri of
+  Nothing -> undefined
+  Just (Left (url, options)) -> pure (coerce url, coerce options)
+  Just (Right (url, options)) -> pure (url, options)
+
+instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (HTTP m) where
+  handleHttpException = HTTP . fatal . HTTPRequestFailed
 
 -- /projects/{projectID}/scans
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https
@@ -39,18 +52,23 @@ instance FromJSON ScanResponse where
   parseJSON = withObject "ScanResponse" $ \obj ->
     ScanResponse <$> obj .: "scanId"
 
-createScotlandYardScan :: MonadIO m => VPSOpts -> m (Either HttpException ScanResponse)
+createScotlandYardScan :: (MonadIO m, Has Diagnostics sig m) => VPSOpts -> m ScanResponse
 createScotlandYardScan VPSOpts {..} = runHTTP $ do
   let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]
       ScotlandYardOpts {..} = vpsScotlandYard
-  resp <- req POST (createScanEndpoint (urlOptionUrl scotlandYardUrl) projectID) (ReqBodyJson body) jsonResponse (urlOptionOptions scotlandYardUrl <> header "Content-Type" "application/json")
+
+  (baseUrl, baseOptions) <- parseUri scotlandYardUrl
+  resp <- req POST (createScanEndpoint baseUrl projectID) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json")
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
 -- post the IPR result to the "Upload Scan Data" endpoint on Scotland Yard
 -- POST /scans/{scanID}/discovered_licenses
-uploadIPRResults :: (ToJSON a, MonadIO m) => VPSOpts -> Text -> a -> m (Either HttpException ())
+uploadIPRResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => VPSOpts -> Text -> a -> m ()
 uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
   let ScotlandYardOpts {..} = vpsScotlandYard
-  _ <- req POST (scanDataEndpoint (urlOptionUrl scotlandYardUrl) projectID scanId) (ReqBodyJson value) ignoreResponse (urlOptionOptions scotlandYardUrl <> header "Content-Type" "application/json")
+ 
+  (baseUrl, baseOptions) <- parseUri scotlandYardUrl
+ 
+  _ <- req POST (scanDataEndpoint baseUrl projectID scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
   pure ()

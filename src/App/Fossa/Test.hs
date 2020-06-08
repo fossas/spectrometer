@@ -19,7 +19,7 @@ import Effect.Logger
 import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)
-import OptionExtensions
+import Text.URI (URI)
 import qualified Data.Aeson as Aeson
 import Data.Text.Lazy.Encoding (decodeUtf8)
 
@@ -31,7 +31,7 @@ data TestOutputType
   | TestOutputJson -- ^ use json output for issues
 
 testMain
-  :: UrlOption -- ^ api base url
+  :: URI -- ^ api base url
   -> Text -- ^ api key
   -> Severity
   -> Int -- ^ timeout (seconds)
@@ -143,7 +143,7 @@ renderTestError TestBuildFailed = "The build failed. Check the FOSSA webapp for 
 
 waitForBuild
   :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
-  => UrlOption
+  => URI
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision
@@ -161,7 +161,7 @@ waitForBuild baseurl key projectName projectRevision = do
 
 waitForIssues
   :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
-  => UrlOption
+  => URI
   -> Text -- ^ api key
   -> Text -- ^ project name
   -> Text -- ^ project revision

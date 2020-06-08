@@ -52,7 +52,7 @@ vpsScan ::
   ) => Path Abs Dir -> ScanCmdOpts -> m ()
 vpsScan basedir ScanCmdOpts{..} = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
-  response <- tagError Couldn'tGetScanId =<< createScotlandYardScan vpsOpts
+  response <- context "creating scan ID" $ createScotlandYardScan vpsOpts
   let scanId = responseScanId response
 
   trace $ "Running scan on directory " ++ show basedir
@@ -99,7 +99,7 @@ runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
       iprResult <- execIPR basedir iprOpts
       trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
-      tagError Couldn'tUpload =<< uploadIPRResults vpsOpts scanId iprResult
+      context "uploading scan results" $ uploadIPRResults vpsOpts scanId iprResult
       trace "[IPR] Post to Scotland Yard complete"
       trace "[IPR] IPR scan complete"
     Nothing ->

@@ -1,3 +1,5 @@
+{-# language QuasiQuotes #-}
+
 module App.Fossa.Main
   ( appMain,
   )
@@ -8,7 +10,6 @@ import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
 import qualified Data.Text as T
-import Network.HTTP.Req (https)
 import OptionExtensions
 import Effect.Logger
 import Options.Applicative
@@ -16,6 +17,8 @@ import Path.IO (doesDirExist, resolveDir', setCurrentDir)
 import Prologue
 import System.Environment (lookupEnv)
 import System.Exit (die)
+import Text.URI (URI)
+import Text.URI.QQ (uri)
 
 appMain :: IO ()
 appMain = do
@@ -74,15 +77,12 @@ opts :: Parser CmdOptions
 opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
-    <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value urlOpts)
+    <*> uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value [uri|https://app.fossa.com|])
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
     <*> comm
     <**> helper
-  where
-    baseUrl = https "app.fossa.com"
-    urlOpts = UrlOption baseUrl mempty
 
 comm :: Parser Command
 comm =
@@ -153,7 +153,7 @@ testOpts =
 
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
-    optBaseUrl :: UrlOption,
+    optBaseUrl :: URI,
     optProjectName :: Maybe Text,
     optProjectRevision :: Maybe Text,
     optAPIKey :: Maybe Text,

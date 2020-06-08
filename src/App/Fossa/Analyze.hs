@@ -51,11 +51,11 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
+import Text.URI (URI)
 import Types
-import OptionExtensions
 
 data ScanDestination
-  = UploadScan UrlOption Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
+  = UploadScan URI Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
   deriving (Generic)
  

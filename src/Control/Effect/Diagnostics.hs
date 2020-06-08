@@ -5,6 +5,7 @@ module Control.Effect.Diagnostics
     runDiagnostics,
     diagnosticBundlePretty,
     fatal,
+    context,
     fatalText,
     recover,
     fromEither,
@@ -30,6 +31,7 @@ import Prologue
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
   Recover :: m a -> Diagnostics m (Maybe a)
+  Context :: Text -> m a -> Diagnostics m a
 
 -- initial attempt:
 -- - there is no "path" or "context" (no ReaderC)
@@ -58,6 +60,8 @@ runDiagnostics act = do
 instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
   alg hdl sig ctx = DiagnosticsC $ case sig of
     L (Fatal diag) -> throwError (SomeDiagnostic diag)
+    L (Context _ go) -> do
+      runDiagnosticsC $ hdl (go <$ ctx)
     L (Recover act) -> do
       (fmap (fmap Just)) (runDiagnosticsC $ hdl (act <$ ctx)) `catchError` (\(diag :: SomeDiagnostic) -> tell [diag] *> pure (Nothing <$ ctx))
     R other -> alg (runDiagnosticsC . hdl) (R (R other)) ctx
@@ -74,8 +78,8 @@ recover = send . Recover
 
 -- TODO: add context to a diagnostic trace:
 -- "when doing X -> when doing Y -> when doing ..."
---context :: Has Diagnostics sig m => Text -> m a -> m a
---context = undefined
+context :: Has Diagnostics sig m => Text -> m a -> m a
+context ctx go = send (Context ctx go)
 
 fromEither :: (ToDiagnostic err, Has Diagnostics sig m) => Either err a -> m a
 fromEither = either fatal pure
