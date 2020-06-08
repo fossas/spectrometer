@@ -17,7 +17,7 @@ genLicense :: Gen License
 genLicense =
   License
     <$> (LicenseName <$> arbitraryText)
-    <*> (LicenseContents <$> arbitraryText)
+    <*> Gen.maybe (LicenseContents <$> arbitraryText)
 
 genProject :: Gen Project
 genProject = Project <$> arbitraryText <*> arbitraryText
@@ -27,17 +27,17 @@ genDependency =
   Dependency
     <$> arbitraryText
     <*> arbitraryText
-    <*> arbitraryText
-    <*> Gen.bool
-    <*> arbitraryText
+    <*> Gen.maybe arbitraryText
+    <*> Gen.maybe Gen.bool
+    <*> Gen.maybe arbitraryText
     <*> Gen.list defaultRange arbitraryText
     <*> Gen.maybe arbitraryText
+    <*> Gen.maybe (Gen.list defaultRange genLicense)
     <*> Gen.list defaultRange genLicense
-    <*> Gen.list defaultRange genLicense
-    <*> arbitraryText
+    <*> Gen.maybe arbitraryText
     <*> Gen.list defaultRange arbitraryText
-    <*> Gen.list defaultRange arbitraryText
-    <*> arbitraryText
+    <*> Gen.maybe (Gen.list defaultRange arbitraryText)
+    <*> Gen.maybe arbitraryText
     <*> arbitraryText
 
 genAttribution :: Gen Attribution
