@@ -21,7 +21,9 @@ import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Logger
+import Network.HTTP.Types (urlEncode)
 import qualified Srclib.Converter as Srclib
+import Srclib.Types (Locator(..), parseLocator)
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Clojure as Clojure
@@ -52,7 +54,9 @@ import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Text.URI (URI)
+import qualified Text.URI as URI
 import Types
+import qualified Data.Text.Encoding as TE
 
 data ScanDestination
   = UploadScan URI Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -104,10 +108,26 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
       case uploadResult of
         Left err -> logError (pretty (diagnosticBundlePretty err))
         Right resp -> do
-          logInfo "-----"
-          logInfo "View FOSSA Report: "
-          logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
+          logInfo $ vsep
+            [ "============================================================"
+            , ""
+            , "    View FOSSA Report:"
+            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) (projectBranch revision))
+            , ""
+            , "============================================================"
+            ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+
+fossaProjectUrl :: URI -> Text -> Text -> Text
+fossaProjectUrl baseUrl rawLocator branch = URI.render baseUrl <> "projects/" <> encodedProject <> "/refs/branch/" <> branch <> "/" <> encodedRevision
+  where
+    Locator{locatorFetcher, locatorProject, locatorRevision} = parseLocator rawLocator
+
+    underBS :: (ByteString -> ByteString) -> Text -> Text
+    underBS f = TE.decodeUtf8 . f . TE.encodeUtf8
+
+    encodedProject = underBS (urlEncode True) (locatorFetcher <> "+" <> locatorProject)
+    encodedRevision = underBS (urlEncode True) (fromMaybe "" locatorRevision)
 
 buildResult :: [Project] -> [ProjectFailure] -> Value
 buildResult projects failures = object
