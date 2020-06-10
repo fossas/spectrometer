@@ -7,7 +7,6 @@ import Prologue
 
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
-import App.Fossa.Report.Attribution
 import Control.Carrier.Error.Either
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
