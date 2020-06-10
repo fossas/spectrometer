@@ -37,7 +37,7 @@ appMain = do
       key <- requireKey maybeApiKey
       testMain optBaseUrl key logSeverity testTimeout testOutputType optProjectName optProjectRevision
     InitCommand ->
-      withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect."
+      withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
     ReportCommand ReportOptions {..} -> do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
       changeDir reportBaseDir
