@@ -40,14 +40,6 @@ getReport f baseurl key revision = do
     Left err -> throwError (APIError err)
     Right jsonValue -> pure jsonValue
 
-getAttribution
-  :: (Has (Error WaitError) sig m, MonadIO m)
-  => UrlOption
-  -> Text
-  -> Fossa.ProjectRevision
-  -> m Attribution
-getAttribution = getReport Fossa.getAttribution
-
 reportMain :: 
   UrlOption -- ^ api base url
   -> Text -- ^ api key
@@ -95,7 +87,7 @@ reportMain baseurl apiKey logSeverity timeoutSeconds reportType overrideName ove
       logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
       jsonValue <- case reportType of
         AttributionReport ->
-          getAttribution baseurl apiKey revision
+          getReport Fossa.getAttribution baseurl apiKey revision
       logSticky ""
         
       logStdout . pretty . decodeUtf8 $ encode jsonValue

@@ -323,8 +323,8 @@ instance ToJSON IssueRule where
 
 ---------------
 
-attributionEndpoint :: Int -> Locator -> Url 'Https
-attributionEndpoint orgId locator = https "app.fossa.com" /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
+attributionEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
+attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
 
 getAttribution
   :: UrlOption
@@ -339,7 +339,7 @@ getAttribution baseurl key ProjectRevision{..} = do
         <> "includeDownloadUrl" =: True
       url = urlOptionUrl baseurl
   Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
-  response <- req GET (attributionEndpoint orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  response <- req GET (attributionEndpoint url orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------
