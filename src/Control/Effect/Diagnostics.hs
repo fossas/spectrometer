@@ -20,9 +20,11 @@ import Control.Algebra as X
 import Control.Carrier.Error.Either (ErrorC, catchError, runError, throwError)
 import Control.Carrier.Reader (ReaderC, ask, local, runReader)
 import Control.Carrier.Writer.Church (WriterC, runWriter, tell)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Monoid (Endo (..))
 import qualified Data.Text as T
-import Prologue
+import Data.Text (Text)
+import Prelude
 
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
