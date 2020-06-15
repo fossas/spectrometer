@@ -24,19 +24,11 @@ import Data.Monoid (Endo (..))
 import qualified Data.Text as T
 import Prologue
 
--- fatal
--- warning
--- distinction between "this happened in another execution path" and "this happened in the current execution path"
-
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
   Recover :: m a -> Diagnostics m (Maybe a)
   Context :: Text -> m a -> Diagnostics m a
 
--- initial attempt:
--- - there is no "path" or "context" (no ReaderC)
--- - every 'tell' via WriterC is a fatal branch that was cut
--- TODO: list is bad as a writer type
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
