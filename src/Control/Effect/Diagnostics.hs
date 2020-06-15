@@ -20,6 +20,7 @@ where
 import Control.Algebra as X
 import Control.Carrier.Error.Either (ErrorC, catchError, runError, throwError)
 import Control.Carrier.Writer.Church (WriterC, runWriter, tell)
+import Control.Carrier.Reader (ReaderC, runReader, local, ask)
 import Control.Exception (Exception)
 import qualified Data.Text as T
 import Prologue
@@ -37,7 +38,7 @@ data Diagnostics m k where
 -- - there is no "path" or "context" (no ReaderC)
 -- - every 'tell' via WriterC is a fatal branch that was cut
 -- TODO: list is bad as a writer type
-newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ErrorC SomeDiagnostic (WriterC [SomeDiagnostic] m) a}
+newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC [SomeDiagnostic] m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
 data DiagnosticBundle = DiagnosticBundle
@@ -49,22 +50,17 @@ instance Exception DiagnosticBundle
 diagnosticBundlePretty :: DiagnosticBundle -> Text
 diagnosticBundlePretty _ = "<diagnosticbundlepretty>"
 
-runDiagnostics :: Monad m => DiagnosticsC m a -> m (Either DiagnosticBundle a)
-runDiagnostics act = do
-  res <- runWriter (\w a -> pure (w, a)) $ runError @SomeDiagnostic $ runDiagnosticsC act
-  case res of
-    (_, Left _) -> pure (Left DiagnosticBundle)
-    (_, Right a) -> pure (Right a)
+runDiagnostics :: Monad m => DiagnosticsC m a -> m ([SomeDiagnostic], Either SomeDiagnostic a)
+runDiagnostics = runWriter (\w a -> pure (w, a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
 
 -- FIXME
 instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
   alg hdl sig ctx = DiagnosticsC $ case sig of
-    L (Fatal diag) -> throwError (SomeDiagnostic diag)
-    L (Context _ go) -> do
-      runDiagnosticsC $ hdl (go <$ ctx)
+    L (Fatal diag) -> ask >>= \path -> throwError (SomeDiagnostic path diag)
+    L (Context path go) -> local (path:) $ runDiagnosticsC $ hdl (go <$ ctx)
     L (Recover act) -> do
       (fmap (fmap Just)) (runDiagnosticsC $ hdl (act <$ ctx)) `catchError` (\(diag :: SomeDiagnostic) -> tell [diag] *> pure (Nothing <$ ctx))
-    R other -> alg (runDiagnosticsC . hdl) (R (R other)) ctx
+    R other -> alg (runDiagnosticsC . hdl) (R (R (R other))) ctx
 
 fatal :: (Has Diagnostics sig m, ToDiagnostic diag) => diag -> m a
 fatal = send . Fatal
@@ -76,8 +72,9 @@ fatalText = fatal
 recover :: Has Diagnostics sig m => m a -> m (Maybe a)
 recover = send . Recover
 
--- TODO: add context to a diagnostic trace:
--- "when doing X -> when doing Y -> when doing ..."
+-- | Push context onto the "stack" for "stack traces"
+--
+-- This is similar to "errors.Wrap" from golang, but it handles the plumbing for you
 context :: Has Diagnostics sig m => Text -> m a -> m a
 context ctx go = send (Context ctx go)
 
@@ -105,4 +102,4 @@ class ToDiagnostic a
 instance ToDiagnostic Text
 
 data SomeDiagnostic where
-  SomeDiagnostic :: ToDiagnostic a => a -> SomeDiagnostic
+  SomeDiagnostic :: ToDiagnostic a => [Text] -> a -> SomeDiagnostic -- ^ [Text] is the "stack trace"
