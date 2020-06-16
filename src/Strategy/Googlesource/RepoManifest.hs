@@ -267,7 +267,6 @@ data ManifestGitConfigError =
   | MissingGitConfig Text
   deriving (Eq, Ord, Show)
 
--- FIXME
 instance ToDiagnostic ManifestGitConfigError where
   renderDiagnostic = \case
     InvalidRemote remote -> "An invalid remote was encountered when parsing manifest files: " <> pretty remote

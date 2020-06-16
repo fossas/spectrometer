@@ -24,7 +24,6 @@ newtype HTTP m a = HTTP {unHTTP :: m a}
 data HTTPRequestFailed = HTTPRequestFailed HttpException
   deriving (Show)
 
--- FIXME
 instance ToDiagnostic HTTPRequestFailed where
   renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc
 

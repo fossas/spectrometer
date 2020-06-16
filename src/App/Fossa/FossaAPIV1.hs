@@ -92,7 +92,6 @@ data FossaError
   | BadURI URI
   deriving (Show)
 
--- FIXME
 instance ToDiagnostic FossaError where
   renderDiagnostic = \case
     InvalidProjectOrRevision _ -> "Response from FOSSA API: invalid project or revision"

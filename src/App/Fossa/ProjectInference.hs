@@ -189,7 +189,6 @@ data InferenceError
   | MissingGitDir
   deriving (Eq, Ord, Show, Generic, Typeable)
 
--- FIXME
 instance ToDiagnostic InferenceError where
   renderDiagnostic = \case
     InvalidRemote -> "Missing 'origin' git remote"

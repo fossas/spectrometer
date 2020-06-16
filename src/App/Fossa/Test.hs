@@ -135,7 +135,6 @@ renderedIssues issues = rendered
 data TestError = TestBuildFailed -- ^ we encountered the FAILED status on a build
   deriving (Show, Generic)
 
--- FIXME
 instance ToDiagnostic TestError where
   renderDiagnostic TestBuildFailed = "The build failed. Check the FOSSA webapp for more details."
 
