@@ -20,6 +20,7 @@ import App.VPSScan.Types
 import App.VPSScan.Scan.RunSherlock
 import App.VPSScan.Scan.ScotlandYard
 import App.VPSScan.Scan.RunIPR
+import Data.Text.Prettyprint.Doc (viaShow)
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
@@ -43,7 +44,10 @@ data VPSError
   | Couldn'tUpload HttpException
   deriving (Show, Generic)
 
-instance ToDiagnostic VPSError
+instance ToDiagnostic VPSError where
+  renderDiagnostic = \case
+    Couldn'tGetScanId exc -> "Failed to create a scan: "  <> viaShow exc
+    Couldn'tUpload exc -> "Failed to upload IPR results: "  <> viaShow exc
 
 vpsScan ::
   ( Has Diagnostics sig m
