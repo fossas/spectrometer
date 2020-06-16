@@ -24,7 +24,7 @@ import Control.Algebra as X
 import Control.Carrier.Error.Either (ErrorC, catchError, runError, throwError)
 import Control.Carrier.Reader (ReaderC, ask, local, runReader)
 import Control.Carrier.Writer.Church (WriterC, runWriter, tell)
-import Control.Exception (Exception, SomeException(..))
+import Control.Exception (SomeException(..))
 import Control.Monad.IO.Class (MonadIO)
 import Data.Monoid (Endo (..))
 import qualified Data.Text as T
