@@ -14,19 +14,25 @@ module Effect.Exec
   )
 where
 
+import Control.Applicative (Alternative)
 import Control.Algebra as X
 import Control.Effect.Diagnostics
-import qualified Control.Exception as Exc
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.ByteString.Lazy as BL
+import Data.Aeson
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
+import Data.Text.Prettyprint.Doc (pretty, viaShow)
+import Data.Void (Void)
+import Path
 import Path.IO
-import Prologue
 import System.Exit (ExitCode (..))
 import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
+import Prelude
 
 data Command = Command
   { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
@@ -36,7 +42,7 @@ data Command = Command
     -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
     cmdAllowErr :: AllowErr
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data CmdFailure = CmdFailure
   { cmdFailureName :: String,
@@ -45,7 +51,7 @@ data CmdFailure = CmdFailure
     cmdFailureExit :: ExitCode,
     cmdFailureStderr :: Stderr
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data AllowErr
   = -- | never ignore non-zero exit (return 'ExecErr')
@@ -54,30 +60,31 @@ data AllowErr
     NonEmptyStdout
   | -- | always ignore non-zero exit
     Always
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 type Stdout = BL.ByteString
+
 type Stderr = BL.ByteString
 
 data Exec m k where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
   -- - a description of the command failure
-
   Exec :: Path x Dir -> Command -> Exec m (Either CmdFailure Stdout)
 
 -- TODO: include info about CmdFailures as appropriate
 data ExecErr
   = -- | Command execution failed, usually from a non-zero exit. command, stderr
-    CommandFailed Text Text
+    CommandFailed Command Text
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
-  deriving (Eq, Ord, Show, Generic, Typeable)
+  deriving (Eq, Ord, Show)
 
 -- TODO
 instance ToDiagnostic ExecErr where
-
-instance Exc.Exception ExecErr
+  renderDiagnostic = \case
+    CommandFailed cmd err -> "Command execution failed. command: " <> viaShow cmd <> " . error: " <> pretty err
+    CommandParseError cmd err -> "Failed to parse command output. command: " <> viaShow cmd <> " . error: " <> pretty err
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path x Dir -> Command -> m (Either CmdFailure Stdout)
@@ -87,7 +94,7 @@ type Parser = Parsec Void Text
 
 -- | Parse the stdout of a command
 execParser :: (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path x Dir -> Command -> m a
-execParser parser dir cmd  = do
+execParser parser dir cmd = do
   stdout <- execThrow dir cmd
   case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
     Left err -> fatal (CommandParseError cmd (T.pack (errorBundlePretty err))) -- TODO: command name
@@ -95,7 +102,7 @@ execParser parser dir cmd  = do
 
 -- | Parse the JSON stdout of a command
 execJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command -> m a
-execJson dir cmd  = do
+execJson dir cmd = do
   stdout <- execThrow dir cmd
   case eitherDecode stdout of
     Left err -> fatal (CommandParseError cmd (T.pack (show err))) -- TODO: command name
@@ -106,7 +113,7 @@ execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command ->
 execThrow dir cmd = do
   result <- exec dir cmd
   case result of
-    Left failures -> fatal (CommandFailed "" (T.pack (show failures))) -- TODO: better error
+    Left failures -> fatal (CommandFailed cmd (T.pack (show failures))) -- TODO: better error
     Right stdout -> pure stdout
 
 runExecIO :: ExecIOC m a -> m a
@@ -133,5 +140,5 @@ instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
                 then Left failure
                 else Right stdout
             (_, Always) -> Right stdout
-     
+
       pure (result <$ ctx)
