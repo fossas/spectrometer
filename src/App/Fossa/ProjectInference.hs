@@ -32,7 +32,7 @@ inferProject current = do
     Right inferred -> pure (resultValue inferred)
     Left failure -> do
       logWarn "Project inference: couldn't find VCS root. Defaulting to directory name."
-      logDebug (pretty (renderFailureBundle failure))
+      logDebug (renderFailureBundle failure)
       inferDefault current
 
 svnCommand :: Command

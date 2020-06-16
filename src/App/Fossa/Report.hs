@@ -78,7 +78,7 @@ reportMain baseUri apiKey logSeverity timeoutSeconds reportType overrideName ove
 
     case result of
       Left err -> do
-        logError $ pretty (diagnosticBundlePretty err)
+        logError $ renderFailureBundle err
         liftIO exitFailure
       Right _ -> liftIO exitSuccess
 

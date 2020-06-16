@@ -106,7 +106,7 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
 
       uploadResult <- Diag.runDiagnostics $ uploadAnalysis baseurl apiKey revision metadata projects
       case uploadResult of
-        Left failure -> logError (pretty (Diag.renderFailureBundle failure))
+        Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
           let resp = Diag.resultValue success
           logInfo $ vsep
@@ -140,7 +140,7 @@ buildResult projects failures = object
 renderFailure :: ProjectFailure -> Value
 renderFailure failure = object
   [ "name" .= projectFailureName failure
-  , "cause" .= Diag.renderFailureBundle (projectFailureCause failure)
+  , "cause" .= show (Diag.renderFailureBundle (projectFailureCause failure))
   ]
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]

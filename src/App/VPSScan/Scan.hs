@@ -12,7 +12,6 @@ import Path.IO
 import System.Exit (exitFailure, die)
 import Control.Concurrent.Async (concurrently)
 import Control.Carrier.Trace.Printing
-import qualified Data.Text as T
 
 import App.VPSScan.Types
 import App.VPSScan.Scan.RunSherlock
@@ -30,7 +29,7 @@ scanMain opts@ScanCmdOpts{..} = do
   result <- runDiagnostics $ runTrace $ vpsScan basedir opts
   case result of
     Left failure -> do
-      putStrLn (T.unpack $ renderFailureBundle failure)
+      putStrLn (show $ renderFailureBundle failure)
       exitFailure
     Right _ -> pure ()
 
@@ -62,11 +61,11 @@ vpsScan basedir ScanCmdOpts{..} = do
     (Right _, Right _) -> trace "[All] Scans complete"
     (Left iprFailure, _) -> do
       trace "[IPR] Failed to scan"
-      trace (T.unpack $ renderFailureBundle iprFailure)
+      trace (show $ renderFailureBundle iprFailure)
       liftIO exitFailure
     (_, Left sherlockFailure) -> do
       trace "[Sherlock] Failed to scan"
-      trace (T.unpack $ renderFailureBundle sherlockFailure)
+      trace (show $ renderFailureBundle sherlockFailure)
       liftIO exitFailure
 
 runSherlockScan ::
