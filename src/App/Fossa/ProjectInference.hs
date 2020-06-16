@@ -191,6 +191,14 @@ data InferenceError
 
 -- FIXME
 instance ToDiagnostic InferenceError where
+  renderDiagnostic = \case
+    InvalidRemote -> "Missing 'origin' git remote"
+    GitConfigParse err -> "An error occurred when parsing the git config: " <> pretty err
+    MissingGitConfig -> "Missing .git/config file"
+    MissingGitHead -> "Missing .git/HEAD file"
+    InvalidBranchName branch -> "Invalid branch name: " <> pretty branch
+    MissingBranch branch -> "Missing ref file for current branch: " <> pretty branch
+    MissingGitDir -> "Could not find .git directory in the current or any parent directory"
 
 data InferredProject = InferredProject
   { inferredName :: Text,
