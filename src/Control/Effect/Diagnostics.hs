@@ -57,11 +57,12 @@ data ResultBundle a = ResultBundle
 renderFailureBundle :: FailureBundle -> Doc AnsiStyle
 renderFailureBundle FailureBundle {..} =
   vsep
-    [ "A fatal error occurred:",
+    [ "----------",
+      "A fatal error occurred:",
       "",
       indent 4 (align (renderSomeDiagnostic failureCause)),
       "",
-      "----------",
+      ">>>",
       "Relevant warnings include:",
       "",
       indent 4 (align (renderWarnings failureWarnings))

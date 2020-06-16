@@ -17,6 +17,7 @@ import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, uploadAnalysi
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
+import Control.Effect.Diagnostics
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -84,6 +85,8 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
     withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
+
+  traverse_ (logDebug . renderFailureBundle . projectFailureCause) failures
 
   logSticky ""
 
