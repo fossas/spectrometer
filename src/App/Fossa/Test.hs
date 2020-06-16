@@ -137,9 +137,7 @@ data TestError = TestBuildFailed -- ^ we encountered the FAILED status on a buil
 
 -- FIXME
 instance ToDiagnostic TestError where
-
-renderTestError :: TestError -> Text
-renderTestError TestBuildFailed = "The build failed. Check the FOSSA webapp for more details."
+  renderDiagnostic TestBuildFailed = "The build failed. Check the FOSSA webapp for more details."
 
 waitForBuild
   :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
