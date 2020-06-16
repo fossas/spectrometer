@@ -24,17 +24,24 @@ module App.Fossa.FossaAPIV1
 import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
 import Control.Effect.Diagnostics
+import Data.Coerce (coerce)
 import Data.List (isInfixOf)
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import Data.Aeson
+import Prelude
+import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
 import Effect.Logger
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
 import qualified Network.HTTP.Types as HTTP
-import Prologue
+import Path
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Text.URI (URI)
+import qualified Text.URI as URI
 import Data.Maybe (catMaybes)
 
 newtype FossaReq m a = FossaReq { unFossaReq :: m a }
@@ -70,7 +77,7 @@ renderLocatorUrl orgId Locator{..} =
 data UploadResponse = UploadResponse
   { uploadLocator :: Text
   , uploadError   :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
@@ -83,16 +90,22 @@ data FossaError
   | JsonDeserializeError String
   | OtherError HttpException
   | BadURI URI
-  deriving (Show, Generic)
+  deriving (Show)
 
 -- FIXME
 instance ToDiagnostic FossaError where
+  renderDiagnostic = \case
+    InvalidProjectOrRevision _ -> "Response from FOSSA API: invalid project or revision"
+    NoPermission _ -> "Response from FOSSA API: no permission"
+    JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API: " <> pretty err
+    OtherError err -> "An unknown error occurred when accessing the FOSSA API: " <> viaShow err
+    BadURI uri -> "Invalid FOSSA URL: " <> pretty (URI.render uri)
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text
   , projectRevision :: Text
   , projectBranch :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
@@ -101,7 +114,7 @@ data ProjectMetadata = ProjectMetadata
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
   , projectPolicy :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 uploadAnalysis
   :: (Has Diagnostics sig m, MonadIO m)
@@ -180,17 +193,17 @@ data BuildStatus
   | StatusAssigned
   | StatusRunning
   | StatusUnknown Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data Build = Build
   { buildId :: Int
   , buildError :: Maybe Text
   , buildTask :: BuildTask
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 newtype BuildTask = BuildTask
   { buildTaskStatus :: BuildStatus
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON Build where
   parseJSON = withObject "Build" $ \obj ->
@@ -253,7 +266,7 @@ data Issues = Issues
   { issuesCount :: Int
   , issuesIssues :: [Issue]
   , issuesStatus :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data IssueType
   = IssuePolicyConflict
@@ -262,7 +275,7 @@ data IssueType
   | IssueUnlicensedDependency
   | IssueOutdatedDependency
   | IssueOther Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 renderIssueType :: IssueType -> Text
 renderIssueType = \case
@@ -280,11 +293,11 @@ data Issue = Issue
   , issueRevisionId :: Text
   , issueType :: IssueType
   , issueRule :: Maybe IssueRule
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 newtype IssueRule = IssueRule
   { ruleLicenseId :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON Issues where
   parseJSON = withObject "Issues" $ \obj ->
@@ -371,7 +384,7 @@ getAttribution baseUri key project revision = fossaReq $ do
 
 newtype Organization = Organization
   { organizationId :: Int
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
