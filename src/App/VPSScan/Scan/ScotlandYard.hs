@@ -9,22 +9,28 @@ where
 
 import App.VPSScan.Types
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson
+import Data.Coerce (coerce)
+import Data.Text (Text)
+import Data.Text.Prettyprint.Doc (viaShow)
 import Network.HTTP.Req
 import Text.URI (URI)
-import Prologue
+import Prelude
 
 newtype HTTP m a = HTTP {unHTTP :: m a}
   deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
 
 data HTTPRequestFailed = HTTPRequestFailed HttpException
-  deriving (Show, Generic)
+  deriving (Show)
 
 -- FIXME
 instance ToDiagnostic HTTPRequestFailed where
+  renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc
 
 runHTTP :: HTTP m a -> m a
 runHTTP = unHTTP
- 
+
 -- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
 parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
 parseUri uri = case useURI uri of
@@ -46,7 +52,7 @@ scanDataEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /
 data ScanResponse = ScanResponse
   { responseScanId :: Text
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 instance FromJSON ScanResponse where
   parseJSON = withObject "ScanResponse" $ \obj ->
@@ -67,8 +73,8 @@ createScotlandYardScan VPSOpts {..} = runHTTP $ do
 uploadIPRResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => VPSOpts -> Text -> a -> m ()
 uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
   let ScotlandYardOpts {..} = vpsScotlandYard
- 
+
   (baseUrl, baseOptions) <- parseUri scotlandYardUrl
- 
+
   _ <- req POST (scanDataEndpoint baseUrl projectID scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
   pure ()
