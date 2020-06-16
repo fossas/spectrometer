@@ -53,7 +53,7 @@ instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
 -- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
 parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
 parseUri uri = case useURI uri of
-  Nothing -> undefined
+  Nothing -> fatalText ("Invalid URL: " <> URI.render uri)
   Just (Left (url, options)) -> pure (coerce url, coerce options)
   Just (Right (url, options)) -> pure (url, options)
 

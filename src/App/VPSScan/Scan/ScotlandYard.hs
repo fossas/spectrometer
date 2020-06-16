@@ -16,6 +16,7 @@ import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (viaShow)
 import Network.HTTP.Req
 import Text.URI (URI)
+import qualified Text.URI as URI
 import Prelude
 
 newtype HTTP m a = HTTP {unHTTP :: m a}
@@ -33,7 +34,7 @@ runHTTP = unHTTP
 -- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
 parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
 parseUri uri = case useURI uri of
-  Nothing -> undefined
+  Nothing -> fatalText ("Invalid URL: " <> URI.render uri)
   Just (Left (url, options)) -> pure (coerce url, coerce options)
   Just (Right (url, options)) -> pure (url, options)
 
