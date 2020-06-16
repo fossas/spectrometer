@@ -67,8 +67,8 @@ spec = do
               & runDiagnostics
               & run
       case result of
-        Left err -> expectationFailure ("analyze failed: " <> show err)
-        Right body -> dependenciesGraph (bodyDependencies body) `shouldBe` expected
+        Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
+        Right body -> dependenciesGraph (bodyDependencies (resultValue body)) `shouldBe` expected
 
     it "can handle complex inputs" $ do
       let result =
@@ -78,5 +78,5 @@ spec = do
               & run
 
       case result of
-          Left err -> fail $ "failed to build graph" <> show err
-          Right body -> length (graphingDirect (dependenciesGraph (bodyDependencies body))) `shouldBe` 12
+          Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
+          Right body -> length (graphingDirect (dependenciesGraph (bodyDependencies (resultValue body)))) `shouldBe` 12

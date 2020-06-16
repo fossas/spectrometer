@@ -31,13 +31,14 @@ spec = do
   describe "carthage analyze" $ do
     it "should work for empty projects" $ do
       case emptyResult of
-        Left err -> expectationFailure ("analyze failed: " <> show err)
-        Right graph -> graph `shouldBe` G.empty
+        Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
+        Right result -> resultValue result `shouldBe` G.empty
 
     it "should work for a complex project" $ do
       case complexResult of
-        Left err -> expectationFailure ("analyze failed: " <> show err)
-        Right graph -> do
+        Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
+        Right result -> do
+          let graph = resultValue result
           expectDirect [nimble713, swinject, ocmock] graph
           expectDeps [ nimble713
                      , nimble703

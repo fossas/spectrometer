@@ -239,8 +239,8 @@ spec = do
 
     let withResult result f =
           case result of
-            Left err -> expectationFailure $ "could not parse nested manifest: " ++ show err
-            Right res -> f res
+            Left err -> expectationFailure $ "could not parse nested manifest: " ++ show (renderFailureBundle err)
+            Right res -> f (resultValue res)
 
     describe "for a manifest with an include tag" $ do
       projectsForManifestWithIncludes <- runIt $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata") $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml")

@@ -46,6 +46,9 @@ data FailureBundle = FailureBundle
     failureCause :: SomeDiagnostic
   }
 
+instance Show FailureBundle where
+  show = show . renderFailureBundle
+
 data ResultBundle a = ResultBundle
   { resultWarnings :: [SomeDiagnostic],
     resultValue :: a
