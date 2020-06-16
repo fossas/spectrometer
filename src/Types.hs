@@ -63,7 +63,7 @@ runStrategy name strategyGroup act = forkTask $ do
   mask $ \restore -> do
     (res :: Either SomeException a) <- try (restore (runIt act))
     case res of
-      Left exc -> output (ProjectFailure strategyGroup name (FailureBundle [] (diagFromException exc)))
+      Left exc -> output (ProjectFailure strategyGroup name (FailureBundle [] (SomeDiagnostic [] exc)))
       Right (Left failure) -> output (ProjectFailure strategyGroup name failure)
       Right (Right result) ->
         let (bodies, ()) = resultValue result

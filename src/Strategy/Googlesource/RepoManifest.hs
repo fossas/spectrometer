@@ -18,17 +18,23 @@ module Strategy.Googlesource.RepoManifest
   , mkProjectClosure
   ) where
 
-import Prologue
+import Prelude
 
 import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
+import Control.Applicative ((<|>), optional)
+import Control.Monad (unless)
 import DepTypes
+import Data.Text (Text)
+import Data.Text.Prettyprint.Doc (pretty)
+import Data.Foldable (find)
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing, unfold)
 import Parse.XML
+import Path
 import Types
 import Text.URI
 import Text.GitConfig.Parser (Section(..), parseConfig)
@@ -138,34 +144,34 @@ data RepoManifest = RepoManifest
   , manifestRemotes  :: [ManifestRemote]
   , manifestProjects :: [ManifestProject]
   , manifestIncludes :: [ManifestInclude]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data ManifestRemote = ManifestRemote
   { remoteName     :: Text
   , remoteFetch    :: Text
   , remoteRevision :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data ManifestDefault = ManifestDefault
   { defaultRemote   :: Maybe Text
   , defaultRevision :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data ManifestProject = ManifestProject
   { projectName     :: Text
   , projectPath     :: Maybe Text
   , projectRemote   :: Maybe Text
   , projectRevision :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
-data ManifestInclude = ManifestInclude { includeName :: Text } deriving (Eq, Ord, Show, Generic)
+data ManifestInclude = ManifestInclude { includeName :: Text } deriving (Eq, Ord, Show)
 
 data ValidatedProject = ValidatedProject
   { validatedProjectName     :: Text
   , validatedProjectPath     :: Text
   , validatedProjectUrl      :: URI
   , validatedProjectRevision :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 -- If a project does not have a path, then use its name for the path
 projectPathOrName :: ManifestProject -> Text
@@ -259,11 +265,11 @@ data ManifestGitConfigError =
     InvalidRemote Text
   | GitConfigParse Text
   | MissingGitConfig Text
-  | MissingGitHead
-  | InvalidBranchName Text
-  | MissingBranch Text
-  | MissingGitDir
-  deriving (Eq, Ord, Show, Generic, Typeable)
+  deriving (Eq, Ord, Show)
 
 -- FIXME
 instance ToDiagnostic ManifestGitConfigError where
+  renderDiagnostic = \case
+    InvalidRemote remote -> "An invalid remote was encountered when parsing manifest files: " <> pretty remote
+    GitConfigParse err -> "An error occurred when parsing a git config: " <> pretty err
+    MissingGitConfig path -> "A git config was missing: " <> pretty path

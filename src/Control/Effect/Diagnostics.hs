@@ -1,9 +1,9 @@
 module Control.Effect.Diagnostics
   ( Diagnostics (..),
     DiagnosticsC (..),
-    SomeDiagnostic(..),
-    FailureBundle(..),
-    ResultBundle(..),
+    SomeDiagnostic (..),
+    FailureBundle (..),
+    ResultBundle (..),
     renderFailureBundle,
     renderWarnings,
     runDiagnostics,
@@ -15,7 +15,6 @@ module Control.Effect.Diagnostics
     fromEitherShow,
     (<||>),
     ToDiagnostic (..),
-    diagFromException,
     tagError,
     module X,
   )
@@ -25,12 +24,14 @@ import Control.Algebra as X
 import Control.Carrier.Error.Either (ErrorC, catchError, runError, throwError)
 import Control.Carrier.Reader (ReaderC, ask, local, runReader)
 import Control.Carrier.Writer.Church (WriterC, runWriter, tell)
+import Control.Exception (Exception, SomeException(..))
 import Control.Monad.IO.Class (MonadIO)
 import Data.Monoid (Endo (..))
 import qualified Data.Text as T
 import Data.Text (Text)
+import Data.Text.Prettyprint.Doc (Doc, pretty)
 import Prelude
-import Control.Exception (Exception)
+import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
@@ -41,13 +42,13 @@ newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (Erro
   deriving (Functor, Applicative, Monad, MonadIO)
 
 data FailureBundle = FailureBundle
-  { failureWarnings :: [SomeDiagnostic]
-  , failureCause :: SomeDiagnostic
+  { failureWarnings :: [SomeDiagnostic],
+    failureCause :: SomeDiagnostic
   }
 
 data ResultBundle a = ResultBundle
-  { resultWarnings :: [SomeDiagnostic]
-  , resultValue :: a
+  { resultWarnings :: [SomeDiagnostic],
+    resultValue :: a
   }
 
 renderFailureBundle :: FailureBundle -> Text
@@ -102,21 +103,24 @@ tagError f (Left e) = fatal (f e)
 tagError _ (Right a) = pure a
 
 infixl 3 <||>
+
 (<||>) :: Has Diagnostics sig m => m a -> m a -> m a
 (<||>) ma mb = do
-
   maybeA <- recover $ ma
   case maybeA of
     Nothing -> mb
     Just a -> pure a
 
-class ToDiagnostic a
+class ToDiagnostic a where
+  renderDiagnostic :: a -> Doc AnsiStyle
 
-instance ToDiagnostic Text
+instance ToDiagnostic Text where
+  renderDiagnostic = pretty
+
+instance ToDiagnostic SomeException where
+  renderDiagnostic (SomeException exc) =
+    "An exception occurred: " <> pretty (show exc)
 
 -- | An error with a ToDiagnostic instance and an associated stack trace
 data SomeDiagnostic where
   SomeDiagnostic :: ToDiagnostic a => [Text] -> a -> SomeDiagnostic
-
-diagFromException :: Exception e => e -> SomeDiagnostic
-diagFromException = undefined
