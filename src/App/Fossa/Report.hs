@@ -117,9 +117,6 @@ waitForIssues baseUri key project revision = do
       waitForIssues baseUri key project revision
     _ -> pure ()
 
-renderWaitError :: WaitError -> Text
-renderWaitError BuildFailed = "The build failed. Check the FOSSA webapp for more details."
-
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
 
@@ -134,4 +131,4 @@ data WaitError
   deriving (Show, Generic)
 
 instance ToDiagnostic WaitError where
-  --renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
+  renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
