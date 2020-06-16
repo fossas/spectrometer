@@ -28,17 +28,26 @@ module Effect.ReadFS
 where
 
 import Control.Algebra as X
+import Control.Applicative (Alternative)
 import Control.Effect.Diagnostics
 import qualified Control.Exception as E
+import Control.Monad ((<=<))
+import Control.Monad.IO.Class
+import Data.Aeson
 import qualified Data.ByteString as BS
+import Data.ByteString (ByteString)
 import qualified Data.Text as T
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Prettyprint.Doc (pretty)
+import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
-import Prologue
+import Path
 import qualified Path.IO as PIO
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
+import Prelude
 
 data ReadFS m k where
   ReadContentsBS' :: Path x File -> ReadFS m (Either ReadFSErr ByteString)
@@ -55,12 +64,13 @@ data ReadFSErr
     FileParseError FilePath Text
   | -- | An IOException was thrown when resolving a file/directory
     ResolveError FilePath FilePath Text
-  deriving (Eq, Ord, Show, Generic, Typeable)
+  deriving (Eq, Ord, Show)
 
--- FIXME
 instance ToDiagnostic ReadFSErr where
-
-instance E.Exception ReadFSErr
+  renderDiagnostic = \case
+    FileReadError path err -> "Error reading file " <> pretty path <> " : " <> pretty err
+    FileParseError path err -> "Error parsing file " <> pretty path <> " : " <> pretty err
+    ResolveError base rel err -> "Error resolving a relative file. base: " <> pretty base <> " . relative: " <> pretty rel <> " . error: " <> pretty err
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteString)
