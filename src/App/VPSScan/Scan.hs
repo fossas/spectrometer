@@ -31,8 +31,8 @@ scanMain opts@ScanCmdOpts{..} = do
   basedir <- validateDir cmdBasedir
   result <- runDiagnostics $ runTrace $ vpsScan basedir opts
   case result of
-    Left err -> do
-      putStrLn (T.unpack $ diagnosticBundlePretty err)
+    Left failure -> do
+      putStrLn (T.unpack $ renderFailureBundle failure)
       exitFailure
     Right _ -> pure ()
 
@@ -69,13 +69,13 @@ vpsScan basedir ScanCmdOpts{..} = do
                 (runIt $ runSherlockScan basedir scanId vpsOpts)
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"
-    (Left err, _) -> do
+    (Left iprFailure, _) -> do
       trace "[IPR] Failed to scan"
-      trace (T.unpack $ diagnosticBundlePretty err)
+      trace (T.unpack $ renderFailureBundle iprFailure)
       liftIO exitFailure
-    (_, Left err) -> do
+    (_, Left sherlockFailure) -> do
       trace "[Sherlock] Failed to scan"
-      trace (T.unpack $ diagnosticBundlePretty err)
+      trace (T.unpack $ renderFailureBundle sherlockFailure)
       liftIO exitFailure
 
 runSherlockScan ::

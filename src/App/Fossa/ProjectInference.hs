@@ -26,13 +26,13 @@ import Effect.ReadFS
 
 inferProject :: (Has Logger sig m, MonadIO m) => Path Abs Dir -> m InferredProject
 inferProject current = do
-  inferred <- runDiagnostics $ runReadFSIO $ runExecIO $ (inferGit current <||> inferSVN current)
+  result <- runDiagnostics $ runReadFSIO $ runExecIO $ (inferGit current <||> inferSVN current)
 
-  case inferred of
-    Right project -> pure project
-    Left err -> do
+  case result of
+    Right inferred -> pure (resultValue inferred)
+    Left failure -> do
       logWarn "Project inference: couldn't find VCS root. Defaulting to directory name."
-      logDebug (pretty (diagnosticBundlePretty err))
+      logDebug (pretty (renderFailureBundle failure))
       inferDefault current
 
 svnCommand :: Command

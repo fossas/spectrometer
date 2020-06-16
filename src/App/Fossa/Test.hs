@@ -70,8 +70,8 @@ testMain baseurl apiKey logSeverity timeoutSeconds outputType overrideName overr
           liftIO exitFailure
 
     case result of
-      Left err -> do
-        logError $ pretty (diagnosticBundlePretty err)
+      Left failure -> do
+        logError $ pretty (renderFailureBundle failure)
         liftIO exitFailure
       Right _ -> liftIO exitSuccess
 

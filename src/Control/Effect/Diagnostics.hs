@@ -1,7 +1,11 @@
 module Control.Effect.Diagnostics
   ( Diagnostics (..),
     DiagnosticsC (..),
-    DiagnosticBundle (..),
+    SomeDiagnostic(..),
+    FailureBundle(..),
+    ResultBundle(..),
+    renderFailureBundle,
+    renderWarnings,
     runDiagnostics,
     fatal,
     context,
@@ -11,6 +15,7 @@ module Control.Effect.Diagnostics
     fromEitherShow,
     (<||>),
     ToDiagnostic (..),
+    diagFromException,
     tagError,
     module X,
   )
@@ -25,6 +30,7 @@ import Data.Monoid (Endo (..))
 import qualified Data.Text as T
 import Data.Text (Text)
 import Prelude
+import Control.Exception (Exception)
 
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
@@ -34,19 +40,29 @@ data Diagnostics m k where
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
-data DiagnosticBundle a = DiagnosticBundle
-  { diagWarnings :: [SomeDiagnostic],
-    diagResult :: Either SomeDiagnostic a
+data FailureBundle = FailureBundle
+  { failureWarnings :: [SomeDiagnostic]
+  , failureCause :: SomeDiagnostic
   }
 
--- FIXME
-renderDiagnostic :: SomeDiagnostic -> Text
-renderDiagnostic = undefined
+data ResultBundle a = ResultBundle
+  { resultWarnings :: [SomeDiagnostic]
+  , resultValue :: a
+  }
 
-runDiagnostics :: Applicative m => DiagnosticsC m a -> m (DiagnosticBundle a)
-runDiagnostics = fmap toDiagnosticBundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
+renderFailureBundle :: FailureBundle -> Text
+renderFailureBundle = undefined
+
+renderWarnings :: [SomeDiagnostic] -> Text
+renderWarnings = undefined
+
+runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle (ResultBundle a))
+runDiagnostics = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
   where
-    toDiagnosticBundle (warnings, res) = DiagnosticBundle warnings res
+    bundle (warnings, res) =
+      case res of
+        Left err -> Left (FailureBundle warnings err)
+        Right a -> Right (ResultBundle warnings a)
 
 instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
   alg hdl sig ctx = DiagnosticsC $ case sig of
@@ -85,10 +101,10 @@ tagError :: (ToDiagnostic e', Has Diagnostics sig m) => (e -> e') -> Either e a 
 tagError f (Left e) = fatal (f e)
 tagError _ (Right a) = pure a
 
-
 infixl 3 <||>
 (<||>) :: Has Diagnostics sig m => m a -> m a -> m a
 (<||>) ma mb = do
+
   maybeA <- recover $ ma
   case maybeA of
     Nothing -> mb
@@ -101,3 +117,6 @@ instance ToDiagnostic Text
 -- | An error with a ToDiagnostic instance and an associated stack trace
 data SomeDiagnostic where
   SomeDiagnostic :: ToDiagnostic a => [Text] -> a -> SomeDiagnostic
+
+diagFromException :: Exception e => e -> SomeDiagnostic
+diagFromException = undefined

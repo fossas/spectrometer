@@ -63,9 +63,11 @@ runStrategy name strategyGroup act = forkTask $ do
   mask $ \restore -> do
     (res :: Either SomeException a) <- try (restore (runIt act))
     case res of
-      Left exc -> output (ProjectFailure strategyGroup name exc)
-      Right (Left exc) -> output (ProjectFailure strategyGroup name (SomeException exc))
-      Right (Right (bodies,())) -> traverse_ (output . toProjectClosure strategyGroup name) bodies
+      Left exc -> output (ProjectFailure strategyGroup name (FailureBundle [] (diagFromException exc)))
+      Right (Left failure) -> output (ProjectFailure strategyGroup name failure)
+      Right (Right result) ->
+        let (bodies, ()) = resultValue result
+         in traverse_ (output . toProjectClosure strategyGroup name) bodies -- TODO: warnings
 
 type TaskC m = ExecIOC (ReadFSIOC (DiagnosticsC m))
 
@@ -97,8 +99,8 @@ instance ToJSON Complete where
 data ProjectFailure = ProjectFailure
   { projectFailureGroup :: StrategyGroup
   , projectFailureName  :: Text
-  , projectFailureCause :: SomeException
-  } deriving (Show, Generic)
+  , projectFailureCause :: FailureBundle
+  } deriving (Generic)
 
 toProjectClosure :: StrategyGroup -> Text -> ProjectClosureBody -> ProjectClosure
 toProjectClosure strategyGroup name body = ProjectClosure

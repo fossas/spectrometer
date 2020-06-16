@@ -7,7 +7,8 @@ module App.Fossa.Analyze
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Exception as Exc
+import Control.Effect.Lift (Lift)
+import qualified Control.Effect.Diagnostics as Diag
 import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
@@ -16,7 +17,6 @@ import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, uploadAnalysi
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
-import Control.Effect.Diagnostics
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -104,10 +104,11 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
       logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
 
-      uploadResult <- runDiagnostics $ uploadAnalysis baseurl apiKey revision metadata projects
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis baseurl apiKey revision metadata projects
       case uploadResult of
-        Left err -> logError (pretty (diagnosticBundlePretty err))
-        Right resp -> do
+        Left failure -> logError (pretty (Diag.renderFailureBundle failure))
+        Right success -> do
+          let resp = Diag.resultValue success
           logInfo $ vsep
             [ "============================================================"
             , ""
@@ -139,54 +140,8 @@ buildResult projects failures = object
 renderFailure :: ProjectFailure -> Value
 renderFailure failure = object
   [ "name" .= projectFailureName failure
-  , "cause" .= renderCause (projectFailureCause failure)
+  , "cause" .= Diag.renderFailureBundle (projectFailureCause failure)
   ]
-
--- FIXME
-renderCause :: SomeException -> Value
-renderCause _ = "cause: rendered"
-{-
-renderCause e = fromMaybe renderSomeException $
-      renderReadFSErr <$> fromException e
-  <|> renderExecErr   <$> fromException e
-  where
-  renderSomeException = object
-    [ "type" .= ("unknown" :: Text)
-    , "err"  .= show e
-    ]
-
-  renderReadFSErr :: ReadFSErr -> Value
-  renderReadFSErr = \case
-    FileReadError path err -> object
-      [ "type" .= ("file_read_error" :: Text)
-      , "path" .= path
-      , "err"  .= err
-      ]
-    FileParseError path err -> object
-      [ "type" .= ("file_parse_error" :: Text)
-      , "path" .= path
-      , "err"  .= err
-      ]
-    ResolveError base path err -> object
-      [ "type" .= ("file_resolve_error" :: Text)
-      , "base" .= base
-      , "path" .= path
-      , "err"  .= err
-      ]
-
-  renderExecErr :: ExecErr -> Value
-  renderExecErr = \case
-    CommandFailed cmd outerr -> object
-      [ "type"   .= ("command_execution_error" :: Text)
-      , "cmd"    .= cmd
-      , "stderr" .= outerr
-      ]
-    CommandParseError cmd err -> object
-      [ "type" .= ("command_parse_error" :: Text)
-      , "cmd"  .= cmd
-      , "err"  .= err
-      ]
--}
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
