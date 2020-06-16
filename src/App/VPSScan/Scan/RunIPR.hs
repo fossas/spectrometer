@@ -7,19 +7,21 @@ module App.VPSScan.Scan.RunIPR
   )
 where
 
-import qualified Data.HashMap.Strict as HM
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
-import Prologue
 import Effect.Exec
+import Data.Aeson
+import Path
+import Prelude
 
 data IPROpts = IPROpts
   { iprCmdPath :: String,
     nomosCmdPath :: String,
     pathfinderCmdPath :: String
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 extractNonEmptyFiles :: Value -> Maybe Value
 extractNonEmptyFiles (Object obj) = do
@@ -48,10 +50,11 @@ extractNonEmptyFiles (Object obj) = do
 extractNonEmptyFiles _ = Nothing
 
 data IPRError = NoFilesEntryInOutput
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
--- FIXME
 instance ToDiagnostic IPRError where
+  renderDiagnostic NoFilesEntryInOutput = "No \"Files\" entry in the IPR output"
+
 
 execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> IPROpts -> m Value
 execIPR basedir iprOpts = do
