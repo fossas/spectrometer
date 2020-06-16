@@ -24,14 +24,14 @@ import Control.Algebra as X
 import Control.Carrier.Error.Either (ErrorC, catchError, runError, throwError)
 import Control.Carrier.Reader (ReaderC, ask, local, runReader)
 import Control.Carrier.Writer.Church (WriterC, runWriter, tell)
-import Control.Exception (SomeException(..))
+import Control.Exception (SomeException (..))
 import Control.Monad.IO.Class (MonadIO)
 import Data.Monoid (Endo (..))
 import qualified Data.Text as T
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (Doc, pretty)
-import Prelude
+import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
+import Prelude
 
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
@@ -51,11 +51,24 @@ data ResultBundle a = ResultBundle
     resultValue :: a
   }
 
-renderFailureBundle :: FailureBundle -> Text
-renderFailureBundle = undefined
+renderFailureBundle :: FailureBundle -> Doc AnsiStyle
+renderFailureBundle FailureBundle {..} =
+  vsep
+    [ "A fatal error occurred:",
+      "",
+      indent 4 (align (renderSomeDiagnostic failureCause)),
+      "",
+      "----------",
+      "Relevant warnings include:",
+      "",
+      indent 4 (align (renderWarnings failureWarnings))
+    ]
 
-renderWarnings :: [SomeDiagnostic] -> Text
-renderWarnings = undefined
+renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
+renderSomeDiagnostic (SomeDiagnostic stack cause) = renderDiagnostic cause <> line <> align (indent 2 (vsep (map (pretty . ("when " <>)) stack)))
+
+renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
+renderWarnings = align . vsep . map renderSomeDiagnostic
 
 runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle (ResultBundle a))
 runDiagnostics = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
