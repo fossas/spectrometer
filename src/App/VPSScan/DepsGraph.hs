@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module App.VPSScan.DepsGraph
 (
   depsGraphMain
@@ -76,10 +78,10 @@ parseNinjaLine (state, targets) line =
       -- lines starting with spaces are deps lines
       -- lines without spaces are target lines
       -- empty lines and the "build completed successfully" line can be ignored
-      if (T.isPrefixOf (T.pack "  ") line) then
+      if (T.isPrefixOf "  " line) then
         ("parsing", targets)
       else
-        if (line == "" || T.isInfixOf (T.pack "build completed successfully") line) then
+        if (line == "" || T.isInfixOf "build completed successfully" line) then
           ("parsing", targets)
         else
           ("parsing", (t:targets))
@@ -92,4 +94,4 @@ targetFromLine :: Text -> Target
 targetFromLine line =
   Target (T.unpack tar) [] Nothing Nothing
   where
-    (tar, _) = T.breakOn (T.pack ": #deps") line
+    (tar, _) = T.breakOn ": #deps" line
