@@ -41,7 +41,7 @@ scanNinjaDeps baseDir DepsGraphOpts{..} = do
   let ninjaDeps = parseNinjaDeps contents
   let numDeps = length ninjaDeps
   trace $ "found " ++ (show numDeps) ++ " targets"
-  trace $ show ninjaDeps
+  trace $ show $ take 10 ninjaDeps
 
 data Target = Target
   {
@@ -84,6 +84,12 @@ parseNinjaLine (state, targets) line =
         else
           ("parsing", (t:targets))
           where
-            t = Target (T.unpack line) [] Nothing Nothing
+            t = targetFromLine line
     -- This should never happen
     _ -> ("error", targets)
+
+targetFromLine :: Text -> Target
+targetFromLine line =
+  Target (T.unpack tar) [] Nothing Nothing
+  where
+    (tar, _) = T.breakOn (T.pack ": #deps") line
