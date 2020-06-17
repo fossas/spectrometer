@@ -39,7 +39,9 @@ scanNinjaDeps baseDir DepsGraphOpts{..} = do
   path <- liftIO $ parseAbsFile depsGraphNinjaPath
   contents <- readContentsText path
   let ninjaDeps = parseNinjaDeps contents
-  trace "done"
+  let numDeps = length ninjaDeps
+  trace $ "found " ++ (show numDeps) ++ " targets"
+  trace $ show ninjaDeps
 
 data Target = Target
   {
@@ -47,13 +49,13 @@ data Target = Target
   , dependencies :: [Dependency]
   , firstDependency :: Maybe Dependency
   , targetComponentName :: Maybe Text
-  } deriving Generic
+  } deriving (Eq, Ord, Show, Generic)
 
 data Dependency = Dependency
   { dependencyPath :: FilePath
   , dependencyComponentName :: Maybe Text
   , hasDependencies :: Bool
-  } deriving Generic
+  } deriving (Eq, Ord, Show, Generic)
 
 parseNinjaDeps :: Text -> [Target]
 parseNinjaDeps ninjaDepsLines =
@@ -76,7 +78,10 @@ parseNinjaLine (state, targets) line =
       if (T.isPrefixOf (T.pack "  ") line) then
         ("parsing", targets)
       else
-        ("parsing", (t:targets))
-        where
-          t = Target (T.unpack line) [] Nothing Nothing
+        if (line == "" || T.isInfixOf (T.pack "build completed successfully") line) then
+          ("parsing", targets)
+        else
+          ("parsing", (t:targets))
+          where
+            t = Target (T.unpack line) [] Nothing Nothing
 
