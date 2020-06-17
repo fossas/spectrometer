@@ -7,6 +7,7 @@ import Prologue
 import Options.Applicative
 
 import App.VPSScan.Scan (ScanCmdOpts(..), scanMain)
+import App.VPSScan.DepsGraph (DepsGraphCmdOpts(..), depsGraphMain)
 import App.VPSScan.Types
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
 import OptionExtensions
@@ -18,7 +19,7 @@ opts :: ParserInfo (IO ())
 opts = info (commands <**> helper) (fullDesc <> header "vpscli -- FOSSA Vendored Package Scan CLI")
 
 commands :: Parser (IO ())
-commands = hsubparser scanCommand
+commands = hsubparser $ scanCommand <> depsGraphCommand
 
 vpsOpts :: Parser VPSOpts
 vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
@@ -26,6 +27,11 @@ vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> org
               organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
+
+depsGraphOpts :: Parser DepsGraphOpts
+depsGraphOpts = DepsGraphOpts <$> ninjaDepsOpt
+                 where
+                   ninjaDepsOpt = strOption (long "ninjadeps" <> metavar "STRING" <> help "Path to ninja_deps file")
 
 runSherlockOpts :: Parser SherlockOpts
 runSherlockOpts = SherlockOpts
@@ -59,10 +65,19 @@ syOpts = ScotlandYardOpts
                   where
                     scotlandYardUrlOpt = uriOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
 
+basedirOpt :: Parser FilePath
+basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
+
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
   where
   scanOptsParser = ScanCmdOpts
                    <$> basedirOpt
                    <*> vpsOpts
-  basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
+
+depsGraphCommand :: Mod CommandFields (IO ())
+depsGraphCommand = command "deps-graph" (info (depsGraphMain <$> depsGraphOptsParser) (progDesc "Get a dependency graph for a build"))
+  where
+    depsGraphOptsParser = DepsGraphCmdOpts
+                          <$> basedirOpt
+                          <*> depsGraphOpts

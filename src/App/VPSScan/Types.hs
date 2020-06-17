@@ -1,8 +1,8 @@
 module App.VPSScan.Types
-  ( VPSOpts (..),
-    SherlockOpts (..),
-    ScotlandYardOpts (..),
-  )
+(VPSOpts(..),
+SherlockOpts(..),
+ScotlandYardOpts(..),
+DepsGraphOpts(..))
 where
 
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
@@ -22,11 +22,13 @@ data SherlockOpts = SherlockOpts
   deriving (Eq, Ord, Show, Generic)
 
 data VPSOpts = VPSOpts
-  { vpsSherlock :: SherlockOpts,
-    vpsIpr :: Maybe RunIPR.IPROpts,
-    vpsScotlandYard :: ScotlandYardOpts,
-    organizationID :: Int,
-    projectID :: Text,
-    revisionID :: Text
-  }
-  deriving (Generic)
+  { vpsSherlock :: SherlockOpts
+  , vpsIpr :: Maybe RunIPR.IPROpts
+  , vpsScotlandYard :: ScotlandYardOpts
+  , organizationID :: Int
+  , projectID :: Text
+  , revisionID :: Text
+  } deriving (Generic)
+
+data DepsGraphOpts = DepsGraphOpts
+  { depsGraphNinjaPath :: FilePath } deriving (Generic)
