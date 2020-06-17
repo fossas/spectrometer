@@ -1,14 +1,12 @@
-module Strategy.RPM (
-  discover,
-  getSpecDeps,
-  getTypeFromLine,
-
-  RPMDependency(..),
-  RequiresType(..),
-  Dependencies(..)
-) where
-
-import Prologue
+module Strategy.RPM
+  ( discover,
+    getSpecDeps,
+    getTypeFromLine,
+    RPMDependency (..),
+    RequiresType (..),
+    Dependencies (..),
+  )
+where
 
 import Control.Effect.Error
 import qualified Data.Map.Strict as M
@@ -19,26 +17,32 @@ import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Prologue
 import Types
 
-newtype SpecFileLabel =
-  RequiresType DepEnvironment
+newtype SpecFileLabel
+  = RequiresType DepEnvironment
   deriving (Eq, Ord, Show, Generic)
-  
-data RPMDependency = RPMDependency 
-  { rpmDepName :: Text,
-    rpmConstraint :: Maybe VerConstraint
-  } deriving (Eq, Ord, Show, Generic)
+
+data RPMDependency
+  = RPMDependency
+      { rpmDepName :: Text,
+        rpmConstraint :: Maybe VerConstraint
+      }
+  deriving (Eq, Ord, Show, Generic)
 
 {- These two structures should make it very easy to add other headers like `Requires`
 -}
-newtype RequiresType =
-    BuildRequires RPMDependency
-    deriving (Eq, Ord, Show, Generic)
+newtype RequiresType
+  = BuildRequires RPMDependency
+  deriving (Eq, Ord, Show, Generic)
 
-newtype Dependencies = Dependencies
-    { depBuildRequires :: [RPMDependency] 
-    } deriving (Eq, Ord, Show, Generic)
+newtype Dependencies
+  = Dependencies
+      { depBuildRequires :: [RPMDependency]
+      }
+  deriving (Eq, Ord, Show, Generic)
+
 {-
 Yep...  Those ones right above me.  Kinda rude.  They're actually standing on my head.
 -}
@@ -56,34 +60,39 @@ analyze specFile = do
   specFileText <- readContentsText specFile
   pure . buildGraph $ getSpecDeps specFileText
 
-mkProjectClosure :: Path Rel Dir ->  Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = graph
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
+mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure dir graph =
+  ProjectClosureBody
+    { bodyModuleDir = dir,
+      bodyDependencies = dependencies,
+      bodyLicenses = []
     }
+  where
+    dependencies =
+      ProjectDependencies
+        { dependenciesGraph = graph,
+          dependenciesOptimal = NotOptimal,
+          dependenciesComplete = NotComplete
+        }
 
 toDependency :: RPMDependency -> Set SpecFileLabel -> Dependency
-toDependency pkg = foldr applyLabel Dependency 
-  { dependencyType = CargoType 
-  , dependencyName = rpmDepName pkg
-  , dependencyVersion = rpmConstraint pkg
-  , dependencyLocations = []
-  , dependencyEnvironments = []
-  , dependencyTags = M.empty
-  }
+toDependency pkg =
+  foldr
+    applyLabel
+    Dependency
+      { dependencyType = CargoType,
+        dependencyName = rpmDepName pkg,
+        dependencyVersion = rpmConstraint pkg,
+        dependencyLocations = [],
+        dependencyEnvironments = [],
+        dependencyTags = M.empty
+      }
   where
     applyLabel :: SpecFileLabel -> Dependency -> Dependency
-    applyLabel (RequiresType env) dep = dep { dependencyEnvironments = env : dependencyEnvironments dep }
+    applyLabel (RequiresType env) dep = dep {dependencyEnvironments = env : dependencyEnvironments dep}
 
 buildGraph :: Dependencies -> Graphing Dependency
-buildGraph Dependencies{..} = run . withLabeling toDependency $ do
+buildGraph Dependencies {..} = run . withLabeling toDependency $ do
   traverse_ direct depBuildRequires
   traverse (flip label $ RequiresType EnvDevelopment) depBuildRequires
 
@@ -124,7 +133,7 @@ buildDependencies :: [RequiresType] -> Dependencies
 buildDependencies = foldr addDep blankDeps
   where
     addDep req deps = case req of
-      BuildRequires dep -> deps { depBuildRequires = dep : depBuildRequires deps }
+      BuildRequires dep -> deps {depBuildRequires = dep : depBuildRequires deps}
     blankDeps = Dependencies []
 
 getSpecDeps :: Text -> Dependencies
