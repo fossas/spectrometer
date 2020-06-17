@@ -75,6 +75,7 @@ parseNinjaLine (state, targets) line =
     "parsing" ->
       -- lines starting with spaces are deps lines
       -- lines without spaces are target lines
+      -- empty lines and the "build completed successfully" line can be ignored
       if (T.isPrefixOf (T.pack "  ") line) then
         ("parsing", targets)
       else
@@ -84,4 +85,5 @@ parseNinjaLine (state, targets) line =
           ("parsing", (t:targets))
           where
             t = Target (T.unpack line) [] Nothing Nothing
-
+    -- This should never happen
+    _ -> ("error", targets)
