@@ -1,9 +1,11 @@
 module App.VPSScan.Types
-(VPSOpts(..),
-SherlockOpts(..),
-ScotlandYardOpts(..),
-NinjaGraphOpts(..))
-where
+( VPSOpts(..)
+, SherlockOpts(..)
+, ScotlandYardOpts(..)
+, DepsTarget(..)
+, DepsDependency(..)
+, NinjaGraphOpts(..)
+) where
 
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
 import Prologue
@@ -29,6 +31,20 @@ data VPSOpts = VPSOpts
   , projectID :: Text
   , revisionID :: Text
   } deriving (Generic)
+
+data DepsTarget = DepsTarget
+  {
+    targetPath :: FilePath
+  , dependencies :: [DepsDependency]
+  , firstDependency :: Maybe DepsDependency
+  , targetComponentName :: Maybe Text
+  } deriving (Eq, Ord, Show, Generic)
+
+data DepsDependency = DepsDependency
+  { dependencyPath :: FilePath
+  , dependencyComponentName :: Maybe Text
+  , hasDependencies :: Bool
+  } deriving (Eq, Ord, Show, Generic)
 
 data NinjaGraphOpts = NinjaGraphOpts
   { ninjaGraphNinjaPath :: FilePath } deriving (Generic)

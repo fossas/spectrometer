@@ -45,28 +45,14 @@ scanNinjaDeps _baseDir NinjaGraphOpts{..} = do
   trace $ "found " ++ (show numDeps) ++ " targets"
   trace $ show $ take 10 ninjaDeps
 
-data Target = Target
-  {
-    targetPath :: FilePath
-  , dependencies :: [Dependency]
-  , firstDependency :: Maybe Dependency
-  , targetComponentName :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
-
-data Dependency = Dependency
-  { dependencyPath :: FilePath
-  , dependencyComponentName :: Maybe Text
-  , hasDependencies :: Bool
-  } deriving (Eq, Ord, Show, Generic)
-
-parseNinjaDeps :: Text -> [Target]
+parseNinjaDeps :: Text -> [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
   results
   where
     nLines = T.lines ninjaDepsLines
     (_, results) = foldl parseNinjaLine ("starting", []) nLines
 
-parseNinjaLine :: ((Text, [Target]) -> Text -> (Text, [Target]))
+parseNinjaLine :: ((Text, [DepsTarget]) -> Text -> (Text, [DepsTarget]))
 parseNinjaLine (state, targets) line =
   case state of
     "starting" ->
@@ -79,7 +65,7 @@ parseNinjaLine (state, targets) line =
     -- This should never happen
     _ -> ("error", targets)
 
-actuallyParseLine :: Text -> [Target] -> (Text, [Target])
+actuallyParseLine :: Text -> [DepsTarget] -> (Text, [DepsTarget])
 -- ignore empty lines
 actuallyParseLine "" targets =
   ("parsing", targets)
@@ -91,40 +77,40 @@ actuallyParseLine line []
     ("error", [])
 -- Add the first target
   | otherwise =
-    ("parsing", [newTarget])
+    ("parsing", [newDepsTarget])
   where
-    newTarget = targetFromLine line
+    newDepsTarget = targetFromLine line
 
-actuallyParseLine line (currentTarget:restOfTargets)
+actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
 -- ignore the "build completed successfully" line at the end of the file
   | T.isInfixOf "build completed successfully" line =
-    ("parsing", (currentTarget:restOfTargets))
+    ("parsing", (currentDepsTarget:restOfDepsTargets))
 -- lines starting with a space add a new dep to the current target
   | T.isPrefixOf " " line =
-    ("parsing", (updatedTarget:restOfTargets))
+    ("parsing", (updatedDepsTarget:restOfDepsTargets))
 -- lines starting with a non-blank char are new targets
   | otherwise =
-    ("parsing", (newTarget:currentTarget:restOfTargets))
+    ("parsing", (newDepsTarget:currentDepsTarget:restOfDepsTargets))
   where
-    newTarget = targetFromLine line
-    updatedTarget = addDepToTarget currentTarget line
+    newDepsTarget = targetFromLine line
+    updatedDepsTarget = addDepToDepsTarget currentDepsTarget line
 
-targetFromLine :: Text -> Target
+targetFromLine :: Text -> DepsTarget
 targetFromLine line =
-  Target (T.unpack tar) [] Nothing Nothing
+  DepsTarget (T.unpack tar) [] Nothing Nothing
   where
     (tar, _) = T.breakOn ": #deps" line
 
-addDepToTarget :: Target -> Text -> Target
-addDepToTarget target line =
+addDepToDepsTarget :: DepsTarget -> Text -> DepsTarget
+addDepToDepsTarget target line =
   target { dependencies = (newDep:currentDeps)}
   where
     currentDeps = dependencies target
     newDep = parseDepLine line
 
-parseDepLine :: Text -> Dependency
+parseDepLine :: Text -> DepsDependency
 parseDepLine line =
-  Dependency (T.unpack path) componentName hasDeps
+  DepsDependency (T.unpack path) componentName hasDeps
   where
     path = T.strip line
     componentName = Nothing -- TODO: get component name
