@@ -60,7 +60,10 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
   case (exitcode, stdout, stderr) of
     (ExitSuccess, _, _) -> pure stdout
     (_, _, err) -> throwError (CommandFailed "" (T.pack (show err)))
-  where commandString = "cd " ++ show baseDir ++ "&& source ./build/envsetup.sh && lunch aosp_coral-userdebug && NINJA_ARGS=\"-t deps\" make"
+  where
+    commandString = case lunchTarget of
+      Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
+      Just lunch ->  "cd " ++ show baseDir ++ "&& source ./build/envsetup.sh && lunch " ++ (T.unpack lunch) ++ " && NINJA_ARGS=\"-t deps\" make"
 
 scanNinjaDeps ::
   ( Has Trace sig m )
