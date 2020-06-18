@@ -167,5 +167,5 @@ stripBS s =
       Nothing -> s
       Just stripped -> stripped
     suffixed = case BS.stripSuffix " " prefixed of
-      Nothing -> suffixed
+      Nothing -> prefixed
       Just stripped2 -> stripped2
