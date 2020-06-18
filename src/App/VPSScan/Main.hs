@@ -7,7 +7,7 @@ import Prologue
 import Options.Applicative
 
 import App.VPSScan.Scan (ScanCmdOpts(..), scanMain)
-import App.VPSScan.DepsGraph (DepsGraphCmdOpts(..), depsGraphMain)
+import App.VPSScan.NinjaGraph (NinjaGraphCmdOpts(..), ninjaGraphMain)
 import App.VPSScan.Types
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
 import OptionExtensions
@@ -19,7 +19,7 @@ opts :: ParserInfo (IO ())
 opts = info (commands <**> helper) (fullDesc <> header "vpscli -- FOSSA Vendored Package Scan CLI")
 
 commands :: Parser (IO ())
-commands = hsubparser $ scanCommand <> depsGraphCommand
+commands = hsubparser $ scanCommand <> ninjaGraphCommand
 
 vpsOpts :: Parser VPSOpts
 vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
@@ -28,8 +28,8 @@ vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> org
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
-depsGraphOpts :: Parser DepsGraphOpts
-depsGraphOpts = DepsGraphOpts <$> ninjaDepsOpt
+ninjaGraphOpts :: Parser NinjaGraphOpts
+ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt
                  where
                    ninjaDepsOpt = strOption (long "ninjadeps" <> metavar "STRING" <> help "Path to ninja_deps file")
 
@@ -75,9 +75,9 @@ scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan
                    <$> basedirOpt
                    <*> vpsOpts
 
-depsGraphCommand :: Mod CommandFields (IO ())
-depsGraphCommand = command "deps-graph" (info (depsGraphMain <$> depsGraphOptsParser) (progDesc "Get a dependency graph for a build"))
+ninjaGraphCommand :: Mod CommandFields (IO ())
+ninjaGraphCommand = command "ninja-graph" (info (ninjaGraphMain <$> ninjaGraphOptsParser) (progDesc "Get a dependency graph for a build"))
   where
-    depsGraphOptsParser = DepsGraphCmdOpts
+    ninjaGraphOptsParser = NinjaGraphCmdOpts
                           <$> basedirOpt
-                          <*> depsGraphOpts
+                          <*> ninjaGraphOpts

@@ -2,7 +2,7 @@ module App.VPSScan.Types
 (VPSOpts(..),
 SherlockOpts(..),
 ScotlandYardOpts(..),
-DepsGraphOpts(..))
+NinjaGraphOpts(..))
 where
 
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
@@ -30,5 +30,5 @@ data VPSOpts = VPSOpts
   , revisionID :: Text
   } deriving (Generic)
 
-data DepsGraphOpts = DepsGraphOpts
-  { depsGraphNinjaPath :: FilePath } deriving (Generic)
+data NinjaGraphOpts = NinjaGraphOpts
+  { ninjaGraphNinjaPath :: FilePath } deriving (Generic)

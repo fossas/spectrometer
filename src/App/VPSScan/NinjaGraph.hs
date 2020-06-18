@@ -1,9 +1,9 @@
 {-# language OverloadedStrings #-}
 
-module App.VPSScan.DepsGraph
+module App.VPSScan.NinjaGraph
 (
-  depsGraphMain
-, DepsGraphCmdOpts(..)
+  ninjaGraphMain
+, NinjaGraphCmdOpts(..)
 ) where
 
 import Prologue
@@ -16,14 +16,14 @@ import System.Exit (exitFailure)
 
 import App.VPSScan.Types
 
-data DepsGraphCmdOpts = DepsGraphCmdOpts
+data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   { depsCmdBasedir :: FilePath
-  , depsCmdDepsGraphOpts :: DepsGraphOpts
+  , depsCmdNinjaGraphOpts :: NinjaGraphOpts
   } deriving Generic
 
-depsGraphMain :: DepsGraphCmdOpts -> IO ()
-depsGraphMain DepsGraphCmdOpts{..} = do
-  result <- runError @ReadFSErr $ runTrace $ runReadFSIO $ scanNinjaDeps depsCmdBasedir depsCmdDepsGraphOpts
+ninjaGraphMain :: NinjaGraphCmdOpts -> IO ()
+ninjaGraphMain NinjaGraphCmdOpts{..} = do
+  result <- runError @ReadFSErr $ runTrace $ runReadFSIO $ scanNinjaDeps depsCmdBasedir depsCmdNinjaGraphOpts
   case result of
     Left err -> do
       print err
@@ -35,10 +35,10 @@ scanNinjaDeps ::
   , Has (Error ReadFSErr) sig m
   , Has Trace sig m
   , MonadIO m)
-  => FilePath -> DepsGraphOpts -> m ()
-scanNinjaDeps _baseDir DepsGraphOpts{..} = do
-  trace $ "reading ninja deps from " ++ depsGraphNinjaPath
-  path <- liftIO $ parseAbsFile depsGraphNinjaPath
+  => FilePath -> NinjaGraphOpts -> m ()
+scanNinjaDeps _baseDir NinjaGraphOpts{..} = do
+  trace $ "reading ninja deps from " ++ ninjaGraphNinjaPath
+  path <- liftIO $ parseAbsFile ninjaGraphNinjaPath
   contents <- readContentsText path
   let ninjaDeps = parseNinjaDeps contents
   let numDeps = length ninjaDeps

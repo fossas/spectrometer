@@ -108,7 +108,7 @@ library
     App.VPSScan.Scan.RunIPR
     App.VPSScan.Scan.RunSherlock
     App.VPSScan.Scan.ScotlandYard
-    App.VPSScan.DepsGraph
+    App.VPSScan.NinjaGraph
     App.VPSScan.Types
     Control.Carrier.Diagnostics
     Control.Carrier.Output.IO
