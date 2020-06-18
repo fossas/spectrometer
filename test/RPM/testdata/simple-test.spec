@@ -23,8 +23,9 @@ BuildRequires:   libxml2     >=   5.4.98
 # Complex version text (shouldn't change behavior)
 BuildRequires:  gmock = 1.6.0-1.aapps.el7
 
+# We also handle "Requires" headers
+Requires:   tacp
+
 # Ignored due to macro use
 BuildRequires:  cloudistics-core%{?_isa} = %{version}-%{release}
 
-# Ignored for now, we don't check "Requires"
-Requires:   tacp

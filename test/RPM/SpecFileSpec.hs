@@ -1,15 +1,14 @@
 module RPM.SpecFileSpec
-  ( spec
-  ) where
+  ( spec,
+  )
+where
 
-import Prologue
-
-import DepTypes
-import Strategy.RPM
+import Data.Maybe (listToMaybe)
 import qualified Data.Text.IO as TIO
-
+import DepTypes
+import Prologue
+import Strategy.RPM
 import qualified Test.Hspec as Test
-
 
 mkUnVerDep :: Text -> RPMDependency
 mkUnVerDep name = RPMDependency name Nothing
@@ -47,10 +46,12 @@ libxml2Dep = mkVerDep "libxml2" $ CGreaterOrEq "5.4.98"
 gmockDep :: RPMDependency
 gmockDep = mkVerDep "gmock" $ CEq "1.6.0-1.aapps.el7"
 
-allDeps :: [RPMDependency]
-allDeps = 
-  [
-    boostDep,
+tacpDep :: RPMDependency
+tacpDep = mkUnVerDep "tacp"
+
+buildDeps :: [RPMDependency]
+buildDeps =
+  [ boostDep,
     cmakeDep,
     jsoncppDep,
     gtestDep,
@@ -66,9 +67,13 @@ spec :: Test.Spec
 spec = do
   Test.describe "rpm specfile parser" $ do
     contents <- Test.runIO $ TIO.readFile "test/RPM/testdata/simple-test.spec"
-    Test.it "should list all BuildRequires" $
-       depBuildRequires (getSpecDeps contents) `Test.shouldMatchList` allDeps
-
-  Test.describe "line parser" $
-    Test.it "should parse single lines correctly" $
-      getTypeFromLine "BuildRequires: xz = 1" `Test.shouldBe` Just (BuildRequires $ RPMDependency "xz" $ Just $ CEq "1")
+    Test.it "should list all BuildRequires and Requires" $ do
+      let deps = getSpecDeps contents
+      depBuildRequires deps `Test.shouldMatchList` buildDeps
+      listToMaybe (depRuntimeRequires deps) `Test.shouldBe` Just tacpDep
+  --
+  Test.describe "line parser"
+    $ Test.it "should parse single lines correctly"
+    $ do
+      getTypeFromLine "BuildRequires: xz = 1" `Test.shouldBe` Just (BuildRequires $ mkVerDep "xz" $ CEq "1")
+      getTypeFromLine "Requires: xz = 1" `Test.shouldBe` Just (RuntimeRequires $ mkVerDep "xz" $ CEq "1")

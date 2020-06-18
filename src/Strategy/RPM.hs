@@ -31,28 +31,24 @@ data RPMDependency
       }
   deriving (Eq, Ord, Show, Generic)
 
-{- These two structures should make it very easy to add other headers like `Requires`
--}
-newtype RequiresType
+data RequiresType
   = BuildRequires RPMDependency
+  | RuntimeRequires RPMDependency
   deriving (Eq, Ord, Show, Generic)
 
-newtype Dependencies
+data Dependencies
   = Dependencies
-      { depBuildRequires :: [RPMDependency]
+      { depBuildRequires :: [RPMDependency],
+        depRuntimeRequires :: [RPMDependency]
       }
   deriving (Eq, Ord, Show, Generic)
-
-{-
-Yep...  Those ones right above me.  Kinda rude.  They're actually standing on my head.
--}
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files ->
   case find (\f -> ".spec" `isSuffixOf` fileName f) files of
     Nothing -> pure WalkContinue
     Just specFile -> do
-      runSimpleStrategy "rpm-spec" RustGroup $ fmap (mkProjectClosure dir) (analyze specFile)
+      runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
       pure WalkSkipAll
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m (Graphing Dependency)
@@ -80,7 +76,7 @@ toDependency pkg =
   foldr
     applyLabel
     Dependency
-      { dependencyType = CargoType,
+      { dependencyType = RPMType,
         dependencyName = rpmDepName pkg,
         dependencyVersion = rpmConstraint pkg,
         dependencyLocations = [],
@@ -94,9 +90,11 @@ toDependency pkg =
 buildGraph :: Dependencies -> Graphing Dependency
 buildGraph Dependencies {..} = run . withLabeling toDependency $ do
   traverse_ direct depBuildRequires
-  traverse (flip label $ RequiresType EnvDevelopment) depBuildRequires
+  traverse_ direct depRuntimeRequires
+  --
+  traverse_ (flip label $ RequiresType EnvDevelopment) depBuildRequires
+  traverse_ (flip label $ RequiresType EnvProduction) depRuntimeRequires
 
--- buildConstraint tail = RPMConstraint version <$> comparator
 buildConstraint :: Text -> Maybe VerConstraint
 buildConstraint tail = constraint
   where
@@ -127,6 +125,7 @@ getTypeFromLine line = safeReq
     safeReq = if isSafeName pkgName then req else Nothing
     req = case header of
       "BuildRequires" -> Just . BuildRequires . RPMDependency pkgName $ buildConstraint rawConstraint
+      "Requires" -> Just . RuntimeRequires . RPMDependency pkgName $ buildConstraint rawConstraint
       _ -> Nothing
 
 buildDependencies :: [RequiresType] -> Dependencies
@@ -134,8 +133,8 @@ buildDependencies = foldr addDep blankDeps
   where
     addDep req deps = case req of
       BuildRequires dep -> deps {depBuildRequires = dep : depBuildRequires deps}
-    blankDeps = Dependencies []
+      RuntimeRequires dep -> deps {depRuntimeRequires = dep : depRuntimeRequires deps}
+    blankDeps = Dependencies [] []
 
 getSpecDeps :: Text -> Dependencies
 getSpecDeps = buildDependencies . mapMaybe getTypeFromLine . T.lines
--- getSpecDeps = buildDependencies . concatMap (parseLine . splitLine) . T.lines
