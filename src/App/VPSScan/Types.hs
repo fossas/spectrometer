@@ -36,7 +36,7 @@ data DepsTarget = DepsTarget
   {
     targetPath :: FilePath
   , dependencies :: [DepsDependency]
-  , firstDependency :: Maybe DepsDependency
+  , inputs :: [DepsDependency]
   , targetComponentName :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 

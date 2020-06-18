@@ -97,7 +97,7 @@ actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
 
 targetFromLine :: Text -> DepsTarget
 targetFromLine line =
-  DepsTarget (T.unpack tar) [] Nothing Nothing
+  DepsTarget (T.unpack tar) [] [] Nothing
   where
     (tar, _) = T.breakOn ": #deps" line
 
