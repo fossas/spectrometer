@@ -17,7 +17,7 @@ import Strategy.Googlesource.RepoManifest
 import Test.Hspec
 import Text.URI.QQ
 import Effect.ReadFS
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 
 -- <remote name="aosp" fetch="https://android.googlesource.com" />
 remoteOne :: ManifestRemote

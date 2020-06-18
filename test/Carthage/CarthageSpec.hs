@@ -5,7 +5,7 @@ module Carthage.CarthageSpec
 
 import Prologue
 
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 import Effect.ReadFS
 import qualified Graphing as G
 import GraphUtil

@@ -25,7 +25,7 @@ import Prologue
 
 import Control.Algebra
 import Control.Carrier.TaskPool
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 import Control.Effect.Exception
 import Control.Carrier.Output.IO
 import DepTypes

@@ -8,7 +8,7 @@ import Prologue
 
 import Control.Carrier.Error.Either
 import Control.Effect.Lift (Lift)
-import qualified Control.Effect.Diagnostics as Diag
+import qualified Control.Carrier.Diagnostics as Diag
 import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
@@ -17,7 +17,6 @@ import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, uploadAnalysi
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
-import Control.Effect.Diagnostics
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -86,7 +85,7 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
     withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
 
-  traverse_ (logDebug . renderFailureBundle . projectFailureCause) failures
+  traverse_ (logDebug . Diag.renderFailureBundle . projectFailureCause) failures
 
   logSticky ""
 

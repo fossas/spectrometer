@@ -6,7 +6,7 @@ module App.VPSScan.Scan
 
 import Prologue
 
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 import Effect.Exec
 import Path.IO
 import System.Exit (exitFailure, die)

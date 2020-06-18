@@ -109,6 +109,7 @@ library
     App.VPSScan.Scan.RunSherlock
     App.VPSScan.Scan.ScotlandYard
     App.VPSScan.Types
+    Control.Carrier.Diagnostics
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded

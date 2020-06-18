@@ -9,7 +9,7 @@ import qualified Prelude as Unsafe
 
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
 import qualified Data.Map as M

@@ -11,7 +11,7 @@ import qualified Data.Map.Strict as M
 
 import DepTypes
 import Control.Algebra
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 import Control.Carrier.Reader
 import Effect.Exec
 import Effect.Grapher

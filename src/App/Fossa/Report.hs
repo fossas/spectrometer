@@ -8,7 +8,7 @@ import Prologue
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import Control.Concurrent (threadDelay)
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 import qualified Control.Concurrent.Async as Async
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger

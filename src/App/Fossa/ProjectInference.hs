@@ -7,7 +7,7 @@ module App.Fossa.ProjectInference
 where
 
 import Control.Algebra
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (mapMaybe)
