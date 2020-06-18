@@ -75,23 +75,49 @@ parseNinjaLine (state, targets) line =
       else
         ("starting", [])
     "parsing" ->
-      -- lines starting with spaces are deps lines
-      -- lines without spaces are target lines
-      -- empty lines and the "build completed successfully" line can be ignored
-      if (T.isPrefixOf "  " line) then
-        ("parsing", targets)
-      else
-        if (line == "" || T.isInfixOf "build completed successfully" line) then
-          ("parsing", targets)
-        else
-          ("parsing", (t:targets))
-          where
-            t = targetFromLine line
+      actuallyParseLine line targets
     -- This should never happen
     _ -> ("error", targets)
+
+actuallyParseLine :: Text -> [Target] -> (Text, [Target])
+actuallyParseLine line targets
+-- ignore empty lines
+  | line == "" =
+    ("parsing", targets)
+-- ignore the "build completed successfully" line at the end of the file
+  | T.isInfixOf "build completed successfully" line =
+    ("parsing", targets)
+-- error if you're trying to add a dependency and there are no targets yet
+  | T.isPrefixOf " " line && targets == [] =
+    ("error", [])
+-- lines starting with a space add a new dep to the current target
+  | T.isPrefixOf " " line =
+    ("parsing", (updatedTarget:restOfTargets))
+-- lines starting with a non-blank char are new targets
+  | otherwise =
+    ("parsing", (newTarget:targets))
+  where
+    newTarget = targetFromLine line
+    (currentTarget:restOfTargets) = targets
+    updatedTarget = addDepToTarget currentTarget line
 
 targetFromLine :: Text -> Target
 targetFromLine line =
   Target (T.unpack tar) [] Nothing Nothing
   where
     (tar, _) = T.breakOn ": #deps" line
+
+addDepToTarget :: Target -> Text -> Target
+addDepToTarget target line =
+  target { dependencies = (newDep:currentDeps)}
+  where
+    currentDeps = dependencies target
+    newDep = parseDepLine line
+
+parseDepLine :: Text -> Dependency
+parseDepLine line =
+  Dependency (T.unpack path) componentName hasDeps
+  where
+    path = T.strip line
+    componentName = Nothing -- TODO: get component name
+    hasDeps = T.isPrefixOf "out/" path
