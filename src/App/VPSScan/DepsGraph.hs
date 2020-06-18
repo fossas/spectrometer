@@ -36,7 +36,7 @@ scanNinjaDeps ::
   , Has Trace sig m
   , MonadIO m)
   => FilePath -> DepsGraphOpts -> m ()
-scanNinjaDeps baseDir DepsGraphOpts{..} = do
+scanNinjaDeps _baseDir DepsGraphOpts{..} = do
   trace $ "reading ninja deps from " ++ depsGraphNinjaPath
   path <- liftIO $ parseAbsFile depsGraphNinjaPath
   contents <- readContentsText path
@@ -80,25 +80,33 @@ parseNinjaLine (state, targets) line =
     _ -> ("error", targets)
 
 actuallyParseLine :: Text -> [Target] -> (Text, [Target])
-actuallyParseLine line targets
 -- ignore empty lines
-  | line == "" =
-    ("parsing", targets)
+actuallyParseLine "" targets =
+  ("parsing", targets)
+
+actuallyParseLine line []
+-- error if you're trying to add a dependency and there are no targets yet
+-- or if you reach the end of the file and no targets have been found
+  | T.isPrefixOf " " line || T.isInfixOf "build completed successfully" line =
+    ("error", [])
+-- Add the first target
+  | otherwise =
+    ("parsing", [newTarget])
+  where
+    newTarget = targetFromLine line
+
+actuallyParseLine line (currentTarget:restOfTargets)
 -- ignore the "build completed successfully" line at the end of the file
   | T.isInfixOf "build completed successfully" line =
-    ("parsing", targets)
--- error if you're trying to add a dependency and there are no targets yet
-  | T.isPrefixOf " " line && targets == [] =
-    ("error", [])
+    ("parsing", (currentTarget:restOfTargets))
 -- lines starting with a space add a new dep to the current target
   | T.isPrefixOf " " line =
     ("parsing", (updatedTarget:restOfTargets))
 -- lines starting with a non-blank char are new targets
   | otherwise =
-    ("parsing", (newTarget:targets))
+    ("parsing", (newTarget:currentTarget:restOfTargets))
   where
     newTarget = targetFromLine line
-    (currentTarget:restOfTargets) = targets
     updatedTarget = addDepToTarget currentTarget line
 
 targetFromLine :: Text -> Target
