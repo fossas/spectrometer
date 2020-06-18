@@ -38,7 +38,6 @@ ninjaGraphMain NinjaGraphCmdOpts{..} = do
       putStrLn $ "Error" ++ (show err)
       exitFailure
 
-
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
 -- read that file to get the ninja deps. Otherwise, generate it with
 -- NINJA_ARGS="-t deps" make
@@ -54,8 +53,9 @@ readNinjaDepsFile ninjaPath = do
   path <- liftIO $ parseAbsFile ninjaPath
   readContentsBS path
 
-generateNinjaDeps :: (Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m BL.ByteString
+generateNinjaDeps :: (Has Trace sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m BL.ByteString
 generateNinjaDeps baseDir NinjaGraphOpts{..} = do
+  trace $ "Generating ninja deps with this command: " ++ commandString
   (exitcode, stdout, stderr) <- PROC.readProcess (setWorkingDir (fromAbsDir baseDir) (PROC.shell commandString))
   case (exitcode, stdout, stderr) of
     (ExitSuccess, _, _) -> pure stdout
