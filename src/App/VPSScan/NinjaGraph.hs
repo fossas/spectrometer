@@ -70,8 +70,14 @@ scanNinjaDeps ::
   => NinjaGraphOpts -> ByteString -> m ()
 scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents = do
   let ninjaDeps = parseNinjaDeps ninjaDepsContents
-  let numDeps = length ninjaDeps
+  let fixedDeps = addInputsToNinjaDeps ninjaDeps
+  let numDeps = length fixedDeps
   trace $ "found " ++ (show numDeps) ++ " targets"
+  trace $ show $ take 5 fixedDeps
+
+addInputsToNinjaDeps :: [DepsTarget] -> [DepsTarget]
+addInputsToNinjaDeps targets =
+  targets
 
 parseNinjaDeps :: ByteString -> [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
