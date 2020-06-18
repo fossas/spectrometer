@@ -34,17 +34,19 @@ data VPSOpts = VPSOpts
 
 data DepsTarget = DepsTarget
   {
-    targetPath :: FilePath
+    targetPath :: ByteString
   , dependencies :: [DepsDependency]
   , inputs :: [DepsDependency]
-  , targetComponentName :: Maybe Text
+  , targetComponentName :: Maybe ByteString
   } deriving (Eq, Ord, Show, Generic)
 
 data DepsDependency = DepsDependency
-  { dependencyPath :: FilePath
-  , dependencyComponentName :: Maybe Text
+  { dependencyPath :: ByteString
+  , dependencyComponentName :: Maybe ByteString
   , hasDependencies :: Bool
   } deriving (Eq, Ord, Show, Generic)
 
 data NinjaGraphOpts = NinjaGraphOpts
-  { ninjaGraphNinjaPath :: FilePath } deriving (Generic)
+  { ninjaGraphNinjaPath :: Maybe FilePath
+  , lunchTarget :: Maybe Text
+  } deriving Generic

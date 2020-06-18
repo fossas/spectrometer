@@ -29,9 +29,11 @@ vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> org
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
 ninjaGraphOpts :: Parser NinjaGraphOpts
-ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt
+ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt
                  where
-                   ninjaDepsOpt = strOption (long "ninjadeps" <> metavar "STRING" <> help "Path to ninja_deps file")
+                   ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING" <> help "Path to ninja_deps file")
+                   lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
+
 
 runSherlockOpts :: Parser SherlockOpts
 runSherlockOpts = SherlockOpts
