@@ -45,11 +45,9 @@ data Dependencies
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files ->
-  case find (\f -> ".spec" `isSuffixOf` fileName f) files of
-    Nothing -> pure WalkContinue
-    Just specFile -> do
-      runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
-      pure WalkSkipAll
+  let specs = find (\f -> ".spec" `isSuffixOf` fileName f) files
+      analzyeFile specFile = runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
+   in traverse_ analzyeFile specs >> pure WalkSkipAll
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m (Graphing Dependency)
 analyze specFile = do
@@ -121,8 +119,14 @@ getTypeFromLine line = safeReq
   where
     (header, value) = splitOnceOn ": " line
     (pkgName, rawConstraint) = splitOnceOn " " $ T.strip value
+    --
+    isSafeName :: Text -> Bool
     isSafeName name = not $ "%{" `T.isInfixOf` name
+    -- TODO: temporarily ignore names with macros, until we support expansion
+    safeReq :: Maybe RequiresType
     safeReq = if isSafeName pkgName then req else Nothing
+    --
+    req :: Maybe RequiresType
     req = case header of
       "BuildRequires" -> Just . BuildRequires . RPMDependency pkgName $ buildConstraint rawConstraint
       "Requires" -> Just . RuntimeRequires . RPMDependency pkgName $ buildConstraint rawConstraint
@@ -131,6 +135,7 @@ getTypeFromLine line = safeReq
 buildDependencies :: [RequiresType] -> Dependencies
 buildDependencies = foldr addDep blankDeps
   where
+    addDep :: RequiresType -> Dependencies -> Dependencies
     addDep req deps = case req of
       BuildRequires dep -> deps {depBuildRequires = dep : depBuildRequires deps}
       RuntimeRequires dep -> deps {depRuntimeRequires = dep : depRuntimeRequires deps}
