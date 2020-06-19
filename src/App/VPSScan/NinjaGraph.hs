@@ -147,7 +147,7 @@ parseDepLine :: ByteString -> DepsDependency
 parseDepLine line =
   DepsDependency path componentName hasDeps
   where
-    path = stripBS line
+    path = stripLeadingSpace line
     componentName = Nothing -- TODO: get component name
     hasDeps = BS.isPrefixOf "out/" path
 
@@ -159,13 +159,5 @@ validateDir dir = do
   unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
   pure absolute
 
-stripBS :: ByteString -> ByteString
-stripBS s =
-  suffixed
-  where
-    prefixed = case BS.stripPrefix " " s of
-      Nothing -> s
-      Just stripped -> stripped
-    suffixed = case BS.stripSuffix " " prefixed of
-      Nothing -> prefixed
-      Just stripped2 -> stripped2
+stripLeadingSpace :: ByteString -> ByteString
+stripLeadingSpace = BS.dropWhile (\c -> c == BS.head " ")
