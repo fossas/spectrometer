@@ -31,14 +31,14 @@ ninjaGraphMain opts@NinjaGraphCmdOpts{..} = do
   case ninjaDeps of
     Right (Right result) ->
       -- TODO: POST JSON to some URL here
-      putStrLn $ show result
+      -- putStrLn $ show $ encode result
+      putStrLn $ "found " ++ (show $ length result) ++ " targets"
     Right (Left err) -> do
       putStrLn $ "Error" ++ (show err)
       exitFailure
     Left err -> do
       putStrLn $ "Error" ++ (show err)
       exitFailure
-
 
 getAndParseNinjaDeps :: (Has (Error ReadFSErr) sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphCmdOpts -> m [DepsTarget]
 getAndParseNinjaDeps dir NinjaGraphCmdOpts{..} = do
@@ -87,9 +87,9 @@ addInputToTarget :: DepsTarget -> DepsTarget
 addInputToTarget target =
   fixedTarget
   where
-    fixedTarget = case dependencies target of
+    fixedTarget = case targetDependencies target of
       [] -> fixedTarget
-      (firstDep:remainingDeps) -> target { dependencies = remainingDeps, inputs = [firstDep] }
+      (firstDep:remainingDeps) -> target { targetDependencies = remainingDeps, targetInputs = [firstDep] }
 
 parseNinjaDeps :: ByteString -> [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
@@ -150,9 +150,9 @@ targetFromLine line =
 
 addDepToDepsTarget :: DepsTarget -> ByteString -> DepsTarget
 addDepToDepsTarget target line =
-  target { dependencies = (newDep:currentDeps)}
+  target { targetDependencies = (newDep:currentDeps)}
   where
-    currentDeps = dependencies target
+    currentDeps = targetDependencies target
     newDep = parseDepLine line
 
 parseDepLine :: ByteString -> DepsDependency
