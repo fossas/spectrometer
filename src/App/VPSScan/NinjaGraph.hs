@@ -80,7 +80,16 @@ scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents = do
 
 addInputsToNinjaDeps :: [DepsTarget] -> [DepsTarget]
 addInputsToNinjaDeps targets =
-  targets
+  map addInputToTarget targets
+
+-- If there are any dependencies, then make inputs the first dependency
+addInputToTarget :: DepsTarget -> DepsTarget
+addInputToTarget target =
+  fixedTarget
+  where
+    fixedTarget = case dependencies target of
+      [] -> fixedTarget
+      (firstDep:remainingDeps) -> target { dependencies = remainingDeps, inputs = [firstDep] }
 
 parseNinjaDeps :: ByteString -> [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
