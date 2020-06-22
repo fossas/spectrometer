@@ -9,6 +9,7 @@ module Strategy.RPM
 where
 
 import Control.Effect.Error
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
@@ -49,7 +50,7 @@ discover = walk $ \dir _ files ->
       analzyeFile specFile = runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
    in traverse_ analzyeFile specs >> pure WalkSkipAll
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m (Graphing Dependency)
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m (Graphing Dependency)
 analyze specFile = do
   specFileText <- readContentsText specFile
   pure . buildGraph $ getSpecDeps specFileText
