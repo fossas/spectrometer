@@ -64,4 +64,5 @@ instance ToJSON DepsDependency where
 data NinjaGraphOpts = NinjaGraphOpts
   { ninjaGraphNinjaPath :: Maybe FilePath
   , lunchTarget :: Maybe Text
+  , depsGraphScotlandYardUrl :: UrlOption
   } deriving Generic

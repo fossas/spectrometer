@@ -16,8 +16,21 @@ import qualified Data.Text as T
 import Effect.ReadFS
 import System.Process.Typed as PROC
 import System.Exit (exitFailure, die)
+import Network.HTTP.Req
 
 import App.VPSScan.Types
+import OptionExtensions (UrlOption(..))
+
+-- TODO: The HTTP type is a copy-paste from ScotlandYard.hs
+newtype HTTP a = HTTP { unHTTP :: ErrorC HttpException IO a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+runHTTP :: MonadIO m => HTTP a -> m (Either HttpException a)
+runHTTP = liftIO . runError @HttpException . unHTTP
+
+instance MonadHttp HTTP where
+  handleHttpException = HTTP . throwError
+-- end of copy-paste
 
 data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   { ninjaCmdBasedir :: FilePath
@@ -27,12 +40,10 @@ data NinjaGraphCmdOpts = NinjaGraphCmdOpts
 ninjaGraphMain :: NinjaGraphCmdOpts -> IO ()
 ninjaGraphMain opts@NinjaGraphCmdOpts{..} = do
   dir <- validateDir ninjaCmdBasedir
-  ninjaDeps <- runError @ReadFSErr $ runError @ExecErr $ getAndParseNinjaDeps dir opts
+  ninjaDeps <- runError @ReadFSErr $ runError @ExecErr $ runError @HttpException $ getAndParseNinjaDeps dir opts
   case ninjaDeps of
-    Right (Right result) ->
-      -- TODO: POST JSON to some URL here
-      -- putStrLn $ show $ encode result
-      putStrLn $ "found " ++ (show $ length result) ++ " targets"
+    Right (Right n) -> do
+      putStrLn "Success uploading to SY"
     Right (Left err) -> do
       putStrLn $ "Error" ++ (show err)
       exitFailure
@@ -40,10 +51,23 @@ ninjaGraphMain opts@NinjaGraphCmdOpts{..} = do
       putStrLn $ "Error" ++ (show err)
       exitFailure
 
-getAndParseNinjaDeps :: (Has (Error ReadFSErr) sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphCmdOpts -> m [DepsTarget]
-getAndParseNinjaDeps dir NinjaGraphCmdOpts{..} = do
+depsGraphEndpoint :: Url 'Https -> Url 'Https
+depsGraphEndpoint baseurl = baseurl /: "depsGraph"
+
+-- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
+-- POST /depsGraph
+postDepsGraphResults :: (ToJSON a) => NinjaGraphCmdOpts -> a -> HTTP ()
+postDepsGraphResults NinjaGraphCmdOpts{..} depsGraph = do
+  let NinjaGraphOpts{..} = ninjaCmdNinjaGraphOpts
+  _ <- req POST (depsGraphEndpoint (urlOptionUrl depsGraphScotlandYardUrl)) (ReqBodyJson depsGraph) ignoreResponse (urlOptionOptions depsGraphScotlandYardUrl <> header "Content-Type" "application/json")
+  pure ()
+
+getAndParseNinjaDeps :: (Has (Error HttpException) sig m, Has (Error ReadFSErr) sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphCmdOpts -> m [DepsTarget]
+getAndParseNinjaDeps dir opts@NinjaGraphCmdOpts{..} = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaCmdNinjaGraphOpts
-  pure $ scanNinjaDeps ninjaCmdNinjaGraphOpts ninjaDepsContents
+  let graph = scanNinjaDeps ninjaCmdNinjaGraphOpts ninjaDepsContents
+  _ <- runHTTP $ postDepsGraphResults opts graph
+  pure graph
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
 -- read that file to get the ninja deps. Otherwise, generate it with
