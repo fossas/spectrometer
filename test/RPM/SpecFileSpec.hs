@@ -6,6 +6,7 @@ where
 import Data.Maybe (listToMaybe)
 import qualified Data.Text.IO as TIO
 import DepTypes
+import GraphUtil
 import Prologue
 import Strategy.RPM
 import qualified Test.Hspec as Test
@@ -77,3 +78,13 @@ spec = do
     $ do
       getTypeFromLine "BuildRequires: xz = 1" `Test.shouldBe` Just (BuildRequires $ mkVerDep "xz" $ CEq "1")
       getTypeFromLine "Requires: xz = 1" `Test.shouldBe` Just (RuntimeRequires $ mkVerDep "xz" $ CEq "1")
+  --
+  Test.describe "rpm dependency grapher" $
+    Test.it "should produce flat BuildRequires" $ do
+      let deps = Dependencies [boostDep, xzDep] [tacpDep, jsoncppDep]
+          gr = buildGraph deps
+
+      expectDeps (map toDependency [boostDep, xzDep]) gr
+      expectDirect (map toDependency [boostDep, xzDep]) gr
+      expectEdges [] gr
+

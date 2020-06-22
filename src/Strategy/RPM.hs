@@ -1,7 +1,9 @@
 module Strategy.RPM
-  ( discover,
+  ( buildGraph,
+    discover,
     getSpecDeps,
     getTypeFromLine,
+    toDependency,
     RPMDependency (..),
     RequiresType (..),
     Dependencies (..),
