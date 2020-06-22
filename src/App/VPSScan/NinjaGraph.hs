@@ -25,18 +25,25 @@ data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   } deriving Generic
 
 ninjaGraphMain :: NinjaGraphCmdOpts -> IO ()
-ninjaGraphMain NinjaGraphCmdOpts{..} = do
+ninjaGraphMain opts@NinjaGraphCmdOpts{..} = do
   dir <- validateDir ninjaCmdBasedir
-  ninjaDepsContents <- runError @ReadFSErr $ runError @ExecErr $ runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaCmdNinjaGraphOpts
-  case ninjaDepsContents of
-    Right (Right contents) ->
-      runTrace $ scanNinjaDeps ninjaCmdNinjaGraphOpts contents
+  ninjaDeps <- runError @ReadFSErr $ runError @ExecErr $ getAndParseNinjaDeps dir opts
+  case ninjaDeps of
+    Right (Right result) ->
+      -- TODO: POST JSON to some URL here
+      putStrLn $ show result
     Right (Left err) -> do
       putStrLn $ "Error" ++ (show err)
       exitFailure
     Left err -> do
       putStrLn $ "Error" ++ (show err)
       exitFailure
+
+
+getAndParseNinjaDeps :: (Has (Error ReadFSErr) sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphCmdOpts -> m [DepsTarget]
+getAndParseNinjaDeps dir NinjaGraphCmdOpts{..} = do
+  ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaCmdNinjaGraphOpts
+  pure $ scanNinjaDeps ninjaCmdNinjaGraphOpts ninjaDepsContents
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
 -- read that file to get the ninja deps. Otherwise, generate it with
@@ -65,15 +72,11 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
       Just lunch ->  "cd " ++ show baseDir ++ "&& source ./build/envsetup.sh && lunch " ++ (T.unpack lunch) ++ " && NINJA_ARGS=\"-t deps\" make"
 
-scanNinjaDeps ::
-  ( Has Trace sig m )
-  => NinjaGraphOpts -> ByteString -> m ()
+scanNinjaDeps :: NinjaGraphOpts -> ByteString -> [DepsTarget]
 scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents = do
-  let ninjaDeps = parseNinjaDeps ninjaDepsContents
-  let fixedDeps = addInputsToNinjaDeps ninjaDeps
-  let numDeps = length fixedDeps
-  trace $ "found " ++ (show numDeps) ++ " targets"
-  trace $ show $ take 5 fixedDeps
+  addInputsToNinjaDeps ninjaDeps
+  where
+    ninjaDeps = parseNinjaDeps ninjaDepsContents
 
 addInputsToNinjaDeps :: [DepsTarget] -> [DepsTarget]
 addInputsToNinjaDeps targets =
