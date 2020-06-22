@@ -65,7 +65,7 @@ mkProjectClosure dir graph =
     dependencies =
       ProjectDependencies
         { dependenciesGraph = graph,
-          dependenciesOptimal = NotOptimal,
+          dependenciesOptimal = Optimal,
           dependenciesComplete = NotComplete
         }
 
