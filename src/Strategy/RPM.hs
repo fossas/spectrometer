@@ -69,10 +69,10 @@ mkProjectClosure dir graph =
           dependenciesComplete = NotComplete
         }
 
-toDependency :: RPMDependency -> Set SpecFileLabel -> Dependency
+toDependency :: RPMDependency -> Set a -> Dependency
 toDependency pkg =
   foldr
-    applyLabel
+    (const id)
     Dependency
       { dependencyType = RPMType,
         dependencyName = rpmDepName pkg,
@@ -81,17 +81,9 @@ toDependency pkg =
         dependencyEnvironments = [],
         dependencyTags = M.empty
       }
-  where
-    applyLabel :: SpecFileLabel -> Dependency -> Dependency
-    applyLabel (RequiresType env) dep = dep {dependencyEnvironments = env : dependencyEnvironments dep}
 
 buildGraph :: Dependencies -> Graphing Dependency
-buildGraph Dependencies {..} = run . withLabeling toDependency $ do
-  traverse_ direct depBuildRequires
-  traverse_ direct depRuntimeRequires
-  --
-  traverse_ (flip label $ RequiresType EnvDevelopment) depBuildRequires
-  traverse_ (flip label $ RequiresType EnvProduction) depRuntimeRequires
+buildGraph Dependencies {..} = run . withLabeling toDependency $ traverse direct depBuildRequires
 
 buildConstraint :: Text -> Maybe VerConstraint
 buildConstraint tail = constraint
