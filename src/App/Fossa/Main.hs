@@ -6,6 +6,7 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
+import App.Fossa.CliTypes
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
@@ -27,38 +28,47 @@ appMain = do
 
   maybeApiKey <- checkAPIKey optAPIKey
 
+  let override = OverrideProject { overrideName = optProjectName, overrideRevision = optProjectRevision, overrideBranch = Nothing }
+
   case optCommand of
     AnalyzeCommand AnalyzeOptions {..} -> do
       changeDir analyzeBaseDir
+      let analyzeOverride = override {overrideBranch = analyzeBranch}
       if analyzeOutput
-        then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision analyzeBranch
+        then analyzeMain logSeverity OutputStdout analyzeOverride
         else do
           key <- requireKey maybeApiKey
-          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision analyzeBranch
+          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride
     TestCommand TestOptions {..} -> do
       changeDir testBaseDir
       key <- requireKey maybeApiKey
-      testMain optBaseUrl key logSeverity testTimeout testOutputType optProjectName optProjectRevision
+      testMain optBaseUrl key logSeverity testTimeout testOutputType override
     InitCommand ->
       withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
     ReportCommand ReportOptions {..} -> do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
       changeDir reportBaseDir
       key <- requireKey maybeApiKey
-      reportMain optBaseUrl key logSeverity reportTimeout reportType optProjectName optProjectRevision
+      reportMain optBaseUrl key logSeverity reportTimeout reportType override
       
 
-requireKey :: Maybe Text -> IO Text
+requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
 requireKey Nothing = die "A FOSSA API key is required to run this command"
 
 changeDir :: FilePath -> IO ()
 changeDir path = validateDir path >>= setCurrentDir
 
+infixr 1 <$$>
+(<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+(<$$>) = fmap . fmap
+
 -- | Try to fetch FOSSA_API_KEY from env if not supplied from cmdline
-checkAPIKey :: Maybe Text -> IO (Maybe Text)
-checkAPIKey Nothing = fmap T.pack <$> lookupEnv "FOSSA_API_KEY"
-checkAPIKey key = return key
+checkAPIKey :: Maybe Text -> IO (Maybe ApiKey)
+checkAPIKey key = case key of
+  Just key' -> pure . Just $ ApiKey key'
+  Nothing -> ApiKey <$$> T.pack <$$> lookupEnv "FOSSA_API_KEY"
+    
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO (Path Abs Dir)

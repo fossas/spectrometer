@@ -5,6 +5,7 @@ module App.Fossa.Report
 
 import Prologue
 
+import App.Fossa.CliTypes
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import Control.Concurrent (threadDelay)
@@ -27,14 +28,13 @@ reportName r = case r of
 
 reportMain ::
   URI -- ^ api base url
-  -> Text -- ^ api key
+  -> ApiKey -- ^ api key
   -> Severity
   -> Int -- ^ timeout (seconds)
   -> ReportType
-  -> Maybe Text -- ^ cli override for name
-  -> Maybe Text -- ^ cli override for revision
+  -> OverrideProject
   -> IO ()
-reportMain baseUri apiKey logSeverity timeoutSeconds reportType overrideName overrideRevision = do
+reportMain baseUri apiKey logSeverity timeoutSeconds reportType override = do
   basedir <- getCurrentDir
 
   -- TODO: refactor this code duplicate from `fossa test`
@@ -52,26 +52,24 @@ reportMain baseUri apiKey logSeverity timeoutSeconds reportType overrideName ove
   
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
     result <- runDiagnostics $ do
-      inferred <- inferProject basedir
-      let project = fromMaybe (inferredName inferred) overrideName
-          revision = fromMaybe (inferredRevision inferred) overrideRevision
+      revision <- mergeOverride override <$> inferProject basedir
 
       logInfo ""
-      logInfo ("Using project name: `" <> pretty project <> "`")
-      logInfo ("Using revision: `" <> pretty revision <> "`")
+      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild baseUri apiKey project revision
+      waitForBuild baseUri apiKey revision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      _ <- waitForIssues baseUri apiKey project revision
+      _ <- waitForIssues baseUri apiKey revision
       logSticky ""
 
       logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
       jsonValue <- case reportType of
         AttributionReport ->
-          Fossa.getAttribution baseUri apiKey project revision
+          Fossa.getAttribution baseUri apiKey revision
       logSticky ""
         
       logStdout . pretty . decodeUtf8 $ encode jsonValue
@@ -88,33 +86,31 @@ reportMain baseUri apiKey logSeverity timeoutSeconds reportType overrideName ove
 waitForBuild
   :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
   => URI
-  -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
+  -> ApiKey -- ^ api key
+  -> ProjectRevision
   -> m ()
-waitForBuild baseUri key project revision = do
-  build <- Fossa.getLatestBuild baseUri key project revision
+waitForBuild baseUri key revision = do
+  build <- Fossa.getLatestBuild baseUri key revision
   case Fossa.buildTaskStatus (Fossa.buildTask build) of
     Fossa.StatusSucceeded -> pure ()
     Fossa.StatusFailed -> fatal BuildFailed
     otherStatus -> do
       logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
       liftIO $ threadDelay (pollDelaySeconds * 1000000)
-      waitForBuild baseUri key project revision
+      waitForBuild baseUri key revision
 
 waitForIssues
   :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
   => URI
-  -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
+  -> ApiKey -- ^ api key
+  -> ProjectRevision
   -> m ()
-waitForIssues baseUri key project revision = do
-  issues <- Fossa.getIssues baseUri key project revision
+waitForIssues baseUri key revision = do
+  issues <- Fossa.getIssues baseUri key revision
   case Fossa.issuesStatus issues of
     "WAITING" -> do
       liftIO $ threadDelay (pollDelaySeconds * 1000000)
-      waitForIssues baseUri key project revision
+      waitForIssues baseUri key revision
     _ -> pure ()
 
 pollDelaySeconds :: Int
