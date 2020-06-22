@@ -14,9 +14,9 @@ import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import DepTypes
 import Discovery.Walk
-import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import qualified Graphing as G
 import Prologue
 import Types
 
@@ -69,10 +69,8 @@ mkProjectClosure dir graph =
           dependenciesComplete = NotComplete
         }
 
-toDependency :: RPMDependency -> Set a -> Dependency
+toDependency :: RPMDependency -> Dependency
 toDependency pkg =
-  foldr
-    (const id)
     Dependency
       { dependencyType = RPMType,
         dependencyName = rpmDepName pkg,
@@ -83,7 +81,7 @@ toDependency pkg =
       }
 
 buildGraph :: Dependencies -> Graphing Dependency
-buildGraph Dependencies {..} = run . withLabeling toDependency $ traverse direct depBuildRequires
+buildGraph Dependencies {..} = G.gmap toDependency $ G.fromList depBuildRequires
 
 buildConstraint :: Text -> Maybe VerConstraint
 buildConstraint tail = constraint
