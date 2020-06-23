@@ -42,7 +42,7 @@ ninjaGraphMain opts@NinjaGraphCmdOpts{..} = do
   dir <- validateDir ninjaCmdBasedir
   ninjaDeps <- runError @ReadFSErr $ runError @ExecErr $ runError @HttpException $ getAndParseNinjaDeps dir opts
   case ninjaDeps of
-    Right (Right n) -> do
+    Right (Right _) -> do
       putStrLn "Success uploading to SY"
     Right (Left err) -> do
       putStrLn $ "Error" ++ (show err)
@@ -109,11 +109,9 @@ addInputsToNinjaDeps targets =
 -- If there are any dependencies, then make inputs the first dependency
 addInputToTarget :: DepsTarget -> DepsTarget
 addInputToTarget target =
-  fixedTarget
-  where
-    fixedTarget = case targetDependencies target of
-      [] -> fixedTarget
-      (firstDep:remainingDeps) -> target { targetDependencies = remainingDeps, targetInputs = [firstDep] }
+  case targetDependencies target of
+    [] -> target
+    (firstDep:remainingDeps) -> target { targetDependencies = remainingDeps, targetInputs = [firstDep] }
 
 parseNinjaDeps :: ByteString -> [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
