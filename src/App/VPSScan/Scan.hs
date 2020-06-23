@@ -8,9 +8,6 @@ import Prologue
 
 import Control.Carrier.Diagnostics
 import Effect.Exec
-import Path.IO
-import System.Exit (exitFailure, die)
-import Control.Carrier.Error.Either
 import System.Exit (exitFailure)
 import Control.Concurrent.Async (concurrently)
 import Control.Carrier.Trace.Printing

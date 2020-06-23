@@ -6,31 +6,45 @@ module App.VPSScan.NinjaGraph
 
 import Prologue
 
-import Control.Carrier.Error.Either
 import Control.Carrier.Trace.Printing
-import Effect.Exec
+import Control.Carrier.Diagnostics
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
+import Effect.Exec
+import Text.URI (URI, render)
 import Data.Text.Encoding (decodeUtf8)
 import Effect.ReadFS
 import System.Process.Typed as PROC
 import System.Exit (exitFailure)
+import Data.Text.Prettyprint.Doc (viaShow, pretty)
 import Network.HTTP.Req
 
 import App.VPSScan.Types
 import App.Util (validateDir)
-import OptionExtensions (UrlOption(..))
 
 -- TODO: The HTTP type is a copy-paste from ScotlandYard.hs
-newtype HTTP a = HTTP { unHTTP :: ErrorC HttpException IO a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+newtype HTTP m a = HTTP {unHTTP :: m a}
+  deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
 
-runHTTP :: MonadIO m => HTTP a -> m (Either HttpException a)
-runHTTP = liftIO . runError @HttpException . unHTTP
+data HTTPRequestFailed = HTTPRequestFailed HttpException
+  deriving (Show)
 
-instance MonadHttp HTTP where
-  handleHttpException = HTTP . throwError
+instance ToDiagnostic HTTPRequestFailed where
+  renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc
+
+runHTTP :: HTTP m a -> m a
+runHTTP = unHTTP
+
+-- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
+parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
+parseUri uri = case useURI uri of
+  Nothing -> fatalText ("Invalid URL: " <> render uri)
+  Just (Left (url, options)) -> pure (coerce url, coerce options)
+  Just (Right (url, options)) -> pure (url, options)
+
+instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (HTTP m) where
+  handleHttpException = HTTP . fatal . HTTPRequestFailed
 -- end of copy-paste
 
 data NinjaGraphCmdOpts = NinjaGraphCmdOpts
@@ -41,28 +55,25 @@ data NinjaGraphCmdOpts = NinjaGraphCmdOpts
 ninjaGraphMain :: NinjaGraphCmdOpts -> IO ()
 ninjaGraphMain NinjaGraphCmdOpts{..} = do
   dir <- validateDir ninjaCmdBasedir
-  ninjaDeps <- runError @ReadFSErr $ runError @ExecErr $ runError @HttpException $ getAndParseNinjaDeps dir ninjaCmdNinjaGraphOpts
-  case ninjaDeps of
-    Right (Right _) -> do
-      putStrLn "Success uploading to SY"
-    Right (Left err) -> do
-      putStrLn $ "Error" ++ (show err)
+  result <- runDiagnostics $ getAndParseNinjaDeps dir ninjaCmdNinjaGraphOpts
+  case result of
+    Left failure -> do
+      putStrLn (show $ renderFailureBundle failure)
       exitFailure
-    Left err -> do
-      putStrLn $ "Error" ++ (show err)
-      exitFailure
+    Right _ -> pure ()
 
-getAndParseNinjaDeps :: (Has (Error HttpException) sig m, Has (Error ReadFSErr) sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m [DepsTarget]
+
+getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m ()
 getAndParseNinjaDeps dir ninjaGraphOpts = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
   let graph = scanNinjaDeps ninjaGraphOpts ninjaDepsContents
   _ <- runHTTP $ postDepsGraphResults ninjaGraphOpts graph
-  pure graph
+  pure ()
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
 -- read that file to get the ninja deps. Otherwise, generate it with
 -- NINJA_ARGS="-t deps" make
-getNinjaDeps :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ExecErr) sig m, Has Trace sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m ByteString
+getNinjaDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Trace sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m ByteString
 getNinjaDeps baseDir opts@NinjaGraphOpts{..} = do
   case ninjaGraphNinjaPath of
     Nothing -> BL.toStrict <$> generateNinjaDeps baseDir opts
@@ -77,26 +88,34 @@ scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents = do
 depsGraphEndpoint :: Url 'Https -> Url 'Https
 depsGraphEndpoint baseurl = baseurl /: "depsGraph"
 
+data NinjaGraphError = ErrorRunningNinja Text
+  deriving (Eq, Ord, Show, Generic, Typeable)
+
+instance ToDiagnostic NinjaGraphError where
+  renderDiagnostic = \case
+    ErrorRunningNinja err -> "Error while running Ninja: " <> pretty err
+
 -- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
 -- POST /depsGraph
-postDepsGraphResults :: (ToJSON a) => NinjaGraphOpts -> a -> HTTP ()
-postDepsGraphResults NinjaGraphOpts{..} depsGraph = do
-  _ <- req POST (depsGraphEndpoint (urlOptionUrl depsGraphScotlandYardUrl)) (ReqBodyJson depsGraph) ignoreResponse (urlOptionOptions depsGraphScotlandYardUrl <> header "Content-Type" "application/json")
+postDepsGraphResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> a -> m ()
+postDepsGraphResults NinjaGraphOpts{..} depsGraph = runHTTP $ do
+  (baseUrl, baseOptions) <- parseUri depsGraphScotlandYardUrl
+  _ <- req POST (depsGraphEndpoint baseUrl) (ReqBodyJson depsGraph) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
   pure ()
 
-readNinjaDepsFile :: (Has Trace sig m, Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadIO m) => FilePath -> m ByteString
+readNinjaDepsFile :: (Has Trace sig m, Has ReadFS sig m, Has Diagnostics sig m, MonadIO m) => FilePath -> m ByteString
 readNinjaDepsFile ninjaPath = do
   trace $ "reading ninja deps from " ++ ninjaPath
   path <- liftIO $ parseAbsFile ninjaPath
   readContentsBS path
 
-generateNinjaDeps :: (Has Trace sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m BL.ByteString
+generateNinjaDeps :: (Has Trace sig m, Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m BL.ByteString
 generateNinjaDeps baseDir NinjaGraphOpts{..} = do
   trace $ "Generating ninja deps with this command: " ++ commandString
   (exitcode, stdout, stderr) <- PROC.readProcess (setWorkingDir (fromAbsDir baseDir) (PROC.shell commandString))
   case (exitcode, stdout, stderr) of
     (ExitSuccess, _, _) -> pure stdout
-    (_, _, err) -> throwError (CommandFailed "" (T.pack (show err)))
+    (_, _, err) -> fatal (ErrorRunningNinja (T.pack (show err)))
   where
     commandString = case lunchTarget of
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
