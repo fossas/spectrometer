@@ -24,6 +24,7 @@ import Effect.Logger
 import Network.HTTP.Types (urlEncode)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator(..), parseLocator)
+import qualified Strategy.Archive as Archive
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Clojure as Clojure
@@ -194,6 +195,8 @@ discoverFuncs =
   , Cargo.discover
 
   , RPM.discover
+
+  , Archive.discover discover
   ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()
