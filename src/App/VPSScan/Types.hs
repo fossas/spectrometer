@@ -5,11 +5,17 @@ module App.VPSScan.Types
 , DepsTarget(..)
 , DepsDependency(..)
 , NinjaGraphOpts(..)
+, runHTTP
+, HTTP(..)
+, HTTPRequestFailed(..)
 ) where
 
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
+import Control.Carrier.Diagnostics
 import Prologue
 import Text.URI (URI)
+import Network.HTTP.Req
+import Data.Text.Prettyprint.Doc (viaShow)
 
 data ScotlandYardOpts = ScotlandYardOpts
   {scotlandYardUrl :: URI}
@@ -66,3 +72,18 @@ data NinjaGraphOpts = NinjaGraphOpts
   , lunchTarget :: Maybe Text
   , depsGraphScotlandYardUrl :: URI
   } deriving Generic
+
+newtype HTTP m a = HTTP {unHTTP :: m a}
+  deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
+
+data HTTPRequestFailed = HTTPRequestFailed HttpException
+  deriving (Show)
+
+instance ToDiagnostic HTTPRequestFailed where
+  renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc
+
+instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (HTTP m) where
+  handleHttpException = HTTP . fatal . HTTPRequestFailed
+
+runHTTP :: HTTP m a -> m a
+runHTTP = unHTTP

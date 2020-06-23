@@ -17,24 +17,11 @@ import Data.Text.Encoding (decodeUtf8)
 import Effect.ReadFS
 import System.Process.Typed as PROC
 import System.Exit (exitFailure)
-import Data.Text.Prettyprint.Doc (viaShow, pretty)
+import Data.Text.Prettyprint.Doc (pretty)
 import Network.HTTP.Req
 
 import App.VPSScan.Types
 import App.Util (validateDir)
-
--- TODO: The HTTP type is a copy-paste from ScotlandYard.hs
-newtype HTTP m a = HTTP {unHTTP :: m a}
-  deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
-
-data HTTPRequestFailed = HTTPRequestFailed HttpException
-  deriving (Show)
-
-instance ToDiagnostic HTTPRequestFailed where
-  renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc
-
-runHTTP :: HTTP m a -> m a
-runHTTP = unHTTP
 
 -- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
 parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
@@ -43,8 +30,6 @@ parseUri uri = case useURI uri of
   Just (Left (url, options)) -> pure (coerce url, coerce options)
   Just (Right (url, options)) -> pure (url, options)
 
-instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (HTTP m) where
-  handleHttpException = HTTP . fatal . HTTPRequestFailed
 -- end of copy-paste
 
 data NinjaGraphCmdOpts = NinjaGraphCmdOpts
