@@ -84,7 +84,7 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
-    withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
+    withTaskPool capabilities updateProgress (discover basedir)
 
   traverse_ (logDebug . Diag.renderFailureBundle . projectFailureCause) failures
 
@@ -145,6 +145,9 @@ renderFailure failure = object
   [ "name" .= projectFailureName failure
   , "cause" .= show (Diag.renderFailureBundle (projectFailureCause failure))
   ]
+
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover dir = traverse_ ($ dir) discoverFuncs
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
