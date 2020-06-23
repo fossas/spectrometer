@@ -9,17 +9,17 @@ import Prologue
 import Control.Carrier.Error.Either
 import Control.Carrier.Trace.Printing
 import Effect.Exec
-import qualified Path.IO as P
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import Effect.ReadFS
 import System.Process.Typed as PROC
-import System.Exit (exitFailure, die)
+import System.Exit (exitFailure)
 import Network.HTTP.Req
 
 import App.VPSScan.Types
+import App.Util (validateDir)
 import OptionExtensions (UrlOption(..))
 
 -- TODO: The HTTP type is a copy-paste from ScotlandYard.hs
@@ -211,14 +211,6 @@ parseDepLine line =
     path = stripLeadingSpace line
     componentName = Nothing -- TODO: get component name
     hasDeps = BS.isPrefixOf "out/" path
-
-validateDir :: FilePath -> IO (Path Abs Dir)
-validateDir dir = do
-  absolute <- P.resolveDir' dir
-  exists <- P.doesDirExist absolute
-
-  unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
-  pure absolute
 
 stripLeadingSpace :: ByteString -> ByteString
 stripLeadingSpace = BS.dropWhile (\c -> c == BS.head " ")

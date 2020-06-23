@@ -10,6 +10,8 @@ import Control.Carrier.Diagnostics
 import Effect.Exec
 import Path.IO
 import System.Exit (exitFailure, die)
+import Control.Carrier.Error.Either
+import System.Exit (exitFailure)
 import Control.Concurrent.Async (concurrently)
 import Control.Carrier.Trace.Printing
 
@@ -17,6 +19,7 @@ import App.VPSScan.Types
 import App.VPSScan.Scan.RunSherlock
 import App.VPSScan.Scan.ScotlandYard
 import App.VPSScan.Scan.RunIPR
+import App.Util (validateDir)
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
@@ -94,13 +97,3 @@ runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
       trace "[IPR] IPR scan complete"
     Nothing ->
       trace "[IPR] IPR Scan disabled"
-
-
-validateDir :: FilePath -> IO (Path Abs Dir)
-validateDir dir = do
-  absolute <- resolveDir' dir
-  exists <- doesDirExist absolute
-
-  unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
-
-  pure absolute

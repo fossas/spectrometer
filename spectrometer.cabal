@@ -111,6 +111,7 @@ library
     App.VPSScan.NinjaGraph
     App.VPSScan.Types
     Control.Carrier.Diagnostics
+    App.Util
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
