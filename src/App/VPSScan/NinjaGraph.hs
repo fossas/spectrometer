@@ -38,9 +38,9 @@ data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   } deriving Generic
 
 ninjaGraphMain :: NinjaGraphCmdOpts -> IO ()
-ninjaGraphMain opts@NinjaGraphCmdOpts{..} = do
+ninjaGraphMain NinjaGraphCmdOpts{..} = do
   dir <- validateDir ninjaCmdBasedir
-  ninjaDeps <- runError @ReadFSErr $ runError @ExecErr $ runError @HttpException $ getAndParseNinjaDeps dir opts
+  ninjaDeps <- runError @ReadFSErr $ runError @ExecErr $ runError @HttpException $ getAndParseNinjaDeps dir ninjaCmdNinjaGraphOpts
   case ninjaDeps of
     Right (Right _) -> do
       putStrLn "Success uploading to SY"
@@ -51,22 +51,11 @@ ninjaGraphMain opts@NinjaGraphCmdOpts{..} = do
       putStrLn $ "Error" ++ (show err)
       exitFailure
 
-depsGraphEndpoint :: Url 'Https -> Url 'Https
-depsGraphEndpoint baseurl = baseurl /: "depsGraph"
-
--- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
--- POST /depsGraph
-postDepsGraphResults :: (ToJSON a) => NinjaGraphCmdOpts -> a -> HTTP ()
-postDepsGraphResults NinjaGraphCmdOpts{..} depsGraph = do
-  let NinjaGraphOpts{..} = ninjaCmdNinjaGraphOpts
-  _ <- req POST (depsGraphEndpoint (urlOptionUrl depsGraphScotlandYardUrl)) (ReqBodyJson depsGraph) ignoreResponse (urlOptionOptions depsGraphScotlandYardUrl <> header "Content-Type" "application/json")
-  pure ()
-
-getAndParseNinjaDeps :: (Has (Error HttpException) sig m, Has (Error ReadFSErr) sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphCmdOpts -> m [DepsTarget]
-getAndParseNinjaDeps dir opts@NinjaGraphCmdOpts{..} = do
-  ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaCmdNinjaGraphOpts
-  let graph = scanNinjaDeps ninjaCmdNinjaGraphOpts ninjaDepsContents
-  _ <- runHTTP $ postDepsGraphResults opts graph
+getAndParseNinjaDeps :: (Has (Error HttpException) sig m, Has (Error ReadFSErr) sig m, Has (Error ExecErr) sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m [DepsTarget]
+getAndParseNinjaDeps dir ninjaGraphOpts = do
+  ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
+  let graph = scanNinjaDeps ninjaGraphOpts ninjaDepsContents
+  _ <- runHTTP $ postDepsGraphResults ninjaGraphOpts graph
   pure graph
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
@@ -77,6 +66,22 @@ getNinjaDeps baseDir opts@NinjaGraphOpts{..} = do
   case ninjaGraphNinjaPath of
     Nothing -> BL.toStrict <$> generateNinjaDeps baseDir opts
     Just ninjaPath -> readNinjaDepsFile ninjaPath
+
+scanNinjaDeps :: NinjaGraphOpts -> ByteString -> [DepsTarget]
+scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents = do
+  addInputsToNinjaDeps ninjaDeps
+  where
+    ninjaDeps = parseNinjaDeps ninjaDepsContents
+
+depsGraphEndpoint :: Url 'Https -> Url 'Https
+depsGraphEndpoint baseurl = baseurl /: "depsGraph"
+
+-- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
+-- POST /depsGraph
+postDepsGraphResults :: (ToJSON a) => NinjaGraphOpts -> a -> HTTP ()
+postDepsGraphResults NinjaGraphOpts{..} depsGraph = do
+  _ <- req POST (depsGraphEndpoint (urlOptionUrl depsGraphScotlandYardUrl)) (ReqBodyJson depsGraph) ignoreResponse (urlOptionOptions depsGraphScotlandYardUrl <> header "Content-Type" "application/json")
+  pure ()
 
 readNinjaDepsFile :: (Has Trace sig m, Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadIO m) => FilePath -> m ByteString
 readNinjaDepsFile ninjaPath = do
@@ -95,12 +100,6 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
     commandString = case lunchTarget of
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
       Just lunch ->  "cd " ++ show baseDir ++ "&& source ./build/envsetup.sh && lunch " ++ (T.unpack lunch) ++ " && NINJA_ARGS=\"-t deps\" make"
-
-scanNinjaDeps :: NinjaGraphOpts -> ByteString -> [DepsTarget]
-scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents = do
-  addInputsToNinjaDeps ninjaDeps
-  where
-    ninjaDeps = parseNinjaDeps ninjaDepsContents
 
 addInputsToNinjaDeps :: [DepsTarget] -> [DepsTarget]
 addInputsToNinjaDeps targets =
