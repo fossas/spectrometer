@@ -7,12 +7,14 @@ module App.Fossa.Test
 import Prologue
 import qualified Prelude as Unsafe
 
+import App.Fossa.BuildWait
 import App.Fossa.CliTypes
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
+import Data.Functor (($>))
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
@@ -23,9 +25,6 @@ import System.Exit (exitSuccess, exitFailure)
 import Text.URI (URI)
 import qualified Data.Aeson as Aeson
 import Data.Text.Lazy.Encoding (decodeUtf8)
-
-pollDelaySeconds :: Int
-pollDelaySeconds = 8
 
 data TestOutputType
   = TestOutputPretty -- ^ pretty output format for issues
@@ -129,45 +128,8 @@ renderedIssues issues = rendered
           | length xs <= ix = Nothing
           | otherwise = Just (xs Unsafe.!! ix)
 
-data TestError = TestBuildFailed -- ^ we encountered the FAILED status on a build
-  deriving (Show, Generic)
-
-instance ToDiagnostic TestError where
-  renderDiagnostic TestBuildFailed = "The build failed. Check the FOSSA webapp for more details."
-
-waitForBuild
-  :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
-  => URI
-  -> ApiKey -- ^ api key
-  -> ProjectRevision
-  -> m ()
-waitForBuild baseurl key revision = do
-  build <- Fossa.getLatestBuild baseurl key revision
- 
-  case Fossa.buildTaskStatus (Fossa.buildTask build) of
-    Fossa.StatusSucceeded -> pure ()
-    Fossa.StatusFailed -> fatal TestBuildFailed
-    otherStatus -> do
-      logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
-      liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForBuild baseurl key revision
-
-waitForIssues
-  :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
-  => URI
-  -> ApiKey -- ^ api key
-  -> ProjectRevision
-  -> m Fossa.Issues
-waitForIssues baseurl key revision = do
-  issues <- Fossa.getIssues baseurl key revision
-  case Fossa.issuesStatus issues of
-    "WAITING" -> do
-      liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForIssues baseurl key revision
-    _ -> pure issues
-
 timeout
   :: Int -- ^ number of seconds before timeout
   -> IO a
   -> IO (Maybe a)
-timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) *> pure Nothing)
+timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)
