@@ -11,19 +11,10 @@ import App.VPSScan.Types
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
-import Data.Coerce (coerce)
 import Data.Text (Text)
 import Network.HTTP.Req
-import Text.URI (URI)
-import qualified Text.URI as URI
 import Prelude
-
--- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
-parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
-parseUri uri = case useURI uri of
-  Nothing -> fatalText ("Invalid URL: " <> URI.render uri)
-  Just (Left (url, options)) -> pure (coerce url, coerce options)
-  Just (Right (url, options)) -> pure (url, options)
+import App.Util (parseUri)
 
 -- /projects/{projectID}/scans
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https

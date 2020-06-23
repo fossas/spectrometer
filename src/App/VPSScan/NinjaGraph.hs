@@ -12,7 +12,6 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import Effect.Exec
-import Text.URI (URI, render)
 import Data.Text.Encoding (decodeUtf8)
 import Effect.ReadFS
 import System.Process.Typed as PROC
@@ -21,14 +20,7 @@ import Data.Text.Prettyprint.Doc (pretty)
 import Network.HTTP.Req
 
 import App.VPSScan.Types
-import App.Util (validateDir)
-
--- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
-parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
-parseUri uri = case useURI uri of
-  Nothing -> fatalText ("Invalid URL: " <> render uri)
-  Just (Left (url, options)) -> pure (coerce url, coerce options)
-  Just (Right (url, options)) -> pure (url, options)
+import App.Util (validateDir, parseUri)
 
 -- end of copy-paste
 
