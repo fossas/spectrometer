@@ -121,6 +121,31 @@ parseNinjaDeps ninjaDepsLines =
     nLines = BS.split newLine ninjaDepsLines
     (_, results) = foldl parseNinjaLine ("starting", []) nLines
 
+-- You can see a sample ninja deps file in test/TODO...
+-- It starts with a preamble, which ends with a line that looks like
+--
+-- Starting ninja...
+--
+-- After the preamble there's the body.
+-- The body itself consists of three types of lines:
+-- blank lines, which are ignored
+-- lines that start with a non-space character, which are target lines.
+-- lines that start with spaces, which are dependency lines.
+--
+-- Target lines look like this:
+--
+-- out/target/product/coral/obj/JAVA_LIBRARIES/wifi-service_intermediates/dexpreopt.zip: #deps 2, deps mtime 1583991124 (VALID)
+--
+-- We just want the target, which is everything before the ":"
+--
+-- Dependency lines are just four spaces followed by a path to a file. Like this:
+--
+--   device/google/coral/gpt-utils/gpt-utils.cpp
+--
+-- Again, we are only interested in the path, so we just strip off the leading spaces and return that.
+--
+-- The body ends with a line that looks like
+-- [0;32m#### build completed successfully (20 seconds) ####[00m
 parseNinjaLine :: ((Text, [DepsTarget]) -> ByteString -> (Text, [DepsTarget]))
 parseNinjaLine (state, targets) line =
   case state of
@@ -153,13 +178,13 @@ actuallyParseLine line []
     newDepsTarget = targetFromLine line
 
 actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
--- ignore the "build completed successfully" line at the end of the file
+-- The "build completed successfully" line signals that parsing is complete
   | BS.isInfixOf "build completed successfully" line =
     ("complete", (currentDepsTarget:restOfDepsTargets))
--- lines starting with a space add a new dep to the current target
+-- Lines starting with a space add a new dep to the current target
   | BS.isPrefixOf " " line =
     ("parsing", (updatedDepsTarget:restOfDepsTargets))
--- lines starting with a non-blank char are new targets
+-- Lines starting with a non-blank char are new targets
   | otherwise =
     ("parsing", (newDepsTarget:currentDepsTarget:restOfDepsTargets))
   where
