@@ -112,7 +112,7 @@ toProjectClosure strategyGroup name body = ProjectClosure
   }
 
 data ProjectClosureBody = ProjectClosureBody
-  { bodyModuleDir    :: Path Rel Dir
+  { bodyModuleDir    :: Path Abs Dir
   , bodyDependencies :: ProjectDependencies
   , bodyLicenses     :: [LicenseResult]
   } deriving (Eq, Ord, Show, Generic)
@@ -120,7 +120,7 @@ data ProjectClosureBody = ProjectClosureBody
 data ProjectClosure = ProjectClosure
   { closureStrategyGroup :: StrategyGroup
   , closureStrategyName  :: Text -- ^ e.g., "python-pipenv". This is temporary: ProjectClosures will eventually combine several strategies into one
-  , closureModuleDir     :: Path Rel Dir -- ^ the relative module directory (for grouping with other strategies)
+  , closureModuleDir     :: Path Abs Dir -- ^ the absolute module directory (for grouping with other strategies)
   , closureDependencies  :: ProjectDependencies
   , closureLicenses      :: [LicenseResult]
   } deriving (Eq, Ord, Show, Generic)

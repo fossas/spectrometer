@@ -54,7 +54,7 @@ analyze ::
   , Has Diagnostics sig m
   , MonadIO m
   )
-  => Path Rel Dir -> m ProjectClosureBody
+  => Path Abs Dir -> m ProjectClosureBody
 analyze dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
   liftIO (BS.writeFile initScriptFilepath initScript)
@@ -83,7 +83,7 @@ analyze dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
 
   pure (mkProjectClosure dir packagesToOutput)
 
-mkProjectClosure :: Path Rel Dir -> Map Text [JsonDep] -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> Map Text [JsonDep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

@@ -107,7 +107,7 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
       logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis baseurl apiKey revision metadata projects
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projects
       case uploadResult of
         Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
