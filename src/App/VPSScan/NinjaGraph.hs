@@ -13,6 +13,7 @@ import qualified Path.IO as P
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
+import Data.Text.Encoding (decodeUtf8)
 import Effect.ReadFS
 import System.Process.Typed as PROC
 import System.Exit (exitFailure, die)
@@ -165,7 +166,7 @@ actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
 
 targetFromLine :: ByteString -> DepsTarget
 targetFromLine line =
-  DepsTarget tar [] [] Nothing
+  DepsTarget (decodeUtf8 tar) [] [] Nothing
   where
     (tar, _) = BS.breakSubstring ": #deps" line
 
@@ -178,7 +179,7 @@ addDepToDepsTarget target line =
 
 parseDepLine :: ByteString -> DepsDependency
 parseDepLine line =
-  DepsDependency path componentName hasDeps
+  DepsDependency (decodeUtf8 path) componentName hasDeps
   where
     path = stripLeadingSpace line
     componentName = Nothing -- TODO: get component name

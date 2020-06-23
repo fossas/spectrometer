@@ -34,30 +34,30 @@ data VPSOpts = VPSOpts
 
 data DepsTarget = DepsTarget
   {
-    targetPath :: ByteString
+    targetPath :: Text
   , targetDependencies :: [DepsDependency]
   , targetInputs :: [DepsDependency]
-  , targetComponentName :: Maybe ByteString
+  , targetComponentName :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON DepsTarget where
   toJSON DepsTarget{..} = object
-    [ "path" .= show targetPath
+    [ "path" .= targetPath
     , "dependencies" .= targetDependencies
     , "inputs" .= targetInputs
-    , "componentName" .= show targetComponentName
+    , "componentName" .=  targetComponentName
     ]
 
 data DepsDependency = DepsDependency
-  { dependencyPath :: ByteString
-  , dependencyComponentName :: Maybe ByteString
+  { dependencyPath :: Text
+  , dependencyComponentName :: Maybe Text
   , hasDependencies :: Bool
   } deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON DepsDependency where
   toJSON DepsDependency{..} = object
-    [ "path" .= show dependencyPath
-    , "componentName" .= show dependencyComponentName
+    [ "path" .= dependencyPath
+    , "componentName" .= dependencyComponentName
     , "hasDependencies" .= hasDependencies
     ]
 
