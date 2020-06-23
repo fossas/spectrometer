@@ -131,6 +131,8 @@ parseNinjaLine (state, targets) line =
         ("starting", [])
     "parsing" ->
       actuallyParseLine line targets
+    "complete" ->
+      ("complete", targets)
     -- This should never happen
     _ -> ("error", targets)
 
@@ -153,7 +155,7 @@ actuallyParseLine line []
 actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
 -- ignore the "build completed successfully" line at the end of the file
   | BS.isInfixOf "build completed successfully" line =
-    ("parsing", (currentDepsTarget:restOfDepsTargets))
+    ("complete", (currentDepsTarget:restOfDepsTargets))
 -- lines starting with a space add a new dep to the current target
   | BS.isPrefixOf " " line =
     ("parsing", (updatedDepsTarget:restOfDepsTargets))
