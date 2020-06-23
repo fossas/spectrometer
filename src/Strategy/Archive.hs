@@ -14,11 +14,14 @@ import Data.List (isSuffixOf)
 import Path
 import Types
 import Prelude
+import Debug.Trace
+import Control.Effect.Exception (SomeException, try)
 
+-- FIXME: module paths include the tmp directory
 -- Given a discover function to run over unarchived contents, discover projects
 discover :: HasDiscover sig m => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
 discover go = walk $ \_ _ files -> do
-  let tars = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
+  let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
   traverse_ (\file -> withTar file go) tars
 
   let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
@@ -26,18 +29,28 @@ discover go = walk $ \_ _ files -> do
  
   pure WalkContinue
 
--- TODO: exceptions?
 withTar :: Has (Lift IO) sig m => Path Abs File -> (Path Abs Dir -> m ()) -> m ()
-withTar = withArchive (\dir file -> sendIO $ Tar.extract (fromAbsDir dir) (fromAbsFile file))
+withTar = withArchive (\dir file -> sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read =<< BL.readFile (fromAbsFile file))
 
 withTarGz :: Has (Lift IO) sig m => Path Abs File -> (Path Abs Dir -> m ()) -> m ()
 withTarGz =
   withArchive
     ( \dir file ->
         sendIO $
-          Tar.unpack (fromAbsDir dir) . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile file)
+          Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile file)
     )
 
+-- The tar unpacker dies when tar files reference files outside of the archive root
+removeTarLinks :: Tar.Entries e -> Tar.Entries e
+removeTarLinks (Tar.Next x xs) =
+  case Tar.entryContent x of
+    Tar.HardLink _ -> xs
+    Tar.SymbolicLink _ -> xs
+    _ -> Tar.Next x (removeTarLinks xs)
+removeTarLinks Tar.Done = Tar.Done
+removeTarLinks (Tar.Fail e) = Tar.Fail e
+
+-- FIXME: exceptions
 withArchive ::
   Has (Lift IO) sig m =>
   -- | Archive extraction function
@@ -48,5 +61,10 @@ withArchive ::
   (Path Abs Dir -> m ()) ->
   m ()
 withArchive extract file go = withSystemTempDir (fileName file) $ \tmpDir -> do
-  extract tmpDir file
+  traceM (show file)
+  res <- try @SomeException (extract tmpDir file)
+  case res of
+    Left err -> traceM (show err)
+    Right _ -> go tmpDir
+  traceM (show tmpDir)
   go tmpDir
