@@ -100,7 +100,7 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
   where
     commandString = case lunchTarget of
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
-      Just lunch ->  "cd " ++ show baseDir ++ "&& source ./build/envsetup.sh && lunch " ++ (T.unpack lunch) ++ " && NINJA_ARGS=\"-t deps\" make"
+      Just lunch ->  "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ (T.unpack lunch) ++ " && NINJA_ARGS=\"-t deps\" make"
 
 addInputsToNinjaDeps :: [DepsTarget] -> [DepsTarget]
 addInputsToNinjaDeps targets =
