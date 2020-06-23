@@ -35,7 +35,6 @@ ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt <*> scotland
                    lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
                    scotlandYardUrlOpt = uriOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
 
-
 runSherlockOpts :: Parser SherlockOpts
 runSherlockOpts = SherlockOpts
                   <$> sherlockCmdPathOpt

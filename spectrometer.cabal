@@ -103,6 +103,7 @@ library
     App.Fossa.Test
     App.Pathfinder.Main
     App.Pathfinder.Scan
+    App.Util
     App.VPSScan.Main
     App.VPSScan.Scan
     App.VPSScan.Scan.RunIPR
@@ -111,7 +112,6 @@ library
     App.VPSScan.NinjaGraph
     App.VPSScan.Types
     Control.Carrier.Diagnostics
-    App.Util
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
