@@ -78,7 +78,7 @@ scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan
                    <*> vpsOpts
 
 ninjaGraphCommand :: Mod CommandFields (IO ())
-ninjaGraphCommand = command "ninja-graph" (info (ninjaGraphMain <$> ninjaGraphOptsParser) (progDesc "Get a dependency graph for a build"))
+ninjaGraphCommand = command "ninja-graph" (info (ninjaGraphMain <$> ninjaGraphOptsParser) (progDesc "Get a dependency graph for a ninja build"))
   where
     ninjaGraphOptsParser = NinjaGraphCmdOpts
                           <$> basedirOpt
