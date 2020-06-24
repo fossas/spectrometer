@@ -127,7 +127,7 @@ reverseDependencies target =
   where
     deps = targetDependencies target
 
--- You can see a sample ninja deps file in test/TODO...
+-- You can see a sample ninja deps file in test/App/VPSScan/testdata/small-ninja-deps
 -- It starts with a preamble, which ends with a line that looks like
 --
 -- Starting ninja...
@@ -142,7 +142,7 @@ reverseDependencies target =
 --
 -- out/target/product/coral/obj/JAVA_LIBRARIES/wifi-service_intermediates/dexpreopt.zip: #deps 2, deps mtime 1583991124 (VALID)
 --
--- We just want the target, which is everything before the ":"
+-- We just want the target, which is everything before the ": #deps"
 --
 -- Dependency lines are just four spaces followed by a path to a file. Like this:
 --
