@@ -81,8 +81,7 @@ targetThree = DepsTarget { targetPath = "out/target/product/coral/obj/JAVA_LIBRA
                        }
 
 smallNinjaDepsTargets :: [DepsTarget]
--- smallNinjaDepsTargets =  [targetOne, targetTwo, targetThree]
-smallNinjaDepsTargets =  [targetThree, targetTwo, targetOne]
+smallNinjaDepsTargets =  [targetOne, targetTwo, targetThree]
 
 data NinjaGraphSpecError
   = InvalidFile

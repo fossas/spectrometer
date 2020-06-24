@@ -112,11 +112,20 @@ addInputToTarget target =
 
 parseNinjaDeps :: ByteString -> [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
-  results
+  reverse reversedDependenciesResults
   where
     newLine = BS.head "\n" -- This is gross, but I couldn't get "BS.split '\n' ninjaDepsLines" to work
     nLines = BS.split newLine ninjaDepsLines
     (_, results) = foldl parseNinjaLine ("starting", []) nLines
+    reversedDependenciesResults = map reverseDependencies results
+
+-- The dependencies are reversed because we were consing them onto the
+-- beginning of the array. Fix that here.
+reverseDependencies :: DepsTarget -> DepsTarget
+reverseDependencies target =
+  target { targetDependencies = reverse deps }
+  where
+    deps = targetDependencies target
 
 -- You can see a sample ninja deps file in test/TODO...
 -- It starts with a preamble, which ends with a line that looks like
