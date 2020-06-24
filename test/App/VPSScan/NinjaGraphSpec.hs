@@ -5,6 +5,7 @@ module App.VPSScan.NinjaGraphSpec
 import Prologue
 
 import qualified Data.Text.IO as TIO
+import qualified Data.Text as T
 import App.VPSScan.NinjaGraph
 import App.VPSScan.Types
 import Data.Text.Encoding
@@ -95,9 +96,12 @@ spec :: Spec
 spec = do
   smallNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/small-ninja-deps")
 
-  describe "A small ninja deps file" $ do
-    it "parses the file and generates a dependency graph" $
-      (scanNinjaDeps ninjaGraphOpts (encodeUtf8 smallNinjaDeps)) `shouldMatchList` smallNinjaDepsTargets
+  describe "scanNinjaDeps" $ do
+    it "parses a small ninja deps file and generates a dependency graph" $ do
+      eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 smallNinjaDeps)
+      case eitherScanned of
+        Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
+        Right scanned -> resultValue scanned `shouldMatchList` smallNinjaDepsTargets
       where
         ninjaGraphOpts = NinjaGraphOpts { ninjaGraphNinjaPath  = Nothing
                                         , lunchTarget = Nothing
