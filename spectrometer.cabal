@@ -205,6 +205,7 @@ test-suite unit-tests
   other-modules:
     App.Fossa.FossaAPIV1Spec
     App.Fossa.Report.AttributionSpec
+    App.VPSScan.NinjaGraphSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec

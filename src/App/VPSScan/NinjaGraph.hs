@@ -2,6 +2,7 @@ module App.VPSScan.NinjaGraph
 (
   ninjaGraphMain
 , NinjaGraphCmdOpts(..)
+, scanNinjaDeps
 ) where
 
 import Prologue
