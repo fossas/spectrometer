@@ -93,16 +93,10 @@ instance ToDiagnostic NinjaGraphSpecError where
 
 spec :: Spec
 spec = do
-  -- let file = case parseRelFile "test/VPSScan/testdata/small-ninja-deps" of
-  --       Nothing -> fatal InvalidFile
-  --       Just path -> path
-  -- smallNinjaDeps <- runReadFSIO $ readContentsBS file
-
   smallNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/small-ninja-deps")
 
   describe "A small ninja deps file" $ do
     it "parses the file and generates a dependency graph" $
-      -- smallNinjaDepsTargets `shouldMatchList` (scanNinjaDeps ninjaGraphOpts (encodeUtf8 smallNinjaDeps))
       (scanNinjaDeps ninjaGraphOpts (encodeUtf8 smallNinjaDeps)) `shouldMatchList` smallNinjaDepsTargets
       where
         ninjaGraphOpts = NinjaGraphOpts { ninjaGraphNinjaPath  = Nothing
