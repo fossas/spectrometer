@@ -30,6 +30,21 @@ data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   , ninjaCmdNinjaGraphOpts :: NinjaGraphOpts
   } deriving Generic
 
+data NinjaGraphError = ErrorRunningNinja Text
+                     | NoNinjaDepsStartLineFound
+                     | NoNinjaDepsEndLineFound
+                     | NinjaDepsParseError
+  deriving (Eq, Ord, Show, Generic, Typeable)
+
+instance ToDiagnostic NinjaGraphError where
+  renderDiagnostic = \case
+    ErrorRunningNinja err -> "Error while running Ninja: " <> pretty err
+    NoNinjaDepsStartLineFound -> "The output of \"ninja -t deps\" did not contain the \"Starting ninja...\" line"
+    NoNinjaDepsEndLineFound   -> "The output of \"ninja -t deps\" did not contain the \"build completed successfully\" line"
+    NinjaDepsParseError   -> "There was an error while parsing the output of \"ninja -t deps\""
+
+data NinjaParseState = Starting | Parsing | Complete | Error
+
 ninjaGraphMain :: NinjaGraphCmdOpts -> IO ()
 ninjaGraphMain NinjaGraphCmdOpts{..} = do
   dir <- validateDir ninjaCmdBasedir
@@ -44,7 +59,7 @@ ninjaGraphMain NinjaGraphCmdOpts{..} = do
 getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m ()
 getAndParseNinjaDeps dir ninjaGraphOpts = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
-  let graph = scanNinjaDeps ninjaGraphOpts ninjaDepsContents
+  graph <- scanNinjaDeps ninjaGraphOpts ninjaDepsContents
   _ <- runHTTP $ postDepsGraphResults ninjaGraphOpts graph
   pure ()
 
@@ -57,21 +72,14 @@ getNinjaDeps baseDir opts@NinjaGraphOpts{..} = do
     Nothing -> BL.toStrict <$> generateNinjaDeps baseDir opts
     Just ninjaPath -> readNinjaDepsFile ninjaPath
 
-scanNinjaDeps :: NinjaGraphOpts -> ByteString -> [DepsTarget]
+scanNinjaDeps :: (Has Diagnostics sig m) => NinjaGraphOpts -> ByteString -> m [DepsTarget]
 scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents = do
-  addInputsToNinjaDeps ninjaDeps
+  addInputsToNinjaDeps <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
 
 depsGraphEndpoint :: Url 'Https -> Url 'Https
 depsGraphEndpoint baseurl = baseurl /: "depsGraph"
-
-data NinjaGraphError = ErrorRunningNinja Text
-  deriving (Eq, Ord, Show, Generic, Typeable)
-
-instance ToDiagnostic NinjaGraphError where
-  renderDiagnostic = \case
-    ErrorRunningNinja err -> "Error while running Ninja: " <> pretty err
 
 -- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
 -- POST /depsGraph
@@ -110,13 +118,17 @@ addInputToTarget target =
     [] -> target
     (firstDep:remainingDeps) -> target { targetDependencies = remainingDeps, targetInputs = [firstDep] }
 
-parseNinjaDeps :: ByteString -> [DepsTarget]
+parseNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
-  reverse reversedDependenciesResults
+  case finalState of
+    Complete -> pure $ reverse reversedDependenciesResults
+    Starting -> fatal NoNinjaDepsStartLineFound
+    Parsing  -> fatal NoNinjaDepsEndLineFound
+    Error    -> fatal NinjaDepsParseError
   where
     newLine = BS.head "\n" -- This is gross, but I couldn't get "BS.split '\n' ninjaDepsLines" to work
     nLines = BS.split newLine ninjaDepsLines
-    (_, results) = foldl parseNinjaLine ("starting", []) nLines
+    (finalState, results) = foldl parseNinjaLine (Starting, []) nLines
     reversedDependenciesResults = map reverseDependencies results
 
 -- The dependencies are reversed because we were consing them onto the
@@ -152,47 +164,48 @@ reverseDependencies target =
 --
 -- The body ends with a line that looks like
 -- [0;32m#### build completed successfully (20 seconds) ####[00m
-parseNinjaLine :: ((Text, [DepsTarget]) -> ByteString -> (Text, [DepsTarget]))
+
+parseNinjaLine :: ((NinjaParseState, [DepsTarget]) -> ByteString -> (NinjaParseState, [DepsTarget]))
 parseNinjaLine (state, targets) line =
   case state of
-    "starting" ->
+    Starting ->
       if line == "Starting ninja..." then
-        ("parsing", [])
+        (Parsing, [])
       else
-        ("starting", [])
-    "parsing" ->
+        (Starting, [])
+    Parsing ->
       actuallyParseLine line targets
-    "complete" ->
-      ("complete", targets)
+    Complete ->
+      (Complete, targets)
     -- This should never happen
-    _ -> ("error", targets)
+    _ -> (Error, targets)
 
-actuallyParseLine :: ByteString -> [DepsTarget] -> (Text, [DepsTarget])
+actuallyParseLine :: ByteString -> [DepsTarget] -> (NinjaParseState, [DepsTarget])
 -- ignore empty lines
 actuallyParseLine "" targets =
-  ("parsing", targets)
+  (Parsing, targets)
 
 actuallyParseLine line []
 -- error if you're trying to add a dependency and there are no targets yet
 -- or if you reach the end of the file and no targets have been found
   | BS.isPrefixOf " " line || BS.isInfixOf "build completed successfully" line =
-    ("error", [])
+    (Error, [])
 -- Add the first target
   | otherwise =
-    ("parsing", [newDepsTarget])
+    (Parsing, [newDepsTarget])
   where
     newDepsTarget = targetFromLine line
 
 actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
 -- The "build completed successfully" line signals that parsing is complete
   | BS.isInfixOf "build completed successfully" line =
-    ("complete", (currentDepsTarget:restOfDepsTargets))
+    (Complete, (currentDepsTarget:restOfDepsTargets))
 -- Lines starting with a space add a new dep to the current target
   | BS.isPrefixOf " " line =
-    ("parsing", (updatedDepsTarget:restOfDepsTargets))
+    (Parsing, (updatedDepsTarget:restOfDepsTargets))
 -- Lines starting with a non-blank char are new targets
   | otherwise =
-    ("parsing", (newDepsTarget:currentDepsTarget:restOfDepsTargets))
+    (Parsing, (newDepsTarget:currentDepsTarget:restOfDepsTargets))
   where
     newDepsTarget = targetFromLine line
     updatedDepsTarget = addDepToDepsTarget currentDepsTarget line
