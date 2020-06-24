@@ -31,7 +31,7 @@ vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> org
 ninjaGraphOpts :: Parser NinjaGraphOpts
 ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt <*> scotlandYardUrlOpt
                  where
-                   ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING" <> help "Path to ninja_deps file")
+                   ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING" <> help "Path to a generated ninja_deps file. This is only used to speed up testing and will not normally be used.")
                    lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
                    scotlandYardUrlOpt = uriOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
 
