@@ -29,7 +29,7 @@ scanMain opts@ScanCmdOpts{..} = do
   result <- runDiagnostics $ runTrace $ vpsScan basedir opts
   case result of
     Left failure -> do
-      putStrLn (show $ renderFailureBundle failure)
+      print $ renderFailureBundle failure
       exitFailure
     Right _ -> pure ()
 

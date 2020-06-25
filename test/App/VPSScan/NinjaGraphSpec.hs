@@ -96,7 +96,7 @@ spec :: Spec
 spec = do
   smallNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/small-ninja-deps")
 
-  describe "scanNinjaDeps" $ do
+  describe "scanNinjaDeps" $
     it "parses a small ninja deps file and generates a dependency graph" $ do
       eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 smallNinjaDeps)
       case eitherScanned of

@@ -51,7 +51,7 @@ ninjaGraphMain NinjaGraphCmdOpts{..} = do
   result <- runDiagnostics $ getAndParseNinjaDeps dir ninjaCmdNinjaGraphOpts
   case result of
     Left failure -> do
-      putStrLn (show $ renderFailureBundle failure)
+      print $ renderFailureBundle failure
       exitFailure
     Right _ -> pure ()
 
@@ -67,13 +67,13 @@ getAndParseNinjaDeps dir ninjaGraphOpts = do
 -- read that file to get the ninja deps. Otherwise, generate it with
 -- NINJA_ARGS="-t deps" make
 getNinjaDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Trace sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m ByteString
-getNinjaDeps baseDir opts@NinjaGraphOpts{..} = do
+getNinjaDeps baseDir opts@NinjaGraphOpts{..} =
   case ninjaGraphNinjaPath of
     Nothing -> BL.toStrict <$> generateNinjaDeps baseDir opts
     Just ninjaPath -> readNinjaDepsFile ninjaPath
 
 scanNinjaDeps :: (Has Diagnostics sig m) => NinjaGraphOpts -> ByteString -> m [DepsTarget]
-scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents = do
+scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents =
   addInputsToNinjaDeps <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
@@ -105,11 +105,10 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
   where
     commandString = case lunchTarget of
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
-      Just lunch ->  "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ (T.unpack lunch) ++ " && NINJA_ARGS=\"-t deps\" make"
+      Just lunch ->  "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ T.unpack lunch ++ " && NINJA_ARGS=\"-t deps\" make"
 
 addInputsToNinjaDeps :: [DepsTarget] -> [DepsTarget]
-addInputsToNinjaDeps targets =
-  map addInputToTarget targets
+addInputsToNinjaDeps = map addInputToTarget
 
 -- If there are any dependencies, then make inputs the first dependency
 addInputToTarget :: DepsTarget -> DepsTarget
@@ -199,13 +198,13 @@ actuallyParseLine line []
 actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
 -- The "build completed successfully" line signals that parsing is complete
   | BS.isInfixOf "build completed successfully" line =
-    (Complete, (currentDepsTarget:restOfDepsTargets))
+    (Complete, currentDepsTarget : restOfDepsTargets)
 -- Lines starting with a space add a new dep to the current target
   | BS.isPrefixOf " " line =
-    (Parsing, (updatedDepsTarget:restOfDepsTargets))
+    (Parsing, updatedDepsTarget : restOfDepsTargets)
 -- Lines starting with a non-blank char are new targets
   | otherwise =
-    (Parsing, (newDepsTarget:currentDepsTarget:restOfDepsTargets))
+    (Parsing, newDepsTarget:currentDepsTarget : restOfDepsTargets)
   where
     newDepsTarget = targetFromLine line
     updatedDepsTarget = addDepToDepsTarget currentDepsTarget line
@@ -218,7 +217,7 @@ targetFromLine line =
 
 addDepToDepsTarget :: DepsTarget -> ByteString -> DepsTarget
 addDepToDepsTarget target line =
-  target { targetDependencies = (newDep:currentDeps)}
+  target { targetDependencies = newDep : currentDeps}
   where
     currentDeps = targetDependencies target
     newDep = parseDepLine line
