@@ -165,8 +165,6 @@ mangleError err = case err of
   JsonHttpException msg -> JsonDeserializeError msg
   _ -> OtherError err
 
--- we specifically want Rel paths here: parent directories shouldn't affect path
--- filtering
 isProductionPath :: FilePath -> Bool
 isProductionPath path = not $ any (`isInfixOf` path)
   [ "doc/"
@@ -183,7 +181,6 @@ isProductionPath path = not $ any (`isInfixOf` path)
   , "bower_components/"
   , "third_party/"
   , "third-party/"
-  , "tmp/"
   , "Carthage/"
   , "Checkouts/"
   ]
