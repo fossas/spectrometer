@@ -7,7 +7,7 @@ module App.Fossa.Test
 import Prologue
 import qualified Prelude as Unsafe
 
-import App.Fossa.BuildWait
+import App.Fossa.API.BuildWait
 import App.Fossa.CliTypes
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
