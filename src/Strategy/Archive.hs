@@ -4,14 +4,15 @@ module Strategy.Archive
 where
 
 import qualified Codec.Archive.Tar as Tar
+import qualified Codec.Archive.Zip as Zip
 import qualified Codec.Compression.GZip as GZip
+import Control.Carrier.Diagnostics (FailureBundle (..), SomeDiagnostic (..))
 import Control.Carrier.Interpret
 import Control.Effect.Exception (SomeException, try)
 import Control.Effect.Exception (mask)
 import Control.Effect.Lift
 import Control.Effect.Output (output)
 import Control.Effect.TaskPool (forkTask)
-import Control.Carrier.Diagnostics (SomeDiagnostic(..), FailureBundle(..))
 import Control.Effect.Path (withSystemTempDir)
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
@@ -30,6 +31,9 @@ discover go = walk $ \_ _ files -> do
   let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
   traverse_ (\file -> forkArchiveDiscover $ withTarGz file go) tarGzs
 
+  let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
+  traverse_ (\file -> forkArchiveDiscover $ withZip file go) zips
+
   pure WalkContinue
 
 forkArchiveDiscover :: HasDiscover sig m => m () -> m ()
@@ -44,12 +48,12 @@ withTar :: Has (Lift IO) sig m => Path Abs File -> (Path Abs Dir -> m ()) -> m (
 withTar = withArchive (\dir file -> sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read =<< BL.readFile (fromAbsFile file))
 
 withTarGz :: Has (Lift IO) sig m => Path Abs File -> (Path Abs Dir -> m ()) -> m ()
-withTarGz =
-  withArchive
-    ( \dir file ->
-        sendIO $
-          Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile file)
-    )
+withTarGz = withArchive $ \dir file ->
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile file)
+
+withZip :: Has (Lift IO) sig m => Path Abs File -> (Path Abs Dir -> m ()) -> m ()
+withZip = withArchive $ \dir file ->
+  sendIO $ Zip.withArchive (fromAbsFile file) (Zip.unpackInto (fromAbsDir dir))
 
 -- The tar unpacker dies when tar files reference files outside of the archive root
 removeTarLinks :: Tar.Entries e -> Tar.Entries e
