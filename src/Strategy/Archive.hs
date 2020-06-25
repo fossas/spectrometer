@@ -18,6 +18,7 @@ import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Discovery.Walk
 import Path
+import Strategy.Archive.RPM (extractRpm)
 import Types
 import Prelude hiding (zip)
 
@@ -32,6 +33,9 @@ discover go = walk $ \_ _ files -> do
 
   let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
   traverse_ (\file -> forkArchiveDiscover $ withArchive zip file go) zips
+
+  let rpms = filter (\file -> ".rpm" `isSuffixOf` fileName file) files
+  traverse_ (\file -> forkArchiveDiscover $ withArchive extractRpm file go) rpms
 
   pure WalkContinue
 
