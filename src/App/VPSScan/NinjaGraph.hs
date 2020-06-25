@@ -115,7 +115,7 @@ addInputToTarget :: DepsTarget -> DepsTarget
 addInputToTarget target =
   case targetDependencies target of
     [] -> target
-    (firstDep:remainingDeps) -> target { targetDependencies = remainingDeps, targetInputs = [firstDep] }
+    (firstDep : remainingDeps) -> target { targetDependencies = remainingDeps, targetInputs = [firstDep] }
 
 parseNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
@@ -195,7 +195,7 @@ actuallyParseLine line []
   where
     newDepsTarget = targetFromLine line
 
-actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
+actuallyParseLine line (currentDepsTarget : restOfDepsTargets)
 -- The "build completed successfully" line signals that parsing is complete
   | BS.isInfixOf "build completed successfully" line =
     (Complete, currentDepsTarget : restOfDepsTargets)
@@ -204,7 +204,7 @@ actuallyParseLine line (currentDepsTarget:restOfDepsTargets)
     (Parsing, updatedDepsTarget : restOfDepsTargets)
 -- Lines starting with a non-blank char are new targets
   | otherwise =
-    (Parsing, newDepsTarget:currentDepsTarget : restOfDepsTargets)
+    (Parsing, newDepsTarget : currentDepsTarget : restOfDepsTargets)
   where
     newDepsTarget = targetFromLine line
     updatedDepsTarget = addDepToDepsTarget currentDepsTarget line
