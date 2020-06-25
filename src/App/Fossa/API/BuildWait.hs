@@ -1,4 +1,4 @@
-module App.Fossa.BuildWait (
+module App.Fossa.API.BuildWait (
     waitForBuild,
     waitForIssues
 ) where
