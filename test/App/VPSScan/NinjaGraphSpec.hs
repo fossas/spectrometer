@@ -84,14 +84,6 @@ targetThree = DepsTarget { targetPath = "out/target/product/coral/obj/JAVA_LIBRA
 smallNinjaDepsTargets :: [DepsTarget]
 smallNinjaDepsTargets =  [targetOne, targetTwo, targetThree]
 
-data NinjaGraphSpecError
-  = InvalidFile
-  deriving (Eq, Ord, Show, Generic, Typeable)
-
-instance ToDiagnostic NinjaGraphSpecError where
-  renderDiagnostic = \case
-    InvalidFile -> "Missing 'origin' git remote"
-
 spec :: Spec
 spec = do
   smallNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/small-ninja-deps")
