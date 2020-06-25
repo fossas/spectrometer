@@ -7,7 +7,6 @@ import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Zip as Zip
 import qualified Codec.Compression.GZip as GZip
 import Control.Carrier.Diagnostics (FailureBundle (..), SomeDiagnostic (..))
-import Control.Carrier.Interpret
 import Control.Effect.Exception (SomeException, try)
 import Control.Effect.Exception (mask)
 import Control.Effect.Lift
