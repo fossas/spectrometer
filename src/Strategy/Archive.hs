@@ -20,22 +20,23 @@ import Data.List (isSuffixOf)
 import Discovery.Walk
 import Path
 import Types
-import Prelude
+import Prelude hiding (zip)
 
 -- Given a discover function to run over unarchived contents, discover projects
 discover :: HasDiscover sig m => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
 discover go = walk $ \_ _ files -> do
   let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkArchiveDiscover $ withTar file go) tars
+  traverse_ (\file -> forkArchiveDiscover $ withArchive tar file go) tars
 
   let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkArchiveDiscover $ withTarGz file go) tarGzs
+  traverse_ (\file -> forkArchiveDiscover $ withArchive tarGz file go) tarGzs
 
   let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkArchiveDiscover $ withZip file go) zips
+  traverse_ (\file -> forkArchiveDiscover $ withArchive zip file go) zips
 
   pure WalkContinue
 
+-- | Fork discovery of archive contents as a new task, catching exceptions
 forkArchiveDiscover :: HasDiscover sig m => m () -> m ()
 forkArchiveDiscover go = forkTask $ do
   mask $ \restore -> do
@@ -44,27 +45,9 @@ forkArchiveDiscover go = forkTask $ do
       Left exc -> output (ProjectFailure ArchiveGroup "archive" (FailureBundle [] (SomeDiagnostic [] exc)))
       Right () -> pure ()
 
-withTar :: Has (Lift IO) sig m => Path Abs File -> (Path Abs Dir -> m ()) -> m ()
-withTar = withArchive (\dir file -> sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read =<< BL.readFile (fromAbsFile file))
-
-withTarGz :: Has (Lift IO) sig m => Path Abs File -> (Path Abs Dir -> m ()) -> m ()
-withTarGz = withArchive $ \dir file ->
-  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile file)
-
-withZip :: Has (Lift IO) sig m => Path Abs File -> (Path Abs Dir -> m ()) -> m ()
-withZip = withArchive $ \dir file ->
-  sendIO $ Zip.withArchive (fromAbsFile file) (Zip.unpackInto (fromAbsDir dir))
-
--- The tar unpacker dies when tar files reference files outside of the archive root
-removeTarLinks :: Tar.Entries e -> Tar.Entries e
-removeTarLinks (Tar.Next x xs) =
-  case Tar.entryContent x of
-    Tar.HardLink _ -> removeTarLinks xs
-    Tar.SymbolicLink _ -> removeTarLinks xs
-    _ -> Tar.Next x (removeTarLinks xs)
-removeTarLinks Tar.Done = Tar.Done
-removeTarLinks (Tar.Fail e) = Tar.Fail e
-
+-- | Extract an archive to a temporary directory, and run the provided callback
+-- on the temporary directory. Archive contents are removed when the callback
+-- finishes.
 withArchive ::
   Has (Lift IO) sig m =>
   -- | Archive extraction function
@@ -77,3 +60,29 @@ withArchive ::
 withArchive extract file go = withSystemTempDir (fileName file) $ \tmpDir -> do
   extract tmpDir file
   go tmpDir
+
+---------- Tar files
+
+tar :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+tar dir tarFile =
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read =<< BL.readFile (fromAbsFile tarFile)
+
+tarGz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+tarGz dir tarGzFile =
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
+
+-- The tar unpacker dies when tar files reference files outside of the archive root
+removeTarLinks :: Tar.Entries e -> Tar.Entries e
+removeTarLinks (Tar.Next x xs) =
+  case Tar.entryContent x of
+    Tar.HardLink _ -> removeTarLinks xs
+    Tar.SymbolicLink _ -> removeTarLinks xs
+    _ -> Tar.Next x (removeTarLinks xs)
+removeTarLinks Tar.Done = Tar.Done
+removeTarLinks (Tar.Fail e) = Tar.Fail e
+
+---------- Zip files
+
+zip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+zip dir zipFile =
+  sendIO $ Zip.withArchive (fromAbsFile zipFile) (Zip.unpackInto (fromAbsDir dir))
