@@ -21,7 +21,6 @@ import Path
 import Types
 import Prelude
 
--- FIXME: module paths include the tmp directory
 -- Given a discover function to run over unarchived contents, discover projects
 discover :: HasDiscover sig m => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
 discover go = walk $ \_ _ files -> do
