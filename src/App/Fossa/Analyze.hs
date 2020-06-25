@@ -16,6 +16,7 @@ import Path.IO
 import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, uploadAnalysis, UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
+import Control.Carrier.Finally
 import Control.Carrier.TaskPool
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
@@ -81,7 +82,7 @@ analyze ::
   -> Maybe Text -- ^ cli override for revision
   -> Maybe Text -- ^ cli override for branch
   -> m ()
-analyze basedir destination overrideName overrideRevision overrideBranch = do
+analyze basedir destination overrideName overrideRevision overrideBranch = runFinally $ do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $

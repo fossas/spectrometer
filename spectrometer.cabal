@@ -117,10 +117,12 @@ library
     App.VPSScan.Scan.ScotlandYard
     App.VPSScan.Types
     Control.Carrier.Diagnostics
+    Control.Carrier.Finally
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
     Control.Effect.Diagnostics
+    Control.Effect.Finally
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.TaskPool

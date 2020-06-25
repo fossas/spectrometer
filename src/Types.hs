@@ -27,6 +27,7 @@ import Control.Algebra
 import Control.Carrier.TaskPool
 import Control.Carrier.Diagnostics
 import Control.Effect.Exception
+import Control.Effect.Finally
 import Control.Carrier.Output.IO
 import DepTypes
 import Effect.Exec
@@ -73,6 +74,7 @@ type TaskC m = ExecIOC (ReadFSIOC (DiagnosticsC m))
 
 type HasDiscover sig m =
   ( Has (Lift IO) sig m
+  , Has Finally sig m
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m

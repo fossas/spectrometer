@@ -7,17 +7,17 @@ import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Zip as Zip
 import qualified Codec.Compression.GZip as GZip
 import Control.Carrier.Diagnostics (FailureBundle (..), SomeDiagnostic (..))
-import Control.Effect.Exception (SomeException, try)
-import Control.Effect.Exception (mask)
+import Control.Effect.Exception (SomeException, mask, try)
+import Control.Effect.Finally
 import Control.Effect.Lift
 import Control.Effect.Output (output)
 import Control.Effect.TaskPool (forkTask)
-import Control.Effect.Path (withSystemTempDir)
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Discovery.Walk
 import Path
+import qualified Path.IO as PIO
 import Strategy.Archive.RPM (extractRpm)
 import Types
 import Prelude hiding (zip)
@@ -55,7 +55,7 @@ forkArchiveDiscover go = forkTask $ do
 -- on the temporary directory. Archive contents are removed when the callback
 -- finishes.
 withArchive ::
-  Has (Lift IO) sig m =>
+  (Has (Lift IO) sig m, Has Finally sig m) =>
   -- | Archive extraction function
   (Path Abs Dir -> Path Abs File -> m ()) ->
   -- | Path to archive
@@ -63,9 +63,19 @@ withArchive ::
   -- | Callback
   (Path Abs Dir -> m ()) ->
   m ()
-withArchive extract file go = withSystemTempDir (fileName file) $ \tmpDir -> do
+withArchive extract file go = do
+  tmpDir <- mkTempDir (fileName file)
   extract tmpDir file
   go tmpDir
+
+-- | Make a temporary directory, deleting it on exit
+mkTempDir :: (Has (Lift IO) sig m, Has Finally sig m) => String -> m (Path Abs Dir)
+mkTempDir name = do
+  systemTmpDir <- sendIO PIO.getTempDir
+  dir <- sendIO $ PIO.createTempDir systemTmpDir name
+  onExit . sendIO . PIO.removeDirRecur $ dir
+  pure dir
+
 
 ---------- Tar files
 
