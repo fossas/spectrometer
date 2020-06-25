@@ -34,6 +34,9 @@ discover go = walk $ \_ _ files -> do
   let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
   traverse_ (\file -> forkArchiveDiscover $ withArchive zip file go) zips
 
+  let jars = filter (\file -> ".jar" `isSuffixOf` fileName file) files
+  traverse_ (\file -> forkArchiveDiscover $ withArchive zip file go) jars
+
   let rpms = filter (\file -> ".rpm" `isSuffixOf` fileName file) files
   traverse_ (\file -> forkArchiveDiscover $ withArchive extractRpm file go) rpms
 
