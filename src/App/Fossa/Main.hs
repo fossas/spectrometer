@@ -31,10 +31,10 @@ appMain = do
     AnalyzeCommand AnalyzeOptions {..} -> do
       changeDir analyzeBaseDir
       if analyzeOutput
-        then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision analyzeBranch
+        then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision analyzeBranch analyzeUnpackArchives
         else do
           key <- requireKey maybeApiKey
-          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision analyzeBranch
+          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision analyzeBranch analyzeUnpackArchives
     TestCommand TestOptions {..} -> do
       changeDir testBaseDir
       key <- requireKey maybeApiKey
@@ -117,6 +117,7 @@ analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
+    <*> switch (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> baseDirArg
@@ -175,6 +176,7 @@ data ReportOptions = ReportOptions
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool,
+    analyzeUnpackArchives :: Bool,
     analyzeBranch :: Maybe Text,
     analyzeMetadata :: ProjectMetadata,
     analyzeBaseDir :: FilePath

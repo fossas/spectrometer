@@ -66,10 +66,10 @@ data ScanDestination
   | OutputStdout
   deriving (Generic)
  
-analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> Maybe Text -> IO ()
-analyzeMain logSeverity destination name revision branch = do
+analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> Maybe Text -> Bool -> IO ()
+analyzeMain logSeverity destination name revision branch unpackArchives = do
   basedir <- getCurrentDir
-  withLogger logSeverity $ analyze basedir destination name revision branch
+  withLogger logSeverity $ analyze basedir destination name revision branch unpackArchives
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -81,12 +81,16 @@ analyze ::
   -> Maybe Text -- ^ cli override for name
   -> Maybe Text -- ^ cli override for revision
   -> Maybe Text -- ^ cli override for branch
+  -> Bool -- ^ whether to unpack archives
   -> m ()
-analyze basedir destination overrideName overrideRevision overrideBranch = runFinally $ do
+analyze basedir destination overrideName overrideRevision overrideBranch unpackArchives = runFinally $ do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
-    withTaskPool capabilities updateProgress (discover basedir)
+    withTaskPool capabilities updateProgress $ do
+      if unpackArchives
+        then discoverWithArchives basedir
+        else discover basedir
 
   traverse_ (logDebug . Diag.renderFailureBundle . projectFailureCause) failures
 
@@ -151,6 +155,9 @@ renderFailure failure = object
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover dir = traverse_ ($ dir) discoverFuncs
 
+discoverWithArchives :: HasDiscover sig m => Path Abs Dir -> m ()
+discoverWithArchives dir = traverse_ ($ dir) (Archive.discover discoverWithArchives : discoverFuncs)
+
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
   [ Rebar3Tree.discover
@@ -196,8 +203,6 @@ discoverFuncs =
   , Cargo.discover
 
   , RPM.discover
-
-  , Archive.discover discover
   ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()
