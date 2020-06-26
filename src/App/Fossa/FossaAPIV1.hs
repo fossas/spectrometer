@@ -1,7 +1,6 @@
 module App.Fossa.FossaAPIV1
   ( uploadAnalysis
   , UploadResponse(..)
-  , ProjectRevision(..)
   , ProjectMetadata(..)
   , FossaError(..)
   , FossaReq(..)
@@ -21,12 +20,13 @@ module App.Fossa.FossaAPIV1
   , getAttribution
   ) where
 
+import App.Fossa.CliTypes
 import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
 import Control.Effect.Diagnostics
 import Data.Coerce (coerce)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.List (isInfixOf, stripPrefix)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Aeson
 import Prelude
@@ -42,7 +42,6 @@ import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Text.URI (URI)
 import qualified Text.URI as URI
-import Data.Maybe (catMaybes)
 
 newtype FossaReq m a = FossaReq { unFossaReq :: m a }
   deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
@@ -74,6 +73,9 @@ renderLocatorUrl :: Int -> Locator -> Text
 renderLocatorUrl orgId Locator{..} =
   locatorFetcher <> "+" <> T.pack (show orgId) <> "/" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
 
+apiHeader :: ApiKey -> Option scheme
+apiHeader key = header "Authorization" ("token " <> encodeUtf8 (unApiKey key))
+
 data UploadResponse = UploadResponse
   { uploadLocator :: Text
   , uploadError   :: Maybe Text
@@ -100,12 +102,6 @@ instance ToDiagnostic FossaError where
     OtherError err -> "An unknown error occurred when accessing the FOSSA API: " <> viaShow err
     BadURI uri -> "Invalid FOSSA URL: " <> pretty (URI.render uri)
 
-data ProjectRevision = ProjectRevision
-  { projectName :: Text
-  , projectRevision :: Text
-  , projectBranch :: Text
-  } deriving (Eq, Ord, Show)
-
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
   , projectUrl :: Maybe Text
@@ -119,7 +115,7 @@ uploadAnalysis
   :: (Has Diagnostics sig m, MonadIO m)
   => Path Abs Dir -- ^ root directory for analysis
   -> URI -- ^ base url
-  -> Text -- ^ api key
+  -> ApiKey -- ^ api key
   -> ProjectRevision
   -> ProjectMetadata
   -> [Project]
@@ -141,7 +137,7 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
           <> "managedBuild" =: True
           <> "title" =: fromMaybe projectName (projectTitle metadata)
           <> "branch" =: projectBranch
-          <> header "Authorization" ("token " <> encodeUtf8 key)
+          <> apiHeader key
           <> mkMetadataOpts metadata
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOptions <> opts)
   pure (responseBody resp)
@@ -231,14 +227,13 @@ instance FromJSON BuildStatus where
 getLatestBuild
   :: (Has Diagnostics sig m, MonadIO m)
   => URI
-  -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
+  -> ApiKey -- ^ api key
+  -> ProjectRevision
   -> m Build
-getLatestBuild baseUri key projectName projectRevision = fossaReq $ do
+getLatestBuild baseUri key ProjectRevision {..} = fossaReq $ do
   (baseUrl, baseOptions) <- parseUri baseUri
 
-  let opts = baseOptions <> header "Authorization" ("token " <> encodeUtf8 key)
+  let opts = baseOptions <> apiHeader key
 
   Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
  
@@ -253,14 +248,13 @@ issuesEndpoint baseUrl orgId locator = baseUrl /: "api" /: "cli" /: renderLocato
 getIssues
   :: (Has Diagnostics sig m, MonadIO m)
   => URI
-  -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
+  -> ApiKey -- ^ api key
+  -> ProjectRevision
   -> m Issues
-getIssues baseUri key projectName projectRevision = fossaReq $ do
+getIssues baseUri key ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOptions) <- parseUri baseUri
  
-  let opts = baseOptions <> header "Authorization" ("token " <> encodeUtf8 key)
+  let opts = baseOptions <> apiHeader key
 
   Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
   response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
@@ -368,20 +362,19 @@ attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: r
 getAttribution
   :: (Has Diagnostics sig m, MonadIO m)
   => URI
-  -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
+  -> ApiKey -- ^ api key
+  -> ProjectRevision
   -> m Attr.Attribution
-getAttribution baseUri key project revision = fossaReq $ do
+getAttribution baseUri key ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOptions) <- parseUri baseUri
 
   let opts = baseOptions
-        <> header "Authorization" ("token " <> encodeUtf8 key)
+        <> apiHeader key
         <> "includeDeepDependencies" =: True
         <> "includeHashAndVersionData" =: True
         <> "includeDownloadUrl" =: True
   Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" project (Just revision))) NoReqBody jsonResponse opts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------
