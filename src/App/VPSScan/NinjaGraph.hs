@@ -123,17 +123,45 @@ correctedTarget target [] =
   target
 correctedTarget target [singleDep] =
   target { targetDependencies = [], targetInputs = [singleDep] }
-correctedTarget target (firstDep : secondDep : remainingDeps) =
-  if targetPathWithoutExt /= firstDepWithoutExt && firstDepExt == ".txt" && secondDepWithoutExt == targetPathWithoutExt then
-    target { targetDependencies = (firstDep : remainingDeps) , targetInputs = [secondDep]}
-  else
-    target { targetDependencies = (secondDep : remainingDeps), targetInputs = [firstDep]}
+correctedTarget target (firstDep : remainingDeps) =
+  case correctTargetWithLeadingTxtDeps target (firstDep : remainingDeps) of
+    Nothing -> target { targetInputs = [firstDep], targetDependencies = remainingDeps }
+    Just corrected -> corrected
+
+-- There are cases where the first N dependencies are .txt files and do not match the basename
+-- of the target, and the N+1th dependency is a non-.txt file and matches the basename of
+-- the target. In this case, the N+1th dependency is the correct input file
+-- E.g., in this case we want the input to be "system/bpf/bpfloader/BpfLoader.cpp":
+-- out/soong/.intermediates/system/bpf/bpfloader/bpfloader/android_arm64_armv8-a_core/obj/system/bpf/bpfloader/BpfLoader.o: #deps 3, deps mtime 1583962500 (VALID)
+--     external/compiler-rt/lib/cfi/cfi_blacklist.txt
+--     build/soong/cc/config/integer_overflow_blacklist.txt
+--     system/bpf/bpfloader/BpfLoader.cpp
+--     bionic/libc/include/arpa/inet.h
+correctTargetWithLeadingTxtDeps :: DepsTarget -> [DepsDependency] -> Maybe DepsTarget
+correctTargetWithLeadingTxtDeps target deps =
+  case (leadingTxtDeps, restOfDeps) of
+    ([], _) -> Nothing
+    (_, []) -> Nothing
+    (_, (firstNonTxtDep : remainingDeps)) ->
+      if (firstNonTxtDepBasename == targetBasenameWithoutExt) then
+        Just corrected
+      else
+        Nothing
+      where
+        (firstNonTxtDepBasename, _) = splitBasenameExt $ dependencyPath firstNonTxtDep
+        corrected = target { targetDependencies = leadingTxtDeps ++ remainingDeps, targetInputs = [firstNonTxtDep]}
   where
     splitBasenameExt :: Text -> (String, String)
     splitBasenameExt = FP.splitExtension . FP.takeFileName . T.unpack
-    (targetPathWithoutExt, _) = splitBasenameExt $ targetPath target
-    (firstDepWithoutExt, firstDepExt) = splitBasenameExt $ dependencyPath firstDep
-    (secondDepWithoutExt, _) =  splitBasenameExt $ dependencyPath secondDep
+
+    depsPathIsTxtAndBasenameDoesNotMatch :: String -> DepsDependency -> Bool
+    depsPathIsTxtAndBasenameDoesNotMatch targetBasename dep =
+      depExt == ".txt" && depBasename /= targetBasename
+      where
+        (depBasename, depExt) = splitBasenameExt $ dependencyPath dep
+
+    (targetBasenameWithoutExt, _) = splitBasenameExt $ targetPath target
+    (leadingTxtDeps, restOfDeps) = span (depsPathIsTxtAndBasenameDoesNotMatch targetBasenameWithoutExt) deps
 
 parseNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
 parseNinjaDeps ninjaDepsLines =

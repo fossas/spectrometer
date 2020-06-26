@@ -86,7 +86,7 @@ smallNinjaDepsTargets :: [DepsTarget]
 smallNinjaDepsTargets =  [targetOne, targetTwo, targetThree]
 
 cfiBlacklistDep :: DepsDependency
-cfiBlacklistDep = DepsDependency { dependencyPath = "build/soong/cc/config/cfi_blacklist.txt"
+cfiBlacklistDep = DepsDependency { dependencyPath = "external/compiler-rt/lib/cfi/cfi_blacklist.txt"
                                  , dependencyComponentName = Nothing
                                  , hasDependencies = False
                                  }
