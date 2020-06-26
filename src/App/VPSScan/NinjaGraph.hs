@@ -132,8 +132,8 @@ correctTargetWithLeadingTxtDeps target =
   case (leadingTxtDeps, restOfDeps) of
     ([], _) -> Nothing
     (_, []) -> Nothing
-    (_, (firstNonTxtDep : remainingDeps)) ->
-      if (firstNonTxtDepBasename == targetBasenameWithoutExt) then
+    (_, firstNonTxtDep : remainingDeps) ->
+      if firstNonTxtDepBasename == targetBasenameWithoutExt then
         Just corrected
       else
         Nothing

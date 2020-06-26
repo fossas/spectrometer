@@ -143,7 +143,7 @@ spec = do
       eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 weirdNinjaDeps)
       case eitherScanned of
         Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
-        Right scanned -> (head $ resultValue scanned) `shouldBe` targetWithFirstLevelWeirdnessFix
+        Right scanned -> head (resultValue scanned) `shouldBe` targetWithFirstLevelWeirdnessFix
     it "finds the correct input for a target where the first and second dependencies are txt files" $ do
       eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 weirdNinjaDeps)
       case eitherScanned of
