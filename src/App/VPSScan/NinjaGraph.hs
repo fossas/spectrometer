@@ -19,6 +19,7 @@ import System.Process.Typed as PROC
 import System.Exit (exitFailure)
 import Data.Text.Prettyprint.Doc (pretty)
 import Network.HTTP.Req
+import qualified System.FilePath as FP
 
 import App.VPSScan.Types
 import App.Util (validateDir, parseUri)
@@ -113,9 +114,24 @@ addInputsToNinjaDeps = map addInputToTarget
 -- If there are any dependencies, then make inputs the first dependency
 addInputToTarget :: DepsTarget -> DepsTarget
 addInputToTarget target =
-  case targetDependencies target of
-    [] -> target
-    (firstDep : remainingDeps) -> target { targetDependencies = remainingDeps, targetInputs = [firstDep] }
+  correctedTarget target deps
+  where
+    deps = targetDependencies target
+
+correctedTarget :: DepsTarget -> [DepsDependency] -> DepsTarget
+correctedTarget target [] =
+  target
+correctedTarget target [singleDep] =
+  target { targetDependencies = [], targetInputs = [singleDep] }
+correctedTarget target (firstDep : secondDep : remainingDeps) =
+  if targetPathWithoutExt /= firstDepWithoutExt && firstDepExt == ".txt" && secondDepWithoutExt == targetPathWithoutExt then
+    target { targetDependencies = (firstDep : remainingDeps) , targetInputs = [secondDep]}
+  else
+    target { targetDependencies = (secondDep : remainingDeps), targetInputs = [firstDep]}
+  where
+    (targetPathWithoutExt, _) = FP.splitExtension $ FP.takeFileName $ T.unpack $ targetPath target
+    (firstDepWithoutExt, firstDepExt) = FP.splitExtension $ FP.takeFileName $ T.unpack $ dependencyPath firstDep
+    (secondDepWithoutExt, _) =  FP.splitExtension $ FP.takeFileName $ T.unpack $ dependencyPath secondDep
 
 parseNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
