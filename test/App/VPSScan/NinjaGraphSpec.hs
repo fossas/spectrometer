@@ -6,7 +6,7 @@ import Prologue
 
 import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
-import qualified Data.List as L
+import Data.List
 import App.VPSScan.NinjaGraph
 import App.VPSScan.Types
 import Data.Text.Encoding
@@ -85,6 +85,12 @@ targetThree = DepsTarget { targetPath = "out/target/product/coral/obj/JAVA_LIBRA
 smallNinjaDepsTargets :: [DepsTarget]
 smallNinjaDepsTargets =  [targetOne, targetTwo, targetThree]
 
+cfiBlacklistDep :: DepsDependency
+cfiBlacklistDep = DepsDependency { dependencyPath = "build/soong/cc/config/cfi_blacklist.txt"
+                                 , dependencyComponentName = Nothing
+                                 , hasDependencies = False
+                                 }
+
 integerOverflowBlacklistDep :: DepsDependency
 integerOverflowBlacklistDep = DepsDependency { dependencyPath = "build/soong/cc/config/integer_overflow_blacklist.txt"
                                              , dependencyComponentName = Nothing
@@ -109,6 +115,13 @@ targetWithFirstLevelWeirdnessFix = DepsTarget { targetPath = "out/soong/.interme
                                               , targetInputs = [bpfLoaderDep]
                                               , targetComponentName = Nothing
                                               }
+
+targetWithSecondLevelWeirdnessFix :: DepsTarget
+targetWithSecondLevelWeirdnessFix = DepsTarget { targetPath = "out/soong/.intermediates/system/bpf/bpfloader/bpfloader/android_arm64_armv8-a_core/obj/system/bpf/bpfloader/BpfLoader.o"
+                                               , targetDependencies = [cfiBlacklistDep, integerOverflowBlacklistDep, inetDep]
+                                               , targetInputs = [bpfLoaderDep]
+                                               , targetComponentName = Nothing
+                                               }
 spec :: Spec
 spec = do
   smallNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/small-ninja-deps")
@@ -125,9 +138,14 @@ spec = do
         Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
         Right scanned -> resultValue scanned `shouldMatchList` smallNinjaDepsTargets
 
-  describe "scanNinjaDeps for a ninja deps file with weird targets" $
+  describe "scanNinjaDeps for a ninja deps file with weird targets" $ do
     it "finds the correct input for a target where the first dependency is a txt file" $ do
       eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 weirdNinjaDeps)
       case eitherScanned of
         Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
-        Right scanned -> (L.head $ resultValue scanned) `shouldBe` targetWithFirstLevelWeirdnessFix
+        Right scanned -> (head $ resultValue scanned) `shouldBe` targetWithFirstLevelWeirdnessFix
+    it "finds the correct input for a target where the first and second dependencies are txt files" $ do
+      eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 weirdNinjaDeps)
+      case eitherScanned of
+        Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
+        Right scanned -> (resultValue scanned !! 1) `shouldBe` targetWithSecondLevelWeirdnessFix

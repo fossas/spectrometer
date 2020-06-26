@@ -33,12 +33,10 @@ out/soong/.intermediates/system/bpf/bpfloader/bpfloader/android_arm64_armv8-a_co
     system/bpf/bpfloader/BpfLoader.cpp
     bionic/libc/include/arpa/inet.h
 
-out/soong/.intermediates/external/flac/libFLAC/libFLAC/android_arm64_armv8-a_core_static_cfi/obj/external/flac/libFLAC/bitmath.o: #deps 6, deps mtime 1583962895 (VALID)
+out/soong/.intermediates/system/bpf/bpfloader/bpfloader/android_arm64_armv8-a_core/obj/system/bpf/bpfloader/BpfLoader.o: #deps 3, deps mtime 1583962500 (VALID)
     external/compiler-rt/lib/cfi/cfi_blacklist.txt
     build/soong/cc/config/integer_overflow_blacklist.txt
-    external/flac/libFLAC/libFLAC_blacklist.txt
-    external/flac/libFLAC/bitmath.c
-    external/flac/config.h
-    external/flac/libFLAC/include/private/bitmath.h
+    system/bpf/bpfloader/BpfLoader.cpp
+    bionic/libc/include/arpa/inet.h
 
 [0;32m#### build completed successfully (20 seconds) ####[00m
