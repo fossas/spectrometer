@@ -129,9 +129,11 @@ correctedTarget target (firstDep : secondDep : remainingDeps) =
   else
     target { targetDependencies = (secondDep : remainingDeps), targetInputs = [firstDep]}
   where
-    (targetPathWithoutExt, _) = FP.splitExtension $ FP.takeFileName $ T.unpack $ targetPath target
-    (firstDepWithoutExt, firstDepExt) = FP.splitExtension $ FP.takeFileName $ T.unpack $ dependencyPath firstDep
-    (secondDepWithoutExt, _) =  FP.splitExtension $ FP.takeFileName $ T.unpack $ dependencyPath secondDep
+    splitBasenameExt :: Text -> (String, String)
+    splitBasenameExt = FP.splitExtension . FP.takeFileName . T.unpack
+    (targetPathWithoutExt, _) = splitBasenameExt $ targetPath target
+    (firstDepWithoutExt, firstDepExt) = splitBasenameExt $ dependencyPath firstDep
+    (secondDepWithoutExt, _) =  splitBasenameExt $ dependencyPath secondDep
 
 parseNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
