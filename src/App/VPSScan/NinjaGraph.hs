@@ -114,9 +114,7 @@ correctedTarget target@DepsTarget { targetDependencies = [] } =
 correctedTarget target@DepsTarget { targetDependencies = [singleDep] } =
   target { targetDependencies = [], targetInputs = [singleDep] }
 correctedTarget target@DepsTarget { targetDependencies = (firstDep : remainingDeps) } =
-  case correctTargetWithLeadingTxtDeps target of
-    Nothing -> target { targetInputs = [firstDep], targetDependencies = remainingDeps }
-    Just corrected -> corrected
+  fromMaybe (target { targetInputs = [firstDep], targetDependencies = remainingDeps }) (correctTargetWithLeadingTxtDeps target)
 
 -- There are cases where the first N dependencies are .txt files and do not match the basename
 -- of the target, and the N+1th dependency is a non-.txt file and matches the basename of
