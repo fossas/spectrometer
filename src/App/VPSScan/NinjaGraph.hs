@@ -75,7 +75,7 @@ getNinjaDeps baseDir opts@NinjaGraphOpts{..} =
 
 scanNinjaDeps :: (Has Diagnostics sig m) => NinjaGraphOpts -> ByteString -> m [DepsTarget]
 scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents =
-  addInputsToNinjaDeps <$> ninjaDeps
+  map correctedTarget <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
 
@@ -108,23 +108,13 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
       Just lunch ->  "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ T.unpack lunch ++ " && NINJA_ARGS=\"-t deps\" make"
 
-addInputsToNinjaDeps :: [DepsTarget] -> [DepsTarget]
-addInputsToNinjaDeps = map addInputToTarget
-
--- If there are any dependencies, then make inputs the first dependency
-addInputToTarget :: DepsTarget -> DepsTarget
-addInputToTarget target =
-  correctedTarget target deps
-  where
-    deps = targetDependencies target
-
-correctedTarget :: DepsTarget -> [DepsDependency] -> DepsTarget
-correctedTarget target [] =
+correctedTarget :: DepsTarget -> DepsTarget
+correctedTarget target@DepsTarget { targetDependencies = [] } =
   target
-correctedTarget target [singleDep] =
+correctedTarget target@DepsTarget { targetDependencies = [singleDep] } =
   target { targetDependencies = [], targetInputs = [singleDep] }
-correctedTarget target (firstDep : remainingDeps) =
-  case correctTargetWithLeadingTxtDeps target (firstDep : remainingDeps) of
+correctedTarget target@DepsTarget { targetDependencies = (firstDep : remainingDeps) } =
+  case correctTargetWithLeadingTxtDeps target of
     Nothing -> target { targetInputs = [firstDep], targetDependencies = remainingDeps }
     Just corrected -> corrected
 
@@ -137,8 +127,8 @@ correctedTarget target (firstDep : remainingDeps) =
 --     build/soong/cc/config/integer_overflow_blacklist.txt
 --     system/bpf/bpfloader/BpfLoader.cpp
 --     bionic/libc/include/arpa/inet.h
-correctTargetWithLeadingTxtDeps :: DepsTarget -> [DepsDependency] -> Maybe DepsTarget
-correctTargetWithLeadingTxtDeps target deps =
+correctTargetWithLeadingTxtDeps :: DepsTarget -> Maybe DepsTarget
+correctTargetWithLeadingTxtDeps target =
   case (leadingTxtDeps, restOfDeps) of
     ([], _) -> Nothing
     (_, []) -> Nothing
@@ -161,7 +151,7 @@ correctTargetWithLeadingTxtDeps target deps =
         (depBasename, depExt) = splitBasenameExt $ dependencyPath dep
 
     (targetBasenameWithoutExt, _) = splitBasenameExt $ targetPath target
-    (leadingTxtDeps, restOfDeps) = span (depsPathIsTxtAndBasenameDoesNotMatch targetBasenameWithoutExt) deps
+    (leadingTxtDeps, restOfDeps) = span (depsPathIsTxtAndBasenameDoesNotMatch targetBasenameWithoutExt) $ targetDependencies target
 
 parseNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
