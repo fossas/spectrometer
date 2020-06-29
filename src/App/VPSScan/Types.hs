@@ -4,13 +4,13 @@ module App.VPSScan.Types
 , ScotlandYardOpts(..)
 , DepsTarget(..)
 , DepsDependency(..)
+, IPROpts(..)
 , NinjaGraphOpts(..)
 , runHTTP
 , HTTP(..)
 , HTTPRequestFailed(..)
 ) where
 
-import qualified App.VPSScan.Scan.RunIPR as RunIPR
 import Control.Carrier.Diagnostics
 import Prologue
 import Text.URI (URI)
@@ -29,9 +29,17 @@ data SherlockOpts = SherlockOpts
   }
   deriving (Eq, Ord, Show, Generic)
 
+data IPROpts = IPROpts
+  { iprCmdPath :: String
+  , nomosCmdPath :: String
+  , pathfinderCmdPath :: String
+  , s3Url :: String
+  }
+  deriving (Eq, Ord, Show)
+
 data VPSOpts = VPSOpts
   { vpsSherlock :: SherlockOpts
-  , vpsIpr :: Maybe RunIPR.IPROpts
+  , vpsIpr :: Maybe IPROpts
   , vpsScotlandYard :: ScotlandYardOpts
   , organizationID :: Int
   , projectID :: Text

@@ -16,14 +16,7 @@ import Data.Aeson
 import Path
 import Prelude
 import Text.URI (URI)
-
-data IPROpts = IPROpts
-  { iprCmdPath :: String
-  , nomosCmdPath :: String
-  , pathfinderCmdPath :: String
-  , s3Url :: URI
-  }
-  deriving (Eq, Ord, Show)
+import App.VPSScan.Types
 
 extractNonEmptyFiles :: Value -> Maybe Value
 extractNonEmptyFiles (Object obj) = do

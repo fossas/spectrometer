@@ -60,7 +60,7 @@ runIPROpts = RunIPR.IPROpts
                     iprCmdPathOpt =  strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable")
                     nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
-                    s3Url = uriOption (long "s3-url" <> metavar "STRING" <> help "URL for bucket to upload first-party scan files on S3 or S3 equivalent. E.g. s3://fossa-ipr-results")
+                    s3Url = strOption (long "s3-url" <> metavar "STRING" <> help "URL for bucket to upload first-party scan files on S3 or S3 equivalent. E.g. s3://fossa-ipr-results")
 
 -- org IDs are ints. project and revision IDs are strings
 syOpts :: Parser ScotlandYardOpts

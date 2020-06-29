@@ -109,6 +109,7 @@ library
     App.VPSScan.Main
     App.VPSScan.Scan
     App.VPSScan.Scan.RunIPR
+    App.VPSScan.Scan.RunS3Upload
     App.VPSScan.Scan.RunSherlock
     App.VPSScan.Scan.ScotlandYard
     App.VPSScan.NinjaGraph

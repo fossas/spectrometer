@@ -16,6 +16,7 @@ import App.VPSScan.Types
 import App.VPSScan.Scan.RunSherlock
 import App.VPSScan.Scan.ScotlandYard
 import App.VPSScan.Scan.RunIPR
+import App.VPSScan.Scan.RunS3Upload
 import App.Util (validateDir)
 
 data ScanCmdOpts = ScanCmdOpts
@@ -58,7 +59,19 @@ vpsScan basedir ScanCmdOpts{..} = do
                 (runIt $ runIPRScan basedir scanId vpsOpts)
                 (runIt $ runSherlockScan basedir scanId vpsOpts)
   case (iprResult, sherlockResult) of
-    (Right _, Right _) -> trace "[All] Scans complete"
+    (Right _, Right _) -> do
+      trace "[All] Scans complete"
+      case vpsIpr of
+        Just _ -> do
+          trace "[S3] Uploading files to S3 for first-party-license review"
+          s3Result <- liftIO $ runIt $ runS3Upload basedir scanId vpsOpts
+          case s3Result of
+            (Right _) -> trace "[s3] S3 upload complete"
+            (Left s3Failure) -> do
+              trace "[s3] Error when uploading to S3"
+              trace (show $ renderFailureBundle s3Failure)
+        Nothing ->
+          trace "[s3] IPR scan disabled. Skipping S3 upload"
     (Left iprFailure, _) -> do
       trace "[IPR] Failed to scan"
       trace (show $ renderFailureBundle iprFailure)
@@ -77,12 +90,26 @@ runSherlockScan basedir scanId vpsOpts = do
   execSherlock basedir scanId vpsOpts
   trace "[Sherlock] Sherlock scan complete"
 
+runS3Upload ::
+  ( Has Exec sig m
+  , Has Diagnostics sig m
+  , Has Trace sig m
+  ) => Path Abs Dir -> Text -> VPSOpts -> m ()
+runS3Upload basedir scanId VPSOpts{..} = do
+  case vpsIpr of
+    Just iprOpts -> do
+      trace "[S3] S3 upload starting"
+      execS3Upload basedir scanId iprOpts
+      trace "[S3] S3 upload complete"
+    Nothing ->
+      trace "[S3] S3 upload not required. Skipping"
+
 runIPRScan ::
   ( Has Diagnostics sig m
   , Has Trace sig m
   , Has Exec sig m
   , MonadIO m
-  ) => Path Abs Dir ->  Text -> VPSOpts -> m ()
+  ) => Path Abs Dir -> Text -> VPSOpts -> m ()
 runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
   case vpsIpr of
     Just iprOpts -> do
