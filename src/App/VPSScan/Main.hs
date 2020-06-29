@@ -47,7 +47,7 @@ runSherlockOpts = SherlockOpts
                     sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock")
                     sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock")
 
--- If all three of these options are provided, then we run an IPR scan
+-- If all four of these options are provided, then we run an IPR scan
 -- If none of them are provided, then we skip the IPR scan
 -- Providing just some of the arguments will result in an error
 runIPROpts :: Parser RunIPR.IPROpts
@@ -55,10 +55,12 @@ runIPROpts = RunIPR.IPROpts
                   <$> iprCmdPathOpt
                   <*> nomosCmdPathOpt
                   <*> pathfinderCmdPathOpt
+                  <*> s3Url
                 where
                     iprCmdPathOpt =  strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable")
                     nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
+                    s3Url = uriOption (long "s3-url" <> metavar "STRING" <> help "URL for bucket to upload first-party scan files on S3 or S3 equivalent. E.g. s3://fossa-ipr-results")
 
 -- org IDs are ints. project and revision IDs are strings
 syOpts :: Parser ScotlandYardOpts
