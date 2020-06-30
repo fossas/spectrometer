@@ -91,9 +91,9 @@ runSherlockScan basedir scanId vpsOpts = do
   trace "[Sherlock] Sherlock scan complete"
 
 runS3Upload ::
-  ( Has Exec sig m
-  , Has Diagnostics sig m
+  ( Has Diagnostics sig m
   , Has Trace sig m
+  , MonadIO m
   ) => Path Abs Dir -> Text -> VPSOpts -> m ()
 runS3Upload basedir scanId VPSOpts{..} = do
   case vpsIpr of
