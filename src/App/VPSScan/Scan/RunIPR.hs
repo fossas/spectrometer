@@ -15,7 +15,6 @@ import Effect.Exec
 import Data.Aeson
 import Path
 import Prelude
-import Text.URI (URI)
 import App.VPSScan.Types
 
 extractNonEmptyFiles :: Value -> Maybe Value
