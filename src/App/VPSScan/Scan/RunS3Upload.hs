@@ -6,34 +6,20 @@ where
 import qualified Aws
 import qualified Aws.S3 as S3
 import           Control.Monad.Trans.Resource
--- import           Data.Conduit ((.|), runConduit)
--- import           Data.Conduit.Binary (sinkFile)
 import           Network.HTTP.Conduit (newManager, Manager, tlsManagerSettings, RequestBody(..))
 import System.Posix.Files
-import qualified Data.ByteString.Lazy as L
 import Path.IO (walkDirAccum)
-
 import Control.Monad.Except
-import Types
 import qualified Data.ByteString as S
-import Control.Monad.IO.Class
--- import Control.Concurrent
--- import System.Posix.Files
 
 import System.IO
 import Control.Applicative
 import qualified Data.Text as T
 import Control.Carrier.Trace.Printing
 import App.VPSScan.Types
--- import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
--- import System.Process.Typed as PROC
--- import System.FilePath (joinPath)
 import Data.Text.Prettyprint.Doc (pretty)
--- import qualified Data.Text as T
--- import Effect.Exec
 import Prologue
-
 
 data S3UploadError = ErrorRunningS3Upload Text
   deriving (Eq, Ord, Show, Generic, Typeable)
@@ -49,7 +35,7 @@ execS3Upload basedir scanId IPROpts{..} = do
 
   mgr <- liftIO $ newManager tlsManagerSettings
   allFiles <- walkDirAccum Nothing (\_ _ files -> pure files) basedir
-  sequence $ map (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
+  _ <- sequence $ map (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
   pure ()
 
 uploadAbsFilePath :: (MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs Dir -> Text -> Path Abs File -> m ()
@@ -62,7 +48,7 @@ uploadAbsFilePath    cfg s3cfg mgr basedir scanId filepath =
 
 uploadFileToS3 :: (MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs File -> Text -> m ()
 uploadFileToS3 cfg s3cfg mgr filePath key = do
-  res <- liftIO $ runResourceT $ do
+  _ <- liftIO $ runResourceT $ do
     -- streams large file content, without buffering more than 10k in memory
     let streamer sink = withFile (fromAbsFile filePath) ReadMode $ \h -> sink $ S.hGet h 10240
     size <- liftIO $ (fromIntegral . fileSize <$> getFileStatus (fromAbsFile filePath) :: IO Integer)
