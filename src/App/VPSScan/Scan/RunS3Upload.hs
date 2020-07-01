@@ -11,7 +11,7 @@ import           Control.Monad.Trans.Resource
 import           Network.HTTP.Conduit (newManager, Manager, tlsManagerSettings, RequestBody(..))
 import System.Posix.Files
 import qualified Data.ByteString.Lazy as L
-import Discovery.Walk
+import Path.IO (walkDirAccum)
 
 import Control.Monad.Except
 import Types
@@ -48,18 +48,17 @@ execS3Upload basedir scanId IPROpts{..} = do
   let s3cfg = Aws.defServiceConfig :: S3.S3Configuration Aws.NormalQuery
 
   mgr <- liftIO $ newManager tlsManagerSettings
-  -- walk $ \_ _ files ->
-  case parseRelFile "epub/content.opf" of
-    Nothing -> pure ()
-    Just fname -> runTrace $ do
-      let filePath = basedir </> fname
-      trace $ "abs filepath = " ++ fromAbsFile filePath
+  allFiles <- walkDirAccum Nothing (\_ _ files -> pure files) basedir
+  sequence $ map (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
+  pure ()
 
-      case stripProperPrefix basedir filePath of
-        Nothing -> pure ()
-        Just relPath -> do
-          let key = scanId <> "/" <> (T.pack $ fromRelFile relPath)
-          uploadFileToS3 cfg s3cfg mgr filePath key
+uploadAbsFilePath :: (MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs Dir -> Text -> Path Abs File -> m ()
+uploadAbsFilePath    cfg s3cfg mgr basedir scanId filepath =
+  case stripProperPrefix basedir filepath of
+    Nothing -> pure ()
+    Just relPath -> do
+      let key = scanId <> "/" <> (T.pack $ fromRelFile relPath)
+      uploadFileToS3 cfg s3cfg mgr filepath key
 
 uploadFileToS3 :: (MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs File -> Text -> m ()
 uploadFileToS3 cfg s3cfg mgr filePath key = do
