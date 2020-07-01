@@ -11,6 +11,7 @@ import System.Posix.Files
 import Path.IO (walkDirAccum)
 import Control.Monad.Except
 import qualified Data.ByteString as S
+import Control.Concurrent.Async (mapConcurrently)
 
 import System.IO
 import Control.Applicative
@@ -35,10 +36,10 @@ execS3Upload basedir scanId IPROpts{..} = do
 
   mgr <- liftIO $ newManager tlsManagerSettings
   allFiles <- walkDirAccum Nothing (\_ _ files -> pure files) basedir
-  _ <- sequence $ map (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
+  _ <- liftIO $ mapConcurrently (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
   pure ()
 
-uploadAbsFilePath :: (MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs Dir -> Text -> Path Abs File -> m ()
+uploadAbsFilePath :: Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs Dir -> Text -> Path Abs File -> IO ()
 uploadAbsFilePath    cfg s3cfg mgr basedir scanId filepath =
   case stripProperPrefix basedir filepath of
     Nothing -> pure ()
