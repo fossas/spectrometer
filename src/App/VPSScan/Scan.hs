@@ -64,7 +64,7 @@ vpsScan basedir ScanCmdOpts{..} = do
       case vpsIpr of
         Just _ -> do
           trace "[S3] Uploading files to S3 for first-party-license review"
-          s3Result <- liftIO $ runIt $ runS3Upload basedir scanId vpsOpts
+          s3Result <- runDiagnostics $ runTrace $ runS3Upload basedir scanId vpsOpts
           case s3Result of
             (Right _) -> trace "[S3] S3 upload complete"
             (Left s3Failure) -> do
