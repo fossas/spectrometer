@@ -5,13 +5,15 @@ where
 
 import qualified Aws
 import qualified Aws.S3 as S3
-import           Control.Monad.Trans.Resource
-import           Network.HTTP.Conduit (newManager, Manager, tlsManagerSettings, RequestBody(..))
+import Control.Monad.Trans.Resource
+import Network.HTTP.Conduit (newManager, Manager, tlsManagerSettings, RequestBody(..))
 import System.Posix.Files
-import Path.IO (walkDirAccum)
+import Path.IO (listDirRecur, isSymlink)
 import Control.Monad.Except
 import qualified Data.ByteString as S
 import Control.Concurrent.Async (mapConcurrently)
+import qualified Control.Concurrent.MSem as MS
+import qualified Data.Traversable as TR
 
 import System.IO
 import Control.Applicative
@@ -29,15 +31,28 @@ instance ToDiagnostic S3UploadError where
   renderDiagnostic = \case
     ErrorRunningS3Upload err -> "Error while uploading to S3: " <> pretty err
 
-execS3Upload :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> Text -> IPROpts -> m ()
+execS3Upload :: (Has Diagnostics sig m, MonadIO m, Has Trace sig m) => Path Abs Dir -> Text -> IPROpts -> m ()
 execS3Upload basedir scanId IPROpts{..} = do
   cfg <- Aws.baseConfiguration
   let s3cfg = Aws.defServiceConfig :: S3.S3Configuration Aws.NormalQuery
 
   mgr <- liftIO $ newManager tlsManagerSettings
-  allFiles <- walkDirAccum Nothing (\_ _ files -> pure files) basedir
-  _ <- liftIO $ mapConcurrently (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
+  trace "[S3] Finding files to upload"
+  -- get a list of all of the files in a directory, but don't recurse down symlinked dirs
+  (_, allFilesAndSymlinks) <- listDirRecur basedir
+  -- listDirRecur returns symlinked files, so get rid of them before uploading
+  allFiles <- filterM (liftM not . isSymlink) allFilesAndSymlinks
+  trace $ "[S3] " ++ (show $ length allFiles) ++ " files found. Starting upload to S3"
+  -- trace $ unlines $ map show allFiles
+  _ <- liftIO $ mapPool 100 (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
   pure ()
+
+-- from https://stackoverflow.com/questions/18896103/can-haskells-control-concurrent-async-mapconcurrently-have-a-limit
+-- execute a function on all of the elements of a list, running maxThreads threads concurrently
+mapPool :: TR.Traversable t => Int -> (a -> IO b) -> t a -> IO (t b)
+mapPool maxThreads f xs = do
+    sem <- MS.new maxThreads
+    mapConcurrently (MS.with sem . f) xs
 
 uploadAbsFilePath :: Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs Dir -> Text -> Path Abs File -> IO ()
 uploadAbsFilePath    cfg s3cfg mgr basedir scanId filepath =
