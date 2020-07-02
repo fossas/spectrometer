@@ -33,7 +33,7 @@ data IPROpts = IPROpts
   { iprCmdPath :: String
   , nomosCmdPath :: String
   , pathfinderCmdPath :: String
-  , s3Url :: String
+  , s3Bucket :: String
   }
   deriving (Eq, Ord, Show)
 

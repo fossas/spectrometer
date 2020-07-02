@@ -55,12 +55,12 @@ runIPROpts = RunIPR.IPROpts
                   <$> iprCmdPathOpt
                   <*> nomosCmdPathOpt
                   <*> pathfinderCmdPathOpt
-                  <*> s3Url
+                  <*> s3Bucket
                 where
                     iprCmdPathOpt =  strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable")
                     nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
-                    s3Url = strOption (long "s3-url" <> metavar "STRING" <> help "URL for bucket to upload first-party scan files on S3 or S3 equivalent. E.g. s3://fossa-ipr-results")
+                    s3Bucket = strOption (long "s3-bucket" <> metavar "STRING" <> help "Bucket to upload first-party scan files on S3 or S3 equivalent")
 
 -- org IDs are ints. project and revision IDs are strings
 syOpts :: Parser ScotlandYardOpts
@@ -78,7 +78,7 @@ scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan
   scanOptsParser = ScanCmdOpts
                    <$> basedirOpt
                    <*> vpsOpts
-                   <*> switch (long "just-upload-to-s2")
+                   <*> switch (long "just-upload-to-s3")
 
 ninjaGraphCommand :: Mod CommandFields (IO ())
 ninjaGraphCommand = command "ninja-graph" (info (ninjaGraphMain <$> ninjaGraphOptsParser) (progDesc "Get a dependency graph for a ninja build"))

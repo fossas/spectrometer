@@ -43,7 +43,7 @@ execS3Upload basedir scanId IPROpts{..} = do
   -- listDirRecur returns symlinked files, which we don't want, so get rid of them before uploading
   allFiles <- filterM (liftM not . isSymlink) allFilesAndSymlinks
   trace $ "[S3] " ++ (show $ length allFiles) ++ " files found. Starting upload to S3"
-  _ <- liftIO $ mapPool 100 (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
+  _ <- liftIO $ mapPool 100 (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
   pure ()
 
 -- from https://stackoverflow.com/questions/18896103/can-haskells-control-concurrent-async-mapconcurrently-have-a-limit
@@ -53,23 +53,23 @@ mapPool maxThreads f xs = do
     sem <- MS.new maxThreads
     mapConcurrently (MS.with sem . f) xs
 
-uploadAbsFilePath :: Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs Dir -> Text -> Path Abs File -> IO ()
-uploadAbsFilePath    cfg s3cfg mgr basedir scanId filepath =
+uploadAbsFilePath :: Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> IO ()
+uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
   case stripProperPrefix basedir filepath of
     Nothing -> pure ()
     Just relPath -> do
       let key = scanId <> "/" <> (T.pack $ fromRelFile relPath)
-      uploadFileToS3 cfg s3cfg mgr filepath key
+      uploadFileToS3 cfg s3cfg mgr bucketName filepath key
 
-uploadFileToS3 :: (MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Path Abs File -> Text -> m ()
-uploadFileToS3 cfg s3cfg mgr filePath key = do
+uploadFileToS3 :: (MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs File -> Text -> m ()
+uploadFileToS3 cfg s3cfg mgr bucketName filePath key = do
   _ <- liftIO $ runResourceT $ do
     -- streams large file content, without buffering more than 10k in memory
     let streamer sink = withFile (fromAbsFile filePath) ReadMode $ \h -> sink $ S.hGet h 10240
     size <- liftIO $ (fromIntegral . fileSize <$> getFileStatus (fromAbsFile filePath) :: IO Integer)
     let body = RequestBodyStream (fromInteger size) streamer
     rsp <- Aws.pureAws cfg s3cfg mgr $
-        (S3.putObject "scott-s3-upload-test" key body)
+        (S3.putObject bucketName key body)
       { S3.poMetadata =
         [ ("mediatype", "texts")
         , ("meta-description", "test Internet Archive item made via haskell aws library")
