@@ -38,12 +38,11 @@ execS3Upload basedir scanId IPROpts{..} = do
 
   mgr <- liftIO $ newManager tlsManagerSettings
   trace "[S3] Finding files to upload"
-  -- get a list of all of the files in a directory, but don't recurse down symlinked dirs
+  -- listDirRecur returns a list of all of the files in a directory recursively, but doesn't recurse down symlinked dirs
   (_, allFilesAndSymlinks) <- listDirRecur basedir
-  -- listDirRecur returns symlinked files, so get rid of them before uploading
+  -- listDirRecur returns symlinked files, which we don't want, so get rid of them before uploading
   allFiles <- filterM (liftM not . isSymlink) allFilesAndSymlinks
   trace $ "[S3] " ++ (show $ length allFiles) ++ " files found. Starting upload to S3"
-  -- trace $ unlines $ map show allFiles
   _ <- liftIO $ mapPool 100 (uploadAbsFilePath cfg s3cfg mgr basedir scanId) allFiles
   pure ()
 
