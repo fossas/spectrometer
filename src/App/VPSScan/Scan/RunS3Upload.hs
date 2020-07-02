@@ -11,9 +11,8 @@ import System.Posix.Files
 import Path.IO (listDirRecur, isSymlink)
 import Control.Monad.Except
 import qualified Data.ByteString as S
-import Control.Concurrent.Async (mapConcurrently)
-import qualified Control.Concurrent.MSem as MS
-import qualified Data.Traversable as TR
+import Control.Carrier.TaskPool
+import Effect.Logger
 import GHC.Conc.Sync (getNumCapabilities)
 
 import System.IO
@@ -22,7 +21,6 @@ import qualified Data.Text as T
 import Control.Carrier.Trace.Printing
 import App.VPSScan.Types
 import Control.Effect.Diagnostics
-import Data.Text.Prettyprint.Doc (pretty)
 import Prologue
 
 data S3UploadError = ErrorRunningS3Upload Text
@@ -47,17 +45,22 @@ execS3Upload basedir scanId IPROpts{..} = do
 
   capabilities <- liftIO getNumCapabilities
   trace $ "[S3] Uploading to S3 in " ++ show capabilities ++ " threads"
-  _ <- liftIO $ mapPool capabilities (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
+
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
   pure ()
 
--- from https://stackoverflow.com/questions/18896103/can-haskells-control-concurrent-async-mapconcurrently-have-a-limit
--- execute a function on all of the elements of a list, running maxThreads threads concurrently
-mapPool :: TR.Traversable t => Int -> (a -> IO b) -> t a -> IO (t b)
-mapPool maxThreads f xs = do
-    sem <- MS.new maxThreads
-    mapConcurrently (MS.with sem . f) xs
+updateProgress :: Has Logger sig m => Progress -> m ()
+updateProgress Progress{..} =
+  logSticky ( "[ "
+            <> annotate (color Cyan) (pretty pQueued)
+            <> " Waiting / "
+            <> annotate (color Yellow) (pretty pRunning)
+            <> " Running / "
+            <> annotate (color Green) (pretty pCompleted)
+            <> " Completed"
+            <> " ]" )
 
-uploadAbsFilePath :: Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> IO ()
+uploadAbsFilePath :: (Has TaskPool sig m, MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> m ()
 uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
   case stripProperPrefix basedir filepath of
     Nothing -> pure ()
@@ -65,7 +68,7 @@ uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
       let key = scanId <> "/" <> (T.pack $ fromRelFile relPath)
       uploadFileToS3 cfg s3cfg mgr bucketName filepath key
 
-uploadFileToS3 :: (MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs File -> Text -> m ()
+uploadFileToS3 :: (Has TaskPool sig m, MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs File -> Text -> m ()
 uploadFileToS3 cfg s3cfg mgr bucketName filePath key = do
   _ <- liftIO $ runResourceT $ do
     -- streams large file content, without buffering more than 10k in memory
