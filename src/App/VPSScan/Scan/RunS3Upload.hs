@@ -14,6 +14,7 @@ import qualified Data.ByteString as S
 import Control.Concurrent.Async (mapConcurrently)
 import qualified Control.Concurrent.MSem as MS
 import qualified Data.Traversable as TR
+import GHC.Conc.Sync (getNumCapabilities)
 
 import System.IO
 import Control.Applicative
@@ -43,7 +44,10 @@ execS3Upload basedir scanId IPROpts{..} = do
   -- listDirRecur returns symlinked files, which we don't want, so get rid of them before uploading
   allFiles <- filterM (liftM not . isSymlink) allFilesAndSymlinks
   trace $ "[S3] " ++ (show $ length allFiles) ++ " files found. Starting upload to S3"
-  _ <- liftIO $ mapPool 100 (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
+
+  capabilities <- liftIO getNumCapabilities
+  trace $ "[S3] Uploading to S3 in " ++ show capabilities ++ " threads"
+  _ <- liftIO $ mapPool capabilities (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
   pure ()
 
 -- from https://stackoverflow.com/questions/18896103/can-haskells-control-concurrent-async-mapconcurrently-have-a-limit
