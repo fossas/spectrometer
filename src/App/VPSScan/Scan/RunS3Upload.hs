@@ -43,7 +43,7 @@ execS3Upload basedir scanId IPROpts{..} = do
   trace $ "[S3] " ++ (show $ length allFiles) ++ " files found. Starting upload to S3"
 
   capabilities <- liftIO getNumCapabilities
-  trace $ "[S3] Uploading to S3 in " ++ show capabilities ++ " threads"
+  trace $ "[S3] Uploading to S3 at " ++ s3Bucket ++ "/" ++ T.unpack scanId ++ " in " ++ show capabilities ++ " threads"
 
   _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
   pure ()
