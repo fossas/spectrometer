@@ -6,8 +6,6 @@ where
 import qualified Aws
 import qualified Aws.S3 as S3
 import Control.Monad.Trans.Resource
-import Control.Effect.Finally
-import Control.Carrier.Finally
 import Control.Effect.Lift
 import Network.HTTP.Conduit (newManager, Manager, tlsManagerSettings, RequestBody(..))
 import Path.IO (listDirRecur, isSymlink)
@@ -48,7 +46,7 @@ execS3Upload basedir scanId IPROpts{..} = do
   capabilities <- liftIO getNumCapabilities
   trace $ "[S3] Uploading to S3 at " ++ s3Bucket ++ "/" ++ T.unpack scanId ++ " in " ++ show capabilities ++ " threads"
 
-  _ <- liftIO $ runFinally $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
   pure ()
 
 updateProgress :: Has Logger sig m => Progress -> m ()
@@ -62,7 +60,7 @@ updateProgress Progress{..} =
             <> " Completed"
             <> " ]" )
 
-uploadAbsFilePath :: (Has (Lift IO) sig m, Has TaskPool sig m, MonadIO m, Has Finally sig m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> m ()
+uploadAbsFilePath :: (Has (Lift IO) sig m, MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> m ()
 uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
   case stripProperPrefix basedir filepath of
     Nothing -> pure ()
