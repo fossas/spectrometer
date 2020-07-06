@@ -104,7 +104,7 @@ runS3Upload ::
   , Has Trace sig m
   , MonadIO m
   ) => Path Abs Dir -> Text -> VPSOpts -> m ()
-runS3Upload basedir scanId VPSOpts{..} = do
+runS3Upload basedir scanId VPSOpts{..} =
   case vpsIpr of
     Just iprOpts ->
       execS3Upload basedir scanId iprOpts

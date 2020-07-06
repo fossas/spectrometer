@@ -40,8 +40,8 @@ execS3Upload basedir scanId IPROpts{..} = do
   -- listDirRecur returns a list of all of the files in a directory recursively, but doesn't recurse down symlinked dirs
   (_, allFilesAndSymlinks) <- listDirRecur basedir
   -- listDirRecur returns symlinked files, which we don't want, so get rid of them before uploading
-  allFiles <- filterM (liftM not . isSymlink) allFilesAndSymlinks
-  trace $ "[S3] " ++ (show $ length allFiles) ++ " files found. Starting upload to S3"
+  allFiles <- filterM (fmap not . isSymlink) allFilesAndSymlinks
+  trace $ "[S3] " ++ show (length allFiles) ++ " files found. Starting upload to S3"
 
   capabilities <- liftIO getNumCapabilities
   trace $ "[S3] Uploading to S3 at " ++ s3Bucket ++ "/" ++ T.unpack scanId ++ " in " ++ show capabilities ++ " threads"
@@ -65,13 +65,13 @@ uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
   case stripProperPrefix basedir filepath of
     Nothing -> pure ()
     Just relPath -> do
-      let key = scanId <> "/" <> (T.pack $ fromRelFile relPath)
+      let key = scanId <> "/" <> T.pack (fromRelFile relPath)
       _ <- liftIO $ runResourceT $ do
         -- streams large file content, without buffering more than 10k in memory
         let streamer sink = withFile (fromAbsFile filepath) ReadMode $ \h -> sink $ S.hGet h 10240
         size <- liftIO $ withFile (fromAbsFile filepath) ReadMode hFileSize
         let body = RequestBodyStream (fromInteger size) streamer
-        rsp <- Aws.pureAws cfg s3cfg mgr $
+        Aws.pureAws cfg s3cfg mgr $
             (S3.putObject bucketName key body)
           { S3.poMetadata =
             [ ("mediatype", "texts")
@@ -81,5 +81,4 @@ uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
           -- and uses the above metadata as the bucket's metadata.
           , S3.poAutoMakeBucket = True
           }
-        pure rsp
       pure ()
