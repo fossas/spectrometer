@@ -6,6 +6,9 @@ where
 import qualified Aws
 import qualified Aws.S3 as S3
 import Control.Monad.Trans.Resource
+import Control.Effect.Finally
+import Control.Carrier.Finally
+import Control.Effect.Lift
 import Network.HTTP.Conduit (newManager, Manager, tlsManagerSettings, RequestBody(..))
 import Path.IO (listDirRecur, isSymlink)
 import Control.Monad.Except
@@ -45,7 +48,7 @@ execS3Upload basedir scanId IPROpts{..} = do
   capabilities <- liftIO getNumCapabilities
   trace $ "[S3] Uploading to S3 at " ++ s3Bucket ++ "/" ++ T.unpack scanId ++ " in " ++ show capabilities ++ " threads"
 
-  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
+  _ <- liftIO $ runFinally $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
   pure ()
 
 updateProgress :: Has Logger sig m => Progress -> m ()
@@ -59,30 +62,26 @@ updateProgress Progress{..} =
             <> " Completed"
             <> " ]" )
 
-uploadAbsFilePath :: (Has TaskPool sig m, MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> m ()
+uploadAbsFilePath :: (Has (Lift IO) sig m, Has TaskPool sig m, MonadIO m, Has Finally sig m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> m ()
 uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
   case stripProperPrefix basedir filepath of
     Nothing -> pure ()
     Just relPath -> do
       let key = scanId <> "/" <> (T.pack $ fromRelFile relPath)
-      uploadFileToS3 cfg s3cfg mgr bucketName filepath key
-
-uploadFileToS3 :: (Has TaskPool sig m, MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs File -> Text -> m ()
-uploadFileToS3 cfg s3cfg mgr bucketName filePath key = do
-  _ <- liftIO $ runResourceT $ do
-    -- streams large file content, without buffering more than 10k in memory
-    let streamer sink = withFile (fromAbsFile filePath) ReadMode $ \h -> sink $ S.hGet h 10240
-    size <- liftIO $ withFile (fromAbsFile filePath) ReadMode hFileSize
-    let body = RequestBodyStream (fromInteger size) streamer
-    rsp <- Aws.pureAws cfg s3cfg mgr $
-        (S3.putObject bucketName key body)
-      { S3.poMetadata =
-        [ ("mediatype", "texts")
-        , ("meta-description", "test Internet Archive item made via haskell aws library")
-        ]
-      -- Automatically creates bucket on IA if it does not exist,
-      -- and uses the above metadata as the bucket's metadata.
-      , S3.poAutoMakeBucket = True
-      }
-    pure rsp
-  pure ()
+      _ <- liftIO $ runResourceT $ do
+        -- streams large file content, without buffering more than 10k in memory
+        let streamer sink = withFile (fromAbsFile filepath) ReadMode $ \h -> sink $ S.hGet h 10240
+        size <- liftIO $ withFile (fromAbsFile filepath) ReadMode hFileSize
+        let body = RequestBodyStream (fromInteger size) streamer
+        rsp <- Aws.pureAws cfg s3cfg mgr $
+            (S3.putObject bucketName key body)
+          { S3.poMetadata =
+            [ ("mediatype", "texts")
+            , ("meta-description", "test Internet Archive item made via haskell aws library")
+            ]
+          -- Automatically creates bucket on IA if it does not exist,
+          -- and uses the above metadata as the bucket's metadata.
+          , S3.poAutoMakeBucket = True
+          }
+        pure rsp
+      pure ()
