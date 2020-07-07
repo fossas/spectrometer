@@ -11,15 +11,22 @@ import qualified Control.Carrier.Diagnostics as Diag
 import Control.Carrier.Output.IO
 import Control.Concurrent
 
+import App.Fossa.CliTypes
+import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..), Contributors(..), uploadContributors)
 import App.Fossa.Analyze.Project (Project, mkProjects)
-import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..))
 import App.Fossa.ProjectInference (mergeOverride, inferProject)
 import App.Types
 import Control.Carrier.Finally
 import Control.Carrier.TaskPool
+import Data.ByteString.Lazy (toStrict)
+import qualified Data.Map as M
+import qualified Data.Text as T
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+import Data.Time
+import Data.Time.Format.ISO8601 (iso8601Show)
+import Effect.Exec
 import Effect.Logger
 import Network.HTTP.Types (urlEncode)
 import qualified Srclib.Converter as Srclib
@@ -119,6 +126,60 @@ analyze basedir destination override unpackArchives = runFinally $ do
             , "============================================================"
             ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors basedir baseurl apiKey $ uploadLocator resp
+          case contribResult of
+            Left failure -> logDebug (Diag.renderFailureBundle failure)
+            Right _ -> pure ()
+
+tryUploadContributors ::
+  ( Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , MonadIO m
+  ) => Path x Dir
+  -> URI
+  -> ApiKey
+  -> Text -- ^ Locator
+  -> m ()
+tryUploadContributors baseDir baseUrl apiKey locator = do
+  contributors <- fetchGitContributors baseDir
+  uploadContributors baseUrl apiKey locator contributors
+
+
+fetchGitContributors :: 
+  ( Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , MonadIO m
+  ) => Path x Dir -> m Contributors
+fetchGitContributors basedir = do
+  now <- liftIO getCurrentTime
+  rawContrib <- execThrow basedir $ gitLogCmd now
+  textContrib <- Diag.fromEitherShow . TE.decodeUtf8' $ toStrict rawContrib
+  pure . Contributors . M.map (T.pack . iso8601Show) $ foldr updateMap M.empty $ T.lines textContrib
+  where
+    updateMap :: Text -> Map Text Day -> Map Text Day
+    updateMap entry oldMap = case readLine entry of
+      Nothing -> oldMap
+      Just (email, date) -> 
+        if M.findWithDefault minimumDay email oldMap < date
+          then M.insert email date oldMap
+          else oldMap
+
+    readLine :: Text -> Maybe (Text, Day)
+    readLine entry = do
+      let (email, textDate) = splitOnceOn "|" entry
+      date <- parseTimeM True defaultTimeLocale "%Y-%-m-%-d" $ T.unpack textDate
+      Just (email, date)
+
+    minimumDay :: Day
+    minimumDay = ModifiedJulianDay 0
+
+splitOnceOn :: Text -> Text -> (Text, Text)
+splitOnceOn needle haystack = (head, strippedTail)
+  where
+    len = T.length needle
+    (head, tail) = T.breakOn needle haystack
+    strippedTail = T.drop len tail
 
 fossaProjectUrl :: URI -> Text -> Text -> Text
 fossaProjectUrl baseUrl rawLocator branch = URI.render baseUrl <> "projects/" <> encodedProject <> "/refs/branch/" <> branch <> "/" <> encodedRevision
