@@ -37,48 +37,48 @@ scanMain opts@ScanCmdOpts{..} = do
 ----- main logic
 
 vpsScan ::
-  ( Has Diagnostics sig m
-  , Has Trace sig m
+  (Has Trace sig m
   , MonadIO m
+  , Has Diagnostics sig m
   ) => Path Abs Dir -> ScanCmdOpts -> m ()
-vpsScan basedir ScanCmdOpts{..} = do
+vpsScan basedir opts@ScanCmdOpts{..} = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
-  response <- context "creating scan ID" $ createScotlandYardScan vpsOpts
+  response <- createScotlandYardScan vpsOpts
   let scanId = responseScanId response
   trace $ "Running scan on directory " ++ show basedir
   trace $ "Scan ID from Scotland yard is " ++ show scanId
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
+  _ <- runScans basedir scanId opts
+  trace "[All] All scans complete"
+
+runScans :: (Has Diagnostics sig m, Has Trace sig m, MonadIO m) => Path Abs Dir -> Text -> ScanCmdOpts -> m ()
+runScans basedir scanId ScanCmdOpts{..} = do
+  let vpsOpts@VPSOpts{..} = scanVpsOpts
   case vpsIpr of
     Just _ -> trace "[IPR] Starting IPR scan"
     Nothing -> trace "[IPR] IPR scan disabled"
 
-  let runIt = runDiagnostics . runExecIO . runTrace
+  let runIt = runExecIO . runTrace . runDiagnostics
   (iprResult, sherlockResult) <- liftIO $ concurrently
-                (runIt $ runIPRScan basedir scanId vpsOpts)
-                (runIt $ runSherlockScan basedir scanId vpsOpts)
+         (runIt $ runIPRScan basedir scanId vpsOpts)
+         (runIt $ runSherlockScan basedir scanId vpsOpts)
+  trace "[All] Scans complete"
   case (iprResult, sherlockResult) of
-    (Right _, Right _) -> do
-      trace "[All] Scans complete"
+    (Left iprFailure, _) -> do
+      liftIO $ print $ renderFailureBundle iprFailure
+      liftIO exitFailure
+    (_, Left sherlockFailure) -> do
+      liftIO $ print $ renderFailureBundle sherlockFailure
+      liftIO exitFailure
+    (_, _) ->
       case vpsIpr of
         Just _ -> do
           trace "[S3] Uploading files to S3 for first-party-license review"
-          s3Result <- runDiagnostics $ runTrace $ runS3Upload basedir scanId vpsOpts
-          case s3Result of
-            (Right _) -> trace "[S3] S3 upload complete"
-            (Left s3Failure) -> do
-              trace "[S3] Error when uploading to S3"
-              trace (show $ renderFailureBundle s3Failure)
+          _ <- runDiagnostics $ runTrace $ runS3Upload basedir scanId vpsOpts
+          trace "[S3] S3 upload complete"
         Nothing ->
           trace "[S3] IPR scan disabled. Skipping S3 upload"
-    (Left iprFailure, _) -> do
-      trace "[IPR] Failed to scan"
-      trace (show $ renderFailureBundle iprFailure)
-      liftIO exitFailure
-    (_, Left sherlockFailure) -> do
-      trace "[Sherlock] Failed to scan"
-      trace (show $ renderFailureBundle sherlockFailure)
-      liftIO exitFailure
 
 runSherlockScan ::
   ( Has Exec sig m
