@@ -19,6 +19,7 @@ import App.Types
 import Control.Carrier.Finally
 import Control.Carrier.TaskPool
 import Data.ByteString.Lazy (toStrict)
+import Data.Maybe (mapMaybe)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.Lazy.Encoding (decodeUtf8)
@@ -155,24 +156,17 @@ fetchGitContributors basedir = do
   now <- liftIO getCurrentTime
   rawContrib <- execThrow basedir $ gitLogCmd now
   textContrib <- Diag.fromEitherShow . TE.decodeUtf8' $ toStrict rawContrib
-  pure . Contributors . M.map (T.pack . iso8601Show) $ foldr updateMap M.empty $ T.lines textContrib
+  pure . Contributors
+    . M.map (T.pack . iso8601Show)
+    . M.fromListWith max
+    . mapMaybe readLine
+    $ T.lines textContrib
   where
-    updateMap :: Text -> Map Text Day -> Map Text Day
-    updateMap entry oldMap = case readLine entry of
-      Nothing -> oldMap
-      Just (email, date) -> 
-        if M.findWithDefault minimumDay email oldMap < date
-          then M.insert email date oldMap
-          else oldMap
-
     readLine :: Text -> Maybe (Text, Day)
     readLine entry = do
       let (email, textDate) = splitOnceOn "|" entry
       date <- parseTimeM True defaultTimeLocale "%Y-%-m-%-d" $ T.unpack textDate
       Just (email, date)
-
-    minimumDay :: Day
-    minimumDay = ModifiedJulianDay 0
 
 splitOnceOn :: Text -> Text -> (Text, Text)
 splitOnceOn needle haystack = (head, strippedTail)
