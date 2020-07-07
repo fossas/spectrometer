@@ -78,7 +78,6 @@ scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan
   scanOptsParser = ScanCmdOpts
                    <$> basedirOpt
                    <*> vpsOpts
-                   <*> switch (long "just-upload-to-s3")
 
 ninjaGraphCommand :: Mod CommandFields (IO ())
 ninjaGraphCommand = command "ninja-graph" (info (ninjaGraphMain <$> ninjaGraphOptsParser) (progDesc "Get a dependency graph for a ninja build"))
