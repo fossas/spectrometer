@@ -56,11 +56,13 @@ runIPROpts = RunIPR.IPROpts
                   <*> nomosCmdPathOpt
                   <*> pathfinderCmdPathOpt
                   <*> s3Bucket
+                  <*> s3Endpoint
                 where
                     iprCmdPathOpt =  strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable")
                     nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
                     s3Bucket = strOption (long "s3-bucket" <> metavar "STRING" <> help "Bucket to upload first-party scan files on S3 or S3 equivalent")
+                    s3Endpoint = optional $ uriOption (long "s3-endpoint" <> metavar "STRING" <> help "optional URL for S3 service. If not provided, will default to https://s3.amazonaws.com. You can specify an S3 region using a URL like https://s3.us-west-2.amazonaws.com, or a Minio service iwth a URL like http://localhost:9000.")
 
 -- org IDs are ints. project and revision IDs are strings
 syOpts :: Parser ScotlandYardOpts

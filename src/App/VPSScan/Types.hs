@@ -34,6 +34,7 @@ data IPROpts = IPROpts
   , nomosCmdPath :: String
   , pathfinderCmdPath :: String
   , s3Bucket :: String
+  , s3Endpoint :: Maybe URI
   }
   deriving (Eq, Ord, Show)
 

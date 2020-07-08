@@ -5,6 +5,7 @@ where
 
 import qualified Aws
 import qualified Aws.S3 as S3
+import qualified Aws.Core as AwsCore
 import Control.Monad.Trans.Resource
 import Control.Effect.Lift
 import Network.HTTP.Conduit (newManager, Manager, tlsManagerSettings, RequestBody(..))
@@ -14,6 +15,8 @@ import qualified Data.ByteString as S
 import Control.Carrier.TaskPool
 import Effect.Logger
 import GHC.Conc.Sync (getNumCapabilities)
+import Text.URI
+import qualified Data.Text.Encoding as TE
 
 import System.IO
 import Control.Applicative
@@ -30,10 +33,43 @@ instance ToDiagnostic S3UploadError where
   renderDiagnostic = \case
     ErrorRunningS3Upload err -> "Error while uploading to S3: " <> pretty err
 
+-- S3.S3Configuration is defined here:
+-- https://github.com/aristidb/aws/blob/9ccfce8c50723e1b7e02ba59a9d38227e938ac0a/Aws/S3/Core.hs#L69
+s3config :: IPROpts -> S3.S3Configuration Aws.NormalQuery
+s3config IPROpts{..} =
+  case s3Endpoint of
+    Nothing -> baseConfig
+    Just endpoint ->
+      case uriAuthority endpoint of
+        Left _ -> baseConfig
+        Right Authority{..} -> do
+          baseConfig { S3.s3RequestStyle = requestStyle, S3.s3Port = port, S3.s3Endpoint = TE.encodeUtf8 host , S3.s3Protocol = protocol }
+          where
+            host = unRText authHost
+            protocol = case uriScheme endpoint of
+              Nothing -> AwsCore.HTTP
+              Just s ->
+                if (T.toLower $ unRText s) == "https" then
+                  AwsCore.HTTPS
+                else
+                  AwsCore.HTTP
+            port = case authPort of
+              Nothing -> case protocol of
+                AwsCore.HTTPS -> 443
+                AwsCore.HTTP -> 80
+              Just p -> fromEnum p
+            requestStyle = case host of
+              "s3.amazonaws.com" -> S3.BucketStyle
+              _ -> S3.PathStyle
+
+
+    where
+      baseConfig = Aws.defServiceConfig
+
 execS3Upload :: (Has Diagnostics sig m, MonadIO m, Has Trace sig m) => Path Abs Dir -> Text -> IPROpts -> m ()
-execS3Upload basedir scanId IPROpts{..} = do
+execS3Upload basedir scanId opts@IPROpts{..} = do
   cfg <- Aws.baseConfiguration
-  let s3cfg = Aws.defServiceConfig :: S3.S3Configuration Aws.NormalQuery
+  let s3cfg = s3config opts
 
   mgr <- liftIO $ newManager tlsManagerSettings
   trace "[S3] Finding files to upload"
