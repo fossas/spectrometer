@@ -71,14 +71,5 @@ uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
         let streamer sink = withFile (fromAbsFile filepath) ReadMode $ \h -> sink $ S.hGet h 10240
         size <- liftIO $ withFile (fromAbsFile filepath) ReadMode hFileSize
         let body = RequestBodyStream (fromInteger size) streamer
-        Aws.pureAws cfg s3cfg mgr $
-            (S3.putObject bucketName key body)
-          { S3.poMetadata =
-            [ ("mediatype", "texts")
-            , ("meta-description", "test Internet Archive item made via haskell aws library")
-            ]
-          -- Automatically creates bucket on IA if it does not exist,
-          -- and uses the above metadata as the bucket's metadata.
-          , S3.poAutoMakeBucket = True
-          }
+        Aws.pureAws cfg s3cfg mgr (S3.putObject bucketName key body)
       pure ()
