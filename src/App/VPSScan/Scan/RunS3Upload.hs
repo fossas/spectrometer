@@ -60,13 +60,13 @@ updateProgress Progress{..} =
             <> " Completed"
             <> " ]" )
 
-uploadAbsFilePath :: (Has (Lift IO) sig m, MonadIO m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> m ()
+uploadAbsFilePath :: (Has (Lift IO) sig m) => Aws.Configuration -> S3.S3Configuration Aws.NormalQuery -> Manager -> Text -> Path Abs Dir -> Text -> Path Abs File -> m ()
 uploadAbsFilePath    cfg s3cfg mgr bucketName basedir scanId filepath =
   case stripProperPrefix basedir filepath of
     Nothing -> pure ()
     Just relPath -> do
       let key = scanId <> "/" <> T.pack (fromRelFile relPath)
-      _ <- liftIO $ runResourceT $ do
+      _ <- sendIO $ runResourceT $ do
         -- streams large file content, without buffering more than 10k in memory
         let streamer sink = withFile (fromAbsFile filepath) ReadMode $ \h -> sink $ S.hGet h 10240
         size <- liftIO $ withFile (fromAbsFile filepath) ReadMode hFileSize
