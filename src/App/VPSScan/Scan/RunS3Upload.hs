@@ -61,8 +61,6 @@ s3config IPROpts{..} =
             requestStyle = case host of
               "s3.amazonaws.com" -> S3.BucketStyle
               _ -> S3.PathStyle
-
-
     where
       baseConfig = Aws.defServiceConfig
 
