@@ -42,8 +42,7 @@ vpsScan ::
   , Has Diagnostics sig m
   ) => Path Abs Dir -> ScanCmdOpts -> m ()
 vpsScan basedir opts@ScanCmdOpts{..} = do
-  let vpsOpts@VPSOpts{..} = scanVpsOpts
-  response <- createScotlandYardScan vpsOpts
+  response <- context "creating scan ID" $ createScotlandYardScan scanVpsOpts
   let scanId = responseScanId response
   trace $ "Running scan on directory " ++ show basedir
   trace $ "Scan ID from Scotland yard is " ++ show scanId
@@ -91,18 +90,6 @@ runSherlockScan basedir scanId vpsOpts = do
   execSherlock basedir scanId vpsOpts
   trace "[Sherlock] Sherlock scan complete"
 
-runS3Upload ::
-  ( Has Diagnostics sig m
-  , Has Trace sig m
-  , MonadIO m
-  ) => Path Abs Dir -> Text -> VPSOpts -> String -> m ()
-runS3Upload basedir scanId VPSOpts{..} bucket =
-  case vpsIpr of
-    Just iprOpts ->
-      execS3Upload basedir scanId iprOpts bucket
-    Nothing ->
-      trace "[S3] S3 upload not required. Skipping"
-
 runIPRScan ::
   ( Has Diagnostics sig m
   , Has Trace sig m
@@ -120,3 +107,15 @@ runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
       trace "[IPR] IPR scan complete"
     Nothing ->
       trace "[IPR] IPR Scan disabled"
+
+runS3Upload ::
+  ( Has Diagnostics sig m
+  , Has Trace sig m
+  , MonadIO m
+  ) => Path Abs Dir -> Text -> VPSOpts -> String -> m ()
+runS3Upload basedir scanId VPSOpts{..} bucket =
+  case vpsIpr of
+    Just iprOpts ->
+      execS3Upload basedir scanId iprOpts bucket
+    Nothing ->
+      trace "[S3] S3 upload not required. Skipping"
