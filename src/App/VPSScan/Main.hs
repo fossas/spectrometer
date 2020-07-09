@@ -47,9 +47,10 @@ runSherlockOpts = SherlockOpts
                     sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock")
                     sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock")
 
--- If all four of these options are provided, then we run an IPR scan
+-- If all three of --ipr, --nomossa and --pathfinder are provided, then we run an IPR scan
 -- If none of them are provided, then we skip the IPR scan
--- Providing just some of the arguments will result in an error
+-- Providing just one or two of --ipr, --nomossa or --pathfinder will result in an error
+-- If an IPR scan is run and --s3-bucket is provided, then we upload the scanned files to an S3 or S3 compatible (E.g. Minio) instance
 runIPROpts :: Parser RunIPR.IPROpts
 runIPROpts = RunIPR.IPROpts
                   <$> iprCmdPathOpt
@@ -64,7 +65,7 @@ runIPROpts = RunIPR.IPROpts
                     s3Bucket = optional $ strOption (long "s3-bucket" <> metavar "STRING" <> help "Bucket to upload first-party scan files on S3 or S3 equivalent")
                     s3Endpoint = optional $ uriOption (long "s3-endpoint" <> metavar "STRING" <> help "optional URL for S3 service. If not provided, will default to https://s3.amazonaws.com. You can specify an S3 region using a URL like https://s3.us-west-2.amazonaws.com, or a Minio service iwth a URL like http://localhost:9000.")
 
--- org IDs are ints. project and revision IDs are strings
+-- org IDs are ints. Project and revision IDs are strings
 syOpts :: Parser ScotlandYardOpts
 syOpts = ScotlandYardOpts
                      <$> scotlandYardUrlOpt
