@@ -66,8 +66,8 @@ s3config IPROpts{..} =
     where
       baseConfig = Aws.defServiceConfig
 
-execS3Upload :: (Has Diagnostics sig m, MonadIO m, Has Trace sig m) => Path Abs Dir -> Text -> IPROpts -> m ()
-execS3Upload basedir scanId opts@IPROpts{..} = do
+execS3Upload :: (Has Diagnostics sig m, MonadIO m, Has Trace sig m) => Path Abs Dir -> Text -> IPROpts -> String -> m ()
+execS3Upload basedir scanId opts@IPROpts{..} bucket = do
   cfg <- Aws.baseConfiguration
   let s3cfg = s3config opts
 
@@ -80,9 +80,9 @@ execS3Upload basedir scanId opts@IPROpts{..} = do
   trace $ "[S3] " ++ show (length allFiles) ++ " files found. Starting upload to S3"
 
   capabilities <- liftIO getNumCapabilities
-  trace $ "[S3] Uploading to S3 at " ++ s3Bucket ++ "/" ++ T.unpack scanId ++ " in " ++ show capabilities ++ " threads"
+  trace $ "[S3] Uploading to S3 at " ++ bucket ++ "/" ++ T.unpack scanId ++ " in " ++ show capabilities ++ " threads"
 
-  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadAbsFilePath cfg s3cfg mgr (T.pack s3Bucket) basedir scanId) allFiles
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadAbsFilePath cfg s3cfg mgr (T.pack bucket) basedir scanId) allFiles
   pure ()
 
 updateProgress :: Has Logger sig m => Progress -> m ()

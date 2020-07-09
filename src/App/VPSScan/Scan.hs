@@ -73,10 +73,12 @@ runScans basedir scanId ScanCmdOpts{..} = do
       liftIO exitFailure
     (_, _) ->
       case vpsIpr of
-        Just _ -> do
+        Just IPROpts { s3Bucket = Just bucket} -> do
           trace "[S3] Uploading files to S3 for first-party-license review"
-          _ <- runTrace $ runS3Upload basedir scanId vpsOpts
+          _ <- runTrace $ runS3Upload basedir scanId vpsOpts bucket
           trace "[S3] S3 upload complete"
+        Just _ -> do
+          trace "[S3] S3 bucket not provided. Skipping S3 upload"
         Nothing ->
           trace "[S3] IPR scan disabled. Skipping S3 upload"
 
@@ -93,11 +95,11 @@ runS3Upload ::
   ( Has Diagnostics sig m
   , Has Trace sig m
   , MonadIO m
-  ) => Path Abs Dir -> Text -> VPSOpts -> m ()
-runS3Upload basedir scanId VPSOpts{..} =
+  ) => Path Abs Dir -> Text -> VPSOpts -> String -> m ()
+runS3Upload basedir scanId VPSOpts{..} bucket =
   case vpsIpr of
     Just iprOpts ->
-      execS3Upload basedir scanId iprOpts
+      execS3Upload basedir scanId iprOpts bucket
     Nothing ->
       trace "[S3] S3 upload not required. Skipping"
 
