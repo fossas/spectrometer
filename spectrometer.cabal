@@ -79,7 +79,6 @@ common deps
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , req                          ^>=3.1.0
     , resourcet                    ^>=1.2.4.1
-    , SafeSemaphore                ^>=0.10.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , tar                          ^>=0.5.1.1
