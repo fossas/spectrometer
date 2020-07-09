@@ -76,7 +76,7 @@ runScans basedir scanId ScanCmdOpts{..} = do
           trace "[S3] Uploading files to S3 for first-party-license review"
           _ <- runTrace $ runS3Upload basedir scanId vpsOpts bucket
           trace "[S3] S3 upload complete"
-        Just _ -> do
+        Just _ ->
           trace "[S3] S3 bucket not provided. Skipping S3 upload"
         Nothing ->
           trace "[S3] IPR scan disabled. Skipping S3 upload"

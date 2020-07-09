@@ -42,14 +42,14 @@ s3config IPROpts{..} =
     Just endpoint ->
       case uriAuthority endpoint of
         Left _ -> baseConfig
-        Right Authority{..} -> do
+        Right Authority{..} ->
           baseConfig { S3.s3RequestStyle = requestStyle, S3.s3Port = port, S3.s3Endpoint = TE.encodeUtf8 host , S3.s3Protocol = protocol }
           where
             host = unRText authHost
             protocol = case uriScheme endpoint of
               Nothing -> AwsCore.HTTP
               Just s ->
-                if (T.toLower $ unRText s) == "https" then
+                if T.toLower (unRText s) == "https" then
                   AwsCore.HTTPS
                 else
                   AwsCore.HTTP
