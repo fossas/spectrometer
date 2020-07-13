@@ -2,17 +2,17 @@ module Discovery.Walk
   ( -- * Walking the filetree
     walk,
     WalkStep (..),
-    dirName,
     fileName,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Path
-import Prelude
 import Path.IO
+import Prelude
 
 data WalkStep
   = -- | Continue walking subdirectories
@@ -42,12 +42,12 @@ walk f = walkDir $ \dir subdirs files -> do
   step <- f dir subdirs files
   case step of
     WalkContinue -> pure $ WalkExclude []
-    WalkSkipSome dirs -> pure . WalkExclude . filter (not . (`elem` dirs) . dirName) $ subdirs
+    WalkSkipSome dirs ->
+      -- we normalize the passed in [Text] as relative directories for more reliable comparisons
+      let parsedDirs = mapMaybe (parseRelDir . T.unpack) dirs
+       in pure . WalkExclude . filter (not . (`elem` parsedDirs) . dirname) $ subdirs
     WalkSkipAll -> pure $ WalkExclude subdirs
     WalkStop -> pure WalkFinish
-
-dirName :: Path a Dir -> Text
-dirName = T.pack . toFilePath . dirname
 
 fileName :: Path a File -> String
 fileName = toFilePath . filename
