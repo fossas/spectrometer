@@ -74,7 +74,7 @@ data Exec m k where
   Exec :: Path x Dir -> Command -> Exec m (Either CmdFailure Stdout)
 
 data ExecErr
-  = -- | Command execution failed, usually from a non-zero exit. command, stderr
+  = -- | Command execution failed, usually from a non-zero exit
     CommandFailed CmdFailure
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
