@@ -55,9 +55,9 @@ data IPRError = NoFilesEntryInOutput
 instance ToDiagnostic IPRError where
   renderDiagnostic NoFilesEntryInOutput = "No \"Files\" entry in the IPR output"
 
+type FilterExpressions = String
 
-
-execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> String -> IPROpts -> m Value
+execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FilterExpressions -> IPROpts -> m Value
 execIPR basedir filterExpressions iprOpts = do
   value <- execJson basedir (iprCommand filterExpressions iprOpts)
   let maybeExtracted = extractNonEmptyFiles value
