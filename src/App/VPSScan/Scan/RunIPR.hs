@@ -13,13 +13,14 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
 import Effect.Exec
 import Data.Aeson
+import Data.Text
 import Path
 import Prelude
 
 data IPROpts = IPROpts
-  { iprCmdPath :: String,
-    nomosCmdPath :: String,
-    pathfinderCmdPath :: String
+  { iprCmdPath :: Text,
+    nomosCmdPath :: Text,
+    pathfinderCmdPath :: Text
   }
   deriving (Eq, Ord, Show)
 
