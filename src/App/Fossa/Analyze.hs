@@ -12,7 +12,6 @@ import Control.Carrier.Output.IO
 import Control.Concurrent
 
 import App.Fossa.Analyze.Project (Project, mkProjects)
-import App.Fossa.CliTypes
 import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..), uploadContributors)
 import App.Fossa.ProjectInference (mergeOverride, inferProject)
 import App.Types
@@ -123,7 +122,7 @@ analyze basedir destination override unpackArchives = runFinally $ do
             ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors basedir baseurl apiKey $ uploadLocator resp
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) baseurl apiKey $ uploadLocator resp
           case contribResult of
             Left failure -> logDebug (Diag.renderFailureBundle failure)
             Right _ -> pure ()
