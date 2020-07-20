@@ -36,6 +36,7 @@ data VPSOpts = VPSOpts
   , organizationID :: Int
   , projectID :: Text
   , revisionID :: Text
+  , filterExpressions :: String
   } deriving (Generic)
 
 data DepsTarget = DepsTarget

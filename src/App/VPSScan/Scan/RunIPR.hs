@@ -56,18 +56,19 @@ instance ToDiagnostic IPRError where
   renderDiagnostic NoFilesEntryInOutput = "No \"Files\" entry in the IPR output"
 
 
-execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> IPROpts -> m Value
-execIPR basedir iprOpts = do
-  value <- execJson basedir (iprCommand iprOpts)
+
+execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> String -> IPROpts -> m Value
+execIPR basedir filterExpressions iprOpts = do
+  value <- execJson basedir (iprCommand filterExpressions iprOpts)
   let maybeExtracted = extractNonEmptyFiles value
   case maybeExtracted of
     Nothing -> fatal NoFilesEntryInOutput
     Just extracted -> pure extracted
 
-iprCommand :: IPROpts -> Command
-iprCommand IPROpts {..} =
+iprCommand :: String -> IPROpts -> Command
+iprCommand filterExpressions IPROpts {..} =
   Command
     { cmdName = iprCmdPath,
-      cmdArgs = ["-target", ".", "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath],
+      cmdArgs = ["-target", ".", "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath, "-filter-expressions", filterExpressions],
       cmdAllowErr = Never
     }
