@@ -81,41 +81,7 @@ A non-exhaustive list of supported languages and managers can be found
 [here](docs/strategies.md).  This list is a work-in-progress, as some existing 
 strategies are not yet documented, but are implemented.
 
-## Contributing
-
-### Building
-
-Use [ghcup](https://gitlab.haskell.org/haskell/ghcup) to install the `cabal` cli tool and the ghc version we're using:
-
-```sh
-$ ghcup install-cabal
-$ ghcup install 8.8
-$ ghcup set 8.8
-```
-
-In the base directory, run `cabal build`
-
-### Running
-
-```sh
-$ cabal run fossa -- analyze -o path/to/basedir/
-```
-
-This will produce analysis results on stdout
-
-### Testing
-
-Configure the project to enable tests
-```sh
-cabal configure --enable-tests
-```
-
-Run the tests:
-```
-cabal test
-```
-
-### Issue Reporting
+## Issue Reporting
 
 Issues with the FOSSA CLI itself should be filed through the [Github issue's page](https://github.com/fossas/spectrometer/issues/new). However, if the issue you are seeing is related to the results you see on the FOSSA dashboard, you should contact support@fossa.com.
 
