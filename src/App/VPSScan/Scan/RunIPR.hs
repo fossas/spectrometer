@@ -59,7 +59,7 @@ instance ToDiagnostic IPRError where
 newtype FilterExpressions = FilterExpressions String
 
 instance Show FilterExpressions where
-  show (FilterExpressions x) = show x
+  show (FilterExpressions x) = x :: String
 
 execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FilterExpressions -> IPROpts -> m Value
 execIPR basedir filterExpressions iprOpts = do
