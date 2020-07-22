@@ -70,8 +70,8 @@ syOpts = ScotlandYardOpts
 basedirOpt :: Parser FilePath
 basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
 
-filterOpt :: Parser String
-filterOpt = strOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value "[]")
+filterOpt :: Parser RunIPR.FilterExpressions
+filterOpt = option auto (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value (RunIPR.FilterExpressions "[]"))
 
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))

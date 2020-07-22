@@ -3,6 +3,7 @@
 module App.VPSScan.Scan.RunIPR
   ( IPROpts (..),
     execIPR,
+    FilterExpressions (..),
     IPRError (..),
   )
 where
@@ -55,11 +56,12 @@ data IPRError = NoFilesEntryInOutput
 instance ToDiagnostic IPRError where
   renderDiagnostic NoFilesEntryInOutput = "No \"Files\" entry in the IPR output"
 
-type FilterExpressions = String
+newtype FilterExpressions = FilterExpressions String deriving (Show, Read)
 
 execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FilterExpressions -> IPROpts -> m Value
 execIPR basedir filterExpressions iprOpts = do
-  value <- execJson basedir (iprCommand filterExpressions iprOpts)
+  let filters = show filterExpressions
+  value <- execJson basedir (iprCommand filters iprOpts)
   let maybeExtracted = extractNonEmptyFiles value
   case maybeExtracted of
     Nothing -> fatal NoFilesEntryInOutput
