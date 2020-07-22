@@ -56,7 +56,10 @@ data IPRError = NoFilesEntryInOutput
 instance ToDiagnostic IPRError where
   renderDiagnostic NoFilesEntryInOutput = "No \"Files\" entry in the IPR output"
 
-newtype FilterExpressions = FilterExpressions String deriving (Show, Read)
+newtype FilterExpressions = FilterExpressions String
+
+instance Show FilterExpressions where
+  show (FilterExpressions x) = show x
 
 execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FilterExpressions -> IPROpts -> m Value
 execIPR basedir filterExpressions iprOpts = do
