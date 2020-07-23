@@ -35,7 +35,7 @@ sherlockCommand basedir scanId VPSOpts {..} =
           "--revision-id",
           revisionID,
           "--filter-expressions",
-          show filterExpressions
+          T.pack (show filterExpressions)
         ],
       cmdAllowErr = Never
     }
