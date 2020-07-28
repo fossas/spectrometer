@@ -9,9 +9,9 @@ where
 
 import App.VPSScan.Types
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
-import Data.Text
+import Data.Text (Text, append, pack)
 import Network.HTTP.Req
 import Prelude
 import App.Util (parseUri)
@@ -26,7 +26,7 @@ authHeader apiKey = header "Authorization" (encodeUtf8 (append (pack "token ") a
 
 -- /projects/{projectID}/scans
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https
-createScanEndpoint baseurl projectId = (coreProxyPrefix baseurl) /: "projects" /: projectId /: "scans"
+createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans"
 
 -- /projects/{projectID}/scans/{scanID}/discovered_licenses
 scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
@@ -43,8 +43,7 @@ instance FromJSON ScanResponse where
 
 createScotlandYardScan :: (MonadIO m, Has Diagnostics sig m) => VPSOpts -> m ScanResponse
 createScotlandYardScan VPSOpts {..} = runHTTP $ do
-  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]
-      CoreServerOpts {..} = coreInstance
+  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]; CoreServerOpts {..} = coreInstance
   let auth = authHeader fossaApiKey
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
