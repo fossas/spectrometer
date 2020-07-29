@@ -22,7 +22,7 @@ commands :: Parser (IO ())
 commands = hsubparser $ scanCommand <> ninjaGraphCommand
 
 vpsOpts :: Parser VPSOpts
-vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> coreOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt <*> filterOpt
+vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> fossaOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt <*> filterOpt
             where
               organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
@@ -61,8 +61,8 @@ runIPROpts = RunIPR.IPROpts
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
 
 -- org IDs are ints. project and revision IDs are strings
-coreOpts :: Parser CoreServerOpts
-coreOpts = CoreServerOpts
+fossaOpts :: Parser FossaOpts
+fossaOpts = FossaOpts
                      <$> urlOpt <*> apiKeyOpt
                   where
                     urlOpt = uriOption (long "fossa-url" <> metavar "STRING" <> help "URL for FOSSA service")

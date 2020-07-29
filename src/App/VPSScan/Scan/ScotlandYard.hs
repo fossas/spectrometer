@@ -43,7 +43,7 @@ instance FromJSON ScanResponse where
 
 createScotlandYardScan :: (MonadIO m, Has Diagnostics sig m) => VPSOpts -> m ScanResponse
 createScotlandYardScan VPSOpts {..} = runHTTP $ do
-  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]; CoreServerOpts {..} = coreInstance
+  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]; FossaOpts {..} = fossaInstance
   let auth = authHeader fossaApiKey
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
@@ -55,7 +55,7 @@ createScotlandYardScan VPSOpts {..} = runHTTP $ do
 -- POST /scans/{scanID}/discovered_licenses
 uploadIPRResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => VPSOpts -> Text -> a -> m ()
 uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
-  let CoreServerOpts {..} = coreInstance
+  let FossaOpts {..} = fossaInstance
   let auth = authHeader fossaApiKey
 
   (baseUrl, baseOptions) <- parseUri fossaUrl

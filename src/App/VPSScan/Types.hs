@@ -1,7 +1,7 @@
 module App.VPSScan.Types
 ( VPSOpts(..)
 , SherlockOpts(..)
-, CoreServerOpts(..)
+, FossaOpts(..)
 , DepsTarget(..)
 , DepsDependency(..)
 , NinjaGraphOpts(..)
@@ -17,7 +17,7 @@ import Text.URI (URI)
 import Network.HTTP.Req
 import Data.Text.Prettyprint.Doc (viaShow)
 
-data CoreServerOpts = CoreServerOpts
+data FossaOpts = FossaOpts
   {fossaUrl :: URI, fossaApiKey :: Text}
   deriving (Generic)
 
@@ -32,7 +32,7 @@ data SherlockOpts = SherlockOpts
 data VPSOpts = VPSOpts
   { vpsSherlock :: SherlockOpts
   , vpsIpr :: Maybe RunIPR.IPROpts
-  , coreInstance :: CoreServerOpts
+  , fossaInstance :: FossaOpts
   , organizationID :: Int
   , projectID :: Text
   , revisionID :: Text
