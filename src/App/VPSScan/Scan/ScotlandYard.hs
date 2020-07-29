@@ -22,7 +22,7 @@ coreProxyPrefix :: Url 'Https -> Url 'Https
 coreProxyPrefix baseurl = baseurl /: "api" /: "proxy" /: "scotland-yard"
 
 authHeader :: Text -> Option scheme
-authHeader apiKey = header "Authorization" (encodeUtf8 ("token " <> apiKey))
+authHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
 
 -- /projects/{projectID}/scans
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https
