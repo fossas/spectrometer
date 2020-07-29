@@ -11,7 +11,7 @@ import App.VPSScan.Types
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
-import Data.Text (Text, append, pack)
+import Data.Text (Text)
 import Network.HTTP.Req
 import Prelude
 import App.Util (parseUri)
@@ -22,7 +22,7 @@ coreProxyPrefix :: Url 'Https -> Url 'Https
 coreProxyPrefix baseurl = baseurl /: "api" /: "proxy" /: "scotland-yard"
 
 authHeader :: Text -> Option scheme
-authHeader apiKey = header "Authorization" (encodeUtf8 (append (pack "token ") apiKey))
+authHeader apiKey = header "Authorization" (encodeUtf8 ("token " <> apiKey))
 
 -- /projects/{projectID}/scans
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https
