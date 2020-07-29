@@ -14,7 +14,8 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
 import Effect.Exec
 import Data.Aeson
-import Data.Text
+import Data.Text (Text)
+import qualified Data.Text as T
 import Path
 import Prelude
 
@@ -74,6 +75,6 @@ iprCommand :: FilterExpressions -> IPROpts -> Command
 iprCommand filterExpressions IPROpts {..} =
   Command
     { cmdName = iprCmdPath,
-      cmdArgs = ["-target", ".", "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath, "-filter-expressions", pack (show filterExpressions)],
+      cmdArgs = ["-target", ".", "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath, "-filter-expressions", T.pack (show filterExpressions)],
       cmdAllowErr = Never
     }
