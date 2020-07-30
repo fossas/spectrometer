@@ -2,6 +2,7 @@ module App.VPSScan.Scan.ScotlandYard
   ( HTTP (..),
     runHTTP,
     ScanResponse (..),
+    createDependencyGraph,
     createScotlandYardScan,
     uploadIPRResults,
   )
@@ -23,6 +24,10 @@ createScanEndpoint baseurl projectId = baseurl /: "projects" /: projectId /: "sc
 -- /projects/{projectID}/scans/{scanID}/discovered_licenses
 scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 scanDataEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
+
+-- /projects/{projectID}/scans/{scanID}/dependency_graph
+createDependencyGraphEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
+createDependencyGraphEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graph"
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
@@ -52,4 +57,12 @@ uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
   (baseUrl, baseOptions) <- parseUri scotlandYardUrl
 
   _ <- req POST (scanDataEndpoint baseUrl projectID scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
+  pure ()
+
+-- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
+-- POST /depsGraph
+createDependencyGraph :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => Text -> Text -> ScotlandYardOpts -> a -> m ()
+createDependencyGraph projectId scanId ScotlandYardOpts{..} depsGraph = runHTTP $ do
+  (baseUrl, baseOptions) <- parseUri scotlandYardUrl
+  _ <- req POST (createDependencyGraphEndpoint baseUrl projectId scanId) (ReqBodyJson depsGraph) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
   pure ()

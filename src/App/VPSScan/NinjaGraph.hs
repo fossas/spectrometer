@@ -16,11 +16,10 @@ import Data.Text.Encoding (decodeUtf8)
 import Effect.ReadFS
 import System.Process.Typed as PROC
 import Data.Text.Prettyprint.Doc (pretty)
-import Network.HTTP.Req
+import App.VPSScan.Scan.ScotlandYard (createDependencyGraph)
 import qualified System.FilePath as FP
 
 import App.VPSScan.Types
-import App.Util (parseUri)
 
 data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   { ninjaCmdBasedir :: FilePath
@@ -46,7 +45,7 @@ getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> Te
 getAndParseNinjaDeps dir projectId scanId scotlandYardOpts ninjaGraphOpts = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
   graph <- scanNinjaDeps ninjaGraphOpts ninjaDepsContents
-  _ <- runHTTP $ postDepsGraphResults projectId scanId scotlandYardOpts graph
+  _ <- runHTTP $ createDependencyGraph projectId scanId scotlandYardOpts graph
   pure ()
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
@@ -63,17 +62,6 @@ scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents =
   map correctedTarget <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
-
-depsGraphEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
-depsGraphEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scan" /: scanId /: "dependency_graph"
-
--- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
--- POST /depsGraph
-postDepsGraphResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => Text -> Text -> ScotlandYardOpts -> a -> m ()
-postDepsGraphResults projectId scanId ScotlandYardOpts{..} depsGraph = runHTTP $ do
-  (baseUrl, baseOptions) <- parseUri scotlandYardUrl
-  _ <- req POST (depsGraphEndpoint baseUrl projectId scanId) (ReqBodyJson depsGraph) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
-  pure ()
 
 readNinjaDepsFile :: (Has Trace sig m, Has ReadFS sig m, Has Diagnostics sig m, MonadIO m) => FilePath -> m ByteString
 readNinjaDepsFile ninjaPath = do
