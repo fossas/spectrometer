@@ -45,7 +45,7 @@ getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> Te
 getAndParseNinjaDeps dir projectId scanId scotlandYardOpts ninjaGraphOpts = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
   graph <- scanNinjaDeps ninjaGraphOpts ninjaDepsContents
-  _ <- runHTTP $ createDependencyGraph projectId scanId scotlandYardOpts graph
+  _ <- runHTTP $ createDependencyGraph projectId scanId scotlandYardOpts (object ["targets" .= graph])
   pure ()
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
