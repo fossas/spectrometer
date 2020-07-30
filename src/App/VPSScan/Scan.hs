@@ -112,7 +112,7 @@ runNinjaDepsGraphScan ::
   ) => Path Abs Dir -> Text -> VPSOpts -> m ()
 runNinjaDepsGraphScan basedir scanId VPSOpts{..} =
   if runNinja then do
-    getAndParseNinjaDeps basedir scanId vpsScotlandYard vpsNinja
+    getAndParseNinjaDeps basedir projectID scanId vpsScotlandYard vpsNinja
   else
     pure ()
   where

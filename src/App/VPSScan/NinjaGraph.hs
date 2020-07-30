@@ -42,11 +42,11 @@ instance ToDiagnostic NinjaGraphError where
 
 data NinjaParseState = Starting | Parsing | Complete | Error
 
-getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> Text -> ScotlandYardOpts -> NinjaGraphOpts -> m ()
-getAndParseNinjaDeps dir scanId scotlandYardOpts ninjaGraphOpts = do
+getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> Text -> Text -> ScotlandYardOpts -> NinjaGraphOpts -> m ()
+getAndParseNinjaDeps dir projectId scanId scotlandYardOpts ninjaGraphOpts = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
   graph <- scanNinjaDeps ninjaGraphOpts ninjaDepsContents
-  _ <- runHTTP $ postDepsGraphResults scanId scotlandYardOpts graph
+  _ <- runHTTP $ postDepsGraphResults projectId scanId scotlandYardOpts graph
   pure ()
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
@@ -64,15 +64,15 @@ scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents =
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
 
-depsGraphEndpoint :: Url 'Https -> Url 'Https
-depsGraphEndpoint baseurl = baseurl /: "depsGraph"
+depsGraphEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
+depsGraphEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scan" /: scanId /: "dependency_graph"
 
 -- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
 -- POST /depsGraph
-postDepsGraphResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => Text -> ScotlandYardOpts -> a -> m ()
-postDepsGraphResults scanId ScotlandYardOpts{..} depsGraph = runHTTP $ do
+postDepsGraphResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => Text -> Text -> ScotlandYardOpts -> a -> m ()
+postDepsGraphResults projectId scanId ScotlandYardOpts{..} depsGraph = runHTTP $ do
   (baseUrl, baseOptions) <- parseUri scotlandYardUrl
-  _ <- req POST (depsGraphEndpoint baseUrl) (ReqBodyJson depsGraph) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
+  _ <- req POST (depsGraphEndpoint baseUrl projectId scanId) (ReqBodyJson depsGraph) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
   pure ()
 
 readNinjaDepsFile :: (Has Trace sig m, Has ReadFS sig m, Has Diagnostics sig m, MonadIO m) => FilePath -> m ByteString
