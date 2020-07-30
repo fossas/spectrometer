@@ -1,6 +1,6 @@
 # v2.2.1
 
-- Fixes bug where the req.txt strategy would run even when no relevant files were present
+- Fixes bug where the req.txt strategy would run even when no relevant files were present ([#109](https://github.com/fossas/spectrometer/pull/109))
 
 # v2.2.0
 
