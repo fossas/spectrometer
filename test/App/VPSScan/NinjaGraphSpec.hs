@@ -12,8 +12,6 @@ import App.VPSScan.Types
 import Data.Text.Encoding
 import Test.Hspec
 import Control.Carrier.Diagnostics
-import Text.URI (emptyURI)
-
 
 -- out/target/product/coral/obj/STATIC_LIBRARIES/libgptutils_intermediates/gpt-utils.o: #deps 2, deps mtime 1583962189 (VALID)
 --     device/google/coral/gpt-utils/gpt-utils.cpp
@@ -126,10 +124,10 @@ spec :: Spec
 spec = do
   smallNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/small-ninja-deps")
   weirdNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/ninja-deps-with-weird-targets")
-  let ninjaGraphOpts = NinjaGraphOpts { ninjaGraphNinjaPath  = Nothing
-                                  , lunchTarget = Nothing
-                                  , depsGraphScotlandYardUrl = emptyURI
-                                  }
+  let ninjaGraphOpts = NinjaGraphOpts { runNinja = True
+                                      , ninjaGraphNinjaPath  = Nothing
+                                      , lunchTarget = Nothing
+                                      }
 
   describe "scanNinjaDeps for a standard ninja deps file" $
     it "parses a small ninja deps file and generates a dependency graph" $ do
