@@ -16,6 +16,7 @@ import App.VPSScan.Types
 import App.VPSScan.Scan.RunSherlock
 import App.VPSScan.Scan.ScotlandYard
 import App.VPSScan.Scan.RunIPR
+import App.VPSScan.NinjaGraph
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
 
@@ -59,7 +60,16 @@ vpsScan basedir ScanCmdOpts{..} = do
                 (runIt $ runIPRScan basedir scanId vpsOpts)
                 (runIt $ runSherlockScan basedir scanId vpsOpts)
   case (iprResult, sherlockResult) of
-    (Right _, Right _) -> trace "[All] Scans complete"
+    (Right _, Right _) -> do
+      ninjaResults <- runDiagnostics . runTrace $ runNinjaDepsGraphScan basedir scanId vpsOpts
+      case ninjaResults of
+        (Left ninjaFailure) -> do
+          trace "[Ninja] Failed"
+          trace (show $ renderFailureBundle ninjaFailure)
+          liftIO exitFailure
+        (Right _) ->
+          trace "[Ninja] success"
+      trace "[All] Scans complete"
     (Left iprFailure, _) -> do
       trace "[IPR] Failed to scan"
       trace (show $ renderFailureBundle iprFailure)
@@ -95,3 +105,16 @@ runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
       trace "[IPR] IPR scan complete"
     Nothing ->
       trace "[IPR] IPR Scan disabled"
+
+runNinjaDepsGraphScan ::
+  ( Has Diagnostics sig m
+  , MonadIO m
+  ) => Path Abs Dir -> Text -> VPSOpts -> m ()
+runNinjaDepsGraphScan basedir scanId VPSOpts{..} =
+  if runNinja then do
+    getAndParseNinjaDeps basedir scanId vpsScotlandYard vpsNinja
+  else
+    pure ()
+  where
+    NinjaGraphOpts{..} = vpsNinja
+

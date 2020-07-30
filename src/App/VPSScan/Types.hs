@@ -33,6 +33,7 @@ data VPSOpts = VPSOpts
   { vpsSherlock :: SherlockOpts
   , vpsIpr :: Maybe RunIPR.IPROpts
   , vpsScotlandYard :: ScotlandYardOpts
+  , vpsNinja :: NinjaGraphOpts
   , organizationID :: Int
   , projectID :: Text
   , revisionID :: Text
@@ -69,9 +70,9 @@ instance ToJSON DepsDependency where
     ]
 
 data NinjaGraphOpts = NinjaGraphOpts
-  { ninjaGraphNinjaPath :: Maybe FilePath
+  { runNinja :: Bool
+  , ninjaGraphNinjaPath :: Maybe FilePath
   , lunchTarget :: Maybe Text
-  , depsGraphScotlandYardUrl :: URI
   } deriving Generic
 
 newtype HTTP m a = HTTP {unHTTP :: m a}
