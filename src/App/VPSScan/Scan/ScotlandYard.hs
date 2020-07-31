@@ -73,5 +73,5 @@ uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
 createDependencyGraph :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> a -> m ()
 createDependencyGraph NinjaGraphOpts{..} depsGraph = runHTTP $ do
   (baseUrl, baseOptions) <- parseUri depsGraphFossaUrl
-  _ <- req POST (createDependencyGraphEndpoint baseUrl depsGraphProjectID depsGraphScanID) (ReqBodyJson depsGraph) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
+  _ <- req POST (createDependencyGraphEndpoint baseUrl depsGraphProjectID depsGraphScanID) (ReqBodyJson (object ["targets" .= depsGraph])) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
   pure ()
