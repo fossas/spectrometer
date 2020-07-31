@@ -248,11 +248,11 @@ addDepToDepsTarget target line =
 
 parseDepLine :: ByteString -> DepsDependency
 parseDepLine line =
-  DepsDependency (decodeUtf8 path) componentName hasDeps
+  DepsDependency (decodeUtf8 path) componentName isTarget
   where
     path = stripLeadingSpace line
     componentName = Nothing -- TODO: get component name
-    hasDeps = BS.isPrefixOf "out/" path
+    isTarget = BS.isPrefixOf "out/" path
 
 stripLeadingSpace :: ByteString -> ByteString
 stripLeadingSpace = BS.dropWhile (\c -> c == BS.head " ")

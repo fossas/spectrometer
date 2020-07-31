@@ -52,20 +52,20 @@ instance ToJSON DepsTarget where
     [ "path" .= targetPath
     , "dependencies" .= targetDependencies
     , "inputs" .= targetInputs
-    , "componentName" .=  targetComponentName
+    , "component_name" .=  targetComponentName
     ]
 
 data DepsDependency = DepsDependency
   { dependencyPath :: Text
   , dependencyComponentName :: Maybe Text
-  , hasDependencies :: Bool
+  , isTarget :: Bool
   } deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON DepsDependency where
   toJSON DepsDependency{..} = object
     [ "path" .= dependencyPath
-    , "componentName" .= dependencyComponentName
-    , "hasDependencies" .= hasDependencies
+    , "component_name" .= dependencyComponentName
+    , "is_target" .= isTarget
     ]
 
 data NinjaGraphOpts = NinjaGraphOpts
