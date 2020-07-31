@@ -23,19 +23,19 @@ import Text.URI (emptyURI)
 inputOne :: DepsDependency
 inputOne = DepsDependency { dependencyPath = "device/google/coral/gpt-utils/gpt-utils.cpp"
                           , dependencyComponentName = Nothing
-                          , hasDependencies = False
+                          , isTarget = False
                           }
 
 dependencyOneA :: DepsDependency
 dependencyOneA = DepsDependency { dependencyPath = "external/libcxx/include/stdio.h"
                                 , dependencyComponentName = Nothing
-                                , hasDependencies = False
+                                , isTarget = False
                                 }
 
 dependencyOneB :: DepsDependency
 dependencyOneB = DepsDependency { dependencyPath = "external/libcxx/include/__config"
                                 , dependencyComponentName = Nothing
-                                , hasDependencies = False
+                                , isTarget = False
                                 }
 
 targetOne :: DepsTarget
@@ -60,19 +60,19 @@ targetTwo = DepsTarget { targetPath = "out/target/product/coral/obj/APPS/Setting
 inputThree :: DepsDependency
 inputThree = DepsDependency { dependencyPath = "out/soong/host/linux-x86/bin/dex2oatd"
                           , dependencyComponentName = Nothing
-                          , hasDependencies = True
+                          , isTarget = True
                           }
 
 dependencyThreeA :: DepsDependency
 dependencyThreeA = DepsDependency { dependencyPath = "out/soong/host/linux-x86/bin/profman"
                                 , dependencyComponentName = Nothing
-                                , hasDependencies = True
+                                , isTarget = True
                                 }
 
 dependencyThreeB :: DepsDependency
 dependencyThreeB = DepsDependency { dependencyPath = "out/soong/host/linux-x86/bin/soong_zip"
                                 , dependencyComponentName = Nothing
-                                , hasDependencies = True
+                                , isTarget = True
                                 }
 
 targetThree :: DepsTarget
@@ -88,25 +88,25 @@ smallNinjaDepsTargets =  [targetOne, targetTwo, targetThree]
 cfiBlacklistDep :: DepsDependency
 cfiBlacklistDep = DepsDependency { dependencyPath = "external/compiler-rt/lib/cfi/cfi_blacklist.txt"
                                  , dependencyComponentName = Nothing
-                                 , hasDependencies = False
+                                 , isTarget = False
                                  }
 
 integerOverflowBlacklistDep :: DepsDependency
 integerOverflowBlacklistDep = DepsDependency { dependencyPath = "build/soong/cc/config/integer_overflow_blacklist.txt"
                                              , dependencyComponentName = Nothing
-                                             , hasDependencies = False
+                                             , isTarget = False
                                              }
 
 inetDep :: DepsDependency
 inetDep = DepsDependency { dependencyPath = "bionic/libc/include/arpa/inet.h"
                          , dependencyComponentName = Nothing
-                         , hasDependencies = False
+                         , isTarget = False
                          }
 
 bpfLoaderDep :: DepsDependency
 bpfLoaderDep = DepsDependency { dependencyPath = "system/bpf/bpfloader/BpfLoader.cpp"
                               , dependencyComponentName = Nothing
-                              , hasDependencies = False
+                              , isTarget = False
                               }
 
 targetWithFirstLevelWeirdnessFix :: DepsTarget
