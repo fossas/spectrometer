@@ -18,12 +18,12 @@ import Effect.ReadFS
 import System.Process.Typed as PROC
 import System.Exit (exitFailure)
 import Data.Text.Prettyprint.Doc (pretty)
-import Network.HTTP.Req
 import qualified System.FilePath as FP
 
 import App.VPSScan.Types
+import App.VPSScan.Scan.ScotlandYard (createDependencyGraph)
 import App.Types (BaseDir (..))
-import App.Util (validateDir, parseUri)
+import App.Util (validateDir)
 
 -- end of copy-paste
 
@@ -62,7 +62,7 @@ getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> Ni
 getAndParseNinjaDeps dir ninjaGraphOpts = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
   graph <- scanNinjaDeps ninjaGraphOpts ninjaDepsContents
-  _ <- runHTTP $ postDepsGraphResults ninjaGraphOpts graph
+  _ <- runHTTP $ createDependencyGraph ninjaGraphOpts graph
   pure ()
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
@@ -79,17 +79,6 @@ scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents =
   map correctedTarget <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
-
-depsGraphEndpoint :: Url 'Https -> Url 'Https
-depsGraphEndpoint baseurl = baseurl /: "depsGraph"
-
--- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
--- POST /depsGraph
-postDepsGraphResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> a -> m ()
-postDepsGraphResults NinjaGraphOpts{..} depsGraph = runHTTP $ do
-  (baseUrl, baseOptions) <- parseUri depsGraphScotlandYardUrl
-  _ <- req POST (depsGraphEndpoint baseUrl) (ReqBodyJson depsGraph) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
-  pure ()
 
 readNinjaDepsFile :: (Has Trace sig m, Has ReadFS sig m, Has Diagnostics sig m, MonadIO m) => FilePath -> m ByteString
 readNinjaDepsFile ninjaPath = do

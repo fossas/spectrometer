@@ -29,11 +29,13 @@ vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> fossaOpts <*> 
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
 ninjaGraphOpts :: Parser NinjaGraphOpts
-ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt <*> scotlandYardUrlOpt
+ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt <*> fossaUrlOpt <*> projectIDOpt <*> scanIDOpt
                  where
                    ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING")
                    lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
-                   scotlandYardUrlOpt = uriOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
+                   fossaUrlOpt = uriOption (long "fossa-url" <> metavar "STRING" <> help "URL for FOSSA service")
+                   projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
+                   scanIDOpt = strOption (long "scan" <> metavar "String" <> help "Scan ID")
 
 runSherlockOpts :: Parser SherlockOpts
 runSherlockOpts = SherlockOpts

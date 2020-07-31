@@ -71,7 +71,9 @@ instance ToJSON DepsDependency where
 data NinjaGraphOpts = NinjaGraphOpts
   { ninjaGraphNinjaPath :: Maybe FilePath
   , lunchTarget :: Maybe Text
-  , depsGraphScotlandYardUrl :: URI
+  , depsGraphFossaUrl :: URI
+  , depsGraphProjectID :: Text
+  , depsGraphScanID :: Text
   } deriving Generic
 
 newtype HTTP m a = HTTP {unHTTP :: m a}

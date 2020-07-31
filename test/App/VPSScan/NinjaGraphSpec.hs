@@ -128,7 +128,9 @@ spec = do
   weirdNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/ninja-deps-with-weird-targets")
   let ninjaGraphOpts = NinjaGraphOpts { ninjaGraphNinjaPath  = Nothing
                                   , lunchTarget = Nothing
-                                  , depsGraphScotlandYardUrl = emptyURI
+                                  , depsGraphFossaUrl = emptyURI
+                                  , depsGraphProjectID = "1"
+                                  , depsGraphScanID = "1234"
                                   }
 
   describe "scanNinjaDeps for a standard ninja deps file" $
