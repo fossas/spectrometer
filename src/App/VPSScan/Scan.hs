@@ -74,18 +74,19 @@ vpsScan basedir ScanCmdOpts{..} = do
   -- Create scan in SY
   trace $ "[All] Creating scan in Scotland Yard"
   let syOpts = ScotlandYardOpts locator projectRevision sherlockOrgId vpsOpts
-  _ <- context "creating scan ID" $ createScotlandYardScan syOpts
+  response <- context "creating scan ID" $ createScotlandYardScan syOpts
+  let scanId = responseScanId response
 
   -- Run IPR and Sherlock CLIs concurrently
-  trace $ "Running scan on directory " ++ show basedir
-  trace $ unpack $ "Scan ID is " <> locator
+  trace $ "[All] Running scan on directory " ++ show basedir
+  trace $ unpack $ "[All] Scan ID is " <> scanId
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
 
-  let sherlockOpts = SherlockOpts basedir locator sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId projectRevision vpsOpts
+  let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts
   let runIt = runDiagnostics . runExecIO . runTrace
   (iprResult, sherlockResult) <- liftIO $ concurrently
-                (runIt $ runIPRScan basedir locator iprBinaryPaths syOpts vpsOpts)
+                (runIt $ runIPRScan basedir scanId iprBinaryPaths syOpts vpsOpts)
                 (runIt $ runSherlockScan sherlockBinaryPath sherlockOpts)
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"

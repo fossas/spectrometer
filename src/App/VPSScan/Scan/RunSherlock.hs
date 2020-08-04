@@ -18,6 +18,7 @@ data SherlockOpts = SherlockOpts
   , clientId :: Text
   , sherlockUrl :: Text
   , organizationId :: Text
+  , projectId :: Text
   , revisionId :: Text
   , sherlockVpsOpts :: VPSOpts
   } deriving (Generic)
@@ -32,15 +33,15 @@ sherlockCommand binaryPath SherlockOpts{..} = do
   Command
     { cmdName = T.pack binaryPath,
       cmdArgs =
-        [ "scan", T.pack (fromAbsDir scanDir),
+        [ "scan", T.pack $ fromAbsDir scanDir,
           "--scan-id", scanId,
           "--sherlock-api-secret-key", clientToken,
           "--sherlock-api-client-id", clientId,
           "--sherlock-api-host", sherlockUrl,
           "--organization-id", organizationId,
-          "--project-id", projectName,
+          "--project-id", projectId,
           "--revision-id", revisionId,
-          "--filter-expressions", T.pack (show filterBlob)
+          "--filter-expressions", T.pack $ show filterBlob
         ],
       cmdAllowErr = Never
     }
