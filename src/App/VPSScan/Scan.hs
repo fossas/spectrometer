@@ -65,7 +65,8 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace "[Sherlock] Retrieving Sherlock information from FOSSA"
   SherlockInfo{..} <- getSherlockInfo fossa
   let locator = createLocator projectName sherlockOrgId
-  trace $ unpack $ "[All] Creating project with ID '" <> locator <> "' and revision '" <> projectRevision <> "'"
+  let revisionLocator = createRevisionLocator projectName sherlockOrgId projectRevision
+  trace $ unpack $ "[All] Creating project with locator '" <> revisionLocator <> "'"
 
   -- Create scan in Core
   trace "[All] Creating project in FOSSA"
@@ -98,6 +99,10 @@ vpsScan basedir ScanCmdOpts{..} = do
       trace "[Sherlock] Failed to scan"
       trace (show $ renderFailureBundle sherlockFailure)
       liftIO exitFailure
+
+  trace $ "[All] Completing scan in FOSSA"
+  _ <- context "completing project in FOSSA" $ completeCoreProject revisionLocator fossa
+  trace $ "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
 
 runSherlockScan ::
   ( Has Exec sig m
