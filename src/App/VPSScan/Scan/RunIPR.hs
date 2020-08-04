@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module App.VPSScan.Scan.RunIPR
-  ( IPROpts (..),
-    execIPR,
-    FilterExpressions (..),
-    IPRError (..),
+  ( execIPR
+  , IPRError (..)
+  , IPROpts (..)
+  , IPRBinaryPaths (..)
   )
 where
 
@@ -14,17 +14,11 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
 import Effect.Exec
 import Data.Aeson
-import Data.Text (Text)
 import qualified Data.Text as T
 import Path
 import Prelude
-
-data IPROpts = IPROpts
-  { iprCmdPath :: Text,
-    nomosCmdPath :: Text,
-    pathfinderCmdPath :: Text
-  }
-  deriving (Eq, Ord, Show)
+import App.VPSScan.Types
+import GHC.Generics (Generic)
 
 extractNonEmptyFiles :: Value -> Maybe Value
 extractNonEmptyFiles (Object obj) = do
@@ -58,23 +52,35 @@ data IPRError = NoFilesEntryInOutput
 instance ToDiagnostic IPRError where
   renderDiagnostic NoFilesEntryInOutput = "No \"Files\" entry in the IPR output"
 
-newtype FilterExpressions = FilterExpressions String
+data IPROpts = IPROpts
+  { scanDir :: Path Abs Dir
+  , iprVpsOpts :: VPSOpts
+  } deriving (Generic)
 
-instance Show FilterExpressions where
-  show (FilterExpressions x) = x :: String
+data IPRBinaryPaths = IPRBinaryPaths
+  { ramjetBinaryPath :: FilePath
+  , nomosBinaryPath :: FilePath
+  , pathfinderBinaryPath :: FilePath
+  }
 
-execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FilterExpressions -> IPROpts -> m Value
-execIPR basedir filterExpressions iprOpts = do
-  value <- execJson basedir (iprCommand filterExpressions iprOpts)
+execIPR :: (Has Exec sig m, Has Diagnostics sig m) => IPRBinaryPaths -> IPROpts -> m Value
+execIPR iprPaths iprOpts = do
+  value <- execJson (scanDir iprOpts) (iprCommand iprPaths iprOpts)
   let maybeExtracted = extractNonEmptyFiles value
   case maybeExtracted of
     Nothing -> fatal NoFilesEntryInOutput
     Just extracted -> pure extracted
 
-iprCommand :: FilterExpressions -> IPROpts -> Command
-iprCommand filterExpressions IPROpts {..} =
+iprCommand :: IPRBinaryPaths -> IPROpts -> Command
+iprCommand IPRBinaryPaths{..} IPROpts{..} = do
+  let VPSOpts{..} = iprVpsOpts
   Command
-    { cmdName = iprCmdPath,
-      cmdArgs = ["-target", ".", "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath, "-filter-expressions", T.pack (show filterExpressions)],
+    { cmdName = T.pack ramjetBinaryPath,
+      cmdArgs = [
+        "-target", ".",
+        "-nomossa", T.pack nomosBinaryPath,
+        "-pathfinder", T.pack pathfinderBinaryPath,
+        "-filter-expressions", T.pack (show filterBlob)
+      ],
       cmdAllowErr = Never
     }
