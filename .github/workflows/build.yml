@@ -87,10 +87,10 @@ jobs:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
         key: ${{ runner.os }}-v5-cabal-store
 
-    - name: Zero out vendored vpscli binaries for Windows build performance
-      if: ${{ contains(matrix.os, 'windows') }}
+    - name: Zero out vendored vpscli binaries for first run build performance
       run: |
-        rm vendor/*
+        mv vendor .macos-vendor
+        mkdir vendor
         touch vendor/nomossa
         touch vendor/ramjet-cli-ipr
         touch vendor/sherlock-cli
@@ -119,7 +119,7 @@ jobs:
         find . -type f -path '*/fossa/fossa' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec mv {} release \;
 
-    - name: Update vendored binaries
+    - name: Update Linux vendored binaries
       if: ${{ contains(matrix.os, 'ubuntu') }}
       run: |
         rm vendor/*
@@ -131,6 +131,13 @@ jobs:
         upx vendor/ramjet-cli-ipr
         upx vendor/sherlock-cli
         upx vendor/pathfinder
+    
+    - name: Update MacOS vendored binaries
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: |
+        rm -rf vendor
+        mv .macos-vendor vendor
+        cp release/pathfinder vendor/pathfinder
 
     - name: Rebuild with new vendored binaries
       if: ${{ contains(matrix.os, 'ubuntu') }}
