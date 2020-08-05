@@ -41,11 +41,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install bash & xz & bzip2 (alpine)
+    - name: Install alpine dependencies
       if: ${{ contains(matrix.os, 'ubuntu') }}
       shell: sh
       run: |
-        apk add bash xz-dev bzip2-dev bzip2-static
+        apk add bash xz-dev bzip2-dev bzip2-static upx
 
     - uses: dsaltares/fetch-gh-release-asset@0.0.5
       name: Fetch Basis vendor asset 'nomossa'
@@ -90,14 +90,11 @@ jobs:
     - name: Zero out vendored vpscli binaries for Windows build performance
       if: ${{ contains(matrix.os, 'windows') }}
       run: |
-        del vendor/nomossa
-        del vendor/ramjet-cli-ipr
-        del vendor/sherlock-cli
-        del vendor/pathfinder
-        type nul > vendor/nomossa
-        type nul > vendor/ramjet-cli-ipr
-        type nul > vendor/sherlock-cli
-        type nul > vendor/pathfinder
+        rm vendor/*
+        touch vendor/nomossa
+        touch vendor/ramjet-cli-ipr
+        touch vendor/sherlock-cli
+        touch vendor/pathfinder
 
     - name: Build
       run: |
@@ -130,6 +127,10 @@ jobs:
         mv sherlock-cli-linux vendor/sherlock-cli
         mv ramjet-cli-ipr-linux vendor/ramjet-cli-ipr
         mv nomossa vendor/nomossa
+        upx vendor/nomossa
+        upx vendor/ramjet-cli-ipr
+        upx vendor/sherlock-cli
+        upx vendor/pathfinder
 
     - name: Rebuild with new vendored binaries
       if: ${{ contains(matrix.os, 'ubuntu') }}
