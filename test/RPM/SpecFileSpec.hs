@@ -84,7 +84,6 @@ spec = do
       let deps = Dependencies [boostDep, xzDep] [tacpDep, jsoncppDep]
           gr = buildGraph deps
 
-      expectDeps [toDependency tacpDep] gr
-      expectDirect [toDependency tacp] gr
+      expectDeps (map toDependency [tacpDep, jsoncppDep]) gr
+      expectDirect (map toDependency [tacpDep, jsoncppDep]) gr
       expectEdges [] gr
-
