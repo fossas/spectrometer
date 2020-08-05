@@ -11,6 +11,7 @@ import Data.ByteString (writeFile, ByteString)
 import Data.FileEmbed (embedFile)
 import System.Directory
 import System.FilePath (takeDirectory, (</>))
+import Language.Haskell.TH.Syntax
 
 extractEmbeddedBinary :: (MonadIO m) => Text -> m FilePath
 extractEmbeddedBinary "sherlock-cli" = do
@@ -50,13 +51,13 @@ absBinaryPath name = do
 -- The intent with these embedded binaries is that the build system will replace the files with built binaries of the appropriate architecture.
 -- The versions vendored into the repository are suitable for running on MacOS.
 embeddedBinarySherlockCli :: ByteString
-embeddedBinarySherlockCli = $(embedFile "vendor/sherlock-cli")
+embeddedBinarySherlockCli = $(addDependentFile "vendor/sherlock-cli" >> embedFile "vendor/sherlock-cli")
 
 embeddedBinaryRamjetCli :: ByteString
-embeddedBinaryRamjetCli = $(embedFile "vendor/ramjet-cli-ipr")
+embeddedBinaryRamjetCli = $(addDependentFile "vendor/ramjet-cli-ipr" >> embedFile "vendor/ramjet-cli-ipr")
 
 embeddedBinaryPathfinder :: ByteString
-embeddedBinaryPathfinder = $(embedFile "vendor/pathfinder")
+embeddedBinaryPathfinder = $(addDependentFile "vendor/pathfinder" >> embedFile "vendor/pathfinder")
 
 embeddedBinaryNomossa :: ByteString
-embeddedBinaryNomossa = $(embedFile "vendor/nomossa")
+embeddedBinaryNomossa = $(addDependentFile "vendor/nomossa" >> embedFile "vendor/nomossa")
