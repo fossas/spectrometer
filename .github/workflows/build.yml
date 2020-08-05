@@ -95,25 +95,28 @@ jobs:
         find . -type f -path '*/fossa/fossa' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec mv {} release \;
 
-    - name: Fetch Basis vendor asset 'nomossa'
+    - uses: dsaltares/fetch-gh-release-asset@0.0.5
+      name: Fetch Basis vendor asset 'nomossa'
       if: ${{ contains(matrix.os, 'ubuntu') }}
-      uses: dsaltares/fetch-gh-release-asset@0.0.5
+      with:
         repo: "fossas/basis"
         version: "tags/latest"
         file: "nomossa"
         token: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
-    - name: Fetch Basis vendor asset 'ramjet-cli-ipr'
+    - uses: dsaltares/fetch-gh-release-asset@0.0.5
+      name: Fetch Basis vendor asset 'ramjet-cli-ipr'
       if: ${{ contains(matrix.os, 'ubuntu') }}
-      uses: dsaltares/fetch-gh-release-asset@0.0.5
+      with:
         repo: "fossas/basis"
         version: "tags/latest"
         file: "ramjet-cli-ipr-linux"
         token: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
-    - name: Fetch Basis vendor asset 'sherlock-cli'
+    - uses: dsaltares/fetch-gh-release-asset@0.0.5
+      name: Fetch Basis vendor asset 'sherlock-cli'
       if: ${{ contains(matrix.os, 'ubuntu') }}
-      uses: dsaltares/fetch-gh-release-asset@0.0.5
+      with:
         repo: "fossas/basis"
         version: "tags/latest"
         file: "sherlock-cli-linux"
