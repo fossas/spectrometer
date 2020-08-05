@@ -60,6 +60,18 @@ jobs:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
         key: ${{ runner.os }}-v5-cabal-store
 
+    - name: Zero out vendored vpscli binaries for Windows build performance
+      if: ${{ contains(matrix.os, 'windows') }}
+      run: |
+        del vendor/nomossa
+        del vendor/ramjet-cli-ipr
+        del vendor/sherlock-cli
+        del vendor/pathfinder
+        type nul > vendor/nomossa
+        type nul > vendor/ramjet-cli-ipr
+        type nul > vendor/sherlock-cli
+        type nul > vendor/pathfinder
+
     - name: Build
       run: |
         cabal update
