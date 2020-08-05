@@ -80,11 +80,11 @@ spec = do
       getTypeFromLine "Requires: xz = 1" `Test.shouldBe` Just (RuntimeRequires $ mkVerDep "xz" $ CEq "1")
   --
   Test.describe "rpm dependency grapher" $
-    Test.it "should produce flat BuildRequires" $ do
+    Test.it "should produce flat RuntimeRequires" $ do
       let deps = Dependencies [boostDep, xzDep] [tacpDep, jsoncppDep]
           gr = buildGraph deps
 
-      expectDeps (map toDependency [boostDep, xzDep]) gr
-      expectDirect (map toDependency [boostDep, xzDep]) gr
+      expectDeps [toDependency tacpDep] gr
+      expectDirect [toDependency tacp] gr
       expectEdges [] gr
 
