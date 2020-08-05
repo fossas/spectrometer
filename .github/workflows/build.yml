@@ -75,7 +75,6 @@ jobs:
         mkdir release
         find . -type f -path '*/fossa/fossa.exe' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
-        find . -type f -path '*/vpscli/vpscli.exe' -exec mv {} release \;
 
     - name: Find and move binaries (non-windows)
       if: ${{ !contains(matrix.os, 'windows') }}
@@ -83,6 +82,48 @@ jobs:
         mkdir release
         find . -type f -path '*/fossa/fossa' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec mv {} release \;
+
+    - name: Fetch Basis vendor asset 'nomossa'
+      if: ${{ contains(matrix.os, 'ubuntu') }}
+      uses: dsaltares/fetch-gh-release-asset@0.0.5
+        repo: "fossas/basis"
+        version: "tags/latest"
+        file: "nomossa"
+        token: ${{ secrets.BASIS_ACCESS_TOKEN }}
+
+    - name: Fetch Basis vendor asset 'ramjet-cli-ipr'
+      if: ${{ contains(matrix.os, 'ubuntu') }}
+      uses: dsaltares/fetch-gh-release-asset@0.0.5
+        repo: "fossas/basis"
+        version: "tags/latest"
+        file: "ramjet-cli-ipr-linux"
+        token: ${{ secrets.BASIS_ACCESS_TOKEN }}
+
+    - name: Fetch Basis vendor asset 'sherlock-cli'
+      if: ${{ contains(matrix.os, 'ubuntu') }}
+      uses: dsaltares/fetch-gh-release-asset@0.0.5
+        repo: "fossas/basis"
+        version: "tags/latest"
+        file: "sherlock-cli-linux"
+        token: ${{ secrets.BASIS_ACCESS_TOKEN }}
+
+    - name: Update vendored binaries
+      if: ${{ contains(matrix.os, 'ubuntu') }}
+      run: |
+        rm vendor/*
+        cp release/pathfinder vendor/pathfinder
+        mv sherlock-cli-linux vendor/sherlock-cli
+        mv ramjet-cli-ipr-linux vendor/ramjet-cli-ipr
+        mv nomossa vendor/nomossa
+
+    - name: Rebuild with new vendored binaries
+      if: ${{ contains(matrix.os, 'ubuntu') }}
+      run: |
+        cabal build --project-file=${{ matrix.project-file }} all
+
+    - name: Find and move vpscli
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: |
         find . -type f -path '*/vpscli/vpscli' -exec mv {} release \;
 
     - name: Strip binaries
@@ -128,7 +169,6 @@ jobs:
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
-        zip -j release/vpscli_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/vpscli.exe
 
     - name: Release
       uses: softprops/action-gh-release@v1
