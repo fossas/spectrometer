@@ -144,8 +144,9 @@ jobs:
         cp release/pathfinder vendor/pathfinder
 
     - name: Rebuild with new vendored binaries
-      if: ${{ contains(matrix.os, 'ubuntu') }}
+      if: ${{ !contains(matrix.os, 'windows') }}
       run: |
+        touch src/App/VPSScan/EmbeddedBinary.hs
         cabal build --project-file=${{ matrix.project-file }} all
 
     - name: Find and move vpscli
