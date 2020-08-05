@@ -127,6 +127,10 @@ jobs:
         mv sherlock-cli-linux vendor/sherlock-cli
         mv ramjet-cli-ipr-linux vendor/ramjet-cli-ipr
         mv nomossa vendor/nomossa
+        chmod a+x vendor/nomossa
+        chmod a+x vendor/ramjet-cli-ipr
+        chmod a+x vendor/sherlock-cli
+        chmod a+x vendor/pathfinder
         upx vendor/nomossa
         upx vendor/ramjet-cli-ipr
         upx vendor/sherlock-cli
