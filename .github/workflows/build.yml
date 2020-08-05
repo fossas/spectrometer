@@ -146,7 +146,7 @@ jobs:
     - name: Rebuild with new vendored binaries
       if: ${{ !contains(matrix.os, 'windows') }}
       run: |
-        touch src/App/VPSScan/EmbeddedBinary.hs
+        cabal clean
         cabal build --project-file=${{ matrix.project-file }} all
 
     - name: Find and move vpscli
