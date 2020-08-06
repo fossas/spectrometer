@@ -8,6 +8,7 @@ import Prologue
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import Control.Carrier.Error.Either
+import Control.Carrier.Finally
 import Control.Effect.Exception as Exc
 import Control.Carrier.Output.IO
 import Control.Concurrent
@@ -16,7 +17,6 @@ import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
 import Control.Carrier.TaskPool
-import Control.Carrier.Threaded
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Logger
@@ -33,22 +33,19 @@ scanMain basedir debug = do
 
   scan basedir
     & withLogger (bool SevInfo SevDebug debug)
-    & runThreaded
 
 scan ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
-  , Has Threaded sig m
   , MonadIO m
-  , Effect sig
   )
   => Path Abs Dir -> m ()
-scan basedir = do
+scan basedir = runFinally $ do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
   (closures,(_,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
-    withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
+    withTaskPool capabilities updateProgress (traverse_ (forkTask . apply basedir) discoverFuncs)
 
   logSticky "[ Combining Analyses ]"
 
@@ -56,6 +53,9 @@ scan basedir = do
   liftIO (BL.putStr (encode projects))
 
   logSticky ""
+
+apply :: a -> (a -> b) -> b
+apply x f = f x
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =

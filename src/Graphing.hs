@@ -16,6 +16,7 @@ module Graphing
   , gmap
   , filter
   , pruneUnreachable
+  , stripRoot
 
   -- * Building simple Graphings
   , fromList
@@ -41,6 +42,15 @@ data Graphing ty = Graphing
   , graphingAdjacent :: AdjacencyMap ty
   } deriving (Eq, Ord, Show, Generic)
 
+instance Ord ty => Semigroup (Graphing ty) where
+  graphing <> graphing' =
+    Graphing
+      (graphingDirect graphing `S.union` graphingDirect graphing')
+      (graphingAdjacent graphing `AM.overlay` graphingAdjacent graphing')
+
+instance Ord ty => Monoid (Graphing ty) where
+  mempty = Graphing S.empty AM.empty
+
 -- | Transform a Graphing by applying a function to each of its vertices.
 --
 -- Graphing isn't a lawful 'Functor', so we don't provide an instance.
@@ -60,6 +70,14 @@ filter f gr = gr { graphingDirect = direct', graphingAdjacent = adjacent' }
 -- | The empty Graphing
 empty :: Graphing ty
 empty = Graphing S.empty AM.empty
+
+-- | Strip all items from the direct set, promote their immediate children to direct items
+stripRoot :: Ord ty => Graphing ty -> Graphing ty
+stripRoot gr = gr { graphingDirect = direct' }
+  where
+  roots = S.toList $ graphingDirect gr
+  edgeSet root = AM.postSet root $ graphingAdjacent gr
+  direct' = S.unions $ map edgeSet roots
 
 -- | Add a direct dependency to this Graphing
 direct :: Ord ty => ty -> Graphing ty -> Graphing ty
@@ -83,13 +101,17 @@ edge parent child gr = gr { graphingAdjacent = adjacent' }
 -- - A way to convert a dependency @toDependency@
 --
 -- __Unfold does not work for recursive inputs__
-unfold :: Ord res => [dep] -> (dep -> [dep]) -> (dep -> res) -> Graphing res
-unfold seed getDeps toDependency = foldr addNode empty seed
+unfold :: forall dep res. Ord res => [dep] -> (dep -> [dep]) -> (dep -> res) -> Graphing res
+unfold seed getDeps toDependency = Graphing
+  { graphingDirect = S.fromList (map toDependency seed)
+  , graphingAdjacent = AM.vertices (map toDependency seed) `AM.overlay` AM.edges [(toDependency parentDep, toDependency childDep) | (parentDep,childDep) <- edgesFrom seed]
+  }
   where
-  addNode dep gr = direct res (foldr (edge res . toDependency) gr children)
-    where
-    children = getDeps dep
-    res = toDependency dep
+    edgesFrom :: [dep] -> [(dep,dep)]
+    edgesFrom nodes = do
+      node <- nodes
+      let children = getDeps node
+      map (node,) children ++ edgesFrom children
 
 -- | Build a graphing from a list, where all list elements are treated as direct
 -- dependencies

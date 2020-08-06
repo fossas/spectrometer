@@ -11,7 +11,9 @@ import Prologue hiding (json)
 
 import Data.Aeson.Types (Parser, unexpected)
 import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Control.Effect.Exception
+import Control.Effect.Path (withSystemTempDir)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.FileEmbed (embedFile)
@@ -19,7 +21,6 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import qualified System.FilePath as FP
 
 import DepTypes
@@ -29,10 +30,10 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Types
 
-gradleJsonDepsCmd :: Command
-gradleJsonDepsCmd = Command
-  { cmdNames = ["./gradlew", "gradlew.bat", "gradle"]
-  , cmdBaseArgs = ["jsonDeps", "-I"]
+gradleJsonDepsCmd :: Text -> FP.FilePath -> Command
+gradleJsonDepsCmd baseCmd initScriptFilepath = Command
+  { cmdName = baseCmd
+  , cmdArgs = ["jsonDeps", "-I", T.pack initScriptFilepath]
   , cmdAllowErr = Never
   }
 
@@ -50,44 +51,39 @@ initScript = $(embedFile "scripts/jsondeps.gradle")
 analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
-  , Has (Error ExecErr) sig m
+  , Has Diagnostics sig m
   , MonadIO m
   )
-  => Path Rel Dir -> m ProjectClosureBody
-analyze dir =
-  bracket (liftIO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
-          (liftIO . removeDirRecur)
-          act
+  => Path Abs Dir -> m ProjectClosureBody
+analyze dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
+  let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
+  liftIO (BS.writeFile initScriptFilepath initScript)
+  stdout <- execThrow dir (gradleJsonDepsCmd "./gradlew" initScriptFilepath)
+              <||> execThrow dir (gradleJsonDepsCmd "gradlew.bat" initScriptFilepath)
+              <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath)
 
-  where
+  let text = decodeUtf8 $ BL.toStrict stdout
+      textLines :: [Text]
+      textLines = T.lines (T.filter (/= '\r') text)
+      -- jsonDeps lines look like:
+      -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
+      jsonDepsLines :: [Text]
+      jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
 
-  act tmpDir = do
-    let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
-    liftIO (BS.writeFile initScriptFilepath initScript)
-    stdout <- execThrow dir gradleJsonDepsCmd [initScriptFilepath]
+      packagePathsWithJson :: [(Text,Text)]
+      packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
 
-    let text = decodeUtf8 $ BL.toStrict stdout
-        textLines :: [Text]
-        textLines = T.lines (T.filter (/= '\r') text)
-        -- jsonDeps lines look like:
-        -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
-        jsonDepsLines :: [Text]
-        jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
+      packagePathsWithDecoded :: [(Text, [JsonDep])]
+      packagePathsWithDecoded = [(name, deps) | (name, json) <- packagePathsWithJson
+                                              , Just configs <- [decodeStrict (encodeUtf8 json) :: Maybe (Map Text [JsonDep])]
+                                              , Just deps <- [M.lookup "default" configs]] -- FUTURE: use more than default?
 
-        packagePathsWithJson :: [(Text,Text)]
-        packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
+      packagesToOutput :: Map Text [JsonDep]
+      packagesToOutput = M.fromList packagePathsWithDecoded
 
-        packagePathsWithDecoded :: [(Text, [JsonDep])]
-        packagePathsWithDecoded = [(name, deps) | (name, json) <- packagePathsWithJson
-                                                , Just configs <- [decodeStrict (encodeUtf8 json) :: Maybe (Map Text [JsonDep])]
-                                                , Just deps <- [M.lookup "default" configs]] -- FUTURE: use more than default?
+  pure (mkProjectClosure dir packagesToOutput)
 
-        packagesToOutput :: Map Text [JsonDep]
-        packagesToOutput = M.fromList packagePathsWithDecoded
-
-    pure (mkProjectClosure dir packagesToOutput)
-
-mkProjectClosure :: Path Rel Dir -> Map Text [JsonDep] -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> Map Text [JsonDep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

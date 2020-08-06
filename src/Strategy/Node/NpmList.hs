@@ -7,7 +7,7 @@ module Strategy.Node.NpmList
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
@@ -21,19 +21,19 @@ discover = walk $ \dir _ files -> do
     Nothing -> pure ()
     Just _ -> runSimpleStrategy "nodejs-npmlist" NodejsGroup $ analyze dir
 
-  pure (WalkSkipSome [$(mkRelDir "node_modules")])
+  pure $ WalkSkipSome ["node_modules"]
 
 npmListCmd :: Command
 npmListCmd = Command
-  { cmdNames = ["npm"]
-  , cmdBaseArgs = ["ls", "--json", "--production"]
+  { cmdName = "npm"
+  , cmdArgs = ["ls", "--json", "--production"]
   , cmdAllowErr = NonEmptyStdout
   }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosureBody
-analyze dir = mkProjectClosure dir <$> execJson @NpmOutput dir npmListCmd []
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
+analyze dir = mkProjectClosure dir <$> execJson @NpmOutput dir npmListCmd
 
-mkProjectClosure :: Path Rel Dir -> NpmOutput -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> NpmOutput -> ProjectClosureBody
 mkProjectClosure dir npmOutput = ProjectClosureBody
   { bodyModuleDir     = dir
   , bodyDependencies  = dependencies

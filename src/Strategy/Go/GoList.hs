@@ -10,7 +10,7 @@ module Strategy.Go.GoList
 
 import Prologue hiding ((<?>))
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.ByteString.Lazy as BL
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
@@ -20,6 +20,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
@@ -29,7 +30,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
 
-  pure $ WalkSkipSome [$(mkRelDir "vendor")]
+  pure $ WalkSkipSome ["vendor"]
 
 data Require = Require
   { reqPackage :: Text
@@ -38,19 +39,18 @@ data Require = Require
 
 golistCmd :: Command
 golistCmd = Command
-  { cmdNames = ["go"]
-  , cmdBaseArgs = ["list", "-m", "all"]
+  { cmdName = "go"
+  , cmdArgs = ["list", "-m", "all"]
   , cmdAllowErr = Never
   }
 
 analyze ::
   ( Has Exec sig m
-  , Has (Error ExecErr) sig m
-  , Effect sig
+  , Has Diagnostics sig m
   )
-  => Path Rel Dir -> m ProjectClosureBody
+  => Path Abs Dir -> m ProjectClosureBody
 analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
-  stdout <- execThrow dir golistCmd []
+  stdout <- execThrow dir golistCmd
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
       requires = mapMaybe toRequire gomodLines
@@ -63,11 +63,10 @@ analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
 
   buildGraph requires
 
-  -- TODO: diagnostics?
-  -- _ <- try @ExecErr (fillInTransitive dir)
+  _ <- recover (fillInTransitive dir)
   pure ()
 
-mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure dir graph = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

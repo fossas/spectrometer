@@ -14,7 +14,7 @@ module Strategy.Go.Gomod
 
 import Prologue hiding ((<?>))
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Text.Megaparsec hiding (label)
@@ -23,9 +23,11 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import DepTypes
 import Discovery.Walk
+import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
@@ -35,7 +37,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gomod" GolangGroup $ analyze file
 
-  pure $ WalkSkipSome [$(mkRelDir "vendor")]
+  pure $ WalkSkipSome ["vendor"]
 
 data Statement =
     RequireStatement Text Text -- ^ package, version
@@ -177,20 +179,19 @@ resolve gomod = map resolveReplace (modRequires gomod)
 
 analyze ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
-  , Effect sig
+  , Has Exec sig m
+  , Has Diagnostics sig m
   )
-  => Path Rel File -> m ProjectClosureBody
+  => Path Abs File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   gomod <- readContentsParser gomodParser file
 
   buildGraph gomod
 
-  -- TODO: diagnostics?
-  -- _ <- runError @ExecErr (fillInTransitive (parent file))
+  _ <- recover (fillInTransitive (parent file))
   pure ()
 
-mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

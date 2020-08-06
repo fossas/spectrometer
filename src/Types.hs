@@ -24,10 +24,10 @@ module Types
 import Prologue
 
 import Control.Algebra
-import Control.Carrier.Error.Either
-import Control.Carrier.Fail.Either
 import Control.Carrier.TaskPool
+import Control.Carrier.Diagnostics
 import Control.Effect.Exception
+import Control.Effect.Finally
 import Control.Carrier.Output.IO
 import DepTypes
 import Effect.Exec
@@ -43,7 +43,6 @@ runSimpleStrategy ::
   , Has (Output ProjectClosure) sig m
   , Has (Output ProjectFailure) sig m
   , MonadIO m
-  , Effect sig
   )
   => Text -> StrategyGroup -> TaskC m ProjectClosureBody -> m ()
 runSimpleStrategy name strategyGroup act = runStrategy name strategyGroup (lift act >>= output)
@@ -57,9 +56,7 @@ runStrategy ::
   )
   => Text -> StrategyGroup -> OutputC ProjectClosureBody (TaskC m) () -> m ()
 runStrategy name strategyGroup act = forkTask $ do
-  let runIt = runError @ReadFSErr
-            . runError @ExecErr
-            . runFail
+  let runIt = runDiagnostics
             . runReadFSIO
             . runExecIO
             . runOutput @ProjectClosureBody
@@ -67,22 +64,22 @@ runStrategy name strategyGroup act = forkTask $ do
   mask $ \restore -> do
     (res :: Either SomeException a) <- try (restore (runIt act))
     case res of
-      Left exc -> output (ProjectFailure strategyGroup name exc)
-      Right (Left exc) -> output (ProjectFailure strategyGroup name (SomeException exc))
-      Right (Right (Left exc)) -> output (ProjectFailure strategyGroup name (SomeException exc))
-      Right (Right (Right (Left failmsg))) -> output (ProjectFailure strategyGroup name (SomeException (userError failmsg)))
-      Right (Right (Right (Right (bodies,())))) -> traverse_ (output . toProjectClosure strategyGroup name) bodies
+      Left exc -> output (ProjectFailure strategyGroup name (FailureBundle [] (SomeDiagnostic [] exc)))
+      Right (Left failure) -> output (ProjectFailure strategyGroup name failure)
+      Right (Right result) ->
+        let (bodies, ()) = resultValue result
+         in traverse_ (output . toProjectClosure strategyGroup name) bodies -- TODO: warnings
 
-type TaskC m = ExecIOC (ReadFSIOC (FailC (ErrorC ExecErr (ErrorC ReadFSErr m))))
+type TaskC m = ExecIOC (ReadFSIOC (DiagnosticsC m))
 
 type HasDiscover sig m =
   ( Has (Lift IO) sig m
+  , Has Finally sig m
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m
   , Has (Output ProjectFailure) sig m
   , MonadIO m
-  , Effect sig
   )
 
 ---------- Project Closures
@@ -104,8 +101,8 @@ instance ToJSON Complete where
 data ProjectFailure = ProjectFailure
   { projectFailureGroup :: StrategyGroup
   , projectFailureName  :: Text
-  , projectFailureCause :: SomeException
-  } deriving (Show, Generic)
+  , projectFailureCause :: FailureBundle
+  } deriving (Generic)
 
 toProjectClosure :: StrategyGroup -> Text -> ProjectClosureBody -> ProjectClosure
 toProjectClosure strategyGroup name body = ProjectClosure
@@ -117,7 +114,7 @@ toProjectClosure strategyGroup name body = ProjectClosure
   }
 
 data ProjectClosureBody = ProjectClosureBody
-  { bodyModuleDir    :: Path Rel Dir
+  { bodyModuleDir    :: Path Abs Dir
   , bodyDependencies :: ProjectDependencies
   , bodyLicenses     :: [LicenseResult]
   } deriving (Eq, Ord, Show, Generic)
@@ -125,7 +122,7 @@ data ProjectClosureBody = ProjectClosureBody
 data ProjectClosure = ProjectClosure
   { closureStrategyGroup :: StrategyGroup
   , closureStrategyName  :: Text -- ^ e.g., "python-pipenv". This is temporary: ProjectClosures will eventually combine several strategies into one
-  , closureModuleDir     :: Path Rel Dir -- ^ the relative module directory (for grouping with other strategies)
+  , closureModuleDir     :: Path Abs Dir -- ^ the absolute module directory (for grouping with other strategies)
   , closureDependencies  :: ProjectDependencies
   , closureLicenses      :: [LicenseResult]
   } deriving (Eq, Ord, Show, Generic)
@@ -139,6 +136,7 @@ data ProjectDependencies = ProjectDependencies
 data StrategyGroup =
     CarthageGroup
   | DotnetGroup
+  | ErlangGroup
   | GolangGroup
   | GooglesourceGroup
   | GradleGroup
@@ -147,6 +145,10 @@ data StrategyGroup =
   | PythonGroup
   | RubyGroup
   | CocoapodsGroup
+  | ClojureGroup
+  | RustGroup
+  | RPMGroup
+  | ArchiveGroup
   | ScalaGroup
   deriving (Eq, Ord, Show, Generic)
 

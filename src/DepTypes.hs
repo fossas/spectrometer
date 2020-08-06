@@ -1,11 +1,15 @@
 module DepTypes
   ( Dependency(..)
+  , insertEnvironment
+  , insertTag
+  , insertLocation
   , DepEnvironment(..)
   , DepType(..)
   , VerConstraint(..)
   ) where
 
 import Prologue
+import qualified Data.Map.Strict as M
 
 -- FIXME: this needs a smart constructor with empty tags/environments/etc.
 -- We've historically relied on the compile error for making sure we fill all
@@ -19,6 +23,15 @@ data Dependency = Dependency
   , dependencyTags         :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
 
+insertEnvironment :: DepEnvironment -> Dependency -> Dependency
+insertEnvironment env dep = dep { dependencyEnvironments = env : dependencyEnvironments dep }
+
+insertTag :: Text -> Text -> Dependency -> Dependency
+insertTag key value dep = dep { dependencyTags = M.insertWith (++) key [value] (dependencyTags dep) }
+
+insertLocation :: Text -> Dependency -> Dependency
+insertLocation loc dep = dep { dependencyLocations = loc : dependencyLocations dep }
+
 data DepEnvironment =
     EnvProduction
   | EnvDevelopment
@@ -29,14 +42,18 @@ data DepEnvironment =
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =
     SubprojectType -- ^ A first-party subproject
+  | GitType -- ^ Repository in Github
   | GemType    -- ^ Gem registry
   | GooglesourceType  -- ^ android.googlesource.com
+  | HexType    -- ^ Hex registry
   | MavenType -- ^ Maven registry
   | NodeJSType -- ^ NPM registry (or similar)
   | NuGetType -- ^ Nuget registry
   | PipType    -- ^ Pip registry
   | PodType    -- ^ Cocoapods registry
   | GoType -- ^ Go dependency
+  | CargoType -- ^ Rust Cargo Dependency
+  | RPMType -- ^ RPM dependency
   -- TODO: does this break the "location" abstraction?
   | CarthageType -- ^ A Carthage dependency -- effectively a "git" dependency. Name is repo path and version is tag/branch/hash
   deriving (Eq, Ord, Show, Generic)

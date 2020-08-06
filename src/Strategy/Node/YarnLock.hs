@@ -7,7 +7,7 @@ module Strategy.Node.YarnLock
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as M
 import qualified Data.MultiKeyedMap as MKM
@@ -27,18 +27,18 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-yarnlock" NodejsGroup $ analyze file
 
-  pure (WalkSkipSome [$(mkRelDir "node_modules")])
+  pure (WalkSkipSome ["node_modules"])
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze lockfile = do
-  let path = fromRelFile lockfile
+  let path = fromAbsFile lockfile
 
   contents <- readContentsText lockfile
   case YL.parse path contents of
-    Left err -> throwError (FileParseError path (YL.prettyLockfileError err))
+    Left err -> fatal (FileParseError path (YL.prettyLockfileError err))
     Right a -> pure (mkProjectClosure lockfile a)
 
-mkProjectClosure :: Path Rel File -> YL.Lockfile -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> YL.Lockfile -> ProjectClosureBody
 mkProjectClosure file lock = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

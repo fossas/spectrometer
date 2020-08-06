@@ -1,142 +1,160 @@
 module Effect.Exec
-  ( Exec(..)
-  , ExecErr(..)
-  , exec
-  , execThrow
-  , Command(..)
-  , AllowErr(..)
+  ( Exec (..),
+    ExecErr (..),
+    exec,
+    execThrow,
+    Command (..),
+    AllowErr (..),
+    execParser,
+    execJson,
+    ExecIOC (..),
+    runExecIO,
+    module System.Exit,
+    module X,
+  )
+where
 
-  , execParser
-  , execJson
-
-  , ExecIOC(..)
-  , runExecIO
-  , module System.Exit
-  , module X
-  ) where
-
-import Prologue
-
+import Control.Applicative (Alternative)
 import Control.Algebra as X
-import Control.Carrier.Error.Either
-import qualified Control.Exception as Exc
-import Control.Monad.Except (ExceptT(..), runExceptT)
+import Control.Effect.Diagnostics
+import Control.Exception (IOException, try)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.ByteString.Lazy as BL
-import Data.ByteString.Lazy.Optics
+import Data.Aeson
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
-import Optics
+import Data.Text.Prettyprint.Doc (pretty, viaShow)
+import Data.Void (Void)
+import Path
 import Path.IO
-import System.Exit (ExitCode(..))
+import System.Exit (ExitCode (..))
 import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
+import Prelude
+import Data.Bifunctor (first)
+import Data.String (fromString)
 
 data Command = Command
-  { cmdNames    :: [String] -- ^ Possible command names. E.g., "pip", "pip3", "./gradlew".
-  , cmdBaseArgs :: [String] -- ^ Base arguments for the command. Additional arguments can be passed when running commands (e.g., 'exec')
-  , cmdAllowErr :: AllowErr -- ^ Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
-  } deriving (Eq, Ord, Show, Generic)
+  { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
+    cmdName :: Text,
+    -- | Arguments for the command
+    cmdArgs :: [Text],
+    -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+    cmdAllowErr :: AllowErr
+  }
+  deriving (Eq, Ord, Show)
 
 data CmdFailure = CmdFailure
-  { cmdFailureName   :: String
-  , cmdFailureExit   :: ExitCode
-  , cmdFailureStderr :: Stderr
-  } deriving (Eq, Ord, Show, Generic)
+  { cmdFailureName :: Text,
+    cmdFailureargs :: [Text],
+    cmdFailureDir :: FilePath,
+    cmdFailureExit :: ExitCode,
+    cmdFailureStdout :: Stdout,
+    cmdFailureStderr :: Stderr
+  }
+  deriving (Eq, Ord, Show)
 
-data AllowErr =
-    Never -- ^ never ignore non-zero exit (return 'ExecErr')
-  | NonEmptyStdout -- ^ when `stdout` is non-empty, ignore non-zero exit
-  | Always -- ^ always ignore non-zero exit
-    deriving (Eq, Ord, Show, Generic)
+data AllowErr
+  = -- | never ignore non-zero exit (return 'ExecErr')
+    Never
+  | -- | when `stdout` is non-empty, ignore non-zero exit
+    NonEmptyStdout
+  | -- | always ignore non-zero exit
+    Always
+  deriving (Eq, Ord, Show)
 
 type Stdout = BL.ByteString
+
 type Stderr = BL.ByteString
 
-data Exec m k
+data Exec m k where
   -- | Exec runs a command and returns either:
-  -- - stdout when any of the 'cmdNames' succeed
-  -- - failure descriptions for all of the commands we tried
-  = forall x. Exec (Path x Dir) Command [String] (Either [CmdFailure] Stdout -> m k)
+  -- - stdout when the command succeeds
+  -- - a description of the command failure
+  Exec :: Path x Dir -> Command -> Exec m (Either CmdFailure Stdout)
 
--- TODO: include info about CmdFailures as appropriate
-data ExecErr =
-    CommandFailed Text Text -- ^ Command execution failed, usually from a non-zero exit. command, stderr
-  | CommandParseError Text Text -- ^ Command output couldn't be parsed. command, err
-  deriving (Eq, Ord, Show, Generic, Typeable)
+data ExecErr
+  = -- | Command execution failed, usually from a non-zero exit
+    CommandFailed CmdFailure
+  | -- | Command output couldn't be parsed. command, err
+    CommandParseError Command Text
+  deriving (Eq, Ord, Show)
 
-instance Exc.Exception ExecErr
-
-instance HFunctor Exec where
-  hmap f (Exec dir cmd args k) = Exec dir cmd args (f . k)
-
-instance Effect Exec where
-  thread ctx handle (Exec dir cmd args k) = Exec dir cmd args (handle . (<$ ctx) . k)
+instance ToDiagnostic ExecErr where
+  renderDiagnostic = \case
+    CommandFailed err -> "Command execution failed: " <> viaShow err
+    CommandParseError cmd err -> "Failed to parse command output. command: " <> viaShow cmd <> " . error: " <> pretty err
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
-exec :: Has Exec sig m => Path x Dir -> Command -> [String] -> m (Either [CmdFailure] Stdout)
-exec dir cmd args = send (Exec dir cmd args pure)
+exec :: Has Exec sig m => Path x Dir -> Command -> m (Either CmdFailure Stdout)
+exec dir cmd = send (Exec dir cmd)
 
 type Parser = Parsec Void Text
 
 -- | Parse the stdout of a command
-execParser :: (Has Exec sig m, Has (Error ExecErr) sig m) => Parser a -> Path x Dir -> Command -> [String] -> m a
-execParser parser dir cmd args = do
-  stdout <- execThrow dir cmd args
+execParser :: (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path x Dir -> Command -> m a
+execParser parser dir cmd = do
+  stdout <- execThrow dir cmd
   case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
-    Left err -> throwError (CommandParseError "" (T.pack (errorBundlePretty err))) -- TODO: command name
+    Left err -> fatal (CommandParseError cmd (T.pack (errorBundlePretty err)))
     Right a -> pure a
 
 -- | Parse the JSON stdout of a command
-execJson :: (FromJSON a, Has Exec sig m, Has (Error ExecErr) sig m) => Path x Dir -> Command -> [String] -> m a
-execJson dir cmd args = do
-  stdout <- execThrow dir cmd args
+execJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command -> m a
+execJson dir cmd = do
+  stdout <- execThrow dir cmd
   case eitherDecode stdout of
-    Left err -> throwError (CommandParseError "" (T.pack (show err))) -- TODO: command name
+    Left err -> fatal (CommandParseError cmd (T.pack (show err)))
     Right a -> pure a
 
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
-execThrow :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path x Dir -> Command -> [String] -> m BL.ByteString
-execThrow dir cmd args = do
-  result <- exec dir cmd args
+execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command -> m BL.ByteString
+execThrow dir cmd = do
+  result <- exec dir cmd
   case result of
-    Left failures -> throwError (CommandFailed "" (T.pack (show failures))) -- TODO: better error
+    Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
-{-# INLINE execThrow #-}
 
 runExecIO :: ExecIOC m a -> m a
 runExecIO = runExecIOC
 
-newtype ExecIOC m a = ExecIOC { runExecIOC :: m a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
+newtype ExecIOC m a = ExecIOC {runExecIOC :: m a}
+  deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadFail)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
-  alg (R other) = ExecIOC (alg (handleCoercible other))
+  alg hdl sig ctx = ExecIOC $ case sig of
+    R other -> alg (runExecIOC . hdl) other ctx
+    L (Exec dir cmd) -> liftIO $ do
+      absolute <- makeAbsolute dir
 
-  alg (L (Exec dir cmd args k)) = (k =<<) . ExecIOC $ liftIO $ do
-    absolute <- makeAbsolute dir
-    -- TODO: disgusting/unreadable
-    -- We use `ExceptT [CmdFailure] IO Stdout` here because it has the Alternative instance we want.
-    --
-    -- In particular: when all of the commands fail, we want to have descriptions of all of the
-    -- CmdFailures, so we can produce better error messages.
-    --
-    -- A Command can have many `cmdNames`. ["./gradlew", "gradle"] is one such example.
-    -- Each of them will be attempted successively until one succeeds
-    --
-    -- This is the behavior of `asum` with ExceptT: it'll run all of the ExceptT actions in the list, combining
-    -- errors. When it finds a successful result, it'll return that instead of the accumulated errors
-    let runCmd :: String -> ExceptT [CmdFailure] IO Stdout
-        runCmd cmdName = ExceptT $ Exc.handle (\(e :: Exc.IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
-          (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdBaseArgs cmd <> args)))
-          case (exitcode, cmdAllowErr cmd) of
-            (ExitSuccess, _) -> pure (Right stdout)
-            (_, Never) -> pure (Left [CmdFailure cmdName exitcode stderr])
-            (_, NonEmptyStdout) ->
-              if BL.null stdout
-                then pure (Left [CmdFailure cmdName exitcode stderr])
-                else pure (Right stdout)
-            (_, Always) -> pure (Right stdout)
-    res <- runExceptT $ asum (map runCmd (cmdNames cmd))
-    pure res
+      let cmdName' = T.unpack $ cmdName cmd
+          cmdArgs' = map T.unpack $ cmdArgs cmd
+
+          mkFailure :: ExitCode -> Stdout -> Stderr -> CmdFailure
+          mkFailure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute)
+
+          ioExceptionToCmdFailure :: IOException -> CmdFailure
+          ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show
+
+      processResult <- try $ readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
+
+      -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
+      let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout
+          mangleResult (exitcode, stdout, stderr) =
+            case (exitcode, cmdAllowErr cmd) of
+                  (ExitSuccess, _) -> Right stdout
+                  (_, Never) -> Left $ mkFailure exitcode stdout stderr
+                  (_, NonEmptyStdout) ->
+                    if BL.null stdout
+                      then Left $ mkFailure exitcode stdout stderr
+                      else Right stdout
+                  (_, Always) -> Right stdout
+
+
+      let result :: Either CmdFailure Stdout
+          result = first ioExceptionToCmdFailure processResult >>= mangleResult
+
+      pure (result <$ ctx)

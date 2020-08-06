@@ -12,7 +12,6 @@ module Strategy.Scala
 where
 
 import qualified Algebra.Graph.AdjacencyMap as AM
-import Control.Effect.Error
 import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import Data.Maybe (catMaybes)
@@ -20,6 +19,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Discovery.Walk
+import Control.Effect.Diagnostics
 import Effect.Exec
 import Effect.ReadFS
 import Prologue
@@ -44,23 +44,22 @@ discover basedir =
 makePomCmd :: Command
 makePomCmd =
   Command
-    { cmdNames = ["sbt"],
-      cmdBaseArgs = ["makePom", "-no-colors"],
+    { cmdName = "sbt",
+      cmdArgs = ["makePom", "-no-colors"],
       cmdAllowErr = Never
     }
 
 analyze ::
   ( Has Exec sig m,
-    Has (Error ExecErr) sig m,
+    Has Diagnostics sig m,
     Has ReadFS sig m,
-    Effect sig,
     Has (Output ProjectClosure) sig m
   ) =>
   Path Abs Dir ->
-  Path Rel File ->
+  Path Abs File ->
   m ()
 analyze basedir file = do
-  stdoutBL <- execThrow (parent file) makePomCmd []
+  stdoutBL <- execThrow (parent file) makePomCmd
 
   -- stdout for "sbt makePom" looks something like:
   --
@@ -81,8 +80,8 @@ analyze basedir file = do
       pomLocations = traverse (parseAbsFile . T.unpack) pomLines
 
   case pomLocations of
-    Nothing -> throwError (CommandParseError "sbt makePom" "Could not parse pom locations")
-    Just [] -> throwError (CommandParseError "sbt makePom" "No projects found")
+    Nothing -> fatalText ("Could not parse pom paths from:\n" <> T.unlines pomLines)
+    Just [] -> fatalText ("No sbt projects found")
     Just paths -> do
       globalClosure <- buildGlobalClosure paths
 
@@ -109,4 +108,4 @@ analyze basedir file = do
           globalClosure' = globalClosure {globalGraph = AM.overlay pomEdges (globalGraph globalClosure)}
           projects = buildProjectClosures basedir globalClosure'
 
-      traverse_ (output . mkProjectClosure) projects
+      traverse_ (output . mkProjectClosure basedir) projects

@@ -14,12 +14,14 @@ module Strategy.Go.GopkgLock
 
 import Prologue hiding ((.=))
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import DepTypes
 import Discovery.Walk
+import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import qualified Toml
 import Toml (TomlCodec, (.=))
@@ -31,7 +33,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkglock" GolangGroup $ analyze file
 
-  pure $ WalkSkipSome [$(mkRelDir "vendor")]
+  pure $ WalkSkipSome ["vendor"]
 
 golockCodec :: TomlCodec GoLock
 golockCodec = GoLock
@@ -55,22 +57,17 @@ data Project = Project
 
 analyze ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
-  , Effect sig
+  , Has Exec sig m
+  , Has Diagnostics sig m
   )
-  => Path Rel File -> m ProjectClosureBody
+  => Path Abs File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
-  contents <- readContentsText file
-  case Toml.decode golockCodec contents of
-    Left err -> throwError (FileParseError (fromRelFile file) (Toml.prettyException err))
-    Right golock -> do
-      buildGraph (lockProjects golock)
+  golock <- readContentsToml golockCodec file
+  buildGraph (lockProjects golock)
+  _ <- recover (fillInTransitive (parent file))
+  pure ()
 
-      -- TODO: diagnostics?
-      -- _ <- runError @ExecErr (fillInTransitive (parent file))
-      pure ()
-
-mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

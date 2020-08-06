@@ -10,7 +10,7 @@ module Strategy.Carthage
 import qualified Prelude as Unsafe
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Data.Char (isSpace)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -33,7 +33,7 @@ discover = walk $ \_ _ files ->
       runSimpleStrategy "carthage-lock" CarthageGroup $ fmap (mkProjectClosure file) (analyze file)
       pure WalkSkipAll
 
-mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> G.Graphing ResolvedEntry -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies
@@ -46,18 +46,18 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesComplete = Complete
     }
 
-relCheckoutsDir :: Path Rel File -> Path Rel Dir
+relCheckoutsDir :: Path Abs File -> Path Abs Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
 analyze ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
-  , Effect sig
+  , Has Diagnostics sig m
   )
-  => Path Rel File -> m (G.Graphing ResolvedEntry)
+  => Path Abs File -> m (G.Graphing ResolvedEntry)
 analyze topPath = evalGrapher $ do
-  -- We only care about top-level resolved cartfile errors
-  topEntries <- fromEither =<< analyzeSingle topPath
+  -- We only care about top-level resolved cartfile errors, so we don't
+  -- 'recover' here, but we do below in 'descend'
+  topEntries <- analyzeSingle topPath
 
   for_ topEntries $ \entry -> do
     direct entry
@@ -67,39 +67,37 @@ analyze topPath = evalGrapher $ do
 
   analyzeSingle ::
     ( Has ReadFS sig m
+    , Has Diagnostics sig m
     , Has (Grapher ResolvedEntry) sig m
-    , Effect sig
     )
-    => Path Rel File -> m (Either ReadFSErr [ResolvedEntry])
+    => Path Abs File -> m [ResolvedEntry]
   analyzeSingle path = do
-    maybeEntries :: Either ReadFSErr [ResolvedEntry] <- readContentsParser' resolvedCartfileParser path
-
-    for maybeEntries $ \entries -> do
-      traverse_ (descend (relCheckoutsDir path)) entries
-      pure entries
+    entries <- readContentsParser @[ResolvedEntry] resolvedCartfileParser path
+    traverse_ (descend (relCheckoutsDir path)) entries
+    pure entries
 
   descend ::
     ( Has ReadFS sig m
+    , Has Diagnostics sig m
     , Has (Grapher ResolvedEntry) sig m
-    , Effect sig
     )
-    => Path Rel Dir {- checkouts directory -} -> ResolvedEntry -> m ()
+    => Path Abs Dir {- checkouts directory -} -> ResolvedEntry -> m ()
   descend checkoutsDir entry = do
     let checkoutName = T.unpack $ entryToCheckoutName entry
 
     case parseRelDir checkoutName of
       Nothing -> pure ()
       Just path -> do
-        let checkoutPath :: Path Rel Dir
+        let checkoutPath :: Path Abs Dir
             checkoutPath = checkoutsDir </> path
 
-        deeper <- analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
+        deeper <- recover $ analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
         traverse_ (traverse_ (edge entry)) deeper
 
 entryToCheckoutName :: ResolvedEntry -> Text
 entryToCheckoutName entry =
   case resolvedType entry of
-    GitType -> resolvedName entry
+    GitEntry -> resolvedName entry
     -- this is safe because T.splitOn always returns a non-empty list
     GithubType -> Unsafe.last . T.splitOn "/" $ resolvedName entry
     BinaryType -> resolvedName entry
@@ -107,7 +105,7 @@ entryToCheckoutName entry =
 entryToDepName :: ResolvedEntry -> Text
 entryToDepName entry =
   case resolvedType entry of
-    GitType -> resolvedName entry
+    GitEntry -> resolvedName entry
     GithubType -> "https://github.com/" <> resolvedName entry
     BinaryType -> resolvedName entry
 
@@ -133,7 +131,7 @@ parseSingleEntry :: Parser ResolvedEntry
 parseSingleEntry = L.nonIndented scn $ do
   entryType <- lexeme $ choice
     [ GithubType <$ chunk "github"
-    , GitType    <$ chunk "git"
+    , GitEntry    <$ chunk "git"
     , BinaryType <$ chunk "binary"
     ]
 
@@ -166,5 +164,5 @@ data ResolvedEntry = ResolvedEntry
   , resolvedVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-data EntryType = GithubType | GitType | BinaryType
+data EntryType = GithubType | GitEntry | BinaryType
   deriving (Eq, Ord, Show, Generic)

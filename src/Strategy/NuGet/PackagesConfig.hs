@@ -9,7 +9,7 @@ module Strategy.NuGet.PackagesConfig
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
@@ -39,10 +39,10 @@ newtype PackagesConfig = PackagesConfig
   { deps :: [NuGetDependency]
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML file
 
-mkProjectClosure :: Path Rel File -> PackagesConfig -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> PackagesConfig -> ProjectClosureBody
 mkProjectClosure file config = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

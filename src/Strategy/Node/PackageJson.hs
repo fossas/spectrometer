@@ -9,7 +9,7 @@ module Strategy.Node.PackageJson
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
@@ -24,7 +24,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-packagejson" NodejsGroup $ analyze file
 
-  pure (WalkSkipSome [$(mkRelDir "node_modules")])
+  pure $ WalkSkipSome ["node_modules"]
 
 data PackageJson = PackageJson
   { packageDeps    :: Map Text Text
@@ -36,10 +36,10 @@ instance FromJSON PackageJson where
     PackageJson <$> obj .:? "dependencies"    .!= M.empty
                 <*> obj .:? "devDependencies" .!= M.empty
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @PackageJson file
 
-mkProjectClosure :: Path Rel File -> PackageJson -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> PackageJson -> ProjectClosureBody
 mkProjectClosure file package = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

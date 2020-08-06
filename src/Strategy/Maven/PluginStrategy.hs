@@ -6,8 +6,8 @@ module Strategy.Maven.PluginStrategy
 
 import Prologue
 
-import Control.Carrier.Error.Either
-import Control.Effect.Exception
+import Control.Effect.Lift
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
@@ -29,19 +29,18 @@ discover = walk $ \_ _ files -> do
 analyze ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
   , Has Exec sig m
-  , Has (Error ExecErr) sig m
+  , Has Diagnostics sig m
   , MonadIO m
   )
-  => Path Rel Dir -> m ProjectClosureBody
+  => Path Abs Dir -> m ProjectClosureBody
 analyze dir = withUnpackedPlugin $ \filepath -> do
   installPlugin dir filepath
   execPlugin dir
   pluginOutput <- parsePluginOutput dir
   pure (mkProjectClosure dir pluginOutput)
 
-mkProjectClosure :: Path Rel Dir -> PluginOutput -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> PluginOutput -> ProjectClosureBody
 mkProjectClosure dir pluginOutput = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

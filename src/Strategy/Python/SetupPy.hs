@@ -6,7 +6,7 @@ module Strategy.Python.SetupPy
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -24,10 +24,10 @@ discover = walk $ \_ _ files -> do
 
   pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser installRequiresParser file
 
-mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> [Req] -> ProjectClosureBody
 mkProjectClosure file reqs = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

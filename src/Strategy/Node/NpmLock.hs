@@ -12,7 +12,7 @@ module Strategy.Node.NpmLock
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
@@ -27,7 +27,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "npm-packagelock" NodejsGroup $ analyze file
 
-  pure (WalkSkipSome [$(mkRelDir "node_modules")])
+  pure $ WalkSkipSome ["node_modules"]
 
 data NpmPackageJson = NpmPackageJson
   { packageName         :: Text
@@ -57,10 +57,10 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @NpmPackageJson file
 
-mkProjectClosure :: Path Rel File -> NpmPackageJson -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> NpmPackageJson -> ProjectClosureBody
 mkProjectClosure file lock = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies
@@ -70,7 +70,7 @@ mkProjectClosure file lock = ProjectClosureBody
   dependencies = ProjectDependencies
     { dependenciesGraph    = buildGraph lock
     , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
+    , dependenciesComplete = NotComplete
     }
 
 data NpmPackage = NpmPackage

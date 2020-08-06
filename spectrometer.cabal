@@ -1,4 +1,4 @@
-cabal-version:      2.4
+cabal-version:      2.2
 name:               spectrometer
 version:            0.1.0.0
 license:            MPL-2.0
@@ -8,7 +8,7 @@ extra-source-files:
   scripts/*.gradle
 
 common lang
-  build-depends:      base >=4.12 && <4.14
+  build-depends:      base >=4.12 && <4.15
   default-language:   Haskell2010
   default-extensions:
     NoImplicitPrelude
@@ -48,40 +48,48 @@ common lang
 
 common deps
   build-depends:
-    , aeson                        ^>=1.4.5
+    , aeson                        ^>=1.5.2.0
     , algebraic-graphs             ^>=0.5
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.13.2.3
     , bytestring                   ^>=0.10.8
+    , codec-rpm                    ^>=0.2.2
+    , conduit                      ^>=1.3.2
+    , conduit-extra                ^>=1.3.5
     , containers                   ^>=0.6.0
+    , cpio-conduit                 ^>=0.7.0
+    , exceptions                   ^>=0.10.4
     , file-embed                   ^>=0.0.11
     , filepath                     ^>=1.4.2.1
-    , fused-effects                ^>=1.0.2.0
-    , fused-effects-exceptions     ^>=1.0.0.0
+    , fused-effects                ^>=1.1.0.0
+    , fused-effects-exceptions     ^>=1.1.0.0
     , git-config                   ^>=0.1.2
-    , http-client                  ^>=0.6.4.1
+    , hedn                         ^>=0.3.0.1
+    , http-client                  ^>=0.7.1
     , http-types                   ^>=0.12.3
     , megaparsec                   ^>=8.0
     , modern-uri                   ^>=0.3.1
     , mtl                          ^>=2.2.2
-    , optics                       ^>=0.2
     , optparse-applicative         ^>=0.15.1
-    , path                         ^>=0.7
+    , path                         ^>=0.8
     , path-io                      ^>=1.6.0
     , prettyprinter                ^>=1.6
     , prettyprinter-ansi-terminal  ^>=1.1.1
-    , req                          ^>=3.1.0
+    , req                          ^>=3.4.0
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
+    , tar                          ^>=0.5.1.1
     , text                         ^>=1.2.3
     , time                         ^>=1.9.3
-    , tomland                      ^>=1.2.0
+    , tomland                      ^>=1.3.0.0
     , typed-process                ^>=0.2.6
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
     , xml                          ^>=1.3.14
     , yaml                         ^>=0.11.1
     , yarn-lock                    ^>=0.6.2
+    , zip                          ^>=1.5.0
+    , zlib                         ^>=0.6.2.1
 
 library
   import:          lang
@@ -89,6 +97,7 @@ library
 
   -- cabal-fmt: expand src
   exposed-modules:
+    App.Fossa.API.BuildWait
     App.Fossa.Analyze
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
@@ -97,21 +106,31 @@ library
     App.Fossa.FossaAPIV1
     App.Fossa.Main
     App.Fossa.ProjectInference
+    App.Fossa.Report
+    App.Fossa.Report.Attribution
     App.Fossa.Test
+    App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
+    App.Types
+    App.Util
     App.VPSScan.Main
+    App.VPSScan.NinjaGraph
     App.VPSScan.Scan
     App.VPSScan.Scan.RunIPR
     App.VPSScan.Scan.RunSherlock
     App.VPSScan.Scan.ScotlandYard
     App.VPSScan.Types
+    Control.Carrier.Diagnostics
+    Control.Carrier.Finally
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
+    Control.Effect.Diagnostics
+    Control.Effect.Finally
     Control.Effect.Output
+    Control.Effect.Path
     Control.Effect.TaskPool
-    Control.Effect.Threaded
     DepTypes
     Discovery.Walk
     Effect.Exec
@@ -119,14 +138,18 @@ library
     Effect.Logger
     Effect.ReadFS
     Graphing
-    OptionExtensions
     Parse.XML
     Prologue
     Srclib.Converter
     Srclib.Types
+    Strategy.Archive
+    Strategy.Archive.RPM
+    Strategy.Cargo
     Strategy.Carthage
+    Strategy.Clojure
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
+    Strategy.Erlang.Rebar3Tree
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
@@ -157,10 +180,12 @@ library
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
     Strategy.Python.Util
+    Strategy.RPM
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Types
+    VCS.Git
 
   hs-source-dirs:  src
 
@@ -185,7 +210,7 @@ executable vpscli
   build-depends:  spectrometer
   ghc-options:    -threaded -with-rtsopts=-N
 
-test-suite tests
+test-suite unit-tests
   import:             lang
   import:             deps
   type:               exitcode-stdio-1.0
@@ -194,37 +219,47 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
-    Carthage.CarthageTest
-    Cocoapods.PodfileLockTest
-    Cocoapods.PodfileTest
-    Go.GlideLockTest
-    Go.GoListTest
-    Go.GomodTest
-    Go.GopkgLockTest
-    Go.GopkgTomlTest
-    Googlesource.RepoManifestTest
-    Gradle.GradleTest
+    App.Fossa.FossaAPIV1Spec
+    App.Fossa.Report.AttributionSpec
+    App.VPSScan.NinjaGraphSpec
+    Cargo.MetadataSpec
+    Carthage.CarthageSpec
+    Clojure.ClojureSpec
+    Cocoapods.PodfileLockSpec
+    Cocoapods.PodfileSpec
+    Effect.ExecSpec
+    Erlang.Rebar3TreeSpec
+    Go.GlideLockSpec
+    Go.GoListSpec
+    Go.GomodSpec
+    Go.GopkgLockSpec
+    Go.GopkgTomlSpec
+    Googlesource.RepoManifestSpec
+    Gradle.GradleSpec
     GraphUtil
-    Maven.PluginStrategyTest
-    Node.NpmLockTest
-    Node.PackageJsonTest
-    NuGet.NuspecTest
-    NuGet.PackageReferenceTest
-    NuGet.PackagesConfigTest
-    NuGet.PaketTest
-    NuGet.ProjectAssetsJsonTest
-    NuGet.ProjectJsonTest
-    Python.PipListTest
-    Python.PipenvTest
-    Python.ReqTxtTest
-    Python.RequirementsTest
-    Python.SetupPyTest
-    Ruby.BundleShowTest
-    Ruby.GemfileLockTest
+    GraphingSpec
+    Maven.PluginStrategySpec
+    Node.NpmLockSpec
+    Node.PackageJsonSpec
+    NuGet.NuspecSpec
+    NuGet.PackageReferenceSpec
+    NuGet.PackagesConfigSpec
+    NuGet.PaketSpec
+    NuGet.ProjectAssetsJsonSpec
+    NuGet.ProjectJsonSpec
+    Python.PipListSpec
+    Python.PipenvSpec
+    Python.ReqTxtSpec
+    Python.RequirementsSpec
+    Python.SetupPySpec
+    RPM.SpecFileSpec
+    Ruby.BundleShowSpec
+    Ruby.GemfileLockSpec
 
-  build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
+  build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:
+    , hedgehog          ^>=1.0.2
+    , hspec             ^>=2.7.1
+    , hspec-hedgehog    ^>=0.0.1.2
     , hspec-megaparsec  ^>=2.1
     , spectrometer
-    , tasty             ^>=1.2.3
-    , tasty-hspec       ^>=1.1.5.1

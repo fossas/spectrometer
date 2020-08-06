@@ -1,86 +1,64 @@
 module App.VPSScan.Scan.ScotlandYard
-  ( createScan
-  , postIprResults
-  , HTTP(..)
-  , runHTTP
-  , ScanResponse(..)
-  , ScotlandYard(..)
-  , ScotlandYardC(..)
-  , createScotlandYardScan
-  , uploadIPRResults
+  ( HTTP (..),
+    runHTTP,
+    ScanResponse (..),
+    createScotlandYardScan,
+    uploadIPRResults,
   )
 where
-import Prologue
 
-import Control.Algebra
-import Control.Carrier.Error.Either
-import Network.HTTP.Req
 import App.VPSScan.Types
-import OptionExtensions (UrlOption(..))
+import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson
+import Data.Text (Text)
+import Network.HTTP.Req
+import Prelude
+import App.Util (parseUri)
+import Data.Text.Encoding
 
-newtype HTTP a = HTTP { unHTTP :: ErrorC HttpException IO a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+-- Prefix for Core's reverse proxy to SY
+coreProxyPrefix :: Url 'Https -> Url 'Https
+coreProxyPrefix baseurl = baseurl /: "api" /: "proxy" /: "scotland-yard"
 
-runHTTP :: MonadIO m => HTTP a -> m (Either HttpException a)
-runHTTP = liftIO . runError @HttpException . unHTTP
-
-instance MonadHttp HTTP where
-  handleHttpException = HTTP . throwError
+authHeader :: Text -> Option scheme
+authHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
 
 -- /projects/{projectID}/scans
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https
-createScanEndpoint baseurl projectId = baseurl /: "projects" /: projectId /: "scans"
+createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans"
 
 -- /projects/{projectID}/scans/{scanID}/discovered_licenses
 scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
-scanDataEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
+scanDataEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON ScanResponse where
   parseJSON = withObject "ScanResponse" $ \obj ->
     ScanResponse <$> obj .: "scanId"
 
-createScan :: VPSOpts -> HTTP ScanResponse
-createScan VPSOpts{..} = do
-  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]
-      ScotlandYardOpts{..} = vpsScotlandYard
-  resp <- req POST (createScanEndpoint (urlOptionUrl scotlandYardUrl) projectID) (ReqBodyJson body) jsonResponse (urlOptionOptions scotlandYardUrl <> header "Content-Type" "application/json")
+createScotlandYardScan :: (MonadIO m, Has Diagnostics sig m) => VPSOpts -> m ScanResponse
+createScotlandYardScan VPSOpts {..} = runHTTP $ do
+  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]; FossaOpts {..} = fossaInstance
+  let auth = authHeader fossaApiKey
+
+  (baseUrl, baseOptions) <- parseUri fossaUrl
+  resp <- req POST (createScanEndpoint baseUrl projectID) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
 -- post the IPR result to the "Upload Scan Data" endpoint on Scotland Yard
 -- POST /scans/{scanID}/discovered_licenses
-postIprResults :: ToJSON a => VPSOpts -> Text -> a -> HTTP ()
-postIprResults VPSOpts{..} scanId value = do
-  let ScotlandYardOpts{..} = vpsScotlandYard
-  _ <- req POST (scanDataEndpoint (urlOptionUrl scotlandYardUrl) projectID scanId) (ReqBodyJson value) ignoreResponse (urlOptionOptions scotlandYardUrl <> header "Content-Type" "application/json")
+uploadIPRResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => VPSOpts -> Text -> a -> m ()
+uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
+  let FossaOpts {..} = fossaInstance
+  let auth = authHeader fossaApiKey
+
+  (baseUrl, baseOptions) <- parseUri fossaUrl
+
+  _ <- req POST (scanDataEndpoint baseUrl projectID scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure ()
-
------ scotland yard effect
-
-data ScotlandYard m k
-  = CreateScotlandYardScan VPSOpts (Either HttpException ScanResponse -> m k) -- TODO: add Scotland yard error type
-  | UploadIPRResults VPSOpts Text Value (Either HttpException () -> m k) -- TODO: add scotland yard error type
-  deriving Generic1
-
-instance HFunctor ScotlandYard
-instance Effect ScotlandYard
-
-createScotlandYardScan :: Has ScotlandYard sig m => VPSOpts -> m (Either HttpException ScanResponse)
-createScotlandYardScan vpsOpts = send (CreateScotlandYardScan vpsOpts pure)
-
-uploadIPRResults :: Has ScotlandYard sig m => VPSOpts -> Text -> Value -> m (Either HttpException ())
-uploadIPRResults vpsOpts scanId value = send (UploadIPRResults vpsOpts scanId value pure)
-
------ scotland yard production interpreter
-
-newtype ScotlandYardC m a = ScotlandYardC { runScotlandYard :: m a }
-  deriving (Functor, Applicative, Monad, MonadIO)
-
-instance (Algebra sig m, MonadIO m) => Algebra (ScotlandYard :+: sig) (ScotlandYardC m) where
-  alg (R other) = ScotlandYardC (alg (handleCoercible other))
-  alg (L (CreateScotlandYardScan vpsOpts k)) = (k =<<) . ScotlandYardC $ runHTTP $ createScan vpsOpts
-  alg (L (UploadIPRResults vpsOpts scanId value k)) = (k =<<) . ScotlandYardC $ runHTTP $ postIprResults vpsOpts scanId value

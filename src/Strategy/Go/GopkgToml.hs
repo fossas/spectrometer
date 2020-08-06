@@ -15,16 +15,18 @@ module Strategy.Go.GopkgToml
 
 import Prologue hiding ((.=), empty)
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import Toml (TomlCodec, (.=))
 import qualified Toml
 
 import DepTypes
 import Discovery.Walk
+import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
@@ -34,7 +36,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkgtoml" GolangGroup $ analyze file
 
-  pure $ WalkSkipSome [$(mkRelDir "vendor")]
+  pure $ WalkSkipSome ["vendor"]
 
 gopkgCodec :: TomlCodec Gopkg
 gopkgCodec = Gopkg
@@ -65,22 +67,18 @@ data PkgConstraint = PkgConstraint
 
 analyze ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
-  , Effect sig
+  , Has Exec sig m
+  , Has Diagnostics sig m
   )
-  => Path Rel File -> m ProjectClosureBody
+  => Path Abs File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
-  contents <- readContentsText file
-  case Toml.decode gopkgCodec contents of
-    Left err -> throwError (FileParseError (fromRelFile file) (Toml.prettyException err))
-    Right gopkg -> do
-      buildGraph gopkg
+  gopkg <- readContentsToml gopkgCodec file
+  buildGraph gopkg
 
-      -- TODO: diagnostics?
-      -- _ <- runError @ExecErr (fillInTransitive (parent file))
-      pure ()
+  _ <- recover (fillInTransitive (parent file))
+  pure ()
 
-mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
   { bodyModuleDir     = parent file
   , bodyDependencies  = dependencies
