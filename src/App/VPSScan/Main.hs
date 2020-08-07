@@ -22,9 +22,10 @@ commands = hsubparser $ scanCommand <> ninjaGraphCommand
 
 vpsOpts :: Parser VPSOpts
 -- vpsOpts = VPSOpts <$> fossaOpts <*> filterOpt <*> projectNameOpt <*> skipIprScanOpt
-vpsOpts = VPSOpts <$> projectNameOpt <*> skipIprScanOpt <*> fossaOpts <*> filterOpt
+vpsOpts = VPSOpts <$> fossaOpts <*> projectNameOpt <*> projectRevision <*> skipIprScanOpt <*> filterOpt
   where
     projectNameOpt = strOption (long "project-name" <> metavar "STRING" <> help "The name of the project to create in FOSSA")
+    projectRevision = strOption (long "project-revision" <> metavar "STRING" <> help "The revision of the project to create in FOSSA. If not specified, uses the current Unix timestamp." <> value "")
     skipIprScanOpt = switch (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
 
 ninjaGraphOpts :: Parser NinjaGraphOpts

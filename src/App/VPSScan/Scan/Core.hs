@@ -5,19 +5,21 @@ module App.VPSScan.Scan.Core
   , getSherlockInfo
   , createLocator
   , createRevisionLocator
+  , buildRevision
   , SherlockInfo(..)
   )
 where
 
 import App.VPSScan.Types
 import App.Util (parseUri)
-import Data.Text (Text)
+import Data.Text (pack, Text)
 import Prelude
 import Network.HTTP.Req
 import Data.Text.Encoding (encodeUtf8)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Effect.Diagnostics
 import Data.Aeson
+import Data.Time.Clock.POSIX (getPOSIXTime)
 
 data SherlockInfo = SherlockInfo
   { sherlockUrl :: Text
@@ -38,6 +40,13 @@ instance FromJSON SherlockInfo where
 
 coreAuthHeader :: Text -> Option scheme
 coreAuthHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
+
+
+buildRevision :: (MonadIO m) => Text -> m Text
+buildRevision "" = do
+  posixTime <- liftIO getPOSIXTime
+  pure (pack $ show $ (floor $ toRational posixTime :: Int))
+buildRevision userProvidedRevision = pure (userProvidedRevision)
 
 createLocator :: Text -> Text -> Text
 createLocator projectName organizationId = "custom+" <> organizationId <> "/" <> projectName

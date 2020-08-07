@@ -28,9 +28,10 @@ data FossaOpts = FossaOpts
   deriving (Generic)
 
 data VPSOpts = VPSOpts
-  { projectName :: Text
+  { fossa :: FossaOpts
+  , projectName :: Text
+  , userProvidedRevision :: Text
   , skipIprScan :: Bool
-  , fossa :: FossaOpts
   , filterBlob :: FilterExpressions
   } deriving (Generic)
 

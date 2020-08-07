@@ -22,8 +22,7 @@ import App.VPSScan.Scan.Core
 import App.VPSScan.EmbeddedBinary
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
-import Data.Time.Clock.POSIX (getPOSIXTime)
-import Data.Text (unpack, pack)
+import Data.Text (unpack)
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
@@ -50,10 +49,9 @@ vpsScan ::
 vpsScan basedir ScanCmdOpts{..} = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
   
-  -- Build the revision using the current unix timestamp
-  posixTime <- liftIO getPOSIXTime
-  let projectRevision = pack $ show $ (floor $ toRational posixTime :: Int)
-
+  -- Build the revision
+  projectRevision <- buildRevision userProvidedRevision
+  
   -- Unbundle binary dependencies
   sherlockBinaryPath <- extractEmbeddedBinary "sherlock-cli"
   ramjetBinaryPath <- extractEmbeddedBinary "ramjet-cli-ipr"
