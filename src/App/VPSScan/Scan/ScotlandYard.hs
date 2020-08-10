@@ -7,7 +7,7 @@ module App.VPSScan.Scan.ScotlandYard
 where
 
 import App.VPSScan.Types
-import App.VPSScan.Scan.Core (coreAuthHeader)
+import App.VPSScan.Scan.Core
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
@@ -18,7 +18,7 @@ import App.Util (parseUri)
 import GHC.Generics (Generic)
 
 data ScotlandYardOpts = ScotlandYardOpts
-  { projectId :: Text
+  { projectId :: Locator
   , projectRevision :: Text
   , organizationId :: Int
   , syVpsOpts :: VPSOpts
@@ -52,9 +52,10 @@ createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
   
   let body = object ["revisionId" .= projectRevision, "organizationId" .= organizationId]
   let auth = coreAuthHeader fossaApiKey
+  let locator = unLocator projectId
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
-  resp <- req POST (createScanEndpoint baseUrl projectId) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  resp <- req POST (createScanEndpoint baseUrl locator) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
@@ -65,7 +66,8 @@ uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
   let VPSOpts{..} = syVpsOpts
   let FossaOpts{..} = fossa
   let auth = coreAuthHeader fossaApiKey
+  let locator = unLocator projectId
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
-  _ <- req POST (scanDataEndpoint baseUrl projectId scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  _ <- req POST (scanDataEndpoint baseUrl locator scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure ()

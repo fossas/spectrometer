@@ -5,6 +5,7 @@ module App.VPSScan.Scan.RunSherlock
 where
 
 import App.VPSScan.Types
+import App.VPSScan.Scan.Core
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
 import qualified Data.Text as T
@@ -18,7 +19,7 @@ data SherlockOpts = SherlockOpts
   , clientId :: Text
   , sherlockUrl :: Text
   , organizationId :: Int
-  , projectId :: Text
+  , projectId :: Locator
   , revisionId :: Text
   , sherlockVpsOpts :: VPSOpts
   } deriving (Generic)
@@ -39,7 +40,7 @@ sherlockCommand binaryPath SherlockOpts{..} = do
           "--sherlock-api-client-id", clientId,
           "--sherlock-api-host", sherlockUrl,
           "--organization-id", T.pack $ show organizationId,
-          "--project-id", projectId,
+          "--project-id", unLocator projectId,
           "--revision-id", revisionId,
           "--filter-expressions", unFilterExpressions filterBlob
         ],

@@ -6,6 +6,7 @@ module App.VPSScan.Scan.Core
   , createLocator
   , createRevisionLocator
   , buildRevision
+  , Locator(..)
   , SherlockInfo(..)
   )
 where
@@ -43,13 +44,15 @@ buildRevision "" = do
   pure (pack $ show $ (floor $ toRational posixTime :: Int))
 buildRevision userProvidedRevision = pure (userProvidedRevision)
 
-createLocator :: Text -> Int -> Text
-createLocator projectName organizationId = "custom+" <> (pack $ show organizationId) <> "/" <> projectName
+newtype Locator = Locator { unLocator :: Text }
 
-createRevisionLocator :: Text -> Int -> Text -> Text
+createLocator :: Text -> Int -> Locator
+createLocator projectName organizationId = Locator $ "custom+" <> (pack $ show organizationId) <> "/" <> projectName
+
+createRevisionLocator :: Text -> Int -> Text -> Locator
 createRevisionLocator projectName organizationId revision = do
   let locator = createLocator projectName organizationId
-  locator <> "$" <> revision
+  Locator $ unLocator locator <> "$" <> revision
 
 -- /api/vendored-package-scan/sherlock-info
 sherlockInfoEndpoint :: Url 'Https -> Url 'Https
