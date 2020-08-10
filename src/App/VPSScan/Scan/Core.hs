@@ -25,22 +25,17 @@ data SherlockInfo = SherlockInfo
   { sherlockUrl :: Text
   , sherlockClientToken :: Text
   , sherlockClientId :: Text
-  , sherlockOrgId :: Text
+  , sherlockOrgId :: Int
   }
   deriving (Eq, Ord, Show)
 
 instance FromJSON SherlockInfo where
-  parseJSON = withObject "" $ \obj -> do
+  parseJSON = withObject "SherlockInfo" $ \obj -> do
     auth <- obj .: "auth"
-    sherlockUrl <- obj .: "url"
-    sherlockOrgId <- obj .: "orgId"
-    sherlockClientId <- auth .: "clientId"
-    sherlockClientToken <- auth .: "clientToken"
-    return (SherlockInfo { sherlockUrl = sherlockUrl, sherlockClientId = sherlockClientId, sherlockClientToken = sherlockClientToken, sherlockOrgId = sherlockOrgId })
-
+    SherlockInfo <$> obj .: "url" <*> (read <$> obj .: "orgId") <*> auth .: "clientId" <*> auth .: "clientToken"
+    
 coreAuthHeader :: Text -> Option scheme
 coreAuthHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
-
 
 buildRevision :: (MonadIO m) => Text -> m Text
 buildRevision "" = do
@@ -48,10 +43,10 @@ buildRevision "" = do
   pure (pack $ show $ (floor $ toRational posixTime :: Int))
 buildRevision userProvidedRevision = pure (userProvidedRevision)
 
-createLocator :: Text -> Text -> Text
-createLocator projectName organizationId = "custom+" <> organizationId <> "/" <> projectName
+createLocator :: Text -> Int -> Text
+createLocator projectName organizationId = "custom+" <> (pack $ show organizationId) <> "/" <> projectName
 
-createRevisionLocator :: Text -> Text -> Text -> Text
+createRevisionLocator :: Text -> Int -> Text -> Text
 createRevisionLocator projectName organizationId revision = do
   let locator = createLocator projectName organizationId
   locator <> "$" <> revision

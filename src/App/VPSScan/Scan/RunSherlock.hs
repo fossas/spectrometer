@@ -17,7 +17,7 @@ data SherlockOpts = SherlockOpts
   , clientToken :: Text
   , clientId :: Text
   , sherlockUrl :: Text
-  , organizationId :: Text
+  , organizationId :: Int
   , projectId :: Text
   , revisionId :: Text
   , sherlockVpsOpts :: VPSOpts
@@ -38,10 +38,10 @@ sherlockCommand binaryPath SherlockOpts{..} = do
           "--sherlock-api-secret-key", clientToken,
           "--sherlock-api-client-id", clientId,
           "--sherlock-api-host", sherlockUrl,
-          "--organization-id", organizationId,
+          "--organization-id", T.pack $ show organizationId,
           "--project-id", projectId,
           "--revision-id", revisionId,
-          "--filter-expressions", T.pack $ show filterBlob
+          "--filter-expressions", unFilterExpressions filterBlob
         ],
       cmdAllowErr = Never
     }

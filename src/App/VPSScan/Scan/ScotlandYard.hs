@@ -11,7 +11,7 @@ import App.VPSScan.Scan.Core (coreAuthHeader)
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
-import Data.Text (unpack, Text)
+import Data.Text
 import Network.HTTP.Req
 import Prelude
 import App.Util (parseUri)
@@ -20,7 +20,7 @@ import GHC.Generics (Generic)
 data ScotlandYardOpts = ScotlandYardOpts
   { projectId :: Text
   , projectRevision :: Text
-  , organizationId :: Text
+  , organizationId :: Int
   , syVpsOpts :: VPSOpts
   } deriving (Generic)
 
@@ -49,9 +49,8 @@ createScotlandYardScan :: (MonadIO m, Has Diagnostics sig m) => ScotlandYardOpts
 createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
   let VPSOpts{..} = syVpsOpts
   let FossaOpts{..} = fossa
-  let parsedOrgId = read $ unpack organizationId :: Int
   
-  let body = object ["revisionId" .= projectRevision, "organizationId" .= parsedOrgId]
+  let body = object ["revisionId" .= projectRevision, "organizationId" .= organizationId]
   let auth = coreAuthHeader fossaApiKey
 
   (baseUrl, baseOptions) <- parseUri fossaUrl

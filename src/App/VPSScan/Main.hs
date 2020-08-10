@@ -21,7 +21,6 @@ commands :: Parser (IO ())
 commands = hsubparser $ scanCommand <> ninjaGraphCommand
 
 vpsOpts :: Parser VPSOpts
--- vpsOpts = VPSOpts <$> fossaOpts <*> filterOpt <*> projectNameOpt <*> skipIprScanOpt
 vpsOpts = VPSOpts <$> fossaOpts <*> projectNameOpt <*> projectRevision <*> skipIprScanOpt <*> filterOpt
   where
     projectNameOpt = strOption (long "project-name" <> metavar "STRING" <> help "The name of the project to create in FOSSA")

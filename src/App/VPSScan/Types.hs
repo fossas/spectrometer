@@ -16,10 +16,7 @@ import Text.URI (URI)
 import Network.HTTP.Req
 import Data.Text.Prettyprint.Doc (viaShow)
 
-newtype FilterExpressions = FilterExpressions String
-
-instance Show FilterExpressions where
-  show (FilterExpressions x) = x :: String
+newtype FilterExpressions = FilterExpressions { unFilterExpressions :: Text }
 
 data FossaOpts = FossaOpts
   { fossaUrl :: URI

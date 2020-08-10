@@ -80,7 +80,7 @@ iprCommand IPRBinaryPaths{..} IPROpts{..} = do
         "-target", ".",
         "-nomossa", T.pack nomosBinaryPath,
         "-pathfinder", T.pack pathfinderBinaryPath,
-        "-filter-expressions", T.pack (show filterBlob)
+        "-filter-expressions", unFilterExpressions filterBlob
       ],
       cmdAllowErr = Never
     }
