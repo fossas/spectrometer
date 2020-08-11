@@ -49,13 +49,6 @@ vpsScan basedir ScanCmdOpts{..} = do
   
   -- Build the revision
   projectRevision <- buildRevision userProvidedRevision
-  
-  -- Unbundle binary dependencies
-  sherlockBinaryPath <- extractEmbeddedBinary "sherlock-cli"
-  ramjetBinaryPath <- extractEmbeddedBinary "ramjet-cli-ipr"
-  nomosBinaryPath <- extractEmbeddedBinary "nomossa"
-  pathfinderBinaryPath <- extractEmbeddedBinary "pathfinder"
-  let iprBinaryPaths = IPRBinaryPaths ramjetBinaryPath nomosBinaryPath pathfinderBinaryPath
 
   -- Get Sherlock info
   trace "[Sherlock] Retrieving Sherlock information from FOSSA"
@@ -83,8 +76,8 @@ vpsScan basedir ScanCmdOpts{..} = do
   let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts
   let runIt = runDiagnostics . runExecIO . runTrace
   (iprResult, sherlockResult) <- liftIO $ concurrently
-                (runIt $ runIPRScan basedir scanId iprBinaryPaths syOpts vpsOpts)
-                (runIt $ runSherlockScan sherlockBinaryPath sherlockOpts)
+                (runIt $ withUnpackedIPRClis $ \iprBinaryPaths -> runIPRScan basedir scanId iprBinaryPaths syOpts vpsOpts)
+                (runIt $ withUnpackedSherlockCli $ \sherlockBinaryPath -> runSherlockScan sherlockBinaryPath sherlockOpts)
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"
     (Left iprFailure, _) -> do

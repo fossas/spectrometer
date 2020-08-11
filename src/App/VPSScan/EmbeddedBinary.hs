@@ -1,63 +1,61 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.VPSScan.EmbeddedBinary 
-  ( extractEmbeddedBinary
+  ( withUnpackedSherlockCli
+  , withUnpackedIPRClis
+  , IPRBinaryPaths(..)
   ) where
 
 import Prelude hiding (writeFile)
-import Data.Text
+import Control.Effect.Exception
 import Control.Monad.IO.Class
 import Data.ByteString (writeFile, ByteString)
 import Data.FileEmbed (embedFile)
-import System.Directory
-import System.FilePath (takeDirectory, (</>))
-import Language.Haskell.TH.Syntax
+import Path.IO (removeDirRecur, createTempDir, getTempDir)
+import Path.Posix hiding ((</>))
+import System.FilePath ((</>))
 
-extractEmbeddedBinary :: (MonadIO m) => Text -> m FilePath
-extractEmbeddedBinary "sherlock-cli" = do
-  path <- absBinaryPath "sherlock-cli"
-  liftIO $ writeExecutable path embeddedBinarySherlockCli
-  pure path
-extractEmbeddedBinary "ramjet-cli-ipr" = do
-  path <- absBinaryPath "ramjet-cli-ipr"
-  liftIO $ writeExecutable path embeddedBinaryRamjetCli
-  pure path
-extractEmbeddedBinary "pathfinder" = do
-  path <- absBinaryPath "pathfinder"
-  liftIO $ writeExecutable path embeddedBinaryPathfinder
-  pure path
-extractEmbeddedBinary "nomossa" = do
-  path <- absBinaryPath "nomossa"
-  liftIO $ writeExecutable path embeddedBinaryNomossa
-  pure path
-extractEmbeddedBinary name = error $ "unbundled binary: " ++ unpack name
+withUnpackedSherlockCli :: (Has (Lift IO) sig m, MonadIO m) => (FilePath -> m a) -> m a
+withUnpackedSherlockCli act =
+  bracket (liftIO getTempDir >>= \tmp -> createTempDir tmp "fossa-vpscli-vendor-sherlock")
+          (liftIO . removeDirRecur)
+          go
+  where
+    go tmpDir = do
+      let binaryPath = fromAbsDir tmpDir </> "sherlock-cli"
+      liftIO (writeFile binaryPath embeddedBinarySherlockCli)
+      act binaryPath
 
-writeExecutable :: FilePath -> ByteString -> IO ()
-writeExecutable path content = do
-  createDirectoryIfMissing True $ takeDirectory path
-  writeFile path content
-  makeExecutable path
+data IPRBinaryPaths = IPRBinaryPaths
+  { ramjetBinaryPath :: FilePath
+  , nomosBinaryPath :: FilePath
+  , pathfinderBinaryPath :: FilePath
+  }
 
-makeExecutable :: FilePath -> IO ()
-makeExecutable f = do
-  p <- getPermissions f
-  setPermissions f (p {executable = True})
-
-absBinaryPath :: (MonadIO m) => Text -> m FilePath
-absBinaryPath name = do
-  wd <- liftIO getCurrentDirectory
-  pure (wd </> ".vendor" </> unpack name)
+withUnpackedIPRClis :: (Has (Lift IO) sig m, MonadIO m) => (IPRBinaryPaths -> m a) -> m a
+withUnpackedIPRClis act = 
+  bracket (liftIO getTempDir >>= \tmp -> createTempDir tmp "fossa-vpscli-vendor-ipr")
+          (liftIO . removeDirRecur)
+          go
+  where
+    go tmpDir = do
+      let root = fromAbsDir tmpDir
+      let paths = IPRBinaryPaths (root </> "ramjet-cli-ipr") (root </> "nomossa") (root </> "pathfinder")
+      liftIO (writeFile (ramjetBinaryPath paths) embeddedBinaryRamjetCli)
+      liftIO (writeFile (nomosBinaryPath paths) embeddedBinaryNomossa)
+      liftIO (writeFile (pathfinderBinaryPath paths) embeddedBinaryPathfinder)
+      act paths
 
 -- The intent with these embedded binaries is that the build system will replace the files with built binaries of the appropriate architecture.
 -- The versions vendored into the repository are suitable for running on MacOS.
 embeddedBinarySherlockCli :: ByteString
-embeddedBinarySherlockCli = $(addDependentFile "vendor/sherlock-cli" >> embedFile "vendor/sherlock-cli")
+embeddedBinarySherlockCli = $(embedFile "vendor/sherlock-cli")
 
 embeddedBinaryRamjetCli :: ByteString
-embeddedBinaryRamjetCli = $(addDependentFile "vendor/ramjet-cli-ipr" >> embedFile "vendor/ramjet-cli-ipr")
+embeddedBinaryRamjetCli = $(embedFile "vendor/ramjet-cli-ipr")
 
 embeddedBinaryPathfinder :: ByteString
-embeddedBinaryPathfinder = $(addDependentFile "vendor/pathfinder" >> embedFile "vendor/pathfinder")
+embeddedBinaryPathfinder = $(embedFile "vendor/pathfinder")
 
 embeddedBinaryNomossa :: ByteString
-embeddedBinaryNomossa = $(addDependentFile "vendor/nomossa" >> embedFile "vendor/nomossa")
+embeddedBinaryNomossa = $(embedFile "vendor/nomossa")

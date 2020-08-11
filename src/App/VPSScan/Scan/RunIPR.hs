@@ -4,7 +4,6 @@ module App.VPSScan.Scan.RunIPR
   ( execIPR
   , IPRError (..)
   , IPROpts (..)
-  , IPRBinaryPaths (..)
   )
 where
 
@@ -18,6 +17,7 @@ import qualified Data.Text as T
 import Path
 import Prelude
 import App.VPSScan.Types
+import App.VPSScan.EmbeddedBinary
 import GHC.Generics (Generic)
 
 extractNonEmptyFiles :: Value -> Maybe Value
@@ -56,12 +56,6 @@ data IPROpts = IPROpts
   { scanDir :: Path Abs Dir
   , iprVpsOpts :: VPSOpts
   } deriving (Generic)
-
-data IPRBinaryPaths = IPRBinaryPaths
-  { ramjetBinaryPath :: FilePath
-  , nomosBinaryPath :: FilePath
-  , pathfinderBinaryPath :: FilePath
-  }
 
 execIPR :: (Has Exec sig m, Has Diagnostics sig m) => IPRBinaryPaths -> IPROpts -> m Value
 execIPR iprPaths iprOpts = do
