@@ -41,38 +41,16 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install alpine dependencies
+    - name: Install alpine binary dependencies
       if: ${{ contains(matrix.os, 'ubuntu') }}
       shell: sh
       run: |
-        apk add bash xz-dev bzip2-dev bzip2-static upx
+        apk add bash xz-dev bzip2-dev bzip2-static upx curl jq 
 
-    - uses: dsaltares/fetch-gh-release-asset@0.0.5
-      name: Fetch Basis vendor asset 'nomossa'
-      if: ${{ contains(matrix.os, 'ubuntu') }}
-      with:
-        repo: "fossas/basis"
-        version: "tags/latest"
-        file: "nomossa"
-        token: ${{ secrets.BASIS_ACCESS_TOKEN }}
-
-    - uses: dsaltares/fetch-gh-release-asset@0.0.5
-      name: Fetch Basis vendor asset 'ramjet-cli-ipr'
-      if: ${{ contains(matrix.os, 'ubuntu') }}
-      with:
-        repo: "fossas/basis"
-        version: "tags/latest"
-        file: "ramjet-cli-ipr-linux"
-        token: ${{ secrets.BASIS_ACCESS_TOKEN }}
-
-    - uses: dsaltares/fetch-gh-release-asset@0.0.5
-      name: Fetch Basis vendor asset 'sherlock-cli'
-      if: ${{ contains(matrix.os, 'ubuntu') }}
-      with:
-        repo: "fossas/basis"
-        version: "tags/latest"
-        file: "sherlock-cli-linux"
-        token: ${{ secrets.BASIS_ACCESS_TOKEN }}
+    - name: Install MacOS binary dependencies
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: |
+        brew install upx jq
 
     - uses: actions/setup-haskell@v1.1
       id: setup-haskell
@@ -87,15 +65,6 @@ jobs:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
         key: ${{ runner.os }}-v5-cabal-store
 
-    - name: Zero out vendored vpscli binaries for first run build performance
-      run: |
-        mv vendor .macos-vendor
-        mkdir vendor
-        touch vendor/nomossa
-        touch vendor/ramjet-cli-ipr
-        touch vendor/sherlock-cli
-        touch vendor/pathfinder
-
     - name: Build
       run: |
         cabal update
@@ -105,43 +74,17 @@ jobs:
       run: |
         cabal test --project-file=${{ matrix.project-file }} all
 
-    - name: Find and move binaries (windows)
-      if: ${{ contains(matrix.os, 'windows') }}
+    - name: Find and move binaries
       run: |
         mkdir release
         find . -type f -path '*/fossa/fossa.exe' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
 
-    - name: Find and move binaries (non-windows)
+    - name: Update vendored binaries
       if: ${{ !contains(matrix.os, 'windows') }}
-      run: |
-        mkdir release
-        find . -type f -path '*/fossa/fossa' -exec mv {} release \;
-        find . -type f -path '*/pathfinder/pathfinder' -exec mv {} release \;
-
-    - name: Update Linux vendored binaries
-      if: ${{ contains(matrix.os, 'ubuntu') }}
-      run: |
-        rm vendor/*
-        cp release/pathfinder vendor/pathfinder
-        mv sherlock-cli-linux vendor/sherlock-cli
-        mv ramjet-cli-ipr-linux vendor/ramjet-cli-ipr
-        mv nomossa vendor/nomossa
-        chmod a+x vendor/nomossa
-        chmod a+x vendor/ramjet-cli-ipr
-        chmod a+x vendor/sherlock-cli
-        chmod a+x vendor/pathfinder
-        upx vendor/nomossa
-        upx vendor/ramjet-cli-ipr
-        upx vendor/sherlock-cli
-        upx vendor/pathfinder
-    
-    - name: Update MacOS vendored binaries
-      if: ${{ contains(matrix.os, 'macos') }}
-      run: |
-        rm -rf vendor
-        mv .macos-vendor vendor
-        cp release/pathfinder vendor/pathfinder
+      run: vendor_download.sh
+      env:
+        GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
     - name: Rebuild with new vendored binaries
       if: ${{ !contains(matrix.os, 'windows') }}
