@@ -38,11 +38,11 @@ instance FromJSON SherlockInfo where
 coreAuthHeader :: Text -> Option scheme
 coreAuthHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
 
-buildRevision :: (MonadIO m) => Text -> m Text
-buildRevision "" = do
+buildRevision :: (MonadIO m) => Maybe Text -> m Text
+buildRevision (Just userProvidedRevision) = pure (userProvidedRevision)
+buildRevision Nothing = do
   posixTime <- liftIO getPOSIXTime
   pure (pack $ show $ (floor $ toRational posixTime :: Int))
-buildRevision userProvidedRevision = pure (userProvidedRevision)
 
 newtype Locator = Locator { unLocator :: Text }
 
