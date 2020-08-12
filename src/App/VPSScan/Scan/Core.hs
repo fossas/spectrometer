@@ -33,7 +33,7 @@ data SherlockInfo = SherlockInfo
 instance FromJSON SherlockInfo where
   parseJSON = withObject "SherlockInfo" $ \obj -> do
     auth <- obj .: "auth"
-    SherlockInfo <$> obj .: "url" <*> (read <$> obj .: "orgId") <*> auth .: "clientId" <*> auth .: "clientToken"
+    SherlockInfo <$> obj .: "url" <*> auth .: "clientToken" <*> auth .: "clientId" <*> obj .: "orgId"
     
 coreAuthHeader :: Text -> Option scheme
 coreAuthHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
