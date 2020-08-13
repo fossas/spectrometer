@@ -10,13 +10,11 @@ import Prelude hiding (writeFile)
 import Control.Effect.Exception
 import Control.Monad.IO.Class
 import Data.ByteString (writeFile, ByteString)
-import Data.FileEmbed (embedFile)
 import Path.IO (removeDirRecur, createTempDir, getTempDir)
 import Path.Posix hiding ((</>))
 import System.FilePath ((</>))
-import System.Directory (Permissions(executable))
-import System.Directory (setPermissions)
-import System.Directory (getPermissions)
+import System.Directory (Permissions(executable), setPermissions, getPermissions)
+import Data.FileEmbed.Extra
 
 withUnpackedSherlockCli :: (Has (Lift IO) sig m, MonadIO m) => (FilePath -> m a) -> m a
 withUnpackedSherlockCli act =
@@ -60,14 +58,16 @@ makeExecutable f = do
   
 -- The intent with these embedded binaries is that the build system will replace the files with built binaries of the appropriate architecture.
 -- The versions vendored into the repository are suitable for running on MacOS.
+-- The below functions are expectd to warn since the vendor directory is typically populated in CI.
+-- If you wish to build `vpscli` for your local system, populate these binaries via `vendor_download.sh`.
 embeddedBinarySherlockCli :: ByteString
-embeddedBinarySherlockCli = $(embedFile "vendor/sherlock-cli")
+embeddedBinarySherlockCli = $(embedFileIfExists "vendor/sherlock-cli")
 
 embeddedBinaryRamjetCli :: ByteString
-embeddedBinaryRamjetCli = $(embedFile "vendor/ramjet-cli-ipr")
+embeddedBinaryRamjetCli = $(embedFileIfExists "vendor/ramjet-cli-ipr")
 
 embeddedBinaryPathfinder :: ByteString
-embeddedBinaryPathfinder = $(embedFile "vendor/pathfinder")
+embeddedBinaryPathfinder = $(embedFileIfExists "vendor/pathfinder")
 
 embeddedBinaryNomossa :: ByteString
-embeddedBinaryNomossa = $(embedFile "vendor/nomossa")
+embeddedBinaryNomossa = $(embedFileIfExists "vendor/nomossa")

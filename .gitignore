@@ -8,5 +8,5 @@ dist-newstyle/
 *.prof
 *.hp
 
-# vendor output
-.vendor
+# vendor directory
+vendor
