@@ -10,10 +10,9 @@ import Prelude hiding (writeFile)
 import Control.Effect.Exception
 import Control.Monad.IO.Class
 import Data.ByteString (writeFile, ByteString)
-import Path.IO (removeDirRecur, createTempDir, getTempDir)
-import Path.Posix hiding ((</>))
 import System.FilePath ((</>))
-import System.Directory (Permissions(executable), setPermissions, getPermissions)
+import Path hiding ((</>))
+import Path.IO
 import Data.FileEmbed.Extra
 
 withUnpackedSherlockCli :: (Has (Lift IO) sig m, MonadIO m) => (FilePath -> m a) -> m a
@@ -53,8 +52,9 @@ withUnpackedIPRClis act =
 
 makeExecutable :: FilePath -> IO ()
 makeExecutable f = do
-  p <- getPermissions f
-  setPermissions f (p {executable = True})
+  path <- parseAbsFile f
+  p <- getPermissions path
+  setPermissions path (p {executable = True})
   
 -- The intent with these embedded binaries is that the build system will replace the files with built binaries of the appropriate architecture.
 -- The versions vendored into the repository are suitable for running on MacOS.
