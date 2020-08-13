@@ -60,11 +60,11 @@ curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.git
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
 done
 
-echo "Compressing binaries"
-upx vendor/*
-
 echo "Marking binaries executable"
 chmod +x vendor/*
+
+echo "Compressing binaries"
+upx vendor/*
 
 echo "Vendored binaries are ready for use"
 ls -lh vendor/
