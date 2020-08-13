@@ -87,7 +87,7 @@ jobs:
 
     - name: Update vendored binaries
       if: ${{ !contains(matrix.os, 'windows') }}
-      run: vendor_download.sh
+      run: ./vendor_download.sh
       env:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
