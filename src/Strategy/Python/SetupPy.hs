@@ -45,7 +45,7 @@ type Parser = Parsec Void Text
 installRequiresParser :: Parser [Req]
 installRequiresParser = prefix *> entries <* end
   where
-  prefix  = skipManyTill anySingle (string "install_requires=[")
+  prefix  = skipManyTill anySingle (string "install_requires") *> space *> char '=' *> space *> char '['
   entries = between quote quote requirementParser `sepBy` char ','
   end     = char ']'
 
