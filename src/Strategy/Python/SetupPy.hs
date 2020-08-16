@@ -46,7 +46,7 @@ installRequiresParser :: Parser [Req]
 installRequiresParser = prefix *> entries <* end
   where
   prefix  = skipManyTill anySingle (string "install_requires") *> space *> char '=' *> space *> char '[' *> space
-  entries = (between quote quote requirementParser *> space) `sepBy` (char ',' *> space)
+  entries = (between quote quote requirementParser <* space) `sepBy` (char ',' *> space)
   end     = char ']'
 
   quote   = char '\''
