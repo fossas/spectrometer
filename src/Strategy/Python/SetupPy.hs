@@ -49,4 +49,4 @@ installRequiresParser = prefix *> entries <* end
   entries = (between quote quote requirementParser <* space) `sepBy` (char ',' *> space)
   end     = char ']'
 
-  quote   = char '\''
+  quote   = char '\'' <|> char '\"'
