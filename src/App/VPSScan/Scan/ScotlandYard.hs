@@ -11,7 +11,7 @@ import App.VPSScan.Scan.Core
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
-import Data.Text
+import Data.Text (Text)
 import Network.HTTP.Req
 import Prelude
 import App.Util (parseUri)
