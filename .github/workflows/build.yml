@@ -82,8 +82,9 @@ jobs:
     - name: Find and move binaries
       run: |
         mkdir release
-        find . -type f -path '*/fossa/fossa.exe' -exec mv {} release \;
-        find . -type f -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
+        find . -type f -path '*/fossa/fossa' -o -path '*/fossa/fossa.exe' -exec mv {} release \;
+        find . -type f -path '*/pathfinder/pathfinder' -o -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
+        ls -lh release/
 
     - name: Update vendored binaries
       if: ${{ !contains(matrix.os, 'windows') }}
@@ -101,6 +102,7 @@ jobs:
       if: ${{ !contains(matrix.os, 'windows') }}
       run: |
         find . -type f -path '*/vpscli/vpscli' -exec mv {} release \;
+        ls -lh release/
 
     - name: Strip binaries
       run: |
