@@ -24,15 +24,15 @@ data SherlockOpts = SherlockOpts
   , sherlockVpsOpts :: VPSOpts
   } deriving (Generic)
 
-execSherlock :: (Has Exec sig m, Has Diagnostics sig m) => FilePath -> SherlockOpts -> m ()
+execSherlock :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> SherlockOpts -> m ()
 execSherlock binaryPath sherlockOpts = void $ execThrow (scanDir sherlockOpts) (sherlockCommand binaryPath sherlockOpts)
 
-sherlockCommand :: FilePath -> SherlockOpts -> Command
+sherlockCommand :: Path Abs File -> SherlockOpts -> Command
 sherlockCommand binaryPath SherlockOpts{..} = do
   let VPSOpts{..} = sherlockVpsOpts
 
   Command
-    { cmdName = T.pack binaryPath,
+    { cmdName = T.pack $ fromAbsFile binaryPath,
       cmdArgs =
         [ "scan", T.pack $ fromAbsDir scanDir,
           "--scan-id", scanId,

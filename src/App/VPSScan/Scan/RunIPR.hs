@@ -69,11 +69,11 @@ iprCommand :: IPRBinaryPaths -> IPROpts -> Command
 iprCommand IPRBinaryPaths{..} IPROpts{..} = do
   let VPSOpts{..} = iprVpsOpts
   Command
-    { cmdName = T.pack ramjetBinaryPath,
+    { cmdName = T.pack $ fromAbsFile ramjetBinaryPath,
       cmdArgs = [
         "-target", ".",
-        "-nomossa", T.pack nomosBinaryPath,
-        "-pathfinder", T.pack pathfinderBinaryPath,
+        "-nomossa", T.pack $ fromAbsFile nomosBinaryPath,
+        "-pathfinder", T.pack $ fromAbsFile pathfinderBinaryPath,
         "-filter-expressions", unFilterExpressions filterBlob
       ],
       cmdAllowErr = Never

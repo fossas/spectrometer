@@ -97,7 +97,7 @@ runSherlockScan ::
   ( Has Exec sig m
   , Has Diagnostics sig m
   , Has Trace sig m
-  ) => FilePath -> SherlockOpts -> m ()
+  ) => Path Abs File -> SherlockOpts -> m ()
 runSherlockScan binaryPath sherlockOpts = do
   execSherlock binaryPath sherlockOpts
   trace "[Sherlock] Sherlock scan complete"

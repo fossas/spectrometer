@@ -10,27 +10,26 @@ import Prelude hiding (writeFile)
 import Control.Effect.Exception
 import Control.Monad.IO.Class
 import Data.ByteString (writeFile, ByteString)
-import System.FilePath ((</>))
-import Path hiding ((</>))
+import Path
 import Path.IO
 import Data.FileEmbed.Extra
 
-withUnpackedSherlockCli :: (Has (Lift IO) sig m, MonadIO m) => (FilePath -> m a) -> m a
+withUnpackedSherlockCli :: (Has (Lift IO) sig m, MonadIO m) => (Path Abs File -> m a) -> m a
 withUnpackedSherlockCli act =
   bracket (liftIO getTempDir >>= \tmp -> createTempDir tmp "fossa-vpscli-vendor-sherlock")
           (liftIO . removeDirRecur)
           go
   where
     go tmpDir = do
-      let binaryPath = fromAbsDir tmpDir </> "sherlock-cli"
-      liftIO (writeFile binaryPath embeddedBinarySherlockCli)
+      let binaryPath = tmpDir </> $(mkRelFile "sherlock-cli")
+      liftIO (writeFile (fromAbsFile binaryPath) embeddedBinarySherlockCli)
       liftIO (makeExecutable binaryPath)
       act binaryPath
 
 data IPRBinaryPaths = IPRBinaryPaths
-  { ramjetBinaryPath :: FilePath
-  , nomosBinaryPath :: FilePath
-  , pathfinderBinaryPath :: FilePath
+  { ramjetBinaryPath :: Path Abs File
+  , nomosBinaryPath :: Path Abs File
+  , pathfinderBinaryPath :: Path Abs File
   }
 
 withUnpackedIPRClis :: (Has (Lift IO) sig m, MonadIO m) => (IPRBinaryPaths -> m a) -> m a
@@ -40,19 +39,17 @@ withUnpackedIPRClis act =
           go
   where
     go tmpDir = do
-      let root = fromAbsDir tmpDir
-      let paths = IPRBinaryPaths (root </> "ramjet-cli-ipr") (root </> "nomossa") (root </> "pathfinder")
-      liftIO (writeFile (ramjetBinaryPath paths) embeddedBinaryRamjetCli)
-      liftIO (writeFile (nomosBinaryPath paths) embeddedBinaryNomossa)
-      liftIO (writeFile (pathfinderBinaryPath paths) embeddedBinaryPathfinder)
+      let paths = IPRBinaryPaths (tmpDir </> $(mkRelFile "ramjet-cli-ipr")) (tmpDir </> $(mkRelFile "nomossa")) (tmpDir </> $(mkRelFile "pathfinder"))
+      liftIO (writeFile (fromAbsFile $ ramjetBinaryPath paths) embeddedBinaryRamjetCli)
+      liftIO (writeFile (fromAbsFile $ nomosBinaryPath paths) embeddedBinaryNomossa)
+      liftIO (writeFile (fromAbsFile $ pathfinderBinaryPath paths) embeddedBinaryPathfinder)
       liftIO (makeExecutable (ramjetBinaryPath paths))
       liftIO (makeExecutable (nomosBinaryPath paths))
       liftIO (makeExecutable (pathfinderBinaryPath paths))
       act paths
 
-makeExecutable :: FilePath -> IO ()
-makeExecutable f = do
-  path <- parseAbsFile f
+makeExecutable :: Path Abs File -> IO ()
+makeExecutable path = do
   p <- getPermissions path
   setPermissions path (p {executable = True})
   
