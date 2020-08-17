@@ -79,12 +79,19 @@ jobs:
       run: |
         cabal test --project-file=${{ matrix.project-file }} all
 
-    - name: Find and move binaries
+    - name: Find and move binaries (windows)
+      if: ${{ contains(matrix.os, 'windows') }}
       run: |
         mkdir release
-        find . -type f -path '*/fossa/fossa' -o -path '*/fossa/fossa.exe' -exec mv {} release \;
-        find . -type f -path '*/pathfinder/pathfinder' -o -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
-        ls -lh release/
+        find . -type f -path '*/fossa/fossa.exe' -exec mv {} release \;
+        find . -type f -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
+  
+    - name: Find and move binaries (non-windows)
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: |
+        mkdir release
+        find . -type f -path '*/fossa/fossa' -exec mv {} release \;
+        find . -type f -path '*/pathfinder/pathfinder' -exec mv {} release \;
 
     - name: Update vendored binaries
       if: ${{ !contains(matrix.os, 'windows') }}
