@@ -28,7 +28,7 @@ jobs:
 
           - os: ubuntu-latest
             os-name: Linux
-            container: docker.pkg.github.com/fossas/haskell-static-alpine/haskell-static-alpine:ghc-8.10
+            container: quay.io/fossa/haskell-static-alpine:ghc-8.10
             project-file: cabal.project.ci.linux
 
           - os: macos-latest
