@@ -27,7 +27,7 @@ jobs:
 
           - os: ubuntu-latest
             os-name: Linux
-            container: quay.io/fossa/haskell-static-alpine
+            container: docker.pkg.github.com/fossas/haskell-static-alpine/haskell-static-alpine:ghc-8.10
             project-file: cabal.project.ci.linux
 
           - os: macos-latest
@@ -57,7 +57,7 @@ jobs:
       name: Setup ghc/cabal (non-alpine)
       if: ${{ !contains(matrix.os, 'ubuntu') }}
       with:
-        ghc-version: '8.8.2'
+        ghc-version: '8.10.2'
 
     - uses: actions/cache@v1
       name: Cache cabal store
