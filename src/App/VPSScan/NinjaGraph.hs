@@ -21,7 +21,7 @@ import Data.Text.Prettyprint.Doc (pretty)
 import qualified System.FilePath as FP
 
 import App.VPSScan.Types
-import App.VPSScan.Scan.ScotlandYard (createDependencyGraph)
+import App.VPSScan.Scan.ScotlandYard
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
 
@@ -62,7 +62,11 @@ getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> Ni
 getAndParseNinjaDeps dir ninjaGraphOpts = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
   graph <- scanNinjaDeps ninjaGraphOpts ninjaDepsContents
-  _ <- runHTTP $ createDependencyGraph ninjaGraphOpts graph
+  response <- runHTTP $ createDependencyGraph ninjaGraphOpts
+
+  let depsGraphID = responseDepsGraphID response
+  _ <- runHTTP $ uploadDependencyGraphData ninjaGraphOpts depsGraphID graph
+  _ <- runHTTP $ markDependencyGraphComplete ninjaGraphOpts depsGraphID
   pure ()
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then

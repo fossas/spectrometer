@@ -2,7 +2,10 @@ module App.VPSScan.Scan.ScotlandYard
   ( HTTP (..),
     runHTTP,
     ScanResponse (..),
+    CreateDepsGraphResponse (..),
     createDependencyGraph,
+    uploadDependencyGraphData,
+    markDependencyGraphComplete,
     createScotlandYardScan,
     uploadIPRResults,
   )
@@ -33,9 +36,17 @@ createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: 
 scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 scanDataEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
 
--- /projects/{projectID}/scans/{scanID}/dependency_graph
+-- /projects/{projectID}/scans/{scanID}/dependency_graphs
 createDependencyGraphEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 createDependencyGraphEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graphs"
+
+-- /projects/{projectID}/scans/{scanID}/dependency_graphs/rules/{depsGraphID}
+uploadDependencyGraphDataEndpoint :: Url 'Https -> Text -> Text -> Text -> Url 'Https
+uploadDependencyGraphDataEndpoint baseurl projectId scanId depsGraphID = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graphs" /: depsGraphID /: "rules"
+
+-- /projects/{projectID}/scans/{scanID}/dependency_graphs/{depsGraphID}/rules/complete
+markDependencyGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text -> Url 'Https
+markDependencyGraphCompleteEndpoint baseurl projectId scanId depsGraphID = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graphs" /: depsGraphID
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
@@ -45,6 +56,15 @@ data ScanResponse = ScanResponse
 instance FromJSON ScanResponse where
   parseJSON = withObject "ScanResponse" $ \obj ->
     ScanResponse <$> obj .: "scanId"
+
+data CreateDepsGraphResponse = CreateDepsGraphResponse
+  { responseDepsGraphID :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON CreateDepsGraphResponse where
+  parseJSON = withObject "CreateDepsGraphResponse" $ \obj ->
+    CreateDepsGraphResponse <$> obj .: "dependency_graph_id"
 
 createScotlandYardScan :: (MonadIO m, Has Diagnostics sig m) => VPSOpts -> m ScanResponse
 createScotlandYardScan VPSOpts {..} = runHTTP $ do
@@ -70,8 +90,21 @@ uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
 
 -- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
 -- POST /depsGraph
-createDependencyGraph :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> a -> m ()
-createDependencyGraph NinjaGraphOpts{..} depsGraph = runHTTP $ do
+createDependencyGraph :: (MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> m CreateDepsGraphResponse
+createDependencyGraph NinjaGraphOpts{..} = runHTTP $ do
   (baseUrl, baseOptions) <- parseUri depsGraphFossaUrl
-  _ <- req POST (createDependencyGraphEndpoint baseUrl depsGraphProjectID depsGraphScanID) (ReqBodyJson (object ["targets" .= depsGraph])) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
+  resp <- req POST (createDependencyGraphEndpoint baseUrl depsGraphProjectID depsGraphScanID) (ReqBodyJson (object ["graphName" .= lunchTarget])) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
+  pure (responseBody resp)
+
+uploadDependencyGraphData :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> Text -> a -> m ()
+uploadDependencyGraphData NinjaGraphOpts{..} depsGraphID depsGraphChunk = runHTTP $ do
+  (baseUrl, baseOptions) <- parseUri depsGraphFossaUrl
+  _ <- req POST (uploadDependencyGraphDataEndpoint baseUrl depsGraphProjectID depsGraphScanID depsGraphID) (ReqBodyJson (object ["targets" .= depsGraphChunk])) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
   pure ()
+
+markDependencyGraphComplete :: (MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> Text -> m ()
+markDependencyGraphComplete NinjaGraphOpts{..} depsGraphID = runHTTP $ do
+  (baseUrl, baseOptions) <- parseUri depsGraphFossaUrl
+  _ <- req PUT (markDependencyGraphCompleteEndpoint baseUrl depsGraphProjectID depsGraphScanID depsGraphID) (ReqBodyJson ()) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
+  pure ()
+
