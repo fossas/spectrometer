@@ -50,6 +50,9 @@ vpsScan basedir ScanCmdOpts{..} = do
   -- Build the revision
   projectRevision <- buildRevision userProvidedRevision
 
+  -- Extract binaries
+  binaryPaths <- extractEmbeddedBinaries
+
   -- Get Sherlock info
   trace "[Sherlock] Retrieving Sherlock information from FOSSA"
   SherlockInfo{..} <- getSherlockInfo fossa
@@ -76,8 +79,8 @@ vpsScan basedir ScanCmdOpts{..} = do
   let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts
   let runIt = runDiagnostics . runExecIO . runTrace
   (iprResult, sherlockResult) <- liftIO $ concurrently
-                (runIt $ withUnpackedIPRClis $ \iprBinaryPaths -> runIPRScan basedir scanId iprBinaryPaths syOpts vpsOpts)
-                (runIt $ withUnpackedSherlockCli $ \sherlockBinaryPath -> runSherlockScan sherlockBinaryPath sherlockOpts)
+                (runIt $ runIPRScan basedir scanId binaryPaths syOpts vpsOpts)
+                (runIt $ runSherlockScan binaryPaths sherlockOpts)
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"
     (Left iprFailure, _) -> do
@@ -89,6 +92,7 @@ vpsScan basedir ScanCmdOpts{..} = do
       trace (show $ renderFailureBundle sherlockFailure)
       liftIO exitFailure
 
+  _ <- cleanupExtractedBinaries
   trace $ "[All] Completing scan in FOSSA"
   _ <- context "completing project in FOSSA" $ completeCoreProject (unLocator revisionLocator) fossa
   trace $ "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
@@ -97,9 +101,9 @@ runSherlockScan ::
   ( Has Exec sig m
   , Has Diagnostics sig m
   , Has Trace sig m
-  ) => Path Abs File -> SherlockOpts -> m ()
-runSherlockScan binaryPath sherlockOpts = do
-  execSherlock binaryPath sherlockOpts
+  ) => BinaryPaths -> SherlockOpts -> m ()
+runSherlockScan binaryPaths sherlockOpts = do
+  execSherlock binaryPaths sherlockOpts
   trace "[Sherlock] Sherlock scan complete"
 
 runIPRScan ::
@@ -107,12 +111,12 @@ runIPRScan ::
   , Has Trace sig m
   , Has Exec sig m
   , MonadIO m
-  ) => Path Abs Dir -> Text -> IPRBinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
-runIPRScan basedir scanId iprPaths syOpts vpsOpts =
+  ) => Path Abs Dir -> Text -> BinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
+runIPRScan basedir scanId binaryPaths syOpts vpsOpts =
   if skipIprScan vpsOpts then
     trace "[IPR] IPR scan disabled"
   else do
-    iprResult <- execIPR iprPaths $ IPROpts basedir vpsOpts
+    iprResult <- execIPR binaryPaths $ IPROpts basedir vpsOpts
     trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
     context "uploading scan results" $ uploadIPRResults scanId iprResult syOpts
