@@ -6,7 +6,6 @@
 # Requires binary dependencies in $PATH:
 #   jq              Parse and manipulate json structures.
 #   curl            Download data over HTTP(s)
-#   upx             Compress binaries
 #
 
 set -e
@@ -62,9 +61,6 @@ done
 
 echo "Marking binaries executable"
 chmod +x vendor/*
-
-echo "Compressing binaries"
-upx vendor/*
 
 echo "Vendored binaries are ready for use"
 ls -lh vendor/
