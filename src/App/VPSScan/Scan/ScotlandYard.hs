@@ -35,7 +35,7 @@ scanDataEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /
 
 -- /projects/{projectID}/scans/{scanID}/dependency_graph
 createDependencyGraphEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
-createDependencyGraphEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graph"
+createDependencyGraphEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graphs"
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
