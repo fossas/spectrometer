@@ -12,12 +12,15 @@ module App.VPSScan.Scan.ScotlandYard
 where
 
 import App.VPSScan.Types
-import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
+import Control.Carrier.TaskPool
+import Control.Carrier.Diagnostics
+import Control.Effect.Lift
+import Data.List.Split
+import GHC.Conc.Sync (getNumCapabilities)
+import Effect.Logger
 import Data.Aeson
-import Data.Text (Text)
 import Network.HTTP.Req
-import Prelude
+import Prologue
 import App.Util (parseUri)
 import Data.Text.Encoding
 
@@ -88,19 +91,36 @@ uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
   _ <- req POST (scanDataEndpoint baseUrl projectID scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure ()
 
--- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
--- POST /depsGraph
 createDependencyGraph :: (MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> m CreateDepsGraphResponse
 createDependencyGraph NinjaGraphOpts{..} = runHTTP $ do
   (baseUrl, baseOptions) <- parseUri depsGraphFossaUrl
   resp <- req POST (createDependencyGraphEndpoint baseUrl depsGraphProjectID depsGraphScanID) (ReqBodyJson (object ["graphName" .= lunchTarget])) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
   pure (responseBody resp)
 
-uploadDependencyGraphData :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> Text -> a -> m ()
-uploadDependencyGraphData NinjaGraphOpts{..} depsGraphID depsGraphChunk = runHTTP $ do
+uploadDependencyGraphData :: (MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> Text -> [DepsTarget] -> m ()
+uploadDependencyGraphData NinjaGraphOpts{..} depsGraphID graph = runHTTP $ do
   (baseUrl, baseOptions) <- parseUri depsGraphFossaUrl
-  _ <- req POST (uploadDependencyGraphDataEndpoint baseUrl depsGraphProjectID depsGraphScanID depsGraphID) (ReqBodyJson (object ["targets" .= depsGraphChunk])) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
+  let url = uploadDependencyGraphDataEndpoint baseUrl depsGraphProjectID depsGraphScanID depsGraphID
+  let chunkedGraph = chunksOf 1000 graph
+  capabilities <- liftIO getNumCapabilities
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadDependencyGraphChunk url baseOptions) chunkedGraph
   pure ()
+
+uploadDependencyGraphChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> [DepsTarget] -> m ()
+uploadDependencyGraphChunk url postOptions depsGraphChunk = do
+  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson (object ["targets" .= depsGraphChunk])) ignoreResponse (postOptions <> header "Content-Type" "application/json")
+  pure ()
+
+updateProgress :: Has Logger sig m => Progress -> m ()
+updateProgress Progress{..} =
+  logSticky ( "[ "
+            <> annotate (color Cyan) (pretty pQueued)
+            <> " Waiting / "
+            <> annotate (color Yellow) (pretty pRunning)
+            <> " Running / "
+            <> annotate (color Green) (pretty pCompleted)
+            <> " Completed"
+            <> " ]" )
 
 markDependencyGraphComplete :: (MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> Text -> m ()
 markDependencyGraphComplete NinjaGraphOpts{..} depsGraphID = runHTTP $ do
