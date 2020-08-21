@@ -20,6 +20,7 @@ module Effect.Grapher
     MappedGrapherC,
     mapping,
     withMapping,
+    MappingError(..)
 
     -- * Re-exports
     module X,
@@ -175,13 +176,13 @@ withMapping f act = do
       -- replaceVal :: ty -> Either MappingError res
       replaceVal key =
         case M.lookup key labels of
-          Nothing -> Left . KeyError . T.pack $ show key
+          Nothing -> Left . MissingKey . T.pack $ show key
           Just value -> Right $ f key value
 
   pure result
 
 -- | Errors that may occur when using 'withMapping'
-data MappingError = KeyError Text -- ^ A key did not have an associated value
+data MappingError = MissingKey Text -- ^ A key did not have an associated value
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic MappingError where
