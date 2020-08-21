@@ -43,13 +43,13 @@ scanDataEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /
 createDependencyGraphEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 createDependencyGraphEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graphs"
 
--- /projects/{projectID}/scans/{scanID}/dependency_graphs/rules/{depsGraphID}
+-- /projects/{projectID}/scans/{scanID}/dependency_graphs/{depsGraphID}/rules
 uploadDependencyGraphDataEndpoint :: Url 'Https -> Text -> Text -> Text -> Url 'Https
 uploadDependencyGraphDataEndpoint baseurl projectId scanId depsGraphID = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graphs" /: depsGraphID /: "rules"
 
 -- /projects/{projectID}/scans/{scanID}/dependency_graphs/{depsGraphID}/rules/complete
 markDependencyGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text -> Url 'Https
-markDependencyGraphCompleteEndpoint baseurl projectId scanId depsGraphID = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graphs" /: depsGraphID
+markDependencyGraphCompleteEndpoint baseurl projectId scanId depsGraphID = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "dependency_graphs" /: depsGraphID /: "rules" /: "complete"
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
@@ -94,7 +94,7 @@ uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
 createDependencyGraph :: (MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> m CreateDepsGraphResponse
 createDependencyGraph NinjaGraphOpts{..} = runHTTP $ do
   (baseUrl, baseOptions) <- parseUri depsGraphFossaUrl
-  resp <- req POST (createDependencyGraphEndpoint baseUrl depsGraphProjectID depsGraphScanID) (ReqBodyJson (object ["graphName" .= lunchTarget])) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
+  resp <- req POST (createDependencyGraphEndpoint baseUrl depsGraphProjectID depsGraphScanID) (ReqBodyJson (object ["graphName" .= depsGraphBuildName])) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> header "Fossa-Org-Id" "1")
   pure (responseBody resp)
 
 uploadDependencyGraphData :: (MonadIO m, Has Diagnostics sig m) => NinjaGraphOpts -> Text -> [DepsTarget] -> m ()

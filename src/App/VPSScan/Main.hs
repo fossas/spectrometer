@@ -29,13 +29,14 @@ vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> fossaOpts <*> 
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
 ninjaGraphOpts :: Parser NinjaGraphOpts
-ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt <*> fossaUrlOpt <*> projectIDOpt <*> scanIDOpt
+ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt <*> fossaUrlOpt <*> projectIDOpt <*> scanIDOpt <*> buildNameOpt
                  where
                    ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING")
                    lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
                    fossaUrlOpt = uriOption (long "fossa-url" <> metavar "STRING" <> help "URL for FOSSA service")
                    projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
                    scanIDOpt = strOption (long "scan" <> metavar "String" <> help "Scan ID")
+                   buildNameOpt = strOption (long "build-name" <> metavar "String" <> help "Build Name used to identify the build in the FOSSA UI. This should be unique across builds and branches or tags.")
 
 runSherlockOpts :: Parser SherlockOpts
 runSherlockOpts = SherlockOpts

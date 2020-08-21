@@ -74,6 +74,7 @@ data NinjaGraphOpts = NinjaGraphOpts
   , depsGraphFossaUrl :: URI
   , depsGraphProjectID :: Text
   , depsGraphScanID :: Text
+  , depsGraphBuildName :: Text
   } deriving Generic
 
 newtype HTTP m a = HTTP {unHTTP :: m a}
