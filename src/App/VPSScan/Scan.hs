@@ -50,9 +50,6 @@ vpsScan basedir ScanCmdOpts{..} = do
   -- Build the revision
   projectRevision <- buildRevision userProvidedRevision
 
-  -- Extract binaries
-  binaryPaths <- extractEmbeddedBinaries
-
   -- Get Sherlock info
   trace "[Sherlock] Retrieving Sherlock information from FOSSA"
   SherlockInfo{..} <- getSherlockInfo fossa
@@ -76,11 +73,14 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
 
+  binaryPaths <- extractEmbeddedBinaries
   let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts
   let runIt = runDiagnostics . runExecIO . runTrace
   (iprResult, sherlockResult) <- liftIO $ concurrently
                 (runIt $ runIPRScan basedir scanId binaryPaths syOpts vpsOpts)
                 (runIt $ runSherlockScan binaryPaths sherlockOpts)
+  _ <- cleanupExtractedBinaries
+
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"
     (Left iprFailure, _) -> do
@@ -92,7 +92,6 @@ vpsScan basedir ScanCmdOpts{..} = do
       trace (show $ renderFailureBundle sherlockFailure)
       liftIO exitFailure
 
-  _ <- cleanupExtractedBinaries
   trace $ "[All] Completing scan in FOSSA"
   _ <- context "completing project in FOSSA" $ completeCoreProject (unLocator revisionLocator) fossa
   trace $ "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
