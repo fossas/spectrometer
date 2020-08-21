@@ -186,4 +186,4 @@ data MappingError = MissingKey Text -- ^ A key did not have an associated value
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic MappingError where
-  renderDiagnostic (KeyError key) = "Missing associated value for key: " <> pretty key
+  renderDiagnostic (MissingKey key) = "Missing associated value for key: " <> pretty key
