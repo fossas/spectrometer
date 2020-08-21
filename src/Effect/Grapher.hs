@@ -20,7 +20,7 @@ module Effect.Grapher
     MappedGrapherC,
     mapping,
     withMapping,
-    MappingError(..)
+    MappingError(..),
 
     -- * Re-exports
     module X,
