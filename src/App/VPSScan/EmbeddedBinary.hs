@@ -16,7 +16,7 @@ import Data.FileEmbed.Extra
 
 withUnpackedSherlockCli :: (Has (Lift IO) sig m, MonadIO m) => (Path Abs File -> m a) -> m a
 withUnpackedSherlockCli act =
-  bracket (liftIO getTempDir >>= \tmp -> createTempDir tmp "fossa-vpscli-vendor-sherlock")
+  bracket (liftIO $ createVendorDir $(mkRelDir "sherlock"))
           (liftIO . removeDirRecur)
           go
   where
@@ -34,7 +34,7 @@ data IPRBinaryPaths = IPRBinaryPaths
 
 withUnpackedIPRClis :: (Has (Lift IO) sig m, MonadIO m) => (IPRBinaryPaths -> m a) -> m a
 withUnpackedIPRClis act = 
-  bracket (liftIO getTempDir >>= \tmp -> createTempDir tmp "fossa-vpscli-vendor-ipr")
+  bracket (liftIO $ createVendorDir $(mkRelDir "ramjet"))
           (liftIO . removeDirRecur)
           go
   where
@@ -47,6 +47,13 @@ withUnpackedIPRClis act =
       liftIO (makeExecutable (nomosBinaryPath paths))
       liftIO (makeExecutable (pathfinderBinaryPath paths))
       act paths
+
+createVendorDir :: (MonadIO m) => Path Rel Dir -> m (Path Abs Dir)
+createVendorDir postfix = do
+  wd <- getCurrentDir
+  let target = wd </> $(mkRelDir ".vendor") </> postfix
+  liftIO $ ensureDir target
+  pure (target)
 
 makeExecutable :: Path Abs File -> IO ()
 makeExecutable path = do
