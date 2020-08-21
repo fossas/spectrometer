@@ -6,6 +6,7 @@
 # Requires binary dependencies in $PATH:
 #   jq              Parse and manipulate json structures.
 #   curl            Download data over HTTP(s)
+#   upx             Compress binaries
 #
 
 set -e
