@@ -21,6 +21,7 @@ import App.VPSScan.EmbeddedBinary
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
 import Data.Text (unpack)
+import Control.Effect.Exception (bracket)
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
@@ -30,7 +31,7 @@ data ScanCmdOpts = ScanCmdOpts
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do
   basedir <- validateDir cmdBasedir
-  result <- runDiagnostics $ runTrace $ vpsScan (unBaseDir basedir) opts
+  result <- runDiagnostics $ runTrace $ bracket extractEmbeddedBinaries cleanupExtractedBinaries $ vpsScan (unBaseDir basedir) opts
   case result of
     Left failure -> do
       print $ renderFailureBundle failure
@@ -43,8 +44,8 @@ vpsScan ::
   ( Has Diagnostics sig m
   , Has Trace sig m
   , MonadIO m
-  ) => Path Abs Dir -> ScanCmdOpts -> m ()
-vpsScan basedir ScanCmdOpts{..} = do
+  ) => Path Abs Dir -> ScanCmdOpts -> BinaryPaths -> m ()
+vpsScan basedir ScanCmdOpts{..} binaryPaths = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
   
   -- Build the revision
@@ -73,13 +74,11 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
 
-  binaryPaths <- extractEmbeddedBinaries
   let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts
   let runIt = runDiagnostics . runExecIO . runTrace
   (iprResult, sherlockResult) <- liftIO $ concurrently
                 (runIt $ runIPRScan basedir scanId binaryPaths syOpts vpsOpts)
                 (runIt $ runSherlockScan binaryPaths sherlockOpts)
-  _ <- cleanupExtractedBinaries
 
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"

@@ -14,20 +14,22 @@ import Path.IO
 import Data.FileEmbed.Extra
 
 data BinaryPaths = BinaryPaths
-  { ramjetBinaryPath :: Path Abs File
+  { binaryPathContainer :: Path Abs Dir
+  , ramjetBinaryPath :: Path Abs File
   , nomosBinaryPath :: Path Abs File
   , pathfinderBinaryPath :: Path Abs File
   , sherlockBinaryPath :: Path Abs File
   }
 
-cleanupExtractedBinaries :: (MonadIO m) => m ()
-cleanupExtractedBinaries = do
-  dir <- extractDir
-  removeDirRecur dir
+cleanupExtractedBinaries :: (MonadIO m) => BinaryPaths -> m ()
+cleanupExtractedBinaries BinaryPaths{..} = do
+  removeDirRecur binaryPathContainer
   pure ()
 
 extractEmbeddedBinaries :: (MonadIO m) => m BinaryPaths
 extractEmbeddedBinaries = do
+  container <- extractDir
+
   -- Determine paths to which we should write the binaries
   ramjetBinaryPath <- extractedPath $(mkRelFile "ramjet-cli-ipr")
   nomosBinaryPath <- extractedPath $(mkRelFile "nomossa")
@@ -41,7 +43,7 @@ extractEmbeddedBinaries = do
   liftIO $ writeExecutable sherlockBinaryPath embeddedBinarySherlockCli
 
   -- Return the paths
-  pure (BinaryPaths ramjetBinaryPath nomosBinaryPath pathfinderBinaryPath sherlockBinaryPath)
+  pure (BinaryPaths container ramjetBinaryPath nomosBinaryPath pathfinderBinaryPath sherlockBinaryPath)
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
