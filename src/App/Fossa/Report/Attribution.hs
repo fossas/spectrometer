@@ -1,3 +1,7 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Report.Attribution
   ( Attribution (..),
     Dependency (..),

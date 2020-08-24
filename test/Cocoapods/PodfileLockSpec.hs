@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Cocoapods.PodfileLockSpec
   ( spec
   ) where

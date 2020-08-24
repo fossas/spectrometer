@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 
 module Strategy.Cocoapods.PodfileLock
   ( discover
@@ -92,11 +93,11 @@ buildGraph sections = run . withLabeling toDependency $
 
   addSpec :: Has PodfileGrapher sig m => Pod -> m ()
   addSpec pod = do
-    let pkg = PodfilePkg (name pod)
+    let pkg = PodfilePkg (podName pod)
     -- add edges between spec and specdeps
-    traverse_ (edge pkg . PodfilePkg . depName) (specs pod)
+    traverse_ (edge pkg . PodfilePkg . depName) (podSpecs pod)
     -- add a label for version
-    label pkg (PodfileVersion (version pod))
+    label pkg (PodfileVersion (podVersion pod))
 
 type Parser = Parsec Void Text
 
@@ -119,14 +120,14 @@ data SourceDep = SourceDep
       } deriving (Eq, Ord, Show)
 
 data Pod = Pod
-     { name      :: Text
-     , version   :: Text
-     , specs     :: [Dep]
+     { podName    :: Text
+     , podVersion :: Text
+     , podSpecs   :: [Dep]
      } deriving (Eq, Ord, Show)
 
 data Remote = Remote
-     { location      :: Text
-     , deps          :: [Dep]
+     { remoteLocation :: Text
+     , remoteDeps     :: [Dep]
      } deriving (Eq, Ord, Show)
 
 findSections :: Parser [Section]
@@ -160,9 +161,9 @@ sectionParser sectionName lambda parser = nonIndented $ indentBlock $ do
 
 externalDepsParser :: Parser SourceDep
 externalDepsParser = indentBlock $ do
-  depName <- lexeme (takeWhileP (Just "external dep parser") (/= ':'))
+  name <- lexeme (takeWhileP (Just "external dep parser") (/= ':'))
   _ <- restOfLine
-  return (L.IndentMany Nothing (\exDeps -> pure $ SourceDep depName $ M.fromList exDeps) tagParser)
+  return (L.IndentMany Nothing (\exDeps -> pure $ SourceDep name $ M.fromList exDeps) tagParser)
 
 tagParser :: Parser (Text, Text)
 tagParser = do

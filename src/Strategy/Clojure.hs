@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- | The clojure strategy parses EDN from @lein deps :tree-data@
 --
 -- The output looks something like:

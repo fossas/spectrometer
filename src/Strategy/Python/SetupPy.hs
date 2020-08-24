@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Strategy.Python.SetupPy
   ( discover
   , analyze

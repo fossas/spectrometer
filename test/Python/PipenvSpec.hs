@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Python.PipenvSpec
   ( spec
   ) where

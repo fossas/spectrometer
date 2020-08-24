@@ -1,3 +1,7 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Strategy.NuGet.Nuspec
   ( discover
   , buildGraph
@@ -57,7 +61,7 @@ nuspecLicenses nuspec = url ++ licenseField
             url = case licenseUrl nuspec of
               Just location -> [License LicenseURL location]
               Nothing -> []
-            licenseField = foldr (\a b -> b ++ [License (parseLicenseType $ typeField a) (licenseValue a)]) [] (license nuspec)
+            licenseField = foldr (\a b -> b ++ [License (parseLicenseType $ nuspecLicenseType a) (nuspecLicenseValue a)]) [] (license nuspec)
 
 parseLicenseType :: Text -> LicenseType
 parseLicenseType rawType = case T.unpack rawType of 
@@ -72,8 +76,8 @@ data Nuspec = Nuspec
   } deriving (Eq, Ord, Show)
 
 data NuspecLicense = NuspecLicense
-  { typeField    :: Text
-  , licenseValue :: Text
+  { nuspecLicenseType  :: Text
+  , nuspecLicenseValue :: Text
   } deriving (Eq, Ord, Show)
 
 newtype Group = Group

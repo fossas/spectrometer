@@ -1,4 +1,6 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Node.NpmList
   ( discover

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Go.GlideLockSpec
   ( spec
   ) where

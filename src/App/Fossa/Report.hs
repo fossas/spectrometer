@@ -1,3 +1,6 @@
+{-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module App.Fossa.Report
   ( reportMain
   , ReportType (..)

@@ -1,4 +1,5 @@
-{-# language QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Python.SetupPySpec
   ( spec

@@ -1,4 +1,7 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Carthage.CarthageSpec
   ( spec
   ) where

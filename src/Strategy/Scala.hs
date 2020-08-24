@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- | The scala strategy leverages the machinery from maven-pom.
 --
 -- Sbt has a command to export pom files, with one caveat -- in multi-project

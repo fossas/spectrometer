@@ -1,3 +1,11 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 -- | Legacy/deprecated GraphBuilder interface. Kept for compatibility with old code
 module App.Fossa.Analyze.GraphBuilder
   ( GraphBuilder(..)
@@ -13,9 +21,10 @@ import Control.Algebra
 import Control.Carrier.State.Strict
 import Control.Monad.IO.Class (MonadIO)
 import qualified App.Fossa.Analyze.Graph as G
+import Data.Kind (Type)
 import DepTypes
 
-data GraphBuilder m k where
+data GraphBuilder (m :: Type -> Type) k where
   AddNode :: Dependency -> GraphBuilder m G.DepRef
   AddEdge :: G.DepRef -> G.DepRef -> GraphBuilder m ()
   AddDirect :: G.DepRef -> GraphBuilder m ()

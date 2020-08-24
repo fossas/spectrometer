@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module NuGet.PackagesConfigSpec
   ( spec
   ) where

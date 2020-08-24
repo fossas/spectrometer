@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Effect.ExecSpec
   ( spec,
   )

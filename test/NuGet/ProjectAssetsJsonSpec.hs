@@ -1,4 +1,5 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module NuGet.ProjectAssetsJsonSpec
   ( spec

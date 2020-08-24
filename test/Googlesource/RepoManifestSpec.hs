@@ -1,5 +1,6 @@
-{-# language TemplateHaskell #-}
-{-# language QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Googlesource.RepoManifestSpec
   ( spec

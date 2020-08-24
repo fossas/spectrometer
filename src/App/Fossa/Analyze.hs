@@ -1,3 +1,8 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+
 module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)

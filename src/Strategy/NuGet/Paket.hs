@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Strategy.NuGet.Paket
   ( discover
   , analyze
@@ -98,14 +100,14 @@ buildGraph sections = run . withLabeling toDependency $
             addSection _ (UnknownSection _) = pure ()
 
             addRemote :: Has PaketGrapher sig m => Text -> Text -> Remote -> m ()
-            addRemote group loc remote = traverse_ (addSpec (DepLocation loc) (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
+            addRemote group loc remote = traverse_ (addSpec (DepLocation loc) (PaketRemote $ remoteLocation remote) (GroupName group)) (remoteDependencies remote)
 
             addSpec :: Has PaketGrapher sig m => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> m ()
             addSpec loc remote group dep = do
               -- add edges, labels, and direct deps
-              let pkg = PaketPkg (name dep)
+              let pkg = PaketPkg (depName dep)
               traverse_ (edge pkg . PaketPkg) (transitive dep)
-              label pkg (PaketVersion (version dep))
+              label pkg (PaketVersion (depVersion dep))
               label pkg remote
               label pkg group
               label pkg loc
@@ -121,13 +123,13 @@ data Section =
       deriving (Eq, Ord, Show)
 
 data Remote = Remote
-     { location      :: Text
-     , dependencies  :: [PaketDep]
+     { remoteLocation :: Text
+     , remoteDependencies  :: [PaketDep]
      } deriving (Eq, Ord, Show)
 
 data PaketDep = PaketDep
-     { name       :: Text
-     , version    :: Text
+     { depName    :: Text
+     , depVersion    :: Text
      , transitive :: [Text]
      } deriving (Eq, Ord, Show)
 

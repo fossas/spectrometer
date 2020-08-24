@@ -1,3 +1,12 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 -- | Grapher is a thin State wrapper effect around 'G.Graphing'
 --
 -- It defines @direct@ and @edge@ combinators analagous to 'G.direct' and
@@ -31,6 +40,7 @@ import Control.Algebra as X
 import Control.Carrier.Diagnostics
 import Control.Carrier.State.Strict
 import Control.Monad.IO.Class (MonadIO)
+import Data.Kind (Type)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
@@ -41,7 +51,7 @@ import qualified Data.Text as T
 import Prettyprinter (pretty)
 import qualified Graphing as G
 
-data Grapher ty m k where
+data Grapher ty (m :: Type -> Type) k where
   Direct :: ty -> Grapher ty m ()
   Edge :: ty -> ty -> Grapher ty m ()
 

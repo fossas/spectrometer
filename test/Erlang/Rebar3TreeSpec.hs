@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Erlang.Rebar3TreeSpec
   ( spec
   ) where

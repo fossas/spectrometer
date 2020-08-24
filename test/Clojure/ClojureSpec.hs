@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Clojure.ClojureSpec
   ( spec,
   )

@@ -1,3 +1,7 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+
 -- | A graph augmented with a set of "direct" vertices
 --
 -- Graphings can be built with the 'direct' and 'edge' primitives.

@@ -1,3 +1,13 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Effect.Logger
   ( Logger(..)
   , LogMsg(..)
@@ -33,6 +43,7 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Bool (bool)
 import Data.Functor (void)
+import Data.Kind (Type)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -41,7 +52,7 @@ import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import Prelude hiding (log)
 import System.IO (hIsTerminalDevice, hSetBuffering, BufferMode(NoBuffering), stdout, stderr)
 
-data Logger m k where
+data Logger (m :: Type -> Type) k where
   Log :: LogMsg -> Logger m ()
 
 data LogMsg

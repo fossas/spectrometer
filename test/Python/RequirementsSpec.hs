@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Python.RequirementsSpec
   ( spec,
   )

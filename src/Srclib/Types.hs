@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Srclib.Types
   ( SourceUnit(..)
   , SourceUnitType(..)

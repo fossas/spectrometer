@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module VCS.Git
   ( gitLogCmd,
     fetchGitContributors,

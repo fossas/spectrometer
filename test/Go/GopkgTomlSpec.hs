@@ -1,4 +1,5 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Go.GopkgTomlSpec
   ( spec

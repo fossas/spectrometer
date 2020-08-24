@@ -1,3 +1,7 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module App.VPSScan.Scan.ScotlandYard
   ( createScotlandYardScan
   , uploadIPRResults
@@ -14,14 +18,13 @@ import Data.Aeson
 import Data.Text (Text)
 import Network.HTTP.Req
 import App.Util (parseUri)
-import GHC.Generics (Generic)
 
 data ScotlandYardOpts = ScotlandYardOpts
   { projectId :: Locator
   , projectRevision :: Text
   , organizationId :: Int
   , syVpsOpts :: VPSOpts
-  } deriving (Generic)
+  }
 
 -- Prefix for Core's reverse proxy to SY
 coreProxyPrefix :: Url 'Https -> Url 'Https

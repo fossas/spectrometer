@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module App.VPSScan.Main
   ( appMain
   ) where

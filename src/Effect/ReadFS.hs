@@ -1,3 +1,14 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Effect.ReadFS
   ( -- * ReadFS Effect
     ReadFS (..),
@@ -38,6 +49,7 @@ import Control.Monad.IO.Class
 import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import Data.Kind (Type)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
@@ -51,7 +63,7 @@ import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import qualified Toml
 
-data ReadFS m k where
+data ReadFS (m :: Type -> Type) k where
   ReadContentsBS' :: Path x File -> ReadFS m (Either ReadFSErr ByteString)
   ReadContentsText' :: Path x File -> ReadFS m (Either ReadFSErr Text)
   DoesFileExist :: Path x File -> ReadFS m Bool

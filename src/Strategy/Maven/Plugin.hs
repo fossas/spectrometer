@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# language TemplateHaskell #-}
 
 module Strategy.Maven.Plugin

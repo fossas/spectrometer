@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Maven.Pom.PomFile
   -- TODO: sort
   ( Pom(..)

@@ -1,3 +1,8 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module App.VPSScan.Types
 ( VPSOpts(..)
 , FossaOpts(..)

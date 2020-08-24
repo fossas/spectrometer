@@ -1,3 +1,4 @@
+{-# language OverloadedStrings #-}
 {-# language TemplateHaskell #-}
 
 module Strategy.Gradle

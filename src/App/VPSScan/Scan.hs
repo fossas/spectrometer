@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module App.VPSScan.Scan
   ( scanMain
   , ScanCmdOpts(..)

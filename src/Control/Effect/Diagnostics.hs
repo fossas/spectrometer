@@ -1,3 +1,6 @@
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 -- | The Diagnostics effect is a replacement for the Error effect in most cases. It models an unchecked exceptions pattern, and provides for:
 --
 -- - "stack trace"-like behavior, closely resembling the golang pattern of errors.Wrap (see: 'context')

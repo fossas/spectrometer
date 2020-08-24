@@ -1,4 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# language TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Maven.Pom.Resolver
   ( GlobalClosure(..)

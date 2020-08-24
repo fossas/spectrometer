@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Cocoapods.PodfileSpec
   ( spec
   ) where

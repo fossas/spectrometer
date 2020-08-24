@@ -1,3 +1,13 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Effect.Exec
   ( Exec (..),
     ExecErr (..),
@@ -24,6 +34,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bifunctor (first)
 import qualified Data.ByteString.Lazy as BL
+import Data.Kind (Type)
 import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -72,7 +83,7 @@ type Stdout = BL.ByteString
 type Stderr = BL.ByteString
 
 -- TODO: add a "shell command" method; this would help in App.VPSScan.NinjaGraph
-data Exec m k where
+data Exec (m :: Type -> Type) k where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
   -- - a description of the command failure

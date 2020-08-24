@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeApplications #-}
+
 module Strategy.Maven.Pom.Closure
   ( findProjects
   , MavenProjectClosure(..)

@@ -1,3 +1,5 @@
+{-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module App.Fossa.Test
   ( testMain

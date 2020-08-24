@@ -1,3 +1,10 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Types
   ( StrategyGroup(..)
 
@@ -160,8 +167,8 @@ data LicenseResult = LicenseResult
   } deriving (Eq, Ord, Show)
 
 data License = License
-  { licenseType :: LicenseType
-  , value       :: Text
+  { licenseType  :: LicenseType
+  , licenseValue :: Text
   } deriving (Eq, Ord, Show)
 
 data LicenseType =
@@ -174,7 +181,7 @@ data LicenseType =
 instance ToJSON License where
     toJSON License{..} = object
       [ "type"   .=  textType licenseType
-      , "value"  .=  value
+      , "value"  .=  licenseValue
       ]
       
       where

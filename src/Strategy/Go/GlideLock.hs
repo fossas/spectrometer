@@ -1,3 +1,7 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Strategy.Go.GlideLock
   ( discover
   , analyze
@@ -51,7 +55,7 @@ buildGraph :: GlideLockfile -> Graphing Dependency
 buildGraph lockfile = Graphing.fromList (map toDependency direct)
   where
   direct = imports lockfile
-  toDependency GlideDep{..}  =
+  toDependency GlideDep{..} =
     Dependency { dependencyType = GoType
                , dependencyName = depName
                , dependencyVersion = Just (CEq $ T.pack (show depVersion))

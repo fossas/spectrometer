@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Strategy.Cargo
   ( discover
   , CargoMetadata(..)
@@ -181,8 +184,8 @@ kindToLabel Nothing  = CargoDepKind EnvProduction
 
 addLabel :: Has (LabeledGrapher PackageId CargoLabel) sig m => NodeDependency -> m ()
 addLabel dep = do
-  let pkgId = nodePkg dep
-  traverse_ (label pkgId . kindToLabel . nodeDepKind) $ nodeDepKinds dep
+  let packageId = nodePkg dep
+  traverse_ (label packageId . kindToLabel . nodeDepKind) $ nodeDepKinds dep
 
 addEdge :: Has (LabeledGrapher PackageId CargoLabel) sig m => ResolveNode -> m ()
 addEdge node = do
