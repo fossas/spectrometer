@@ -4,20 +4,23 @@ module Strategy.Maven.Pom.Closure
   , buildProjectClosures
   ) where
 
-import Prologue
-
 import qualified Algebra.Graph.AdjacencyMap as AM
 import qualified Algebra.Graph.AdjacencyMap.Algorithm as AM
 import Control.Algebra
 import Control.Carrier.State.Strict
 import Control.Effect.Diagnostics
-import qualified Path.IO as PIO
-import qualified Data.Set as S
+import Control.Monad.IO.Class (MonadIO)
+import Data.Foldable (traverse_)
+import Data.List (isSuffixOf)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
-
+import Data.Set (Set)
+import qualified Data.Set as S
 import Discovery.Walk
 import Effect.ReadFS
+import Path
+import qualified Path.IO as PIO
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
@@ -95,4 +98,4 @@ data MavenProjectClosure = MavenProjectClosure
   , closureRootPom   :: Pom
   , closureGraph     :: AM.AdjacencyMap MavenCoordinate
   , closurePoms      :: Map MavenCoordinate (Path Abs File, Pom)
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)

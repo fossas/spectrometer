@@ -31,14 +31,15 @@ where
 import Control.Algebra as X
 import Control.Applicative (Alternative)
 import Control.Effect.Diagnostics
+import Control.Effect.Lift (Lift, sendIO)
 import qualified Control.Exception as E
 import Control.Monad ((<=<))
 import Control.Monad.IO.Class
 import Data.Aeson
-import qualified Data.ByteString as BS
 import Data.ByteString (ByteString)
-import qualified Data.Text as T
+import qualified Data.ByteString as BS
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Void (Void)
@@ -49,7 +50,6 @@ import qualified Path.IO as PIO
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import qualified Toml
-import Prelude
 
 data ReadFS m k where
   ReadContentsBS' :: Path x File -> ReadFS m (Either ReadFSErr ByteString)
@@ -158,7 +158,7 @@ readContentsXML file = do
 newtype ReadFSIOC m a = ReadFSIOC {runReadFSIO :: m a}
   deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadFail)
 
-instance (Algebra sig m, MonadIO m) => Algebra (ReadFS :+: sig) (ReadFSIOC m) where
+instance Has (Lift IO) sig m => Algebra (ReadFS :+: sig) (ReadFSIOC m) where
   alg hdl sig ctx = ReadFSIOC $ do
     case sig of
       L (ReadContentsBS' file) -> do
@@ -174,9 +174,9 @@ instance (Algebra sig m, MonadIO m) => Algebra (ReadFS :+: sig) (ReadFSIOC m) wh
         res <- catchingIO (PIO.resolveDir dir (T.unpack path)) (ResolveError (toFilePath dir) (T.unpack path))
         pure (res <$ ctx)
       -- NB: these never throw
-      L (DoesFileExist file) -> (<$ ctx) <$> PIO.doesFileExist file
-      L (DoesDirExist dir) -> (<$ ctx) <$> PIO.doesDirExist dir
+      L (DoesFileExist file) -> (<$ ctx) <$> sendIO (PIO.doesFileExist file)
+      L (DoesDirExist dir) -> (<$ ctx) <$> sendIO (PIO.doesDirExist dir)
       R other -> alg (runReadFSIO . hdl) other ctx
     where
       catchingIO :: IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
-      catchingIO io mangle = liftIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (T.pack (show e)))))
+      catchingIO io mangle = sendIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (T.pack (show e)))))

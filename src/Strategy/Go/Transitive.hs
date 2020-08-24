@@ -3,20 +3,23 @@ module Strategy.Go.Transitive
   )
   where
 
-import Prologue hiding (empty)
-
 import Control.Algebra
 import Control.Applicative (many)
+import Control.Monad (unless)
 import Control.Effect.Diagnostics
-import qualified Data.Attoparsec.ByteString as A
+import Data.Aeson
 import Data.Aeson.Internal (formatError, iparse)
 import Data.Aeson.Parser
+import qualified Data.Attoparsec.ByteString as A
 import qualified Data.ByteString.Lazy as BL
+import Data.Foldable (traverse_)
+import Data.Functor (void)
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
-
 import Effect.Exec
 import Effect.Grapher
+import Path
 import Strategy.Go.Types
 
 goListCmd :: Command
@@ -31,12 +34,12 @@ data Package = Package
   , packageModule     :: Maybe Module
   , packageImports    :: Maybe [Text]
   , packageSystem     :: Maybe Bool
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data Module = Module
   { modPath    :: Text
   , modVersion :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON Package where
   parseJSON = withObject "Package" $ \obj ->

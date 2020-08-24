@@ -10,22 +10,26 @@ module Strategy.Cocoapods.PodfileLock
   , Section (..)
   ) where
 
-import Prologue
-
 import Control.Effect.Diagnostics
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
 import qualified Data.Char as C
-
+import Data.Foldable (find, traverse_)
+import Data.Functor (void)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
-import Types
+import Path
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
@@ -52,13 +56,13 @@ mkProjectClosure file sections = ProjectClosureBody
     }
 
 newtype PodfilePkg = PodfilePkg { pkgName :: Text }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 type PodfileGrapher = LabeledGrapher PodfilePkg PodfileLabel
 
 newtype PodfileLabel =
     PodfileVersion Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 toDependency :: PodfilePkg -> Set PodfileLabel -> Dependency
 toDependency pkg = foldr applyLabel start
@@ -103,27 +107,27 @@ data Section =
       | ExternalSources [SourceDep]
       | CheckoutOptions [SourceDep]
       | UnknownSection Text
-      deriving (Eq, Ord, Show, Generic)
+      deriving (Eq, Ord, Show)
 
 newtype Dep = Dep
       { depName :: Text
-      } deriving (Eq, Ord, Show, Generic)
+      } deriving (Eq, Ord, Show)
 
 data SourceDep = SourceDep
       { sDepName :: Text
       , tags     :: Map Text Text
-      } deriving (Eq, Ord, Show, Generic)
+      } deriving (Eq, Ord, Show)
 
 data Pod = Pod
      { name      :: Text
      , version   :: Text
      , specs     :: [Dep]
-     } deriving (Eq, Ord, Show, Generic)
+     } deriving (Eq, Ord, Show)
 
 data Remote = Remote
      { location      :: Text
      , deps          :: [Dep]
-     } deriving (Eq, Ord, Show, Generic)
+     } deriving (Eq, Ord, Show)
 
 findSections :: Parser [Section]
 findSections = manyTill (try podSectionParser <|> try dependenciesSectionParser <|> try specRepoParser <|> try externalSourcesParser <|> try checkoutOptionsParser <|> unknownSection) eof

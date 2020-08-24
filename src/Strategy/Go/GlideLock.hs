@@ -9,16 +9,18 @@ module Strategy.Go.GlideLock
   )
   where
 
-import Prologue hiding ((.=))
-
 import Control.Effect.Diagnostics
+import Data.Aeson
+import Data.Foldable (find)
 import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import qualified Data.Text as T
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -62,13 +64,13 @@ data GlideLockfile = GlideLockfile
   { hash    :: Integer
   , updated :: Text
   , imports :: [GlideDep]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data GlideDep = GlideDep
   { depName    :: Text
   , depVersion :: Integer
   , depRepo    :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON GlideLockfile where
   parseJSON = withObject "GlideLockfile" $ \obj ->

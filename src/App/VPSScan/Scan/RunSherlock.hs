@@ -9,9 +9,11 @@ import App.VPSScan.Scan.Core
 import App.VPSScan.EmbeddedBinary
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
+import Data.Functor (void)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Effect.Exec
-import Prologue
+import Path
 
 data SherlockOpts = SherlockOpts
   { scanDir :: Path Abs Dir
@@ -23,7 +25,7 @@ data SherlockOpts = SherlockOpts
   , projectId :: Locator
   , revisionId :: Text
   , sherlockVpsOpts :: VPSOpts
-  } deriving (Generic)
+  }
 
 execSherlock :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> SherlockOpts -> m ()
 execSherlock binaryPaths sherlockOpts = void $ execThrow (scanDir sherlockOpts) (sherlockCommand binaryPaths sherlockOpts)

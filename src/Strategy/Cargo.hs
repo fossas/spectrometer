@@ -1,6 +1,5 @@
 module Strategy.Cargo
   ( discover
-  --
   , CargoMetadata(..)
   , NodeDependency(..)
   , NodeDepKind(..)
@@ -11,35 +10,35 @@ module Strategy.Cargo
   )
   where
 
-import Prologue
-
 import Control.Effect.Diagnostics
 import Data.Aeson.Types
+import Data.Foldable (find, for_, traverse_)
 import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import qualified Data.Text as T
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing, stripRoot)
+import Path
 import Types
-
-import qualified Data.Text as T
 
 newtype CargoLabel = 
   CargoDepKind DepEnvironment
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data PackageId = PackageId
   { pkgIdName :: T.Text
   , pkgIdVersion :: T.Text
   , pkgIdSource :: T.Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data PackageDependency = PackageDependency
   { pkgDepName :: T.Text
   , pkgDepSource :: T.Text
   , pkgDepReq :: T.Text
   , pkgDepKind :: Maybe T.Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data Package = Package
   { pkgName :: T.Text
@@ -48,32 +47,32 @@ data Package = Package
   , pkgLicense :: Maybe T.Text
   , pkgLicenseFile :: Maybe T.Text
   , pkgDependencies :: [PackageDependency]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data NodeDepKind = NodeDepKind
   { nodeDepKind :: Maybe T.Text
   , nodeDepTarget :: Maybe T.Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data NodeDependency = NodeDependency
   { nodePkg :: PackageId
   , nodeDepKinds :: [NodeDepKind]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data ResolveNode = ResolveNode
   { resolveNodeId :: PackageId
   , resolveNodeDeps :: [NodeDependency]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 newtype Resolve = Resolve
   { resolvedNodes :: [ResolveNode] 
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data CargoMetadata = CargoMetadata
   { metadataPackages :: [Package]
   , metadataWorkspaceMembers :: [PackageId]
   , metadataResolve :: Resolve
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON PackageDependency where
   parseJSON = withObject "PackageDependency" $ \obj ->

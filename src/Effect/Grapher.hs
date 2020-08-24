@@ -30,11 +30,15 @@ where
 import Control.Algebra as X
 import Control.Carrier.Diagnostics
 import Control.Carrier.State.Strict
+import Control.Monad.IO.Class (MonadIO)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import qualified Data.Set as S
+import Data.Text (Text)
 import qualified Data.Text as T
 import Prettyprinter (pretty)
-import Prologue hiding (parent)
 import qualified Graphing as G
 
 data Grapher ty m k where

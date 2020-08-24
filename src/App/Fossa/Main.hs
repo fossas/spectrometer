@@ -12,10 +12,12 @@ import App.Fossa.Test (TestOutputType (..), testMain)
 import App.OptionExtensions
 import App.Types
 import App.Util (validateDir)
+import Control.Monad (unless)
+import Data.Bool (bool)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Effect.Logger
 import Options.Applicative
-import Prologue
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import Text.URI (URI)

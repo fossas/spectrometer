@@ -9,11 +9,10 @@ where
 import App.VPSScan.Types
 import App.VPSScan.Scan.Core
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
+import Control.Effect.Lift (Lift)
 import Data.Aeson
 import Data.Text (Text)
 import Network.HTTP.Req
-import Prelude
 import App.Util (parseUri)
 import GHC.Generics (Generic)
 
@@ -45,7 +44,7 @@ instance FromJSON ScanResponse where
   parseJSON = withObject "ScanResponse" $ \obj ->
     ScanResponse <$> obj .: "scanId"
 
-createScotlandYardScan :: (MonadIO m, Has Diagnostics sig m) => ScotlandYardOpts -> m ScanResponse
+createScotlandYardScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardOpts -> m ScanResponse
 createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
   let VPSOpts{..} = syVpsOpts
   let FossaOpts{..} = fossa
@@ -61,7 +60,7 @@ createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
 -- post the IPR result to the "Upload Scan Data" endpoint on Scotland Yard
 -- POST /scans/{scanID}/discovered_licenses
-uploadIPRResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => Text -> a -> ScotlandYardOpts -> m ()
+uploadIPRResults :: (ToJSON a, Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> a -> ScotlandYardOpts -> m ()
 uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
   let VPSOpts{..} = syVpsOpts
   let FossaOpts{..} = fossa

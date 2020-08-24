@@ -9,10 +9,9 @@ module App.Fossa.Analyze.GraphBuilder
   )
   where
 
-import Prologue hiding (parent)
-
 import Control.Algebra
 import Control.Carrier.State.Strict
+import Control.Monad.IO.Class (MonadIO)
 import qualified App.Fossa.Analyze.Graph as G
 import DepTypes
 
@@ -34,7 +33,7 @@ addDirect :: Has GraphBuilder sig m => G.DepRef -> m ()
 addDirect direct = send (AddDirect direct)
 
 runGraphBuilder :: G.Graph -> GraphBuilderC m a -> m (G.Graph, a)
-runGraphBuilder start = runState start . coerce
+runGraphBuilder start = runState start . runGraphBuilderC
 
 evalGraphBuilder :: Functor m => G.Graph -> GraphBuilderC m a -> m G.Graph
 evalGraphBuilder start = execState start . runGraphBuilderC

@@ -15,11 +15,12 @@ module Effect.Exec
   )
 where
 
-import Control.Applicative (Alternative)
 import Control.Algebra as X
+import Control.Applicative (Alternative)
 import Control.Effect.Diagnostics
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (IOException, try)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bifunctor (first)
 import qualified Data.ByteString.Lazy as BL
@@ -36,7 +37,6 @@ import System.Exit (ExitCode (..))
 import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
-import Prelude
 
 data Command = Command
   { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
@@ -71,6 +71,7 @@ type Stdout = BL.ByteString
 
 type Stderr = BL.ByteString
 
+-- TODO: add a "shell command" method; this would help in App.VPSScan.NinjaGraph
 data Exec m k where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
@@ -125,10 +126,10 @@ runExecIO = runExecIOC
 newtype ExecIOC m a = ExecIOC {runExecIOC :: m a}
   deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadFail)
 
-instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
+instance Has (Lift IO) sig m => Algebra (Exec :+: sig) (ExecIOC m) where
   alg hdl sig ctx = ExecIOC $ case sig of
     R other -> alg (runExecIOC . hdl) other ctx
-    L (Exec dir cmd) -> liftIO $ do
+    L (Exec dir cmd) -> sendIO $ do
       absolute <- makeAbsolute dir
 
       let cmdName' = T.unpack $ cmdName cmd

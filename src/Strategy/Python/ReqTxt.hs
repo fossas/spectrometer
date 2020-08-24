@@ -5,14 +5,17 @@ module Strategy.Python.ReqTxt
   )
   where
 
-import Prologue
-
 import Control.Effect.Diagnostics
-import Data.List (isInfixOf)
+import Control.Monad (unless, when)
+import Data.Foldable (asum)
+import Data.List (isInfixOf, isSuffixOf)
 import Data.Maybe (catMaybes)
+import Data.Text (Text)
+import Data.Void (Void)
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
+import Path
 import Strategy.Python.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char

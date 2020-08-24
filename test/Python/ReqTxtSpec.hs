@@ -4,8 +4,6 @@ module Python.ReqTxtSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
 import Text.URI.QQ (uri)
 
