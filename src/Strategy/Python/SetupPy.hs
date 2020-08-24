@@ -47,10 +47,12 @@ installRequiresParser :: Parser [Req]
 installRequiresParser = prefix *> entries <* end
   where
   prefix  = skipManyTill anySingle (symbol "install_requires") *> symbol "=" *> symbol "["
-  entries = (between quote quote requirementParser) `sepEndBy` symbol ","
-  end     = symbol "]"
+  entries = (requireSurroundedBy "\"" <|> requireSurroundedBy "\'") `sepEndBy` symbol ","
 
-  quote   = symbol "\'" <|> symbol "\""
+  requireSurroundedBy :: Text -> Parser Req
+  requireSurroundedBy quote = between (symbol quote) (symbol quote) requirementParser
+
+  end     = symbol "]"
 
   symbol :: Text -> Parser Text
   symbol = L.symbol space
