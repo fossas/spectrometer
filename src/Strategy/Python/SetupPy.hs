@@ -9,6 +9,7 @@ import Prologue
 import Control.Effect.Diagnostics
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 
 import Discovery.Walk
 import Effect.ReadFS
@@ -45,8 +46,11 @@ type Parser = Parsec Void Text
 installRequiresParser :: Parser [Req]
 installRequiresParser = prefix *> entries <* end
   where
-  prefix  = skipManyTill anySingle (string "install_requires") *> space *> char '=' *> space *> char '[' *> space
-  entries = (between quote quote requirementParser <* space) `sepBy` (char ',' *> space)
-  end     = char ']'
+  prefix  = skipManyTill anySingle (symbol "install_requires") *> symbol "=" *> symbol "["
+  entries = (between quote quote requirementParser) `sepEndBy` symbol ","
+  end     = symbol "]"
 
-  quote   = char '\'' <|> char '\"'
+  quote   = symbol "\'" <|> symbol "\""
+
+  symbol :: Text -> Parser Text
+  symbol = L.symbol space
