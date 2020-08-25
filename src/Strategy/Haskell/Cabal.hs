@@ -153,7 +153,7 @@ shouldExclude :: InstallPlan -> Bool
 shouldExclude plan = not $ isDirectDep plan || planType plan == PreExisting
 
 ignorePlanId :: PlanId -> InstallPlan -> InstallPlan
-ignorePlanId _ b = b
+ignorePlanId = flip const
 
 buildGraph :: Has Diagnostics sig m => BuildPlan -> m (Graphing Dependency)
 buildGraph plan = do
@@ -176,5 +176,5 @@ toDependency plan =
 analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
 analyze dir = do
   _ <- execThrow dir cabalGenPlanCmd
-  plans <- readContentsJson@BuildPlan (dir </> cabalPlanFilePath)
+  plans <- readContentsJson @BuildPlan (dir </> cabalPlanFilePath)
   buildGraph plans
