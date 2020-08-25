@@ -164,6 +164,7 @@ library
     Strategy.Go.Types
     Strategy.Googlesource.RepoManifest
     Strategy.Gradle
+    Strategy.Haskell.Cabal
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
     Strategy.Maven.Pom
@@ -243,6 +244,7 @@ test-suite unit-tests
     Gradle.GradleSpec
     GraphUtil
     GraphingSpec
+    Haskell.CabalSpec
     Maven.PluginStrategySpec
     Node.NpmLockSpec
     Node.PackageJsonSpec

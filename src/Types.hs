@@ -150,6 +150,7 @@ data StrategyGroup =
   | RPMGroup
   | ArchiveGroup
   | ScalaGroup
+  | HaskellGroup
   deriving (Eq, Ord, Show, Generic)
 
 -- FIXME: we also need to annotate dep graphs with Path Rel File -- merge these somehow?
