@@ -63,8 +63,8 @@ instance FromJSON InstallPlan where
       <*> obj .: "id"
       <*> obj .: "pkg-name"
       <*> obj .: "pkg-version"
-      <*> (fromMaybe mempty <$> obj .:? "depends")
-      <*> (obj .:? "style" >>= parsePlanStyle)
+      <*> (obj .:? "depends" .!= S.empty)
+      <*> (obj .:? "style" >>= traverse parsePlanStyle)
       <*> (obj .:? "components" >>= mergeComponents)
 
 mergeComponents :: Maybe (Map Text (Map Text (Set Text))) -> Parser (Set PlanId)
@@ -77,22 +77,18 @@ mergeComponents (Just mapA) = do
     getDepends mapB = pure . S.map PlanId . fromMaybe mempty $ M.lookup "depends" mapB
 
 installPlanDepends :: InstallPlan -> Set PlanId
-installPlanDepends InstallPlan {..} =
-  if planType == PreExisting
-    then mempty
-    else planComponents <> planDepends
+installPlanDepends InstallPlan {..} = planComponents <> planDepends
 
 isDirectDep :: InstallPlan -> Bool
 isDirectDep InstallPlan {..} = planStyle == Just Local && planType == Configured
 
-parsePlanStyle :: Maybe Text -> Parser (Maybe PlanStyle)
-parsePlanStyle Nothing = pure Nothing
-parsePlanStyle (Just style) = case T.toLower style of
-  "global" -> pure $ Just Global
-  "local" -> pure $ Just Local
+parsePlanStyle :: MonadFail f => Text -> f (PlanStyle)
+parsePlanStyle style = case T.toLower style of
+  "global" -> pure Global
+  "local" -> pure Local
   _ -> fail $ "unknown install plan style" ++ T.unpack style
 
-parsePlanType :: Text -> Parser PlanType
+parsePlanType :: MonadFail m => Text -> m PlanType
 parsePlanType typ = case T.toLower typ of
   "configured" -> pure Configured
   "pre-existing" -> pure PreExisting
@@ -110,11 +106,11 @@ cabalPlanFilePath :: Path Rel File
 cabalPlanFilePath = $(mkRelFile "dist-newstyle/cache/plan.json")
 
 isCabalFile :: Path Abs File -> Bool
-isCabalFile file = is_v1 || is_v2
+isCabalFile file = isDotCabal || isCabalDotProject
   where
     name = fileName file
-    is_v2 = ".cabal" `isSuffixOf` name
-    is_v1 = "cabal.project" == name
+    isDotCabal = ".cabal" `isSuffixOf` name
+    isCabalDotProject = "cabal.project" == name
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files ->
@@ -145,12 +141,10 @@ doGraph plan = do
   mapping parentId plan
   for_ (installPlanDepends plan) $ \dep -> do
     edge parentId dep
-    if isDirectDep plan
-      then direct dep
-      else pure ()
+    when (isDirectDep plan) (direct dep)
 
-shouldExclude :: InstallPlan -> Bool
-shouldExclude plan = not $ isDirectDep plan || planType plan == PreExisting
+shouldInclude :: InstallPlan -> Bool
+shouldInclude plan = not $ isDirectDep plan || planType plan == PreExisting
 
 ignorePlanId :: PlanId -> InstallPlan -> InstallPlan
 ignorePlanId = flip const
@@ -160,7 +154,7 @@ buildGraph plan = do
   result <- withMapping ignorePlanId $ traverse doGraph (installPlans plan)
   case result of
     Left err -> fatal err
-    Right gr -> pure . G.gmap toDependency $ G.filter shouldExclude gr
+    Right gr -> pure . G.gmap toDependency $ G.filter shouldInclude gr
 
 toDependency :: InstallPlan -> Dependency
 toDependency plan =
