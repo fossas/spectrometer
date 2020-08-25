@@ -28,7 +28,7 @@ import Prologue
 import Types
 
 newtype BuildPlan = BuildPlan {installPlans :: [InstallPlan]} deriving (Eq, Ord, Show)
-
+newtype Component = Component {componentDeps :: Set PlanId} deriving (Eq, Ord, Show)
 newtype PlanId = PlanId {unPlanId :: Text} deriving (FromJSON, Eq, Ord, Show)
 
 data InstallPlan
@@ -57,6 +57,10 @@ instance FromJSON BuildPlan where
   parseJSON = withObject "BuildPlan" $ \obj ->
     BuildPlan <$> obj .: "install-plan"
 
+instance FromJSON Component where
+  parseJSON = withObject "Component" $ \obj ->
+    Component <$> obj .: "depends"
+
 instance FromJSON InstallPlan where
   parseJSON = withObject "InstallPlan" $ \obj ->
     InstallPlan <$> (obj .: "type" >>= parsePlanType)
@@ -65,16 +69,10 @@ instance FromJSON InstallPlan where
       <*> obj .: "pkg-version"
       <*> (obj .:? "depends" .!= S.empty)
       <*> (obj .:? "style" >>= traverse parsePlanStyle)
-      <*> (obj .:? "components" >>= mergeComponents)
+      <*> fmap mergeComponents (obj .:? "components" .!= M.empty)
 
-mergeComponents :: Maybe (Map Text (Map Text (Set Text))) -> Parser (Set PlanId)
-mergeComponents Nothing = pure mempty
-mergeComponents (Just mapA) = do
-  nested <- traverse getDepends $ M.elems mapA
-  pure $ S.unions nested
-  where
-    getDepends :: Map Text (Set Text) -> Parser (Set PlanId)
-    getDepends mapB = pure . S.map PlanId . fromMaybe mempty $ M.lookup "depends" mapB
+mergeComponents :: Map Text Component -> Set PlanId
+mergeComponents mapA = S.unions . map componentDeps $ M.elems mapA
 
 installPlanDepends :: InstallPlan -> Set PlanId
 installPlanDepends InstallPlan {..} = planComponents <> planDepends
@@ -82,7 +80,7 @@ installPlanDepends InstallPlan {..} = planComponents <> planDepends
 isDirectDep :: InstallPlan -> Bool
 isDirectDep InstallPlan {..} = planStyle == Just Local && planType == Configured
 
-parsePlanStyle :: MonadFail f => Text -> f (PlanStyle)
+parsePlanStyle :: MonadFail f => Text -> f PlanStyle
 parsePlanStyle style = case T.toLower style of
   "global" -> pure Global
   "local" -> pure Local
