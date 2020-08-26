@@ -1,4 +1,3 @@
-{-# language OverloadedStrings #-}
 {-# language TemplateHaskell #-}
 
 module Strategy.Node.YarnLock

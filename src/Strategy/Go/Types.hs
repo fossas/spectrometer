@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Strategy.Go.Types
   ( GolangPackage -- don't export GolangPackage; export the smart constructor instead
   , mkGolangPackage

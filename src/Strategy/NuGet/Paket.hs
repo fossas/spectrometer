@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Strategy.NuGet.Paket
   ( discover
   , analyze

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Maven.PluginStrategySpec
   ( spec
   ) where

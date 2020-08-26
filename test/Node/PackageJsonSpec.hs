@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Node.PackageJsonSpec
   ( spec
   ) where

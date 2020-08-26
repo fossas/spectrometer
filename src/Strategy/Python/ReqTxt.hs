@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Strategy.Python.ReqTxt
   ( discover
   , analyze

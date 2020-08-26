@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Ruby.GemfileLockSpec
   ( spec
   ) where

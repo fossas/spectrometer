@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Cargo.MetadataSpec
   ( spec
   ) where

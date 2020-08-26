@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Gradle.GradleSpec
   ( spec
   ) where

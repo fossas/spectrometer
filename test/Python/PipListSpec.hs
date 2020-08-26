@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Python.PipListSpec
   ( spec
   ) where

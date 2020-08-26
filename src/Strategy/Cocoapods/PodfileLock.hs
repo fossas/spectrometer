@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Strategy.Cocoapods.PodfileLock
   ( discover
   , analyze

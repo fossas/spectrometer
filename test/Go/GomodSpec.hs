@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Go.GomodSpec
   ( spec
   ) where

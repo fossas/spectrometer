@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module App.Fossa.FossaAPIV1Spec (spec) where
 
 import App.Fossa.FossaAPIV1 (Issue (..), IssueRule (..), IssueType (..), Issues (..))

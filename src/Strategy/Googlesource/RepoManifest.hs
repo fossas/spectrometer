@@ -1,5 +1,4 @@
 {-# language LambdaCase #-}
-{-# language OverloadedStrings #-}
 {-# language QuasiQuotes #-}
 {-# language RecordWildCards #-}
 {-# language ScopedTypeVariables #-}

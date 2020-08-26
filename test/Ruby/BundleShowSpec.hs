@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Ruby.BundleShowSpec
   ( spec
   ) where
