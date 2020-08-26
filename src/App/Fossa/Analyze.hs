@@ -7,7 +7,7 @@ module App.Fossa.Analyze
   , ScanDestination(..)
   ) where
 
-import App.Fossa.Analyze.Project (Project(..), mkProjects)
+import App.Fossa.Analyze.Project (Project(..), ProjectStrategy(..), mkProjects)
 import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types
@@ -22,7 +22,8 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
@@ -32,6 +33,7 @@ import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
+import qualified Graphing
 import Network.HTTP.Types (urlEncode)
 import Path
 import qualified Srclib.Converter as Srclib
@@ -108,7 +110,25 @@ analyze basedir destination override unpackArchives = runFinally $ do
 
   let projects = mkProjects closures
       result = buildResult projects failures
- 
+
+  for_ projects $ \project -> do
+    let bestStrategy :: ProjectStrategy
+        bestStrategy = NE.head . projectStrategies $ project
+
+        bestStrategyName :: Text
+        bestStrategyName = projStrategyName $ bestStrategy
+
+        bestStrategyDepCount :: Int
+        bestStrategyDepCount = Graphing.size . projStrategyGraph $ bestStrategy
+
+    logInfo $
+      "Found " <> pretty bestStrategyName
+        <> " project at "
+        <> pretty (fromAbsDir (projectPath project))
+        <> " with "
+        <> pretty bestStrategyDepCount
+        <> " dependencies"
+
   case destination of
     OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode result))
     UploadScan baseurl apiKey metadata -> do
