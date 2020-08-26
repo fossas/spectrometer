@@ -4,6 +4,8 @@ module App.Fossa.Analyze.Project
   ( Project(..)
   , ProjectStrategy(..)
 
+  , BestStrategy(..)
+
   , mkProjects
   ) where
 
@@ -17,8 +19,10 @@ import qualified Data.Map.Strict as M
 import Data.Ord
 import Data.Text (Text)
 import DepTypes
-import Graphing
+import Graphing (Graphing)
+import qualified Graphing
 import Path
+import Prettyprinter (Pretty(..))
 import Types
 
 data Project = Project
@@ -26,6 +30,27 @@ data Project = Project
   , projectStrategies :: NE.NonEmpty ProjectStrategy
   }
   deriving (Eq, Ord, Show)
+
+-- | Newtype used exclusively for a 'Pretty' instance on project
+newtype BestStrategy = BestStrategy {unBestStrategy :: Project}
+
+instance Pretty BestStrategy where
+  pretty (BestStrategy project) =
+    pretty bestStrategyName
+      <> " project at "
+      <> pretty (fromAbsDir (projectPath project))
+      <> " with "
+      <> pretty bestStrategyDepCount
+      <> " dependencies"
+    where
+      bestStrategy :: ProjectStrategy
+      bestStrategy = NE.head . projectStrategies $ project
+
+      bestStrategyName :: Text
+      bestStrategyName = projStrategyName $ bestStrategy
+
+      bestStrategyDepCount :: Int
+      bestStrategyDepCount = Graphing.size . projStrategyGraph $ bestStrategy
 
 data ProjectStrategy = ProjectStrategy
   { projStrategyName     :: Text
