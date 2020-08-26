@@ -7,7 +7,7 @@ module App.Fossa.Analyze
   , ScanDestination(..)
   ) where
 
-import App.Fossa.Analyze.Project (Project, mkProjects)
+import App.Fossa.Analyze.Project (Project(..), mkProjects)
 import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types
@@ -169,7 +169,7 @@ buildResult :: [Project] -> [ProjectFailure] -> Aeson.Value
 buildResult projects failures = Aeson.object
   [ "projects" .= projects
   , "failures" .= map renderFailure failures
-  , "sourceUnits" .= fromMaybe [] (traverse Srclib.toSourceUnit projects)
+  , "sourceUnits" .= map Srclib.toSourceUnit projects
   ]
 
 renderFailure :: ProjectFailure -> Aeson.Value

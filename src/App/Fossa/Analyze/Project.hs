@@ -11,7 +11,7 @@ import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import Data.Aeson
 import Data.Foldable (toList)
 import Data.Function (on)
-import Data.List (sortBy)
+import qualified Data.List.NonEmpty as NE
 import Data.Map (Map)
 import qualified Data.Map.Strict as M
 import Data.Ord
@@ -23,7 +23,7 @@ import Types
 
 data Project = Project
   { projectPath       :: Path Abs Dir
-  , projectStrategies :: [ProjectStrategy]
+  , projectStrategies :: NE.NonEmpty ProjectStrategy
   }
   deriving (Eq, Ord, Show)
 
@@ -37,14 +37,14 @@ data ProjectStrategy = ProjectStrategy
 mkProjects :: [ProjectClosure] -> [Project]
 mkProjects = toProjects . grouping
   where
-  toProjects :: Map (StrategyGroup, Path Abs Dir) [ProjectClosure] -> [Project]
+  toProjects :: Map (StrategyGroup, Path Abs Dir) (NE.NonEmpty ProjectClosure) -> [Project]
   toProjects = fmap toProject . M.toList
 
-  toProject :: ((StrategyGroup, Path Abs Dir), [ProjectClosure]) -> Project
+  toProject :: ((StrategyGroup, Path Abs Dir), NE.NonEmpty ProjectClosure) -> Project
   toProject ((_, dir), closures) = Project
     { projectPath = dir
     , projectStrategies = fmap toProjectStrategy $
-        sortBy (comparator `on` closureDependencies) closures
+        NE.sortBy (comparator `on` closureDependencies) closures
     }
 
   comparator :: ProjectDependencies -> ProjectDependencies -> Ordering
@@ -58,13 +58,13 @@ mkProjects = toProjects . grouping
                     , projStrategyComplete = dependenciesComplete closureDependencies
                     }
 
-  grouping :: [ProjectClosure] -> Map (StrategyGroup, Path Abs Dir) [ProjectClosure]
+  grouping :: [ProjectClosure] -> Map (StrategyGroup, Path Abs Dir) (NE.NonEmpty ProjectClosure)
   grouping closures = M.fromListWith (<>) $ toList $ do
     closure <- closures
     let strategyGroup = closureStrategyGroup closure
         moduleDir = closureModuleDir closure
 
-    pure ((strategyGroup, moduleDir), [closure])
+    pure ((strategyGroup, moduleDir), closure NE.:| [])
 
 instance ToJSON Project where
   toJSON Project{..} = object
