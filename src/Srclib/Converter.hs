@@ -111,3 +111,4 @@ depTypeToFetcher = \case
   CargoType -> "cargo"
   RPMType -> "rpm"
   HaskellType -> "haskell"
+  ComposerType -> "comp"
