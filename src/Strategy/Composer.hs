@@ -17,6 +17,7 @@ import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Prologue
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
