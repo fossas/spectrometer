@@ -19,7 +19,7 @@ import GraphUtil
 allDeps :: [StackDep]
 allDeps = [builtinDep, deepDep, localDep, remoteDep]
 
-mkDep :: Text -> [Text] -> StackLocationType -> StackDep
+mkDep :: Text -> [Text] -> StackLocation -> StackDep
 mkDep name deps = StackDep (PackageName name) (name <> "-ver") (map PackageName deps)
 
 builtinDep :: StackDep

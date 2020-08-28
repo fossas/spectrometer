@@ -7,7 +7,7 @@ module Strategy.Haskell.Stack
     buildGraph,
     PackageName (..),
     StackDep (..),
-    StackLocationType (..),
+    StackLocation (..),
   )
 where
 
@@ -27,17 +27,16 @@ import Prelude
 import Control.Monad (when)
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (FromJSON, Eq, Ord, Show)
-newtype StackLocation = StackLocation {unStackLocation :: StackLocationType} deriving (Eq, Ord, Show)
 
 data StackDep = StackDep
   { stackName :: PackageName,
     stackVersion :: Text,
     stackDepNames :: [PackageName],
-    stackLocation :: StackLocationType
+    stackLocation :: StackLocation
   }
   deriving (Eq, Ord, Show)
 
-data StackLocationType
+data StackLocation
   = Local
   | Remote
   | BuiltIn
@@ -48,13 +47,12 @@ instance FromJSON StackDep where
     StackDep <$> obj .: "name"
       <*> obj .: "version"
       <*> obj .:? "dependencies" .!= []
-      <*> fmap unStackLocation (obj .:? "location" .!= StackLocation BuiltIn)
+      <*> obj .:? "location" .!= BuiltIn
 
 instance FromJSON StackLocation where
-  parseJSON = withObject "StackLocation" $ \obj ->
-    StackLocation <$> (obj .: "type" >>= parseLocationType)
+  parseJSON = withObject "StackLocation" $ \obj -> obj .: "type" >>= parseLocationType
 
-parseLocationType :: MonadFail m => Text -> m StackLocationType
+parseLocationType :: MonadFail m => Text -> m StackLocation
 parseLocationType txt
   | txt == "hackage" = pure Remote
   | txt `elem` ["project package", "archive"] = pure Local
@@ -118,10 +116,8 @@ toDependency dep =
 
 buildGraph :: Has Diagnostics sig m => [StackDep] -> m (G.Graphing Dependency)
 buildGraph deps = do
-  result <- withMapping ignorePackageName $ traverse doGraph deps
-  case result of
-    Left err -> fatal err
-    Right gr -> pure . G.gmap toDependency $ G.filter shouldInclude gr
+  result <- fromEither =<< withMapping ignorePackageName (traverse doGraph deps)
+  pure . G.gmap toDependency $ G.filter shouldInclude result
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (G.Graphing Dependency)
 analyze dir = execJson @[StackDep] dir stackJSONDepsCmd >>= buildGraph
