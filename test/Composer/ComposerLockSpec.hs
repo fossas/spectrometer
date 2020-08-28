@@ -64,8 +64,8 @@ dependencyFive = Dependency { dependencyType = ComposerType
 spec :: Spec
 spec = do
   testFile <- runIO (BS.readFile "test/Composer/testdata/composer.lock")
-  describe "composer.lock analyzer" $ do
-    it "reads a file and constructs an accurate graph" $ do
+  describe "composer.lock analyzer" $
+    it "reads a file and constructs an accurate graph" $ 
       case eitherDecodeStrict testFile of
         Right res -> do
               let graph = buildGraph res
