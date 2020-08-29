@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Composer
   ( discover,
@@ -11,13 +11,19 @@ module Strategy.Composer
 where
 
 import Control.Effect.Diagnostics
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Aeson.Types
+import Data.Foldable (find, traverse_)
+import Data.Text (Text)
+import Data.Maybe (fromMaybe)
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
-import Prologue
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -29,27 +35,27 @@ discover = walk $ \_ _ files -> do
   pure WalkContinue
 
 data ComposerLock = ComposerLock
-  { packages :: [CompDep],
-    packagesDev :: [CompDep]
+  { lockPackages :: [CompDep],
+    lockPackagesDev :: [CompDep]
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data CompDep = CompDep
-  { name :: Text,
-    version :: Text,
-    source :: Source,
+  { depName :: Text,
+    depVersion :: Text,
+    depSource :: Source,
     -- | name to version spec
-    require :: Maybe (Map Text Text),
-    requireDev :: Maybe (Map Text Text)
+    depRequire :: Maybe (Map Text Text),
+    depRequireDev :: Maybe (Map Text Text)
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data Source = Source
   { sourceType :: Text,
-    url :: Text,
-    reference :: Text
+    sourceUrl :: Text,
+    sourceReference :: Text
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 instance FromJSON ComposerLock where
   parseJSON = withObject "ComposerLock" $ \obj ->
@@ -89,25 +95,25 @@ mkProjectClosure file lock =
         }
 
 newtype CompPkg = CompPkg {pkgName :: Text}
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 type CompGrapher = LabeledGrapher CompPkg CompLabel
 
 data CompLabel
-  = CompVersion Text
+  = DepVersion Text
   | CompEnv DepEnvironment
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 buildGraph :: ComposerLock -> Graphing Dependency
 buildGraph composerLock = run . withLabeling toDependency $ do
-  traverse_ (addDeps EnvProduction) $ packages composerLock
-  traverse_ (addDeps EnvDevelopment) $ packagesDev composerLock
+  traverse_ (addDeps EnvProduction) $ lockPackages composerLock
+  traverse_ (addDeps EnvDevelopment) $ lockPackagesDev composerLock
   where
     addDeps :: Has CompGrapher sig m => DepEnvironment -> CompDep -> m ()
     addDeps env dep = do
-      let pkg = CompPkg (name dep)
-      _ <- M.traverseWithKey (addEdge pkg) (fromMaybe (M.fromList []) $ require dep)
-      label pkg (CompVersion $ version dep)
+      let pkg = CompPkg (depName dep)
+      _ <- M.traverseWithKey (addEdge pkg) (fromMaybe (M.fromList []) $ depRequire dep)
+      label pkg (DepVersion $ depVersion dep)
       label pkg (CompEnv env)
       direct pkg
 
@@ -118,14 +124,14 @@ buildGraph composerLock = run . withLabeling toDependency $ do
     toDependency pkg = foldr addLabel (start pkg)
 
     addLabel :: CompLabel -> Dependency -> Dependency
-    addLabel (CompVersion ver) dep = dep {dependencyVersion = Just (CEq ver)}
+    addLabel (DepVersion ver) dep = dep {dependencyVersion = Just (CEq ver)}
     addLabel (CompEnv env) dep = dep {dependencyEnvironments = env : dependencyEnvironments dep}
 
     start :: CompPkg -> Dependency
-    start CompPkg {..} =
+    start pkg =
       Dependency
         { dependencyType = ComposerType,
-          dependencyName = pkgName,
+          dependencyName = pkgName pkg,
           dependencyVersion = Nothing,
           dependencyLocations = [],
           dependencyEnvironments = [],
