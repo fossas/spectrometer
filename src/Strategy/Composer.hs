@@ -112,7 +112,7 @@ buildGraph composerLock = run . withLabeling toDependency $ do
     addDeps :: Has CompGrapher sig m => DepEnvironment -> CompDep -> m ()
     addDeps env dep = do
       let pkg = CompPkg (depName dep)
-      _ <- M.traverseWithKey (addEdge pkg) (fromMaybe (M.fromList []) $ depRequire dep)
+      _ <- M.traverseWithKey (addEdge pkg) (fromMaybe M.empty $ depRequire dep)
       label pkg (DepVersion $ depVersion dep)
       label pkg (CompEnv env)
       direct pkg
@@ -121,14 +121,7 @@ buildGraph composerLock = run . withLabeling toDependency $ do
     addEdge pkg name _ = edge pkg (CompPkg name)
 
     toDependency :: CompPkg -> Set CompLabel -> Dependency
-    toDependency pkg = foldr addLabel (start pkg)
-
-    addLabel :: CompLabel -> Dependency -> Dependency
-    addLabel (DepVersion ver) dep = dep {dependencyVersion = Just (CEq ver)}
-    addLabel (CompEnv env) dep = dep {dependencyEnvironments = env : dependencyEnvironments dep}
-
-    start :: CompPkg -> Dependency
-    start pkg =
+    toDependency pkg = foldr addLabel $ 
       Dependency
         { dependencyType = ComposerType,
           dependencyName = pkgName pkg,
@@ -137,3 +130,7 @@ buildGraph composerLock = run . withLabeling toDependency $ do
           dependencyEnvironments = [],
           dependencyTags = M.empty
         }
+
+    addLabel :: CompLabel -> Dependency -> Dependency
+    addLabel (DepVersion ver) dep = dep {dependencyVersion = Just (CEq ver)}
+    addLabel (CompEnv env) dep = dep {dependencyEnvironments = env : dependencyEnvironments dep}
