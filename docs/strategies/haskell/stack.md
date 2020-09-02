@@ -1,4 +1,4 @@
-# Cabal
+# Stack
 
 ## Project Discovery
 
@@ -52,7 +52,7 @@ in the following format.
 
 Analysis has two notable parts: matching `name` fields from the strings in
 `dependencies`, and noting the package's `location.type`.  A package with a 
-missing `location.type` refers to a builtin, cabal-provided package, and a
+missing `location.type` refers to a builtin, ghc-provided package, and a
 present field takes one of two forms: remote and local, which have different
 sets of string associated with them.  Local packages are references to the
 current project, while remote references are pointers to package or source 

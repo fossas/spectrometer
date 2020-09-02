@@ -63,7 +63,7 @@ created by `cabal`.  The relevant items in the file take the following form:
 
 Analysis has two notable parts: matching `id` fields from the strings in
 `depends` and `components.*.depends`, and noting the package `type` and
-`style`.  `pre-existing` types refer to builtin, cabal-provided packages, while
+`style`.  `pre-existing` types refer to builtin, ghc-provided packages, while
 `configured` packages have two `style`s of their own: `local`, referring to the
 current project, and `global`, referring to packages obtained from a remote
 source like [hackage](https://hackage.haskell.org/).
