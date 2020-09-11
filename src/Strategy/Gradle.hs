@@ -82,7 +82,7 @@ analyze dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
       packagePathsWithDecoded :: [((Text, Text), [JsonDep])]
       packagePathsWithDecoded = do
         (name, outJson) <- packagePathsWithJson
-        let Just configMap = decodeStrict $ encodeUtf8 outJson
+        let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
         (configName, deps) <- M.toList configMap
         pure ((name, configName), deps)
       -- packagePathsWithDecoded = [(name, deps) | (name, outJson) <- packagePathsWithJson
