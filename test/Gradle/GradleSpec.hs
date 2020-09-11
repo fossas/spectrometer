@@ -17,7 +17,7 @@ projectOne = Dependency
   , dependencyName = ":projectOne"
   , dependencyVersion = Nothing
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvOther "config"]
   , dependencyTags = M.empty
   }
 
@@ -27,7 +27,7 @@ projectTwo = Dependency
   , dependencyName = ":projectTwo"
   , dependencyVersion = Nothing
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvDevelopment]
   , dependencyTags = M.empty
   }
 
@@ -37,7 +37,7 @@ projectThree = Dependency
   , dependencyName = ":projectThree"
   , dependencyVersion = Nothing
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvTesting]
   , dependencyTags = M.empty
   }
 
@@ -47,7 +47,7 @@ packageOne = Dependency
   , dependencyName = "mygroup:packageOne"
   , dependencyVersion = Just (CEq "1.0.0")
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvDevelopment]
   , dependencyTags = M.empty
   }
 
@@ -57,15 +57,15 @@ packageTwo = Dependency
   , dependencyName = "mygroup:packageTwo"
   , dependencyVersion = Just (CEq "2.0.0")
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvTesting]
   , dependencyTags = M.empty
   }
 
-gradleOutput :: Map Text [JsonDep]
+gradleOutput :: Map (Text, Text) [JsonDep]
 gradleOutput = M.fromList
-  [ (":projectOne", [ProjectDep ":projectTwo"])
-  , (":projectTwo", [ProjectDep ":projectThree", PackageDep "mygroup:packageOne" "1.0.0" []])
-  , (":projectThree", [PackageDep "mygroup:packageTwo" "2.0.0" []])
+  [ ((":projectOne", "config"), [ProjectDep ":projectTwo"])
+  , ((":projectTwo", "compileOnly"), [ProjectDep ":projectThree", PackageDep "mygroup:packageOne" "1.0.0" []])
+  , ((":projectThree", "testCompileOnly"), [PackageDep "mygroup:packageTwo" "2.0.0" []])
   ]
 
 spec :: Spec

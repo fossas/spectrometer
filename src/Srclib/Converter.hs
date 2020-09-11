@@ -43,7 +43,7 @@ toSourceUnit Project {..} =
     graph = projStrategyGraph bestStrategy
 
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
+    filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) graph
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph
@@ -63,9 +63,14 @@ mkSourceUnitDependency gr locator = SourceUnitDependency
   , sourceDepImports = Set.toList $ AM.postSet locator gr
   }
 
-isProdDep :: Dependency -> Bool
-isProdDep Dependency{dependencyEnvironments} =
-  null dependencyEnvironments || EnvProduction `elem` dependencyEnvironments
+shouldPublishDep :: Dependency -> Bool
+shouldPublishDep Dependency{dependencyEnvironments} =
+  null dependencyEnvironments || EnvProduction `elem` dependencyEnvironments || hasOtherEnv dependencyEnvironments
+
+hasOtherEnv :: [DepEnvironment] -> Bool
+hasOtherEnv [] = False
+hasOtherEnv ((EnvOther _) : _) = True
+hasOtherEnv (_ : xs) = hasOtherEnv xs
 
 -- core can't handle subprojects
 isSupportedType :: Dependency -> Bool
