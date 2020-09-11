@@ -21,7 +21,7 @@ import Data.FileEmbed (embedFile)
 import Data.Foldable (find, for_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -137,7 +137,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey
 
   -- build edges between deps, recursively
   mkRecursiveEdges :: Has (LabeledGrapher JsonDep GradleLabel) sig m => JsonDep -> GradleLabel -> m ()
-  mkRecursiveEdges (ProjectDep _) _ = pure ()
+  mkRecursiveEdges (ProjectDep x) envLabel = label (ProjectDep x) envLabel
   mkRecursiveEdges jsondep@(PackageDep _ _ deps) envLabel = do
     label jsondep envLabel
     for_ deps $ \child -> do

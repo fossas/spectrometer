@@ -27,7 +27,7 @@ projectTwo = Dependency
   , dependencyName = ":projectTwo"
   , dependencyVersion = Nothing
   , dependencyLocations = []
-  , dependencyEnvironments = [EnvDevelopment]
+  , dependencyEnvironments = [EnvDevelopment, EnvOther "config"]
   , dependencyTags = M.empty
   }
 
@@ -37,7 +37,7 @@ projectThree = Dependency
   , dependencyName = ":projectThree"
   , dependencyVersion = Nothing
   , dependencyLocations = []
-  , dependencyEnvironments = [EnvTesting]
+  , dependencyEnvironments = [EnvDevelopment, EnvTesting]
   , dependencyTags = M.empty
   }
 
