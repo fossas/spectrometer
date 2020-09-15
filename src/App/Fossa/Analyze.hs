@@ -1,5 +1,8 @@
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.Analyze
@@ -53,6 +56,7 @@ import qualified Strategy.Googlesource.RepoManifest as RepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Haskell.Cabal as Cabal
 import qualified Strategy.Haskell.Stack as Stack
+import qualified Strategy.Maven as Maven
 import qualified Strategy.Maven.PluginStrategy as MavenPlugin
 import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Node.NpmList as NpmList
@@ -68,6 +72,7 @@ import qualified Strategy.NuGet.ProjectJson as ProjectJson
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
+import qualified Strategy.Python.Setuptools as Setuptools
 import qualified Strategy.RPM as RPM
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
@@ -142,6 +147,78 @@ analyze basedir destination override unpackArchives = runFinally $ do
           case contribResult of
             Left failure -> logDebug (Diag.renderFailureBundle failure)
             Right _ -> pure ()
+
+analyze' ::
+  forall sig m.
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  , MonadIO m
+  )
+  => BaseDir
+  -> ScanDestination
+  -> OverrideProject
+  -> Bool -- ^ whether to unpack archives
+  -> m ()
+analyze' basedir destination override unpackArchives = runFinally $ do
+  capabilities <- sendIO getNumCapabilities
+
+  let newDiscovers = [Setuptools.discover, Maven.discover]
+
+  -- FIXME: diagnostics
+  -- FIXME: parallelism on discover
+  -- FIXME: parallelism on analysis of discovered projects
+  -- FIXME: unpackArchives
+  result <- Diag.runDiagnostics . runExecIO . runReadFSIO . withTaskPool capabilities updateProgress $ do
+    projects <- concat <$> traverse ($ unBaseDir basedir) newDiscovers
+    traverse (\project -> (project,,) <$> projectDependencyGraph project <*> projectLicenses project) projects
+
+  undefined
+  {-
+  (closures,(failures,())) <- runOutput @ProjectClosure . runOutput @ProjectFailure . runExecIO . runReadFSIO $
+    --withTaskPool capabilities updateProgress $
+      --if unpackArchives
+        --then discoverWithArchives $ unBaseDir basedir
+        --else discover $ unBaseDir basedir
+
+  traverse_ (logDebug . Diag.renderFailureBundle . projectFailureCause) failures
+
+  logSticky ""
+
+  let projects = mkProjects closures
+      result = buildResult projects failures
+
+  traverse_ (logInfo . ("Found " <>) . pretty . BestStrategy) projects
+
+  case destination of
+    OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode result))
+    UploadScan baseurl apiKey metadata -> do
+      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
+
+      logInfo ""
+      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+      logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
+
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projects
+      case uploadResult of
+        Left failure -> logError (Diag.renderFailureBundle failure)
+        Right success -> do
+          let resp = Diag.resultValue success
+          logInfo $ vsep
+            [ "============================================================"
+            , ""
+            , "    View FOSSA Report:"
+            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) (projectBranch revision))
+            , ""
+            , "============================================================"
+            ]
+          traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) baseurl apiKey $ uploadLocator resp
+          case contribResult of
+            Left failure -> logDebug (Diag.renderFailureBundle failure)
+            Right _ -> pure ()
+  -}
 
 tryUploadContributors ::
   ( Has Diag.Diagnostics sig m,

@@ -3,6 +3,7 @@
 module Strategy.Maven.Pom
   ( discover,
     analyze,
+    analyze',
     mkProjectClosure,
   )
 where
@@ -23,7 +24,7 @@ import qualified Data.Text as T
 import DepTypes
 import Effect.Grapher
 import Effect.ReadFS
-import qualified Graphing as G
+import Graphing (Graphing)
 import Path
 import qualified Path.IO as Path
 import Strategy.Maven.Pom.Closure
@@ -32,7 +33,7 @@ import Types
 
 data MavenStrategyOpts = MavenStrategyOpts
   { strategyPath  :: Path Rel File
-  , strategyGraph :: G.Graphing Dependency
+  , strategyGraph :: Graphing Dependency
   } deriving (Eq, Ord, Show)
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -49,6 +50,9 @@ analyze ::
 analyze dir = do
   (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
   traverse_ (output . mkProjectClosure dir) mvnClosures
+
+analyze' :: MavenProjectClosure -> Graphing Dependency
+analyze' = buildProjectGraph
 
 mkProjectClosure :: Path Abs Dir -> MavenProjectClosure -> ProjectClosure
 mkProjectClosure basedir mvnClosure =
@@ -123,7 +127,7 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
     addTag key value dep = dep {dependencyTags = M.insertWith (++) key [value] (dependencyTags dep)}
 
 -- TODO: set top-level direct deps as direct instead of the project?
-buildProjectGraph :: MavenProjectClosure -> G.Graphing Dependency
+buildProjectGraph :: MavenProjectClosure -> Graphing Dependency
 buildProjectGraph closure = run . withLabeling toDependency $ do
   direct (coordToPackage (closureRootCoord closure))
   go (closureRootCoord closure) (closureRootPom closure)

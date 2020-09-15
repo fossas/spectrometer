@@ -101,6 +101,7 @@ library
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.Output.IO
+    Control.Carrier.Output.Interpret
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
     Control.Effect.Diagnostics
@@ -140,6 +141,7 @@ library
     Strategy.Gradle
     Strategy.Haskell.Cabal
     Strategy.Haskell.Stack
+    Strategy.Maven
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
     Strategy.Maven.Pom
@@ -160,6 +162,7 @@ library
     Strategy.Python.Pipenv
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
+    Strategy.Python.Setuptools
     Strategy.Python.Util
     Strategy.RPM
     Strategy.Ruby.BundleShow

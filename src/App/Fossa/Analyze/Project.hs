@@ -23,7 +23,7 @@ import Graphing (Graphing)
 import qualified Graphing
 import Path
 import Prettyprinter (Pretty(..))
-import Types
+import Types hiding (NewProject(..))
 
 data Project = Project
   { projectPath       :: Path Abs Dir

@@ -3,6 +3,7 @@
 module Strategy.Maven.PluginStrategy
   ( discover
   , analyze
+  , analyze'
   , buildGraph
   ) where
 
@@ -41,6 +42,19 @@ analyze dir = withUnpackedPlugin $ \filepath -> do
   execPlugin dir
   pluginOutput <- parsePluginOutput dir
   pure (mkProjectClosure dir pluginOutput)
+
+analyze' ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  )
+  => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = withUnpackedPlugin $ \filepath -> do
+  installPlugin dir filepath
+  execPlugin dir
+  pluginOutput <- parsePluginOutput dir
+  pure (buildGraph pluginOutput)
 
 mkProjectClosure :: Path Abs Dir -> PluginOutput -> ProjectClosureBody
 mkProjectClosure dir pluginOutput = ProjectClosureBody

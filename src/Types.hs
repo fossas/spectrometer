@@ -7,6 +7,7 @@
 module Types
   ( StrategyGroup(..)
 
+  , NewProject(..)
   , ProjectClosure(..)
   , ProjectClosureBody(..)
   , ProjectFailure(..)
@@ -23,6 +24,7 @@ module Types
   , HasDiscover
   , runStrategy
   , runSimpleStrategy
+  , fallingBackTo
 
   , module DepTypes
   ) where
@@ -118,6 +120,28 @@ toProjectClosure strategyGroup name body = ProjectClosure
   , closureDependencies = bodyDependencies body
   , closureLicenses = bodyLicenses body
   }
+
+-- TODO: debug logs?
+fallingBackTo :: Has Diagnostics sig m => m a -> m a -> m a
+fallingBackTo = (<||>)
+
+-- FIXME: the m is problematic (especially without existentials)
+-- TODO: build targets
+-- TODO: results should be within a graph of build targets && eliminate SubprojectType
+data NewProject m = NewProject
+  { projectType :: Text,
+    projectPath :: Path Abs Dir,
+    projectDependencyGraph :: m (Graphing Dependency),
+    projectLicenses :: m [LicenseResult]
+  }
+
+-- discovery can find many multi-projects
+-- each multi-project has a Graphing BuildTarget
+-- --> discovery: essentially Path Abs Dir -> [MultiProject]
+-- where MultiProject has a `Graphing BuildTarget` (AdjacencyMap?), among other metadata
+--
+-- analysis can span multiple build targets
+-- [BuildTarget] -> Graphing
 
 data ProjectClosureBody = ProjectClosureBody
   { bodyModuleDir    :: Path Abs Dir

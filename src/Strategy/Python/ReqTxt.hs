@@ -1,6 +1,7 @@
 module Strategy.Python.ReqTxt
   ( discover
   , analyze
+  , analyze'
   )
   where
 
@@ -41,6 +42,9 @@ analyze projectDir files = do
       graphing = mconcat successful
 
   pure (mkProjectClosure projectDir graphing)
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' = analyzeSingle
 
 analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyzeSingle file = buildGraph <$> readContentsParser requirementsTxtParser file

@@ -1,12 +1,19 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Discovery.Walk
   ( -- * Walking the filetree
     walk,
+    walk',
     WalkStep (..),
     fileName,
   )
 where
 
-import Control.Monad.IO.Class (MonadIO)
+import Control.Carrier.Output.IO
+import Control.Carrier.Writer.Church
+import Control.Effect.Lift
+import Control.Monad.Trans
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -47,6 +54,22 @@ walk f = walkDir $ \dir subdirs files -> do
        in pure . WalkExclude . filter (not . (`elem` parsedDirs) . dirname) $ subdirs
     WalkSkipAll -> pure $ WalkExclude subdirs
     WalkStop -> pure WalkFinish
+
+walk' ::
+  forall sig m o.
+  (Has (Lift IO) sig m, MonadIO m, Monoid o) =>
+  (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (o, WalkStep)) ->
+  Path Abs Dir ->
+  m o
+walk' f base = do
+  foo <- runWriter (\w a -> pure (w, a)) $ walk mangled base
+  pure (fst foo)
+    where
+      mangled :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> WriterC o m WalkStep
+      mangled _ subdirs files = do
+        (res, step) <- lift $ f base subdirs files
+        tell res
+        pure step
 
 fileName :: Path a File -> String
 fileName = toFilePath . filename
