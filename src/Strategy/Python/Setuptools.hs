@@ -5,7 +5,6 @@ module Strategy.Python.Setuptools
 import Data.List (isInfixOf, isSuffixOf)
 import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics
-import Control.Effect.Lift
 import Control.Monad.IO.Class
 import Discovery.Walk
 import Effect.ReadFS
@@ -18,18 +17,13 @@ import Data.Foldable (find)
 
 discover' ::
   ( MonadIO m,
-    Has (Lift IO) sig m,
     Has ReadFS sig m,
     Has Diagnostics sig m
   ) =>
   Path Abs Dir -> m [NewProject m]
 discover' dir = map mkProject <$> findProjects dir
 
-findProjects ::
-  ( MonadIO m,
-    Has (Lift IO) sig m
-  ) =>
-  Path Abs Dir -> m [SetuptoolsProject]
+findProjects :: MonadIO m => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walk' $ \dir _ files -> do
   let reqTxtFiles = filter (\f -> "req" `isInfixOf` fileName f
                             && ".txt" `isSuffixOf` fileName f) files
