@@ -8,7 +8,7 @@ import Data.Text (Text)
 import DepTypes
 import GraphUtil
 import Graphing (Graphing, empty)
-import Strategy.Gradle (JsonDep (..), buildGraph)
+import Strategy.Gradle (JsonDep (..), buildGraph, PackageName(..), ConfigName(..))
 import Test.Hspec
 
 projectOne :: Dependency
@@ -68,6 +68,9 @@ gradleOutput = M.fromList
   , ((":projectThree", "testCompileOnly"), [PackageDep "mygroup:packageTwo" "2.0.0" []])
   ]
 
+wrapKeys :: (Text, Text) -> (PackageName, ConfigName)
+wrapKeys (a, b) = (PackageName a, ConfigName b)
+
 spec :: Spec
 spec = do
   describe "buildGraph" $ do
@@ -76,7 +79,7 @@ spec = do
       graph `shouldBe` (empty :: Graphing Dependency)
 
     it "should produce expected output" $ do
-      let graph = buildGraph gradleOutput
+      let graph = buildGraph $ M.mapKeys wrapKeys gradleOutput
       expectDeps [projectOne, projectTwo, projectThree, packageOne, packageTwo] graph
       expectDirect [projectOne, projectTwo, projectThree] graph
       expectEdges [ (projectOne, projectTwo)

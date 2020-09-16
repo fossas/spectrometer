@@ -6,6 +6,8 @@ module Strategy.Gradle
 
   , buildGraph
   , JsonDep(..)
+  , PackageName (..)
+  , ConfigName (..)
   ) where
 
 import Control.Carrier.Error.Either
