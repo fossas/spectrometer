@@ -65,12 +65,11 @@ mkSourceUnitDependency gr locator = SourceUnitDependency
 
 shouldPublishDep :: Dependency -> Bool
 shouldPublishDep Dependency{dependencyEnvironments} =
-  null dependencyEnvironments || EnvProduction `elem` dependencyEnvironments || hasOtherEnv dependencyEnvironments
+  null dependencyEnvironments || EnvProduction `elem` dependencyEnvironments || any isOtherEnv dependencyEnvironments
 
-hasOtherEnv :: [DepEnvironment] -> Bool
-hasOtherEnv [] = False
-hasOtherEnv ((EnvOther _) : _) = True
-hasOtherEnv (_ : xs) = hasOtherEnv xs
+isOtherEnv :: DepEnvironment -> Bool
+isOtherEnv (EnvOther _) = True
+isOtherEnv _ = False
 
 -- core can't handle subprojects
 isSupportedType :: Dependency -> Bool

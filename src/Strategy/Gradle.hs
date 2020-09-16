@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Gradle
@@ -35,7 +36,9 @@ import Path
 import qualified System.FilePath as FP
 import Types
 
+newtype ConfigName = ConfigName { unConfigName :: Text } deriving (Eq, Ord, Show, FromJSON)
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
+newtype PackageName = PackageName { unPackageName :: Text } deriving (Eq, Ord, Show, FromJSON)
 
 gradleJsonDepsCmd :: Text -> FP.FilePath -> Command
 gradleJsonDepsCmd baseCmd initScriptFilepath = Command
@@ -76,25 +79,22 @@ analyze dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
       jsonDepsLines :: [Text]
       jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
 
-      packagePathsWithJson :: [(Text,Text)]
-      packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
+      packagePathsWithJson :: [(PackageName, Text)]
+      packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (PackageName x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
 
-      packagePathsWithDecoded :: [((Text, Text), [JsonDep])]
+      packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
       packagePathsWithDecoded = do
         (name, outJson) <- packagePathsWithJson
         let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
         (configName, deps) <- M.toList configMap
-        pure ((name, configName), deps)
-      -- packagePathsWithDecoded = [(name, deps) | (name, outJson) <- packagePathsWithJson
-      --                                         , Just configs <- [decodeStrict (encodeUtf8 outJson) :: Maybe (Map Text [JsonDep])]
-      --                                         , Just deps <- [M.lookup "default" configs]] -- FUTURE: use more than default?
+        pure ((name, ConfigName configName), deps)
 
-      packagesToOutput :: Map (Text, Text) [JsonDep]
+      packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
       packagesToOutput = M.fromList packagePathsWithDecoded
 
   pure (mkProjectClosure dir packagesToOutput)
 
-mkProjectClosure :: Path Abs Dir -> Map (Text, Text) [JsonDep] -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> Map (PackageName, ConfigName) [JsonDep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies
@@ -108,13 +108,13 @@ mkProjectClosure dir deps = ProjectClosureBody
     }
 
 -- TODO: use LabeledGraphing to add labels for environments
-buildGraph :: Map (Text, Text) [JsonDep] -> Graphing Dependency
+buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Graphing Dependency
 buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey addProject projectsAndDeps
   where
   -- add top-level projects from the output
-  addProject :: Has (LabeledGrapher JsonDep GradleLabel) sig m => (Text, Text) -> [JsonDep] -> m ()
+  addProject :: Has (LabeledGrapher JsonDep GradleLabel) sig m => (PackageName, ConfigName) -> [JsonDep] -> m ()
   addProject (projName, configName) projDeps = do
-    let projAsDep = projectToJsonDep projName
+    let projAsDep = ProjectDep $ unPackageName projName
         envLabel = configNameToLabel configName
     direct projAsDep
     label projAsDep envLabel
@@ -122,8 +122,8 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey
       edge projAsDep dep
       mkRecursiveEdges dep envLabel
     
-  configNameToLabel :: Text -> GradleLabel
-  configNameToLabel txt = case txt of
+  configNameToLabel :: ConfigName -> GradleLabel
+  configNameToLabel conf = case unConfigName conf of
     "compileOnly" -> Env EnvDevelopment
     x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly"] -> Env EnvTesting
     x -> Env $ EnvOther x
@@ -133,7 +133,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey
 
   applyLabel :: GradleLabel -> Dependency -> Dependency
   applyLabel lbl dep = case lbl of
-    Env env -> dep { dependencyEnvironments = env : dependencyEnvironments dep }
+    Env env -> insertEnvironment env dep
 
   -- build edges between deps, recursively
   mkRecursiveEdges :: Has (LabeledGrapher JsonDep GradleLabel) sig m => JsonDep -> GradleLabel -> m ()
@@ -155,8 +155,6 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey
       , dependencyEnvironments = []
       , dependencyTags = M.empty
       }
-
-  projectToJsonDep = ProjectDep
 
   projectToDep name = Dependency
     { dependencyType = SubprojectType
