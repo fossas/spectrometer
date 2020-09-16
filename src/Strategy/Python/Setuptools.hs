@@ -1,5 +1,5 @@
 module Strategy.Python.Setuptools
-  ( discover
+  ( discover'
   ) where
 
 import Data.List (isInfixOf, isSuffixOf)
@@ -16,14 +16,14 @@ import qualified Strategy.Python.SetupPy as SetupPy
 import Types
 import Data.Foldable (find)
 
-discover ::
+discover' ::
   ( MonadIO m,
     Has (Lift IO) sig m,
     Has ReadFS sig m,
     Has Diagnostics sig m
   ) =>
   Path Abs Dir -> m [NewProject m]
-discover dir = map mkProject <$> findProjects dir
+discover' dir = map mkProject <$> findProjects dir
 
 findProjects ::
   ( MonadIO m,

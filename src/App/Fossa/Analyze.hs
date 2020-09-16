@@ -162,7 +162,7 @@ analyze' ::
 analyze' basedir destination override unpackArchives = runFinally $ do
   capabilities <- sendIO getNumCapabilities
 
-  let newDiscovers = [Setuptools.discover, Maven.discover]
+  let newDiscovers = [Setuptools.discover', Maven.discover']
 
   -- FIXME: diagnostics
   -- FIXME: parallelism on discover
