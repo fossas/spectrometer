@@ -3,6 +3,7 @@
 
 module Strategy.Python.Pipenv
   ( discover
+  , discover'
   , analyze
 
   , PipenvGraphDep(..)
@@ -15,6 +16,7 @@ module Strategy.Python.Pipenv
   where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Foldable (find, for_, traverse_)
 import Data.Map.Strict (Map)
@@ -38,6 +40,51 @@ discover = walk $ \_ _ files -> do
     Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file
 
   pure WalkContinue
+
+discover' ::
+  ( MonadIO m,
+    Has ReadFS sig m,
+    Has Exec sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs Dir -> m [NewProject m]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [PipenvProject]
+findProjects = walk' $ \_ _ files -> do
+  case find (\f -> fileName f == "Pipfile.lock") files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([PipenvProject file], WalkContinue)
+
+getDeps ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  )
+  => PipenvProject -> m (Graphing Dependency)
+getDeps project = do
+  lock <- readContentsJson (pipenvLockfile project)
+  maybeDeps <- recover $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
+
+  pure (buildGraph lock maybeDeps)
+
+mkProject ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  )
+  => PipenvProject -> NewProject m
+mkProject project = NewProject
+  { projectType = "python-pipenv"
+  , projectDependencyGraph = getDeps project
+  , projectPath = parent $ pipenvLockfile project
+  , projectLicenses = pure []
+  }
+
+data PipenvProject = PipenvProject
+  { pipenvLockfile :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command

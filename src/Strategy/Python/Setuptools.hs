@@ -52,7 +52,7 @@ data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File]
   , setuptoolsSetupPy :: Maybe (Path Abs File)
   , setuptoolsDir :: Path Abs Dir
-  }
+  } deriving (Eq, Ord, Show)
 
 mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> NewProject m
 mkProject project = NewProject

@@ -10,10 +10,10 @@ module Discovery.Walk
   )
 where
 
-import Control.Carrier.Output.IO
+import Control.Algebra
 import Control.Carrier.Writer.Church
-import Control.Effect.Lift
 import Control.Monad.Trans
+import Control.Carrier.Lift
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -56,18 +56,18 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkStop -> pure WalkFinish
 
 walk' ::
-  forall sig m o.
-  (Has (Lift IO) sig m, MonadIO m, Monoid o) =>
+  forall m o.
+  (MonadIO m, Monoid o) =>
   (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (o, WalkStep)) ->
   Path Abs Dir ->
   m o
-walk' f base = do
+walk' f base = runM $ do
   foo <- runWriter (\w a -> pure (w, a)) $ walk mangled base
   pure (fst foo)
     where
-      mangled :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> WriterC o m WalkStep
+      mangled :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> WriterC o (LiftC m) WalkStep
       mangled _ subdirs files = do
-        (res, step) <- lift $ f base subdirs files
+        (res, step) <- lift $ lift $ f base subdirs files
         tell res
         pure step
 
