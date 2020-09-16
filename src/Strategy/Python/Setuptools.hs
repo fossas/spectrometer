@@ -1,6 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
-
 module Strategy.Python.Setuptools
   ( discover
   ) where
@@ -26,7 +23,14 @@ discover ::
     Has Diagnostics sig m
   ) =>
   Path Abs Dir -> m [NewProject m]
-discover = walk' $ \dir _ files -> do
+discover dir = map mkProject <$> findProjects dir
+
+findProjects ::
+  ( MonadIO m,
+    Has (Lift IO) sig m
+  ) =>
+  Path Abs Dir -> m [SetuptoolsProject]
+findProjects = walk' $ \dir _ files -> do
   let reqTxtFiles = filter (\f -> "req" `isInfixOf` fileName f
                             && ".txt" `isSuffixOf` fileName f) files
 
@@ -40,7 +44,7 @@ discover = walk' $ \dir _ files -> do
 
   case (reqTxtFiles, setupPyFile) of
     ([], Nothing) -> pure ([], WalkContinue)
-    _ -> pure ([mkProject project], WalkContinue)
+    _ -> pure ([project], WalkContinue)
 
 -- >>> words "foo bar"
 
