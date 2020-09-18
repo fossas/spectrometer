@@ -4,6 +4,7 @@
 module Strategy.Go.GopkgLock
   ( discover
   , analyze
+  , analyze'
 
   , GoLock(..)
   , Project(..)
@@ -58,17 +59,25 @@ data Project = Project
   , projectRevision :: Text
   } deriving (Eq, Ord, Show)
 
+analyze' ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  )
+  => Path Abs File -> m (Graphing Dependency)
+analyze' file = graphingGolang $ do
+  golock <- readContentsToml golockCodec file
+  buildGraph (lockProjects golock)
+  _ <- recover (fillInTransitive (parent file))
+  pure ()
+
 analyze ::
   ( Has ReadFS sig m
   , Has Exec sig m
   , Has Diagnostics sig m
   )
   => Path Abs File -> m ProjectClosureBody
-analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
-  golock <- readContentsToml golockCodec file
-  buildGraph (lockProjects golock)
-  _ <- recover (fillInTransitive (parent file))
-  pure ()
+analyze file = mkProjectClosure file <$> analyze' file
 
 mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody

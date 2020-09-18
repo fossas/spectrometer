@@ -28,8 +28,8 @@ discover' dir = map mkProject <$> findProjects dir
 findProjects :: MonadIO m => Path Abs Dir -> m [GomodulesProject]
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> fileName f == "go.mod") files of
-    Nothing -> pure ([], WalkContinue)
-    Just gomod -> pure ([GomodulesProject gomod dir], WalkSkipAll)
+    Nothing -> pure ([], WalkSkipSome ["vendor"])
+    Just gomod -> pure ([GomodulesProject gomod dir], WalkSkipSome ["vendor"])
 
 data GomodulesProject = GomodulesProject
   { gomodulesGomod :: Path Abs File,

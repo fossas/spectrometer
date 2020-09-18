@@ -139,6 +139,7 @@ library
     Strategy.Go.GopkgToml
     Strategy.Go.Transitive
     Strategy.Go.Types
+    Strategy.Godep
     Strategy.Gomodules
     Strategy.Googlesource.RepoManifest
     Strategy.Gradle
