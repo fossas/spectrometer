@@ -4,6 +4,7 @@
 module Strategy.Go.Gomod
   ( discover
   , analyze
+  , analyze'
   , buildGraph
 
   , Gomod(..)
@@ -181,19 +182,27 @@ resolve gomod = map resolveReplace (modRequires gomod)
   where
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
-analyze ::
+analyze' ::
   ( Has ReadFS sig m
   , Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Abs File -> m ProjectClosureBody
-analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
+  => Path Abs File -> m (Graphing Dependency)
+analyze' file = graphingGolang $ do
   gomod <- readContentsParser gomodParser file
 
   buildGraph gomod
 
   _ <- recover (fillInTransitive (parent file))
   pure ()
+
+analyze ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  )
+  => Path Abs File -> m ProjectClosureBody
+analyze file = mkProjectClosure file <$> analyze' file
 
 mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody

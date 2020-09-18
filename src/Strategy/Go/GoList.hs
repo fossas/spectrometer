@@ -4,6 +4,7 @@
 module Strategy.Go.GoList
   ( discover
   , analyze
+  , analyze'
 
   , Require(..)
   )
@@ -46,12 +47,12 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze ::
+analyze' ::
   ( Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Abs Dir -> m ProjectClosureBody
-analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
+  => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = graphingGolang $ do
   stdout <- execThrow dir golistCmd
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
@@ -67,6 +68,13 @@ analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
 
   _ <- recover (fillInTransitive dir)
   pure ()
+
+analyze ::
+  ( Has Exec sig m
+  , Has Diagnostics sig m
+  )
+  => Path Abs Dir -> m ProjectClosureBody
+analyze dir = mkProjectClosure dir <$> analyze' dir
 
 mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure dir graph = ProjectClosureBody
