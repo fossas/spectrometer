@@ -131,6 +131,7 @@ library
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
     Strategy.Erlang.Rebar3Tree
+    Strategy.Glide
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
@@ -166,6 +167,7 @@ library
     Strategy.Python.Setuptools
     Strategy.Python.Util
     Strategy.RPM
+    Strategy.Rebar3
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala

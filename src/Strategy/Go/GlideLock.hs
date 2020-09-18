@@ -4,6 +4,7 @@
 module Strategy.Go.GlideLock
   ( discover
   , analyze
+  , analyze'
 
   , GlideLockfile(..)
   , GlideDep(..)
@@ -36,6 +37,9 @@ discover = walk $ \_ _ files -> do
 
 analyze :: ( Has ReadFS sig m , Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file
+
+analyze' :: (Has ReadFS sig m , Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsYaml @GlideLockfile file
 
 mkProjectClosure :: Path Abs File -> GlideLockfile -> ProjectClosureBody
 mkProjectClosure file lock = ProjectClosureBody

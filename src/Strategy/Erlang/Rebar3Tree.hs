@@ -3,6 +3,7 @@
 module Strategy.Erlang.Rebar3Tree
   ( discover
   , analyze
+  , analyze'
 
   , buildGraph
   , rebar3TreeParser
@@ -42,6 +43,9 @@ rebar3TreeCmd = Command
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execParser rebar3TreeParser dir rebar3TreeCmd
+
+analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = buildGraph <$> execParser rebar3TreeParser dir rebar3TreeCmd
 
 mkProjectClosure :: Path Abs Dir -> [Rebar3Dep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
