@@ -52,4 +52,4 @@ getDeps ::
   ) =>
   Pom.MavenProjectClosure ->
   m (Graphing Dependency)
-getDeps closure = Plugin.analyze' (parent (Pom.closurePath closure)) `fallingBackTo` pure (Pom.analyze' closure)
+getDeps closure = Plugin.analyze' (parent (Pom.closurePath closure)) <||> pure (Pom.analyze' closure)

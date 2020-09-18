@@ -18,6 +18,7 @@ module Control.Effect.Diagnostics
     fromEitherShow,
     tagError,
     (<||>),
+    combineSuccessful,
 
     -- * ToDiagnostic typeclass
     ToDiagnostic (..),
@@ -28,8 +29,11 @@ where
 
 import Control.Algebra as X
 import Control.Exception (SomeException (..))
-import qualified Data.Text as T
+import qualified Data.List.NonEmpty as NE
+import Data.Maybe (catMaybes)
+import Data.Semigroup (sconcat)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Prelude
@@ -79,6 +83,15 @@ infixl 3 <||>
   case maybeA of
     Nothing -> mb
     Just a -> pure a
+
+-- | Run a list of actions, combining the successful ones. If all actions fail, 'fatalText' is invoked with the provided @Text@ message.
+combineSuccessful :: (Semigroup a, Has Diagnostics sig m) => Text -> [m a] -> m a
+combineSuccessful msg actions = do
+  results <- traverse recover actions
+  let successful = NE.nonEmpty $ catMaybes results
+  case successful of
+    Nothing -> fatalText msg
+    Just xs -> pure (sconcat xs)
 
 -- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where

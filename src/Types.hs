@@ -24,7 +24,6 @@ module Types
   , HasDiscover
   , runStrategy
   , runSimpleStrategy
-  , fallingBackTo
 
   , module DepTypes
   ) where
@@ -120,10 +119,6 @@ toProjectClosure strategyGroup name body = ProjectClosure
   , closureDependencies = bodyDependencies body
   , closureLicenses = bodyLicenses body
   }
-
--- TODO: debug logs?
-fallingBackTo :: Has Diagnostics sig m => m a -> m a -> m a
-fallingBackTo = (<||>)
 
 -- FIXME: the m is problematic (especially without existentials)
 -- TODO: build targets
