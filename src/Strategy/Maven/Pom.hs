@@ -10,7 +10,7 @@ where
 
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Output
 import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (for_, traverse_)

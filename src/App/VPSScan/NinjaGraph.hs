@@ -12,7 +12,7 @@ module App.VPSScan.NinjaGraph
 import App.Types (BaseDir (..))
 import App.Util (parseUri, validateDir)
 import App.VPSScan.Types
-import Control.Carrier.Diagnostics
+import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Carrier.Trace.Printing
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (ToJSON)

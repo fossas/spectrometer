@@ -13,7 +13,7 @@ module Strategy.Go.Gomod
   )
   where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Foldable (find, traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M

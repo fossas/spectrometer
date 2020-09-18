@@ -10,7 +10,7 @@ module Strategy.Composer
   )
 where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)

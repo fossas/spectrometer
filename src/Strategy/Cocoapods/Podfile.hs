@@ -3,6 +3,7 @@
 module Strategy.Cocoapods.Podfile
   ( discover
   , analyze
+  , analyze'
   , buildGraph
   , parsePodfile
 
@@ -40,6 +41,9 @@ discover = walk $ \_ _ files -> do
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser parsePodfile file
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsParser parsePodfile file
 
 mkProjectClosure :: Path Abs File -> Podfile -> ProjectClosureBody
 mkProjectClosure file podfile = ProjectClosureBody

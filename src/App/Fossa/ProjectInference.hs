@@ -11,7 +11,7 @@ where
 
 import App.Types
 import Control.Algebra
-import Control.Carrier.Diagnostics
+import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (unless)
 import qualified Data.ByteString.Lazy as BL

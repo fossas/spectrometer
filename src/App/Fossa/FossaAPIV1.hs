@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
 import App.Types
 import App.Util (parseUri)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson

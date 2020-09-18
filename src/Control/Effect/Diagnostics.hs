@@ -16,6 +16,8 @@ module Control.Effect.Diagnostics
     fatalText,
     fromEither,
     fromEitherShow,
+    fromMaybe,
+    fromMaybeText,
     tagError,
     (<||>),
     combineSuccessful,
@@ -68,6 +70,14 @@ fromEither = either fatal pure
 -- | Lift an Either result into the Diagnostics effect, given a Show instance for the error type
 fromEitherShow :: (Show err, Has Diagnostics sig m) => Either err a -> m a
 fromEitherShow = either (fatal . T.pack . show) pure
+
+-- | Lift a Maybe result into Diagnostics, with the given diagnostic thrown for @Nothing@
+fromMaybe :: (ToDiagnostic err, Has Diagnostics sig m) => err -> Maybe a -> m a
+fromMaybe msg = maybe (fatal msg) pure
+
+-- | Lift a Maybe result into Diagnostics, with a Text error message for @Nothing@
+fromMaybeText :: Has Diagnostics sig m => Text -> Maybe a -> m a
+fromMaybeText = fromMaybe
 
 -- | Lift an Either result into the Diagnostics effect, given a function from the error type to another type that implements 'ToDiagnostic'
 tagError :: (ToDiagnostic e', Has Diagnostics sig m) => (e -> e') -> Either e a -> m a

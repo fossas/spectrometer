@@ -4,7 +4,8 @@ module Strategy.Python.Setuptools
 where
 
 import Control.Carrier.Output.IO
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics)
+import qualified Control.Effect.Diagnostics as Diag
 import Control.Monad.IO.Class
 import Data.Foldable (find)
 import Data.List (isInfixOf, isSuffixOf)
@@ -39,8 +40,8 @@ findProjects = walk' $ \dir _ files -> do
 
   let project =
         SetuptoolsProject
-          { setuptoolsReqTxt = undefined,
-            setuptoolsSetupPy = undefined,
+          { setuptoolsReqTxt = reqTxtFiles,
+            setuptoolsSetupPy = setupPyFile,
             setuptoolsDir = dir
           }
 
@@ -50,7 +51,7 @@ findProjects = walk' $ \dir _ files -> do
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
 getDeps project =
-  combineSuccessful
+  Diag.combineSuccessful
     "Analysis failed for all requirements.txt/setup.py in the project"
     [analyzeReqTxts project, analyzeSetupPy project]
 
@@ -58,7 +59,7 @@ analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject
 analyzeReqTxts = fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt
 
 analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeSetupPy = maybe (pure mempty) SetupPy.analyze' . setuptoolsSetupPy
+analyzeSetupPy project = Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project) >>= SetupPy.analyze'
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File],

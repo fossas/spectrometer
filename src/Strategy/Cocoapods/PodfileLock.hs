@@ -1,6 +1,7 @@
 module Strategy.Cocoapods.PodfileLock
   ( discover
   , analyze
+  , analyze'
   , buildGraph
   , findSections
 
@@ -40,6 +41,9 @@ discover = walk $ \_ _ files -> do
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser findSections file
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsParser findSections file
 
 mkProjectClosure :: Path Abs File -> [Section] -> ProjectClosureBody
 mkProjectClosure file sections = ProjectClosureBody

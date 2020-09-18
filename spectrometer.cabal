@@ -126,6 +126,7 @@ library
     Strategy.Cargo
     Strategy.Carthage
     Strategy.Clojure
+    Strategy.Cocoapods
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
