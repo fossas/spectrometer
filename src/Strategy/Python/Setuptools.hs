@@ -48,8 +48,8 @@ findProjects = walk' $ \dir _ files -> do
     ([], Nothing) -> pure ([], WalkContinue)
     _ -> pure ([project], WalkContinue)
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyze project =
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
+getDeps project =
   combineSuccessful
     "Analysis failed for all requirements.txt/setup.py in the project"
     [analyzeReqTxts project, analyzeSetupPy project]
@@ -71,7 +71,7 @@ mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> N
 mkProject project =
   NewProject
     { projectType = "python-setuptools",
-      projectDependencyGraph = analyze project,
+      projectDependencyGraph = getDeps project,
       projectPath = setuptoolsDir project,
       projectLicenses = pure []
     }

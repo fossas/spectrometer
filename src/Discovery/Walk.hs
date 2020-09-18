@@ -10,7 +10,6 @@ module Discovery.Walk
   )
 where
 
-import Control.Algebra
 import Control.Carrier.Writer.Church
 import Control.Monad.Trans
 import Control.Carrier.Lift
