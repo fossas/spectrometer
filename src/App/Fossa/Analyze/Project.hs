@@ -3,6 +3,8 @@
 module App.Fossa.Analyze.Project
   ( Project(..)
   , ProjectStrategy(..)
+  , ProjectResult(..)
+  , mkResult
 
   , BestStrategy(..)
 
@@ -24,6 +26,19 @@ import qualified Graphing
 import Path
 import Prettyprinter (Pretty(..))
 import Types
+
+mkResult :: NewProject m -> Graphing Dependency -> ProjectResult
+mkResult project graph = ProjectResult
+  { projectResultType = projectType project
+  , projectResultPath = projectPath project
+  , projectResultGraph = graph
+  }
+
+data ProjectResult = ProjectResult
+  { projectResultType :: Text
+  , projectResultPath :: Path Abs Dir
+  , projectResultGraph :: Graphing Dependency
+  }
 
 data Project = Project
   { projectPath'       :: Path Abs Dir

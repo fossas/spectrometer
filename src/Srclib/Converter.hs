@@ -4,6 +4,7 @@
 
 module Srclib.Converter
   ( toSourceUnit
+  , toSourceUnit'
   ) where
 
 import Prelude
@@ -20,6 +21,41 @@ import Graphing (Graphing)
 import qualified Graphing
 import Path (toFilePath)
 import Srclib.Types
+
+toSourceUnit' :: ProjectResult -> SourceUnit
+toSourceUnit' ProjectResult{..} =
+  SourceUnit
+    { sourceUnitName = renderedPath,
+      sourceUnitType = SourceUnitTypeDummyCLI, -- TODO: use value here instea of renderedPath?
+      sourceUnitManifest = renderedPath,
+      sourceUnitBuild =
+        SourceUnitBuild
+          { buildArtifact = "default",
+            buildSucceeded = True,
+            buildImports = imports,
+            buildDependencies = deps
+          }
+    }
+  where
+    renderedPath = Text.pack (toFilePath projectResultPath) <> "||" <> projectResultType
+
+    graph :: Graphing Dependency
+    graph = projectResultGraph
+
+    filteredGraph :: Graphing Dependency
+    filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
+
+    locatorGraph :: Graphing Locator
+    locatorGraph = Graphing.gmap toLocator filteredGraph
+
+    locatorAdjacent :: AM.AdjacencyMap Locator
+    locatorAdjacent = Graphing.graphingAdjacent locatorGraph
+
+    deps :: [SourceUnitDependency]
+    deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
+
+    imports :: [Locator]
+    imports = Set.toList $ Graphing.graphingDirect locatorGraph
 
 toSourceUnit :: Project -> SourceUnit
 toSourceUnit Project {..} =

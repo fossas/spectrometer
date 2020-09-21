@@ -6,6 +6,7 @@
 
 module App.Fossa.FossaAPIV1
   ( uploadAnalysis
+  , uploadAnalysis'
   , uploadContributors
   , UploadResponse(..)
   , ProjectMetadata(..)
@@ -47,7 +48,7 @@ import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
 import qualified Network.HTTP.Types as HTTP
 import Path
-import Srclib.Converter (toSourceUnit)
+import Srclib.Converter (toSourceUnit, toSourceUnit')
 import Srclib.Types
 import Text.URI (URI)
 import qualified Text.URI as URI
@@ -150,6 +151,37 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
       filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectPath') projects
      
       sourceUnits = map toSourceUnit filteredProjects
+      opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
+          <> "v" =: cliVersion
+          <> "managedBuild" =: True
+          <> "title" =: fromMaybe projectName (projectTitle metadata)
+          <> "branch" =: projectBranch
+          <> apiHeader key
+          <> mkMetadataOpts metadata
+  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOptions <> opts)
+  pure (responseBody resp)
+
+uploadAnalysis'
+  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
+  => BaseDir -- ^ root directory for analysis
+  -> URI -- ^ base url
+  -> ApiKey -- ^ api key
+  -> ProjectRevision
+  -> ProjectMetadata
+  -> [ProjectResult]
+  -> m UploadResponse
+uploadAnalysis' rootDir baseUri key ProjectRevision{..} metadata projects = fossaReq $ do
+  (baseUrl, baseOptions) <- parseUri baseUri
+
+  -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
+  -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
+  -- running in a directory called "tmp", we still want results.
+  let rootPath = fromAbsDir $ unBaseDir rootDir
+      dropPrefix :: String -> String -> String
+      dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
+      filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath) projects
+
+      sourceUnits = map toSourceUnit' filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "v" =: cliVersion
           <> "managedBuild" =: True
