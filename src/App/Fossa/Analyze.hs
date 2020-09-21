@@ -68,6 +68,16 @@ withResult :: Has Logger sig m => Severity -> Either Diag.FailureBundle (Diag.Re
 withResult sev (Left e) _ = Effect.Logger.log sev $ Diag.renderFailureBundle e
 withResult _ (Right res) f = f $ Diag.resultValue res
 
+runDiscoverFuncs :: (Has (Lift IO) sig m, Has (Output ProjectResult) sig m, Has TaskPool sig m, Has Logger sig m) => [Path Abs Dir -> Diag.DiagnosticsC m [NewProject (Diag.DiagnosticsC m)]] -> BaseDir -> m ()
+runDiscoverFuncs newDiscovers basedir =
+  for_ newDiscovers $ \discover -> forkTask $ do
+    projectsResult <- runDiagnosticsIO $ discover (unBaseDir basedir)
+    withResult SevError projectsResult $ \projects ->
+      for_ projects $ \project -> forkTask $ do
+        graphResult <- runDiagnosticsIO $ projectDependencyGraph project
+        withResult SevWarn graphResult $ \graph ->
+          output (mkResult project graph)
+
 analyze' ::
   forall sig m.
   ( Has (Lift IO) sig m
@@ -87,13 +97,12 @@ analyze' basedir destination override unpackArchives = runFinally $ do
   -- FIXME: fix diagnostics situation (gross code in emit*)
   -- FIXME: unpackArchives
   -- FIXME: print projects we found
-  (projectResults, ()) <- runOutput @ProjectResult . runExecIO . runReadFSIO . withTaskPool capabilities updateProgress $ do
-    for_ newDiscovers $ \discover -> forkTask $ do
-      projectsResult <- runDiagnosticsIO $ discover (unBaseDir basedir)
-      withResult SevError projectsResult $ traverse_ $ \project -> forkTask $ do
-        graphResult <- runDiagnosticsIO $ projectDependencyGraph project
-        withResult SevWarn graphResult $ \graph -> do
-          output (mkResult project graph)
+  (projectResults, ()) <-
+    runOutput @ProjectResult
+      . runExecIO
+      . runReadFSIO
+      . withTaskPool capabilities updateProgress
+      $ runDiscoverFuncs newDiscovers basedir
 
   logSticky ""
 
