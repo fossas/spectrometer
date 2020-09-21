@@ -10,6 +10,8 @@
 module Control.Carrier.Output.Interpret
   ( OutputC
   , runOutput
+
+  , module X
   ) where
 
 import Control.Applicative (Alternative)

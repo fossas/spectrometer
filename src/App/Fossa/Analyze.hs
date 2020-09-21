@@ -16,7 +16,7 @@ import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysi
 import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types
 import qualified Control.Carrier.Diagnostics as Diag
-import Control.Carrier.Error.Either
+import Control.Carrier.Output.IO
 import Control.Carrier.Finally
 import Control.Carrier.TaskPool
 import Control.Concurrent
@@ -27,7 +27,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
@@ -51,7 +51,6 @@ import Text.URI (URI)
 import qualified Text.URI as URI
 import Types
 import VCS.Git (fetchGitContributors)
-import Data.Traversable (for)
 
 data ScanDestination
   = UploadScan URI ApiKey ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -65,23 +64,9 @@ analyzeMain basedir logSeverity destination project unpackArchives = withLogger 
 runDiagnosticsIO :: Has (Lift IO) sig m => Diag.DiagnosticsC m a -> m (Either Diag.FailureBundle (Diag.ResultBundle a))
 runDiagnosticsIO act = Diag.runDiagnostics $ act `safeCatch` (\(e :: SomeException) -> Diag.fatal e)
 
-witherListM :: Monad m => (a -> m (Maybe b)) -> [a] -> m [b]
-witherListM _ [] = pure []
-witherListM f (x:xs) = f x >>= \res -> case res of
-  Nothing -> witherListM f xs
-  Just x' -> (x':) <$> witherListM f xs
-
-emitFailures :: Has Logger sig m => Either Diag.FailureBundle (Diag.ResultBundle a) -> m (Maybe a)
-emitFailures (Left e) = do
-  logError $ Diag.renderFailureBundle e
-  pure Nothing
-emitFailures (Right a) = pure . Just $ Diag.resultValue a
-
-emitProjectFailures :: Has Logger sig m => (NewProject (Diag.DiagnosticsC m), Either Diag.FailureBundle (Diag.ResultBundle a)) -> m (Maybe (NewProject (Diag.DiagnosticsC m), a))
-emitProjectFailures (_, Left e) = do
-  logDebug $ Diag.renderFailureBundle e
-  pure Nothing
-emitProjectFailures (prj, Right a) = pure $ Just (prj, Diag.resultValue a)
+withResult :: Has Logger sig m => Severity -> Either Diag.FailureBundle (Diag.ResultBundle a) -> (a -> m ()) -> m ()
+withResult sev (Left e) _ = Effect.Logger.log sev $ Diag.renderFailureBundle e
+withResult _ (Right res) f = f $ Diag.resultValue res
 
 analyze' ::
   forall sig m.
@@ -100,51 +85,47 @@ analyze' basedir destination override unpackArchives = runFinally $ do
   let newDiscovers = [Cocoapods.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
 
   -- FIXME: fix diagnostics situation (gross code in emit*)
-  -- FIXME: parallelism on discover
-  -- FIXME: parallelism on analysis of discovered projects
   -- FIXME: unpackArchives
   -- FIXME: print projects we found
-  runExecIO . runReadFSIO . withTaskPool capabilities updateProgress $ do
-    projectsAndFailures <- traverse (runDiagnosticsIO . apply (unBaseDir basedir)) newDiscovers
-    projects <- concat <$> witherListM emitFailures projectsAndFailures
-    depGraphsAndFailures <- for projects $ \project -> do
-      depGraph <- runDiagnosticsIO $ projectDependencyGraph project
-      pure (project, depGraph)
-    depGraphs <- witherListM emitProjectFailures depGraphsAndFailures
+  (projectResults, ()) <- runOutput @ProjectResult . runExecIO . runReadFSIO . withTaskPool capabilities updateProgress $ do
+    for_ newDiscovers $ \discover -> forkTask $ do
+      projectsResult <- runDiagnosticsIO $ discover (unBaseDir basedir)
+      withResult SevError projectsResult $ traverse_ $ \project -> forkTask $ do
+        graphResult <- runDiagnosticsIO $ projectDependencyGraph project
+        withResult SevWarn graphResult $ \graph -> do
+          output (mkResult project graph)
 
-    logSticky ""
+  logSticky ""
 
-    let projectResults = map (uncurry mkResult) depGraphs
+  case destination of
+    OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult projectResults)))
+    UploadScan baseurl apiKey metadata -> do
+      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
-    case destination of
-      OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult projectResults)))
-      UploadScan baseurl apiKey metadata -> do
-        revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
+      logInfo ""
+      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+      logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
 
-        logInfo ""
-        logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-        logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-        logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projectResults
+      case uploadResult of
+        Left failure -> logError (Diag.renderFailureBundle failure)
+        Right success -> do
+          let resp = Diag.resultValue success
+          logInfo $ vsep
+            [ "============================================================"
+            , ""
+            , "    View FOSSA Report:"
+            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) (projectBranch revision))
+            , ""
+            , "============================================================"
+            ]
+          traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-        uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projectResults
-        case uploadResult of
-          Left failure -> logError (Diag.renderFailureBundle failure)
-          Right success -> do
-            let resp = Diag.resultValue success
-            logInfo $ vsep
-              [ "============================================================"
-              , ""
-              , "    View FOSSA Report:"
-              , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) (projectBranch revision))
-              , ""
-              , "============================================================"
-              ]
-            traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
-
-            contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) baseurl apiKey $ uploadLocator resp
-            case contribResult of
-              Left failure -> logDebug (Diag.renderFailureBundle failure)
-              Right _ -> pure ()
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) baseurl apiKey $ uploadLocator resp
+          case contribResult of
+            Left failure -> logDebug (Diag.renderFailureBundle failure)
+            Right _ -> pure ()
 
 tryUploadContributors ::
   ( Has Diag.Diagnostics sig m,
@@ -185,9 +166,6 @@ buildProject project = Aeson.object
   , "type" .= projectResultType project
   , "graph" .= graphingToGraph (projectResultGraph project)
   ]
-
-apply :: a -> (a -> b) -> b
-apply x f = f x
 
 updateProgress :: Has Logger sig m => Progress -> m ()
 updateProgress Progress{..} =
