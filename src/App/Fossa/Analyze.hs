@@ -23,6 +23,7 @@ import Control.Concurrent
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Exception.Extra (safeCatch)
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
@@ -41,6 +42,7 @@ import Network.HTTP.Types (urlEncode)
 import Path
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator (..), parseLocator)
+import qualified Strategy.Archive as Archive
 import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
@@ -68,15 +70,23 @@ withResult :: Has Logger sig m => Severity -> Either Diag.FailureBundle (Diag.Re
 withResult sev (Left e) _ = Effect.Logger.log sev $ Diag.renderFailureBundle e
 withResult _ (Right res) f = f $ Diag.resultValue res
 
-runDiscoverFuncs :: (Has (Lift IO) sig m, Has (Output ProjectResult) sig m, Has TaskPool sig m, Has Logger sig m) => [Path Abs Dir -> Diag.DiagnosticsC m [NewProject (Diag.DiagnosticsC m)]] -> BaseDir -> m ()
-runDiscoverFuncs newDiscovers basedir =
+runDiscoverFuncs ::
+  (Has (Lift IO) sig m, MonadIO m, Has (Output ProjectResult) sig m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
+  -- | Discover functions
+  [Path Abs Dir -> Diag.DiagnosticsC m [NewProject (Diag.DiagnosticsC m)]] ->
+  -- | whether to unpack archives
+  Bool ->
+  Path Abs Dir ->
+  m ()
+runDiscoverFuncs newDiscovers unpackArchives basedir = do
   for_ newDiscovers $ \discover -> forkTask $ do
-    projectsResult <- runDiagnosticsIO $ discover (unBaseDir basedir)
+    projectsResult <- runDiagnosticsIO (discover basedir)
     withResult SevError projectsResult $ \projects ->
       for_ projects $ \project -> forkTask $ do
         graphResult <- runDiagnosticsIO $ projectDependencyGraph project
-        withResult SevWarn graphResult $ \graph ->
-          output (mkResult project graph)
+        withResult SevWarn graphResult (output . mkResult project)
+
+  when unpackArchives $ Archive.discover (runDiscoverFuncs newDiscovers unpackArchives) basedir
 
 analyze' ::
   forall sig m.
@@ -89,20 +99,19 @@ analyze' ::
   -> OverrideProject
   -> Bool -- ^ whether to unpack archives
   -> m ()
-analyze' basedir destination override unpackArchives = runFinally $ do
+analyze' basedir destination override unpackArchives = do
   capabilities <- sendIO getNumCapabilities
 
   let newDiscovers = [Cocoapods.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
 
-  -- FIXME: fix diagnostics situation (gross code in emit*)
-  -- FIXME: unpackArchives
   -- FIXME: print projects we found
   (projectResults, ()) <-
     runOutput @ProjectResult
       . runExecIO
       . runReadFSIO
+      . runFinally
       . withTaskPool capabilities updateProgress
-      $ runDiscoverFuncs newDiscovers basedir
+      $ runDiscoverFuncs newDiscovers unpackArchives (unBaseDir basedir)
 
   logSticky ""
 
