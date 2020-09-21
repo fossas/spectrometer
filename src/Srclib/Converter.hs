@@ -4,7 +4,6 @@
 
 module Srclib.Converter
   ( toSourceUnit
-  , toSourceUnit'
   ) where
 
 import Prelude
@@ -12,7 +11,6 @@ import Prelude
 import qualified Algebra.Graph.AdjacencyMap as AM
 import App.Fossa.Analyze.Project
 import Control.Applicative ((<|>))
-import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Set as Set
@@ -22,8 +20,8 @@ import qualified Graphing
 import Path (toFilePath)
 import Srclib.Types
 
-toSourceUnit' :: ProjectResult -> SourceUnit
-toSourceUnit' ProjectResult{..} =
+toSourceUnit :: ProjectResult -> SourceUnit
+toSourceUnit ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath,
       sourceUnitType = SourceUnitTypeDummyCLI, -- TODO: use value here instea of renderedPath?
@@ -41,42 +39,6 @@ toSourceUnit' ProjectResult{..} =
 
     graph :: Graphing Dependency
     graph = projectResultGraph
-
-    filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
-
-    locatorGraph :: Graphing Locator
-    locatorGraph = Graphing.gmap toLocator filteredGraph
-
-    locatorAdjacent :: AM.AdjacencyMap Locator
-    locatorAdjacent = Graphing.graphingAdjacent locatorGraph
-
-    deps :: [SourceUnitDependency]
-    deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
-
-    imports :: [Locator]
-    imports = Set.toList $ Graphing.graphingDirect locatorGraph
-
-toSourceUnit :: Project -> SourceUnit
-toSourceUnit Project {..} =
-  SourceUnit
-    { sourceUnitName = renderedPath,
-      sourceUnitType = SourceUnitTypeDummyCLI,
-      sourceUnitManifest = renderedPath,
-      sourceUnitBuild =
-        SourceUnitBuild
-          { buildArtifact = "default",
-            buildSucceeded = True,
-            buildImports = imports,
-            buildDependencies = deps
-          }
-    }
-  where
-    bestStrategy = NE.head projectStrategies
-    renderedPath = Text.pack (toFilePath projectPath') <> "/" <> projStrategyName bestStrategy
-
-    graph :: Graphing Dependency
-    graph = projStrategyGraph bestStrategy
 
     filteredGraph :: Graphing Dependency
     filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
