@@ -147,7 +147,7 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
   let rootPath = fromAbsDir $ unBaseDir rootDir
       dropPrefix :: String -> String -> String
       dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
-      filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectPath) projects
+      filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectPath') projects
      
       sourceUnits = map toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))

@@ -37,7 +37,7 @@ toSourceUnit Project {..} =
     }
   where
     bestStrategy = NE.head projectStrategies
-    renderedPath = Text.pack (toFilePath projectPath) <> "/" <> projStrategyName bestStrategy
+    renderedPath = Text.pack (toFilePath projectPath') <> "/" <> projStrategyName bestStrategy
 
     graph :: Graphing Dependency
     graph = projStrategyGraph bestStrategy

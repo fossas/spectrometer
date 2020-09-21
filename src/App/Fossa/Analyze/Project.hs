@@ -23,10 +23,10 @@ import Graphing (Graphing)
 import qualified Graphing
 import Path
 import Prettyprinter (Pretty(..))
-import Types hiding (NewProject(..))
+import Types
 
 data Project = Project
-  { projectPath       :: Path Abs Dir
+  { projectPath'       :: Path Abs Dir
   , projectStrategies :: NE.NonEmpty ProjectStrategy
   }
   deriving (Eq, Ord, Show)
@@ -38,7 +38,7 @@ instance Pretty BestStrategy where
   pretty (BestStrategy project) =
     pretty bestStrategyName
       <> " project at "
-      <> pretty (fromAbsDir (projectPath project))
+      <> pretty (fromAbsDir (projectPath' project))
       <> " with "
       <> pretty bestStrategyDepCount
       <> " dependencies"
@@ -67,7 +67,7 @@ mkProjects = toProjects . grouping
 
   toProject :: ((StrategyGroup, Path Abs Dir), NE.NonEmpty ProjectClosure) -> Project
   toProject ((_, dir), closures) = Project
-    { projectPath = dir
+    { projectPath' = dir
     , projectStrategies = fmap toProjectStrategy $
         NE.sortBy (comparator `on` closureDependencies) closures
     }
@@ -93,7 +93,7 @@ mkProjects = toProjects . grouping
 
 instance ToJSON Project where
   toJSON Project{..} = object
-    [ "path"       .= projectPath
+    [ "path"       .= projectPath'
     , "strategies" .= projectStrategies
     ]
 

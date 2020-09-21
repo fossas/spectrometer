@@ -26,6 +26,8 @@ common deps
     , algebraic-graphs             ^>=0.5
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.13.2.3
+    -- FIXME: cpio-conduit depends on this, and 1.0.0.0 doesn't compile
+    , base16-bytestring            ^>=0.1.1.7
     , bytestring                   ^>=0.10.8
     , codec-rpm                    ^>=0.2.2
     , conduit                      ^>=1.3.2
@@ -109,6 +111,7 @@ library
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.TaskPool
+    Control.Exception.Extra
     Data.FileEmbed.Extra
     Data.Text.Extra
     DepTypes
