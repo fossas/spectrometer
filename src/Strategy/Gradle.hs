@@ -2,6 +2,7 @@
 
 module Strategy.Gradle
   ( discover
+  , discover'
 
   , buildGraph
   , JsonDep(..)
@@ -12,6 +13,7 @@ import Control.Effect.Diagnostics
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Aeson.Types (Parser, unexpected)
 import Data.ByteString (ByteString)
@@ -19,9 +21,12 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.FileEmbed (embedFile)
 import Data.Foldable (find, for_)
+import Data.List (isPrefixOf)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
+import Data.Set (Set)
+import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
@@ -49,8 +54,83 @@ discover = walk $ \_ _ files -> do
       runSimpleStrategy "gradle-cli" GradleGroup $ analyze (parent file)
       pure WalkSkipAll
 
+discover' ::
+  ( Has (Lift IO) sig m,
+    MonadIO m,
+    Has Exec sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m [NewProject m]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [GradleProject]
+findProjects = walk' $ \dir _ files -> do
+  case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
+    Nothing -> pure ([], WalkContinue)
+    Just _ -> do
+      let project =
+            GradleProject
+              { gradleDir = dir,
+                gradleProjects = S.empty
+              }
+
+      pure ([project], WalkSkipAll)
+
+data GradleProject = GradleProject
+  { gradleDir :: Path Abs Dir
+  , gradleProjects :: Set Text
+  } deriving (Eq, Ord, Show)
+
+mkProject :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> NewProject m
+mkProject project =
+  NewProject
+    { projectType = "cocoapods",
+      projectBuildTargets = S.map BuildTarget $ gradleProjects project,
+      projectDependencyGraph = const $ getDeps project,
+      projectPath = gradleDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> m (Graphing Dependency)
+getDeps = analyze' . gradleDir
+
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
+
+analyze' ::
+  ( Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  )
+  => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
+  let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
+  sendIO (BS.writeFile initScriptFilepath initScript)
+  stdout <- execThrow dir (gradleJsonDepsCmd "./gradlew" initScriptFilepath)
+              <||> execThrow dir (gradleJsonDepsCmd "gradlew.bat" initScriptFilepath)
+              <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath)
+
+  let text = decodeUtf8 $ BL.toStrict stdout
+      textLines :: [Text]
+      textLines = T.lines (T.filter (/= '\r') text)
+      -- jsonDeps lines look like:
+      -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
+      jsonDepsLines :: [Text]
+      jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
+
+      packagePathsWithJson :: [(Text,Text)]
+      packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
+
+      packagePathsWithDecoded :: [(Text, [JsonDep])]
+      packagePathsWithDecoded = [(name, deps) | (name, outJson) <- packagePathsWithJson
+                                              , Just configs <- [decodeStrict (encodeUtf8 outJson) :: Maybe (Map Text [JsonDep])]
+                                              , Just deps <- [M.lookup "default" configs]] -- FUTURE: use more than default?
+
+      packagesToOutput :: Map Text [JsonDep]
+      packagesToOutput = M.fromList packagePathsWithDecoded
+
+  pure (buildGraph packagesToOutput)
 
 analyze ::
   ( Has (Lift IO) sig m

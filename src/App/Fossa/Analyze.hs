@@ -46,6 +46,7 @@ import qualified Strategy.Archive as Archive
 import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
+import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Maven as Maven
 import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.Python.Setuptools as Setuptools
@@ -102,7 +103,7 @@ analyze' ::
 analyze' basedir destination override unpackArchives = do
   capabilities <- sendIO getNumCapabilities
 
-  let newDiscovers = [Cocoapods.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
+  let newDiscovers = [Cocoapods.discover', Gradle.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
 
   -- FIXME: print projects we found
   (projectResults, ()) <-

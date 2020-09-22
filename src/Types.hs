@@ -8,6 +8,7 @@ module Types
   ( StrategyGroup(..)
 
   , NewProject(..)
+  , BuildTarget(..)
   , ProjectClosure(..)
   , ProjectClosureBody(..)
   , ProjectFailure(..)
