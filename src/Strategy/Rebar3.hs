@@ -38,7 +38,7 @@ mkProject project =
   NewProject
     { projectType = "rebar3",
       projectBuildTargets = mempty,
-      projectDependencyGraph = getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = rebarDir project,
       projectLicenses = pure []
     }

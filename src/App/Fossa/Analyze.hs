@@ -83,7 +83,7 @@ runDiscoverFuncs newDiscovers unpackArchives basedir = do
     projectsResult <- runDiagnosticsIO (discover basedir)
     withResult SevError projectsResult $ \projects ->
       for_ projects $ \project -> forkTask $ do
-        graphResult <- runDiagnosticsIO $ projectDependencyGraph project
+        graphResult <- runDiagnosticsIO $ projectDependencyGraph project (projectBuildTargets project)
         withResult SevWarn graphResult (output . mkResult project)
 
   when unpackArchives $ Archive.discover (runDiscoverFuncs newDiscovers unpackArchives) basedir

@@ -51,7 +51,7 @@ mkProject project =
   NewProject
     { projectType = "cocoapods",
       projectBuildTargets = mempty,
-      projectDependencyGraph = getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = cocoapodsDir project,
       projectLicenses = pure []
     }

@@ -41,7 +41,7 @@ mkProject closure =
     { projectType = "Maven",
       projectPath = parent $ Pom.closurePath closure,
       projectBuildTargets = mempty,
-      projectDependencyGraph = getDeps closure,
+      projectDependencyGraph = const $ getDeps closure,
       projectLicenses = pure [] -- FIXME
     }
 

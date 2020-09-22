@@ -73,7 +73,7 @@ mkProject project =
   NewProject
     { projectType = "python-setuptools",
       projectBuildTargets = mempty,
-      projectDependencyGraph = getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = setuptoolsDir project,
       projectLicenses = pure []
     }

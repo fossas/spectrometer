@@ -128,7 +128,7 @@ data NewProject m = NewProject
   { projectType :: Text,
     projectPath :: Path Abs Dir,
     projectBuildTargets :: Set BuildTarget,
-    projectDependencyGraph :: m (Graphing Dependency),
+    projectDependencyGraph :: Set BuildTarget -> m (Graphing Dependency),
     projectLicenses :: m [LicenseResult]
   }
 

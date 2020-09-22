@@ -38,7 +38,7 @@ mkProject project =
   NewProject
     { projectType = "glide",
       projectBuildTargets = mempty,
-      projectDependencyGraph = getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = glideDir project,
       projectLicenses = pure []
     }

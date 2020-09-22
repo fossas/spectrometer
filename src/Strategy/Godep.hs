@@ -53,7 +53,7 @@ mkProject project =
   NewProject
     { projectType = "godep",
       projectBuildTargets = mempty,
-      projectDependencyGraph = getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = godepDir project,
       projectLicenses = pure []
     }

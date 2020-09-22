@@ -77,7 +77,7 @@ mkProject ::
 mkProject project = NewProject
   { projectType = "python-pipenv"
   , projectBuildTargets = mempty
-  , projectDependencyGraph = getDeps project
+  , projectDependencyGraph = const $ getDeps project
   , projectPath = parent $ pipenvLockfile project
   , projectLicenses = pure []
   }

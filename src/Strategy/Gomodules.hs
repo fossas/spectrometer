@@ -41,7 +41,7 @@ mkProject project =
   NewProject
     { projectType = "gomod",
       projectBuildTargets = mempty,
-      projectDependencyGraph = getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = gomodulesDir project,
       projectLicenses = pure []
     }
