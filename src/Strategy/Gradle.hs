@@ -8,8 +8,7 @@ module Strategy.Gradle
   , JsonDep(..)
   ) where
 
-import Control.Carrier.Error.Either
-import Control.Effect.Diagnostics
+import Control.Carrier.Diagnostics
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
@@ -30,6 +29,7 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Text.Extra (strippedPrefix, splitOnceOn)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
@@ -64,15 +64,24 @@ discover' ::
   m [NewProject m]
 discover' dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [GradleProject]
+findProjects :: (Has Exec sig m, MonadIO m) => Path Abs Dir -> m [GradleProject]
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
+
+      projectsStdout <-
+        runDiagnostics $
+          execThrow dir (gradleProjectsCmd "./gradlew")
+            <||> execThrow dir (gradleProjectsCmd "gradlew.bat")
+            <||> execThrow dir (gradleProjectsCmd "gradle")
+
+      let subprojects = either (const S.empty) (parseProjects . resultValue) projectsStdout
+
       let project =
             GradleProject
               { gradleDir = dir,
-                gradleProjects = S.empty
+                gradleProjects = subprojects
               }
 
       pure ([project], WalkSkipAll)
@@ -81,6 +90,26 @@ data GradleProject = GradleProject
   { gradleDir :: Path Abs Dir
   , gradleProjects :: Set Text
   } deriving (Eq, Ord, Show)
+
+gradleProjectsCmd :: Text -> Command
+gradleProjectsCmd baseCmd = Command
+  { cmdName = baseCmd
+  , cmdArgs = ["projects"]
+  , cmdAllowErr = Never
+  }
+
+-- TODO: use megaparsec here? this logic is unreadable
+parseProjects :: BL.ByteString -> Set Text
+parseProjects outBL = S.fromList $ mapMaybe parseLine outLines
+  where
+    outText = decodeUtf8 $ BL.toStrict outBL
+    outLines = T.lines outText
+
+    parseLine :: Text -> Maybe Text
+    parseLine line
+      | "Root project" `T.isPrefixOf` line = Just . fst . splitOnceOn "'" . strippedPrefix "Root project '" $ line
+      | "---" `T.isPrefixOf` T.drop 1 (T.strip line) = Just . fst . splitOnceOn "'" . strippedPrefix "--- Project '" . T.drop 1 $ line
+      | otherwise = Nothing
 
 mkProject :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> NewProject m
 mkProject project =
