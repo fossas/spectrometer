@@ -50,6 +50,7 @@ mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> Ne
 mkProject project =
   NewProject
     { projectType = "cocoapods",
+      projectBuildTargets = mempty,
       projectDependencyGraph = getDeps project,
       projectPath = cocoapodsDir project,
       projectLicenses = pure []

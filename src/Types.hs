@@ -38,6 +38,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (lift)
 import Data.Aeson
 import Data.Foldable (traverse_)
+import Data.Set (Set)
 import Data.Text (Text)
 import DepTypes
 import Effect.Exec
@@ -126,9 +127,13 @@ toProjectClosure strategyGroup name body = ProjectClosure
 data NewProject m = NewProject
   { projectType :: Text,
     projectPath :: Path Abs Dir,
+    projectBuildTargets :: Set BuildTarget,
     projectDependencyGraph :: m (Graphing Dependency),
     projectLicenses :: m [LicenseResult]
   }
+
+newtype BuildTarget = BuildTarget { unBuildTarget :: Text }
+  deriving (Eq, Ord, Show)
 
 -- discovery can find many multi-projects
 -- each multi-project has a Graphing BuildTarget

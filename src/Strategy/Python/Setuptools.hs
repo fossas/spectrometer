@@ -72,6 +72,7 @@ mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> N
 mkProject project =
   NewProject
     { projectType = "python-setuptools",
+      projectBuildTargets = mempty,
       projectDependencyGraph = getDeps project,
       projectPath = setuptoolsDir project,
       projectLicenses = pure []

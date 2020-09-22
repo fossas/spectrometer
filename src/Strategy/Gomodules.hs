@@ -40,6 +40,7 @@ mkProject :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Gomodu
 mkProject project =
   NewProject
     { projectType = "gomod",
+      projectBuildTargets = mempty,
       projectDependencyGraph = getDeps project,
       projectPath = gomodulesDir project,
       projectLicenses = pure []

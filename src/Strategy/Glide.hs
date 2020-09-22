@@ -37,6 +37,7 @@ mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => GlideProject -> NewPro
 mkProject project =
   NewProject
     { projectType = "glide",
+      projectBuildTargets = mempty,
       projectDependencyGraph = getDeps project,
       projectPath = glideDir project,
       projectLicenses = pure []

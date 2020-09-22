@@ -37,6 +37,7 @@ mkProject :: (Has Exec sig m, Has Diagnostics sig m) => RebarProject -> NewProje
 mkProject project =
   NewProject
     { projectType = "rebar3",
+      projectBuildTargets = mempty,
       projectDependencyGraph = getDeps project,
       projectPath = rebarDir project,
       projectLicenses = pure []

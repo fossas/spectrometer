@@ -52,6 +52,7 @@ mkProject :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepP
 mkProject project =
   NewProject
     { projectType = "godep",
+      projectBuildTargets = mempty,
       projectDependencyGraph = getDeps project,
       projectPath = godepDir project,
       projectLicenses = pure []
