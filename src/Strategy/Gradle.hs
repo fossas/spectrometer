@@ -99,15 +99,21 @@ gradleProjectsCmd baseCmd = Command
   , cmdAllowErr = Never
   }
 
--- TODO: use megaparsec here? this logic is unreadable
+
+-- TODO: use megaparsec here? this logic is unreadable.
+-- we use a single empty-string target when no subprojects exist. gradle uses an
+-- empty string to denote the root project when invoking tasks, e.g., ":task"
+-- instead of ":subproject:task"
 parseProjects :: BL.ByteString -> Set Text
-parseProjects outBL = S.fromList $ mapMaybe parseLine outLines
+parseProjects outBL = if S.null subprojects then S.singleton "" else subprojects
   where
+    subprojects = S.fromList $ mapMaybe parseSubproject outLines
+
     outText = decodeUtf8 $ BL.toStrict outBL
     outLines = T.lines outText
 
-    parseLine :: Text -> Maybe Text
-    parseLine line
+    parseSubproject :: Text -> Maybe Text
+    parseSubproject line
       | "--- Project '" `T.isPrefixOf` T.drop 1 (T.strip line) = Just . fst . splitOnceOn "'" . strippedPrefix "--- Project '" . T.drop 1 $ line
       | otherwise = Nothing
 
