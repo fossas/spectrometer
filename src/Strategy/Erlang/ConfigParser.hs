@@ -39,7 +39,7 @@ data ErlValue
   = ErlAtom AtomText
   | ErlString Text
   | ErlInt Int
-  | ErlFloat Float
+  | ErlFloat Double
   | ErlArray [ErlValue]
   | ErlTuple [ErlValue]
   deriving (Eq, Ord, Show, Generic)
@@ -127,11 +127,16 @@ parseAtom = ErlAtom <$> parseAtomText
 parseAtomText :: Parser AtomText
 parseAtomText = AtomText <$> lexeme (rawAtom <|> quotedAtom)
   where
+    quotedAtom :: Parser Text
     quotedAtom = enclosed "'" "'" $ takeWhile1P (Just "quoted Atom") (/= '\'')
     --
+    rawAtom :: Parser Text
     rawAtom = T.cons <$> firstChar <*> rawAtomTail
+    isRawAtomChar :: Char -> Bool
     isRawAtomChar c = C.isAlphaNum c || c == '_' || c == '@'
+    firstChar :: Parser Char
     firstChar = satisfy (\c -> C.isAsciiLower c && C.isAlpha c)
+    rawAtomTail :: Parser Text
     rawAtomTail = takeWhileP (Just "atom tail") isRawAtomChar
 
 parseErlArray :: Parser ErlValue
