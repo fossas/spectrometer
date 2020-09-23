@@ -11,10 +11,19 @@ module App.VPSScan.Scan.ScotlandYard
   )
 where
 
+import qualified Data.HashMap.Strict as HM
+import Control.Carrier.TaskPool
+import Control.Carrier.Diagnostics
+import Control.Monad.IO.Class
+import Control.Effect.Lift
 import App.VPSScan.Types
+import Data.Foldable (traverse_)
+import Data.List.Split
+import Effect.Logger
+import GHC.Conc.Sync (getNumCapabilities)
+import Data.Maybe
+import qualified Data.Vector as V
 import App.VPSScan.Scan.Core
-import Control.Effect.Diagnostics
-import Control.Effect.Lift (Lift)
 import Control.Carrier.Trace.Printing
 import Data.Aeson
 import Data.Text (Text, unpack)
@@ -120,7 +129,12 @@ uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} graph = runHTTP $ do
   runTrace $ trace "new build graph id "
   runTrace $ trace $ unpack $ responseBuildGraphId buildGraphId
   let body = object ["targets" .= graph]
-  _ <- req POST (uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  let chunkedJSON = fromMaybe [] (chunkJSON body "targets" 1000)
+
+  capabilities <- liftIO getNumCapabilities
+  let url = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk url baseOptions) chunkedJSON
+  -- _ <- req POST (uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   runTrace $ trace "chunks uploaded"
   _ <- req PUT (uploadBuildGraphCompleteEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson $ object []) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   runTrace $ trace "completed"
@@ -139,3 +153,31 @@ createBuildGraph ScotlandYardNinjaOpts {..} = runHTTP $ do
   runTrace $ trace "build graph created"
   pure (responseBody resp)
 
+uploadBuildGraphChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> Value -> m ()
+uploadBuildGraphChunk url postOptions jsonChunk = do
+  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse (postOptions <> header "Content-Type" "application/json")
+  pure ()
+
+updateProgress :: Has Logger sig m => Progress -> m ()
+updateProgress Progress{..} =
+  logSticky ( "[ "
+            <> annotate (color Cyan) (pretty pQueued)
+            <> " Waiting / "
+            <> annotate (color Yellow) (pretty pRunning)
+            <> " Running / "
+            <> annotate (color Green) (pretty pCompleted)
+            <> " Completed"
+            <> " ]" )
+
+chunkJSON :: Value -> Text -> Int -> Maybe [Value]
+chunkJSON (Object obj) key chunkSize = do
+  a <- HM.lookup key obj
+  arr <- case a of
+    Array aa -> Just aa
+    _ -> Nothing
+  let chunked = chunksOf chunkSize $ V.toList arr
+  let chunker :: [Value] -> Value
+      chunker v = object ["Files" .= v]
+  Just $ map chunker chunked
+
+chunkJSON _ _ _ = Nothing
