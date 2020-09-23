@@ -34,6 +34,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
+import Effect.Logger (Logger, logWarn)
 import Graphing (Graphing)
 import Path
 import qualified System.FilePath as FP
@@ -58,33 +59,39 @@ discover' ::
   ( Has (Lift IO) sig m,
     MonadIO m,
     Has Exec sig m,
-    Has Diagnostics sig m
+    Has Diagnostics sig m,
+    Has Logger sig m
   ) =>
   Path Abs Dir ->
   m [NewProject m]
 discover' dir = map mkProject <$> findProjects dir
 
-findProjects :: (Has Exec sig m, MonadIO m) => Path Abs Dir -> m [GradleProject]
+findProjects :: (Has Exec sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [GradleProject]
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
 
       projectsStdout <-
-        runDiagnostics $
+        runDiagnostics $ context ("getting gradle projects rooted at " <> T.pack (fromAbsDir dir)) $
           execThrow dir (gradleProjectsCmd "./gradlew")
             <||> execThrow dir (gradleProjectsCmd "gradlew.bat")
             <||> execThrow dir (gradleProjectsCmd "gradle")
 
-      let subprojects = either (const S.empty) (parseProjects . resultValue) projectsStdout
+      case projectsStdout of
+        Left err -> do
+          logWarn $ renderFailureBundle err
+          pure ([], WalkContinue)
+        Right result -> do
+          let subprojects = parseProjects $ resultValue result
 
-      let project =
-            GradleProject
-              { gradleDir = dir,
-                gradleProjects = subprojects
-              }
+          let project =
+                GradleProject
+                  { gradleDir = dir,
+                    gradleProjects = subprojects
+                  }
 
-      pure ([project], WalkSkipAll)
+          pure ([project], WalkSkipAll)
 
 data GradleProject = GradleProject
   { gradleDir :: Path Abs Dir
