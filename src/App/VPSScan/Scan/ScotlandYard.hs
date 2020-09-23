@@ -73,11 +73,10 @@ instance FromJSON CreateBuildGraphResponse where
 createScotlandYardScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardOpts -> m ScanResponse
 createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
   let VPSOpts{..} = syVpsOpts
-  let FossaOpts{..} = fossa
-
-  let body = object ["revisionId" .= projectRevision, "organizationId" .= organizationId]
-  let auth = coreAuthHeader fossaApiKey
-  let locator = unLocator projectId
+      FossaOpts{..} = fossa
+      body = object ["revisionId" .= projectRevision, "organizationId" .= organizationId]
+      auth = coreAuthHeader fossaApiKey
+      locator = unLocator projectId
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
   resp <- req POST (createScanEndpoint baseUrl locator) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
@@ -89,9 +88,9 @@ createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
 uploadIPRResults :: (ToJSON a, Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> a -> ScotlandYardOpts -> m ()
 uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
   let VPSOpts{..} = syVpsOpts
-  let FossaOpts{..} = fossa
-  let auth = coreAuthHeader fossaApiKey
-  let locator = unLocator projectId
+      FossaOpts{..} = fossa
+      auth = coreAuthHeader fossaApiKey
+      locator = unLocator projectId
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
   _ <- req POST (scanDataEndpoint baseUrl locator scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
@@ -113,9 +112,9 @@ uploadBuildGraphCompleteEndpoint baseurl projectId scanId buildGraphId = corePro
 uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
 uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
-  let FossaOpts{..} = ninjaFossaOpts
-  let auth = coreAuthHeader fossaApiKey
-  let locator = unLocator syNinjaProjectId
+      FossaOpts{..} = ninjaFossaOpts
+      auth = coreAuthHeader fossaApiKey
+      locator = unLocator syNinjaProjectId
   (baseUrl, baseOptions) <- parseUri fossaUrl
   let authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json" <> auth
 

@@ -69,7 +69,7 @@ getAndParseNinjaDeps dir ninjaGraphOpts@NinjaGraphOpts{..} = do
   graph <- scanNinjaDeps ninjaDepsContents
   SherlockInfo{..} <- getSherlockInfo ninjaFossaOpts
   let locator = createLocator ninjaProjectName sherlockOrgId
-  let syOpts = ScotlandYardNinjaOpts locator sherlockOrgId ninjaGraphOpts
+      syOpts = ScotlandYardNinjaOpts locator sherlockOrgId ninjaGraphOpts
   _ <- uploadBuildGraph syOpts graph
   pure ()
 
