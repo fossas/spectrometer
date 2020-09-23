@@ -15,8 +15,9 @@ import App.VPSScan.Types
 import App.VPSScan.Scan.Core
 import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift)
+import Control.Carrier.Trace.Printing
 import Data.Aeson
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Network.HTTP.Req
 import App.Util (parseUri)
 
@@ -61,7 +62,7 @@ data CreateBuildGraphResponse = CreateBuildGraphResponse
 
 instance FromJSON CreateBuildGraphResponse where
   parseJSON = withObject "CreateBuildGraphResponse" $ \obj ->
-    CreateBuildGraphResponse <$> obj .: "ID"
+    CreateBuildGraphResponse <$> obj .: "id"
 
 createScotlandYardScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardOpts -> m ScanResponse
 createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
@@ -104,15 +105,37 @@ uploadBuildGraphCompleteEndpoint baseurl projectId scanId buildGraphId = corePro
 
 -- create the build graph in SY, upload it in chunks and then complete it.
 uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
-uploadBuildGraph ScotlandYardNinjaOpts {..} graph = runHTTP $ do
+uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} graph = runHTTP $ do
+  let NinjaGraphOpts{..} = syNinjaOpts
+  let FossaOpts{..} = ninjaFossaOpts
+  let auth = coreAuthHeader fossaApiKey
+  let locator = unLocator syNinjaProjectId
+  -- let body = object ["display_name" .= buildName]
+  (baseUrl, baseOptions) <- parseUri fossaUrl
+  runTrace $ trace "creating build graph..."
+  buildGraphId <- createBuildGraph syOpts
+  -- resp <- req POST (createBuildGraphEndpoint baseUrl locator scanId) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  -- runTrace $ trace "build graph created"
+  -- let buildGraphId = CreateBuildGraphResponse $ responseBody resp
+  runTrace $ trace "new build graph id "
+  runTrace $ trace $ unpack $ responseBuildGraphId buildGraphId
+  let body = object ["targets" .= graph]
+  _ <- req POST (uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  runTrace $ trace "chunks uploaded"
+  _ <- req PUT (uploadBuildGraphCompleteEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson $ object []) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  runTrace $ trace "completed"
+  pure ()
+
+createBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> m CreateBuildGraphResponse
+createBuildGraph ScotlandYardNinjaOpts {..} = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
   let FossaOpts{..} = ninjaFossaOpts
   let auth = coreAuthHeader fossaApiKey
   let locator = unLocator syNinjaProjectId
   let body = object ["display_name" .= buildName]
   (baseUrl, baseOptions) <- parseUri fossaUrl
+  runTrace $ trace "creating build graph..."
   resp <- req POST (createBuildGraphEndpoint baseUrl locator scanId) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
-  let buildGraphId = CreateBuildGraphResponse $ responseBody resp
-  _ <- req POST (uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson graph) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
-  _ <- req POST (uploadBuildGraphCompleteEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson $ object []) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
-  pure ()
+  runTrace $ trace "build graph created"
+  pure (responseBody resp)
+
