@@ -10,14 +10,13 @@ module App.VPSScan.NinjaGraph
 ) where
 
 import App.Types (BaseDir (..))
-import App.Util (parseUri, validateDir)
+import App.Util (validateDir)
 import App.VPSScan.Types
 import App.VPSScan.Scan.Core
 import App.VPSScan.Scan.ScotlandYard
 import Control.Carrier.Diagnostics
 import Control.Carrier.Trace.Printing
 import Control.Effect.Lift (Lift, sendIO)
-import Data.Aeson (ToJSON)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
@@ -28,7 +27,6 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty)
 import Effect.Exec
 import Effect.ReadFS
-import Network.HTTP.Req
 import Path
 import System.Exit (exitFailure)
 import qualified System.FilePath as FP
