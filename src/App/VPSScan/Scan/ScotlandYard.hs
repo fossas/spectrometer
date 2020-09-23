@@ -21,9 +21,8 @@ import Data.List.Split
 import Effect.Logger
 import GHC.Conc.Sync (getNumCapabilities)
 import App.VPSScan.Scan.Core
-import Control.Carrier.Trace.Printing
 import Data.Aeson
-import Data.Text (Text, unpack)
+import Data.Text (Text)
 import Network.HTTP.Req
 import App.Util (parseUri)
 
@@ -121,34 +120,28 @@ uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
   -- create the build graph and save its ID
   let createUrl = createBuildGraphEndpoint baseUrl locator scanId
   buildGraphId <- createBuildGraph syOpts createUrl authenticatedHttpOptions
-  runTrace $ trace "new build graph id "
-  runTrace $ trace $ unpack $ responseBuildGraphId buildGraphId
 
-  -- split the build graph data into chunks of 10 targets and upload it
-  let chunkedTargets = chunksOf 10 targets
-  capabilities <- liftIO getNumCapabilities
+  -- split the build graph data into chunks and upload it
   let chunkUrl = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
+      chunkedTargets = chunksOf 10 targets
+  capabilities <- liftIO getNumCapabilities
   _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedTargets
-  runTrace $ trace "Upload complete"
 
   -- mark the build graph as complete
   _ <- req PUT (uploadBuildGraphCompleteEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson $ object []) ignoreResponse authenticatedHttpOptions
-  runTrace $ trace "completed"
   pure ()
 
 createBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> Url 'Https -> Option 'Https -> m CreateBuildGraphResponse
-createBuildGraph ScotlandYardNinjaOpts {..} url fullOptions = runHTTP $ do
+createBuildGraph ScotlandYardNinjaOpts {..} url httpOptions = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
   let body = object ["display_name" .= buildName]
-  runTrace $ trace "creating build graph..."
-  resp <- req POST url (ReqBodyJson body) jsonResponse fullOptions
-  runTrace $ trace "build graph created"
+  resp <- req POST url (ReqBodyJson body) jsonResponse httpOptions
   pure (responseBody resp)
 
 uploadBuildGraphChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> [DepsTarget] -> m ()
-uploadBuildGraphChunk url postOptions targets = do
+uploadBuildGraphChunk url httpOptions targets = do
   let jsonChunk = object ["targets" .= targets]
-  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse (postOptions <> header "Content-Type" "application/json")
+  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse httpOptions
   pure ()
 
 updateProgress :: Has Logger sig m => Progress -> m ()

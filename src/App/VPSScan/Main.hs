@@ -32,7 +32,7 @@ ninjaGraphOpts = NinjaGraphOpts <$> fossaOpts <*> ninjaDepsOpt <*> lunchTargetOp
     lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "Build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
     scanIdOpt = strOption (long "scan-id" <> metavar "STRING" <> help "The scan ID that this build applies to")
     buildNameOpt = strOption (long "build-name" <> metavar "STRING" <> help "Human readable name of this build. This will be shown on the FOSSA website.")
-    projectNameOpt = strOption (long "project-name" <> metavar "STRING" <> help "The name of the project to create in FOSSA")
+    projectNameOpt = strOption (long "project-name" <> metavar "STRING" <> help "The name of the project that this scan is part of")
 
 fossaOpts :: Parser FossaOpts
 fossaOpts = FossaOpts <$> urlOpt <*> apiKeyOpt
