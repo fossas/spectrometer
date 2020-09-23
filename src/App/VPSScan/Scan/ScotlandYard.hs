@@ -119,42 +119,41 @@ uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} graph = runHTTP $ do
   let FossaOpts{..} = ninjaFossaOpts
   let auth = coreAuthHeader fossaApiKey
   let locator = unLocator syNinjaProjectId
-  -- let body = object ["display_name" .= buildName]
   (baseUrl, baseOptions) <- parseUri fossaUrl
-  runTrace $ trace "creating build graph..."
-  buildGraphId <- createBuildGraph syOpts
-  -- resp <- req POST (createBuildGraphEndpoint baseUrl locator scanId) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
-  -- runTrace $ trace "build graph created"
-  -- let buildGraphId = CreateBuildGraphResponse $ responseBody resp
+  let authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json" <> auth
+
+  -- create the build graph and save its ID
+  let createUrl = createBuildGraphEndpoint baseUrl locator scanId
+  buildGraphId <- createBuildGraph syOpts createUrl authenticatedHttpOptions
   runTrace $ trace "new build graph id "
   runTrace $ trace $ unpack $ responseBuildGraphId buildGraphId
+
+  -- split the build graph data into chunks of 1000 and upload it
   let body = object ["targets" .= graph]
   let chunkedJSON = fromMaybe [] (chunkJSON body "targets" 1000)
-
   capabilities <- liftIO getNumCapabilities
-  let url = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
-  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk url baseOptions) chunkedJSON
-  -- _ <- req POST (uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
-  runTrace $ trace "chunks uploaded"
-  _ <- req PUT (uploadBuildGraphCompleteEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson $ object []) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  let chunkUrl = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedJSON
+  runTrace $ trace "Upload complete"
+
+  -- mark the build graph as complete
+  _ <- req PUT (uploadBuildGraphCompleteEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson $ object []) ignoreResponse authenticatedHttpOptions
   runTrace $ trace "completed"
   pure ()
 
-createBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> m CreateBuildGraphResponse
-createBuildGraph ScotlandYardNinjaOpts {..} = runHTTP $ do
+createBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> Url 'Https -> Option 'Https -> m CreateBuildGraphResponse
+createBuildGraph ScotlandYardNinjaOpts {..} url fullOptions = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
-  let FossaOpts{..} = ninjaFossaOpts
-  let auth = coreAuthHeader fossaApiKey
-  let locator = unLocator syNinjaProjectId
   let body = object ["display_name" .= buildName]
-  (baseUrl, baseOptions) <- parseUri fossaUrl
   runTrace $ trace "creating build graph..."
-  resp <- req POST (createBuildGraphEndpoint baseUrl locator scanId) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  resp <- req POST url (ReqBodyJson body) jsonResponse fullOptions
   runTrace $ trace "build graph created"
   pure (responseBody resp)
 
 uploadBuildGraphChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> Value -> m ()
 uploadBuildGraphChunk url postOptions jsonChunk = do
+  -- let elements = HM.lookup "targets" jsonChunk
+  -- _ <- runTrace $ trace $ "uploading a chunk of " ++ (show $ length elements) ++ " elements"
   _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse (postOptions <> header "Content-Type" "application/json")
   pure ()
 
@@ -177,7 +176,7 @@ chunkJSON (Object obj) key chunkSize = do
     _ -> Nothing
   let chunked = chunksOf chunkSize $ V.toList arr
   let chunker :: [Value] -> Value
-      chunker v = object ["Files" .= v]
+      chunker v = object [key .= v]
   Just $ map chunker chunked
 
 chunkJSON _ _ _ = Nothing
