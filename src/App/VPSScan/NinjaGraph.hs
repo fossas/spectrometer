@@ -12,6 +12,8 @@ module App.VPSScan.NinjaGraph
 import App.Types (BaseDir (..))
 import App.Util (parseUri, validateDir)
 import App.VPSScan.Types
+import App.VPSScan.Scan.Core
+import App.VPSScan.Scan.ScotlandYard
 import Control.Carrier.Diagnostics
 import Control.Carrier.Trace.Printing
 import Control.Effect.Lift (Lift, sendIO)
@@ -64,10 +66,13 @@ ninjaGraphMain NinjaGraphCmdOpts{..} = do
 
 
 getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Trace sig m) => Path Abs Dir -> NinjaGraphOpts -> m ()
-getAndParseNinjaDeps dir ninjaGraphOpts = do
+getAndParseNinjaDeps dir ninjaGraphOpts@NinjaGraphOpts{..} = do
   ninjaDepsContents <- runReadFSIO . runExecIO $ getNinjaDeps dir ninjaGraphOpts
   graph <- scanNinjaDeps ninjaDepsContents
-  _ <- runHTTP $ postDepsGraphResults ninjaGraphOpts graph
+  SherlockInfo{..} <- getSherlockInfo ninjaFossaOpts
+  let locator = createLocator ninjaProjectName sherlockOrgId
+  let syOpts = ScotlandYardNinjaOpts locator sherlockOrgId ninjaGraphOpts
+  _ <- uploadBuildGraph syOpts graph
   pure ()
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
@@ -83,17 +88,6 @@ scanNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
 scanNinjaDeps ninjaDepsContents = map correctedTarget <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
-
-depsGraphEndpoint :: Url 'Https -> Url 'Https
-depsGraphEndpoint baseurl = baseurl /: "depsGraph"
-
--- post the Ninja dependency graph data to the "Dependency graph" endpoint on Scotland Yard
--- POST /depsGraph
-postDepsGraphResults :: (ToJSON a, Has (Lift IO) sig m, Has Diagnostics sig m) => NinjaGraphOpts -> a -> m ()
-postDepsGraphResults NinjaGraphOpts{..} depsGraph = runHTTP $ do
-  (baseUrl, baseOptions) <- parseUri depsGraphScotlandYardUrl
-  _ <- req POST (depsGraphEndpoint baseUrl) (ReqBodyJson depsGraph) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
-  pure ()
 
 readNinjaDepsFile :: (Has Trace sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => FilePath -> m ByteString
 readNinjaDepsFile ninjaPath = do
