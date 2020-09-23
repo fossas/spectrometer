@@ -1,8 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Gradle
-  ( discover
-  , discover'
+  ( discover'
 
   , buildGraph
   , JsonDep(..)
@@ -40,20 +39,12 @@ import Path
 import qualified System.FilePath as FP
 import Types
 
-gradleJsonDepsCmd :: Text -> FP.FilePath -> Command
-gradleJsonDepsCmd baseCmd initScriptFilepath = Command
+gradleJsonDepsCmd :: Text -> FP.FilePath -> Set BuildTarget -> Command
+gradleJsonDepsCmd baseCmd initScriptFilepath targets = Command
   { cmdName = baseCmd
-  , cmdArgs = ["jsonDeps", "-I", T.pack initScriptFilepath]
+  , cmdArgs = ["-I", T.pack initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (S.toList targets)
   , cmdAllowErr = Never
   }
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "build.gradle") files of
-    Nothing -> pure WalkContinue
-    Just file -> do
-      runSimpleStrategy "gradle-cli" GradleGroup $ analyze (parent file)
-      pure WalkSkipAll
 
 discover' ::
   ( Has (Lift IO) sig m,
@@ -117,8 +108,7 @@ parseProjects outBL = S.fromList $ mapMaybe parseLine outLines
 
     parseLine :: Text -> Maybe Text
     parseLine line
-      | "Root project" `T.isPrefixOf` line = Just . fst . splitOnceOn "'" . strippedPrefix "Root project '" $ line
-      | "---" `T.isPrefixOf` T.drop 1 (T.strip line) = Just . fst . splitOnceOn "'" . strippedPrefix "--- Project '" . T.drop 1 $ line
+      | "--- Project '" `T.isPrefixOf` T.drop 1 (T.strip line) = Just . fst . splitOnceOn "'" . strippedPrefix "--- Project '" . T.drop 1 $ line
       | otherwise = Nothing
 
 mkProject :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> NewProject m
@@ -126,13 +116,13 @@ mkProject project =
   NewProject
     { projectType = "gradle",
       projectBuildTargets = S.map BuildTarget $ gradleProjects project,
-      projectDependencyGraph = const $ getDeps project,
+      projectDependencyGraph = getDeps project,
       projectPath = gradleDir project,
       projectLicenses = pure []
     }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> m (Graphing Dependency)
-getDeps = analyze' . gradleDir
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> Set BuildTarget -> m (Graphing Dependency)
+getDeps project targets = analyze' targets (gradleDir project)
 
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
@@ -142,13 +132,13 @@ analyze' ::
   , Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Abs Dir -> m (Graphing Dependency)
-analyze' dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
+  => Set BuildTarget -> Path Abs Dir -> m (Graphing Dependency)
+analyze' targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
   sendIO (BS.writeFile initScriptFilepath initScript)
-  stdout <- execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath)
-              <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath)
-              <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath)
+  stdout <- execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath targets)
+              <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath targets)
+              <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath targets)
 
   let text = decodeUtf8 $ BL.toStrict stdout
       textLines :: [Text]
@@ -170,53 +160,6 @@ analyze' dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
       packagesToOutput = M.fromList packagePathsWithDecoded
 
   pure (buildGraph packagesToOutput)
-
-analyze ::
-  ( Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs Dir -> m ProjectClosureBody
-analyze dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
-  let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
-  sendIO (BS.writeFile initScriptFilepath initScript)
-  stdout <- execThrow dir (gradleJsonDepsCmd "./gradlew" initScriptFilepath)
-              <||> execThrow dir (gradleJsonDepsCmd "gradlew.bat" initScriptFilepath)
-              <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath)
-
-  let text = decodeUtf8 $ BL.toStrict stdout
-      textLines :: [Text]
-      textLines = T.lines (T.filter (/= '\r') text)
-      -- jsonDeps lines look like:
-      -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
-      jsonDepsLines :: [Text]
-      jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
-
-      packagePathsWithJson :: [(Text,Text)]
-      packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
-
-      packagePathsWithDecoded :: [(Text, [JsonDep])]
-      packagePathsWithDecoded = [(name, deps) | (name, outJson) <- packagePathsWithJson
-                                              , Just configs <- [decodeStrict (encodeUtf8 outJson) :: Maybe (Map Text [JsonDep])]
-                                              , Just deps <- [M.lookup "default" configs]] -- FUTURE: use more than default?
-
-      packagesToOutput :: Map Text [JsonDep]
-      packagesToOutput = M.fromList packagePathsWithDecoded
-
-  pure (mkProjectClosure dir packagesToOutput)
-
-mkProjectClosure :: Path Abs Dir -> Map Text [JsonDep] -> ProjectClosureBody
-mkProjectClosure dir deps = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph deps
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
 
 -- TODO: use LabeledGraphing to add labels for environments
 buildGraph :: Map Text [JsonDep] -> Graphing Dependency
