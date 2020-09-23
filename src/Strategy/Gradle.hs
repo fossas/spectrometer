@@ -66,6 +66,9 @@ discover' ::
   m [NewProject m]
 discover' dir = map mkProject <$> findProjects dir
 
+pathToText :: Path ar fd -> Text
+pathToText = T.pack . toFilePath
+
 findProjects :: (Has Exec sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [GradleProject]
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
@@ -73,9 +76,9 @@ findProjects = walk' $ \dir _ files -> do
     Just _ -> do
 
       projectsStdout <-
-        runDiagnostics $ context ("getting gradle projects rooted at " <> T.pack (fromAbsDir dir)) $
-          execThrow dir (gradleProjectsCmd "./gradlew")
-            <||> execThrow dir (gradleProjectsCmd "gradlew.bat")
+        runDiagnostics $ context ("getting gradle projects rooted at " <> pathToText dir) $
+          execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew"))
+            <||> execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew.bat"))
             <||> execThrow dir (gradleProjectsCmd "gradle")
 
       case projectsStdout of
@@ -121,7 +124,7 @@ parseProjects outBL = S.fromList $ mapMaybe parseLine outLines
 mkProject :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> NewProject m
 mkProject project =
   NewProject
-    { projectType = "cocoapods",
+    { projectType = "gradle",
       projectBuildTargets = S.map BuildTarget $ gradleProjects project,
       projectDependencyGraph = const $ getDeps project,
       projectPath = gradleDir project,
@@ -143,8 +146,8 @@ analyze' ::
 analyze' dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
   sendIO (BS.writeFile initScriptFilepath initScript)
-  stdout <- execThrow dir (gradleJsonDepsCmd "./gradlew" initScriptFilepath)
-              <||> execThrow dir (gradleJsonDepsCmd "gradlew.bat" initScriptFilepath)
+  stdout <- execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath)
+              <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath)
               <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath)
 
   let text = decodeUtf8 $ BL.toStrict stdout
