@@ -77,7 +77,7 @@ spec = do
       "1.0" `shouldParseInto` ErlFloat 1.0
       "0.0" `shouldParseInto` ErlFloat 0.0
       "3.0" `shouldParseInto` ErlFloat 3.0
-      "1.2345678910112" `shouldParseInto` ErlFloat 1.23456789101112
+      "1.23456789101112" `shouldParseInto` ErlFloat 1.23456789101112
       "+1.2" `shouldParseInto` ErlFloat 1.2
       "-3.14" `shouldParseInto` ErlFloat (-3.14)
 
