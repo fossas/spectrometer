@@ -11,7 +11,6 @@ module App.VPSScan.Scan.ScotlandYard
   )
 where
 
-import qualified Data.HashMap.Strict as HM
 import Control.Carrier.TaskPool
 import Control.Carrier.Diagnostics
 import Control.Monad.IO.Class
@@ -21,8 +20,6 @@ import Data.Foldable (traverse_)
 import Data.List.Split
 import Effect.Logger
 import GHC.Conc.Sync (getNumCapabilities)
-import Data.Maybe
-import qualified Data.Vector as V
 import App.VPSScan.Scan.Core
 import Control.Carrier.Trace.Printing
 import Data.Aeson
@@ -114,7 +111,7 @@ uploadBuildGraphCompleteEndpoint baseurl projectId scanId buildGraphId = corePro
 
 -- create the build graph in SY, upload it in chunks and then complete it.
 uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
-uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} graph = runHTTP $ do
+uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
   let FossaOpts{..} = ninjaFossaOpts
   let auth = coreAuthHeader fossaApiKey
@@ -128,12 +125,11 @@ uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} graph = runHTTP $ do
   runTrace $ trace "new build graph id "
   runTrace $ trace $ unpack $ responseBuildGraphId buildGraphId
 
-  -- split the build graph data into chunks of 1000 and upload it
-  let body = object ["targets" .= graph]
-  let chunkedJSON = fromMaybe [] (chunkJSON body "targets" 1000)
+  -- split the build graph data into chunks of 10 targets and upload it
+  let chunkedTargets = chunksOf 10 targets
   capabilities <- liftIO getNumCapabilities
   let chunkUrl = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
-  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedJSON
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedTargets
   runTrace $ trace "Upload complete"
 
   -- mark the build graph as complete
@@ -150,10 +146,9 @@ createBuildGraph ScotlandYardNinjaOpts {..} url fullOptions = runHTTP $ do
   runTrace $ trace "build graph created"
   pure (responseBody resp)
 
-uploadBuildGraphChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> Value -> m ()
-uploadBuildGraphChunk url postOptions jsonChunk = do
-  -- let elements = HM.lookup "targets" jsonChunk
-  -- _ <- runTrace $ trace $ "uploading a chunk of " ++ (show $ length elements) ++ " elements"
+uploadBuildGraphChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> [DepsTarget] -> m ()
+uploadBuildGraphChunk url postOptions targets = do
+  let jsonChunk = object ["targets" .= targets]
   _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse (postOptions <> header "Content-Type" "application/json")
   pure ()
 
@@ -167,16 +162,3 @@ updateProgress Progress{..} =
             <> annotate (color Green) (pretty pCompleted)
             <> " Completed"
             <> " ]" )
-
-chunkJSON :: Value -> Text -> Int -> Maybe [Value]
-chunkJSON (Object obj) key chunkSize = do
-  a <- HM.lookup key obj
-  arr <- case a of
-    Array aa -> Just aa
-    _ -> Nothing
-  let chunked = chunksOf chunkSize $ V.toList arr
-  let chunker :: [Value] -> Value
-      chunker v = object [key .= v]
-  Just $ map chunker chunked
-
-chunkJSON _ _ _ = Nothing
