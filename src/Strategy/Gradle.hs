@@ -28,7 +28,6 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Data.Text.Extra (strippedPrefix, splitOnceOn)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
@@ -112,10 +111,11 @@ parseProjects outBL = if S.null subprojects then S.singleton "" else subprojects
     outText = decodeUtf8 $ BL.toStrict outBL
     outLines = T.lines outText
 
-    parseSubproject :: Text -> Maybe Text
-    parseSubproject line
-      | "--- Project '" `T.isPrefixOf` T.drop 1 (T.strip line) = Just . fst . splitOnceOn "'" . strippedPrefix "--- Project '" . T.drop 1 $ line
-      | otherwise = Nothing
+-- | Parse a subproject line from the gradle output, e.g.,
+--
+--     +--- Project ':foo'
+parseSubproject :: Text -> Maybe Text
+parseSubproject line = T.takeWhile (/= '\'') <$> T.stripPrefix "+--- Project '" (T.strip line)
 
 mkProject :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> NewProject m
 mkProject project =
