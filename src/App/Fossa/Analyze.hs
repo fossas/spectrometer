@@ -1,8 +1,6 @@
-{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.Analyze
@@ -101,7 +99,6 @@ withDiscoveredProjects discoverFuncs unpackArchives f basedir = do
   when unpackArchives $ Archive.discover (withDiscoveredProjects discoverFuncs unpackArchives f) basedir
 
 analyze ::
-  forall sig m.
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , MonadIO m
