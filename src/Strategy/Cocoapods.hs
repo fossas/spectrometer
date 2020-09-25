@@ -3,6 +3,7 @@ module Strategy.Cocoapods
   )
 where
 
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import qualified Control.Effect.Diagnostics as Diag
 import Control.Monad.IO.Class
@@ -36,7 +37,7 @@ findProjects = walk' $ \dir _ files -> do
             cocoapodsDir = dir
           }
 
-  case sequenceA [podfile, podfileLock] of
+  case podfile <|> podfileLock of
     Nothing -> pure ([], WalkContinue)
     Just _ -> pure ([project], WalkContinue)
 
@@ -44,7 +45,8 @@ data CocoapodsProject = CocoapodsProject
   { cocoapodsPodfile :: Maybe (Path Abs File),
     cocoapodsPodfileLock :: Maybe (Path Abs File),
     cocoapodsDir :: Path Abs Dir
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> NewProject m
 mkProject project =

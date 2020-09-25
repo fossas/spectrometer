@@ -3,6 +3,7 @@
 module Strategy.Ruby.GemfileLock
   ( discover
   , analyze
+  , analyze'
   , findSections
   , buildGraph
 
@@ -70,6 +71,9 @@ newtype DirectDep = DirectDep
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSections file
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsParser @[Section] findSections file
 
 mkProjectClosure :: Path Abs File -> [Section] -> ProjectClosureBody
 mkProjectClosure file sections = ProjectClosureBody

@@ -3,6 +3,7 @@
 module Strategy.Ruby.BundleShow
   ( discover
   , analyze
+  , analyze'
 
   , BundleShowDep(..)
   , buildGraph
@@ -42,6 +43,9 @@ bundleShowCmd = Command
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd
+
+analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = buildGraph <$> execParser bundleShowParser dir bundleShowCmd
 
 mkProjectClosure :: Path Abs Dir -> [BundleShowDep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
