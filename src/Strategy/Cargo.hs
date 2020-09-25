@@ -2,6 +2,7 @@
 
 module Strategy.Cargo
   ( discover
+  , discover'
   , CargoMetadata(..)
   , NodeDependency(..)
   , NodeDepKind(..)
@@ -13,6 +14,7 @@ module Strategy.Cargo
   where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
 import Data.Foldable (find, for_, traverse_)
 import qualified Data.Map.Strict as M
@@ -124,6 +126,46 @@ discover = walk $ \dir _ files ->
     Just _ -> do
       runSimpleStrategy "rust-cargo" RustGroup $ fmap (mkProjectClosure dir) (analyze dir)
       pure WalkSkipAll
+
+discover' ::
+  ( MonadIO m,
+    Has Exec sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m [NewProject m]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [CargoProject]
+findProjects = walk' $ \dir _ files -> do
+  case find (\f -> fileName f == "Cargo.toml") files of
+    Nothing -> pure ([], WalkContinue)
+    Just toml -> do
+      let project =
+            CargoProject
+              { cargoToml = toml,
+                cargoDir = dir
+              }
+
+      pure ([project], WalkSkipAll)
+
+data CargoProject = CargoProject
+  { cargoDir :: Path Abs Dir,
+    cargoToml :: Path Abs File
+  } deriving (Eq, Ord, Show)
+
+mkProject :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> NewProject m
+mkProject project =
+  NewProject
+    { projectType = "cargo",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const $ getDeps project,
+      projectPath = cargoDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m (Graphing Dependency)
+getDeps = analyze . cargoDir
 
 cargoGenLockfileCmd :: Command
 cargoGenLockfileCmd = Command
