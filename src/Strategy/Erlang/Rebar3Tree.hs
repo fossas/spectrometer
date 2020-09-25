@@ -74,7 +74,11 @@ unaliasDeps :: M.Map Text Text -> [Rebar3Dep] -> [Rebar3Dep]
 unaliasDeps aliasMap = map unalias
   where
     unalias :: Rebar3Dep -> Rebar3Dep
-    unalias dep = changeName (lookupName (depName dep) aliasMap) dep
+    unalias dep = changeName dep . lookupName aliasMap $ depName dep
+    lookupName :: M.Map Text Text -> Text -> Text
+    lookupName map' name = M.findWithDefault name name map'
+    changeName :: Rebar3Dep -> Text -> Rebar3Dep
+    changeName dep name = dep { depName = name }
 
 mkProjectClosure :: Path Abs Dir -> [Rebar3Dep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
@@ -101,18 +105,12 @@ buildGraph deps = unfold deps subDeps toDependency
                  , dependencyTags = M.empty
                  }
 
-lookupName :: Text -> M.Map Text Text -> Text
-lookupName name = M.findWithDefault name name
-
 data Rebar3Dep = Rebar3Dep
   { depName     :: Text
   , depVersion  :: Text
   , depLocation :: Text
   , subDeps     :: [Rebar3Dep]
   } deriving (Eq, Ord, Show)
-
-changeName :: Text -> Rebar3Dep -> Rebar3Dep
-changeName name dep = dep { depName = name }
 
 type Parser = Parsec Void Text
 
