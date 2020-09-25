@@ -3,6 +3,7 @@ module Strategy.Godep
   )
 where
 
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import qualified Control.Effect.Diagnostics as Diag
 import Control.Monad.IO.Class
@@ -38,7 +39,7 @@ findProjects = walk' $ \dir _ files -> do
             godepDir = dir
           }
 
-  case sequenceA [gopkgToml, gopkgLock] of
+  case gopkgToml <|> gopkgLock of
     Nothing -> pure ([], WalkSkipSome ["vendor"])
     Just _ -> pure ([project], WalkSkipSome ["vendor"])
 
