@@ -43,6 +43,7 @@ import Srclib.Types (Locator (..), parseLocator)
 import qualified Strategy.Archive as Archive
 import qualified Strategy.Bundler as Bundler
 import qualified Strategy.Cargo as Cargo
+import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
@@ -113,7 +114,7 @@ analyze ::
 analyze basedir destination override unpackArchives = do
   capabilities <- sendIO getNumCapabilities
 
-  let newDiscovers = [Bundler.discover', Cargo.discover', Cocoapods.discover', Gradle.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
+  let newDiscovers = [Bundler.discover', Cargo.discover', Carthage.discover', Cocoapods.discover', Gradle.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
 
   -- FIXME: print projects we found
   (projectResults, ()) <-

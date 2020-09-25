@@ -3,12 +3,14 @@
 
 module Strategy.Carthage
   ( discover
+  , discover'
   , analyze
   , ResolvedEntry(..)
   , EntryType(..)
   ) where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Char (isSpace)
 import Data.Foldable (find, for_, traverse_)
 import Data.Functor (void)
@@ -20,6 +22,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
+import Graphing (Graphing)
 import qualified Graphing as G
 import Path
 import Text.Megaparsec
@@ -47,6 +50,47 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesOptimal  = Optimal
     , dependenciesComplete = Complete
     }
+
+discover' ::
+  ( MonadIO m,
+    Has ReadFS sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m [NewProject m]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [CarthageProject]
+findProjects = walk' $ \dir _ files -> do
+  case find (\f -> fileName f == "Cartfile.resolved") files of
+    Nothing -> pure ([], WalkContinue)
+    Just cartfile -> do
+
+      let project =
+            CarthageProject
+              { carthageLock = cartfile,
+                carthageDir = dir
+              }
+
+      pure ([project], WalkSkipAll)
+
+data CarthageProject = CarthageProject
+  { carthageDir :: Path Abs Dir
+  , carthageLock :: Path Abs File
+  } deriving (Eq, Ord, Show)
+
+mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> NewProject m
+mkProject project =
+  NewProject
+    { projectType = "carthage",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const $ getDeps project,
+      projectPath = carthageDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m (Graphing Dependency)
+getDeps = fmap (G.gmap toDependency) . analyze . carthageLock
 
 relCheckoutsDir :: Path Abs File -> Path Abs Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
