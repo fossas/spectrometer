@@ -7,6 +7,7 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
+import App.Fossa.Analyze.Filters (BuildTargetFilter(..))
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
@@ -23,7 +24,6 @@ import System.Environment (lookupEnv)
 import System.Exit (die)
 import Text.URI (URI)
 import Text.URI.QQ (uri)
-import Types (BuildTargetFilter(..))
 
 appMain :: IO ()
 appMain = do

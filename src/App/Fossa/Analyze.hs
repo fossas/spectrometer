@@ -8,6 +8,7 @@ module App.Fossa.Analyze
   , ScanDestination(..)
   ) where
 
+import App.Fossa.Analyze.Filters
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult(..), mkResult)
 import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysis, uploadContributors)

@@ -9,7 +9,6 @@ module Types
 
   , NewProject(..)
   , BuildTarget(..)
-  , BuildTargetFilter(..)
   , ProjectClosure(..)
   , ProjectClosureBody(..)
   , ProjectFailure(..)
@@ -136,8 +135,6 @@ data NewProject m = NewProject
 
 newtype BuildTarget = BuildTarget { unBuildTarget :: Text }
   deriving (Eq, Ord, Show)
-
-data BuildTargetFilter = BuildTargetFilter
 
 -- discovery can find many multi-projects
 -- each multi-project has a Graphing BuildTarget
