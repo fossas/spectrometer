@@ -60,9 +60,9 @@ data ScanDestination
   = UploadScan URI ApiKey ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
 
-analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> IO ()
-analyzeMain basedir logSeverity destination project unpackArchives = withLogger logSeverity $
-  analyze basedir destination project unpackArchives
+analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> [BuildTargetFilter] -> IO ()
+analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity $
+  analyze basedir destination project unpackArchives filters
 
 -- FIXME: move these elsewhere
 runDiagnosticsIO :: Has (Lift IO) sig m => Diag.DiagnosticsC m a -> m (Either Diag.FailureBundle (Diag.ResultBundle a))
@@ -73,17 +73,13 @@ withResult sev (Left e) _ = Effect.Logger.log sev $ Diag.renderFailureBundle e
 withResult _ (Right res) f = f $ Diag.resultValue res
 
 runDependencyAnalysis ::
-  (Has (Lift IO) sig m, MonadIO m, Has (Output ProjectResult) sig m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
-  -- | Discover functions
-  [Path Abs Dir -> Diag.DiagnosticsC m [NewProject (Diag.DiagnosticsC m)]] ->
-  -- | whether to unpack archives
-  Bool ->
-  Path Abs Dir ->
+  (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
+  [BuildTargetFilter] ->
+  NewProject (Diag.DiagnosticsC m) ->
   m ()
-runDependencyAnalysis newDiscovers unpackArchives =
-  withDiscoveredProjects newDiscovers unpackArchives $ \project -> do
-    graphResult <- runDiagnosticsIO $ projectDependencyGraph project (projectBuildTargets project)
-    withResult SevWarn graphResult (output . mkResult project)
+runDependencyAnalysis filters project = do
+  graphResult <- runDiagnosticsIO $ projectDependencyGraph project (projectBuildTargets project)
+  withResult SevWarn graphResult (output . mkResult project)
 
 withDiscoveredProjects ::
   (Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
@@ -91,15 +87,15 @@ withDiscoveredProjects ::
   [Path Abs Dir -> Diag.DiagnosticsC m [NewProject (Diag.DiagnosticsC m)]] ->
   -- | whether to unpack archives
   Bool ->
-  (NewProject (Diag.DiagnosticsC m) -> m ()) ->
   Path Abs Dir ->
+  (NewProject (Diag.DiagnosticsC m) -> m ()) ->
   m ()
-withDiscoveredProjects discoverFuncs unpackArchives f basedir = do
+withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
   for_ discoverFuncs $ \discover -> forkTask $ do
     projectsResult <- runDiagnosticsIO (discover basedir)
     withResult SevError projectsResult (traverse_ (forkTask . f))
 
-  when unpackArchives $ Archive.discover (withDiscoveredProjects discoverFuncs unpackArchives f) basedir
+  when unpackArchives $ Archive.discover (\dir -> withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -110,8 +106,9 @@ analyze ::
   -> ScanDestination
   -> OverrideProject
   -> Bool -- ^ whether to unpack archives
+  -> [BuildTargetFilter]
   -> m ()
-analyze basedir destination override unpackArchives = do
+analyze basedir destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
   let newDiscovers = [Bundler.discover', Cargo.discover', Carthage.discover', Cocoapods.discover', Gradle.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
@@ -123,7 +120,7 @@ analyze basedir destination override unpackArchives = do
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
-      $ runDependencyAnalysis newDiscovers unpackArchives (unBaseDir basedir)
+      $ withDiscoveredProjects newDiscovers unpackArchives (unBaseDir basedir) (runDependencyAnalysis filters)
 
   logSticky ""
 

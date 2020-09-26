@@ -43,10 +43,10 @@ appMain = do
       baseDir <- validateDir analyzeBaseDir
       let analyzeOverride = override {overrideBranch = analyzeBranch}
       if analyzeOutput
-        then analyzeMain baseDir logSeverity OutputStdout analyzeOverride analyzeUnpackArchives
+        then analyzeMain baseDir logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
         else do
           key <- requireKey maybeApiKey
-          analyzeMain baseDir logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives
+          analyzeMain baseDir logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
     --
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
