@@ -7,7 +7,7 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
-import App.Fossa.Analyze.Filters (BuildTargetFilter(..))
+import App.Fossa.Analyze.Filters (BuildTargetFilter(..), filterParser)
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
@@ -15,6 +15,7 @@ import App.OptionExtensions
 import App.Types
 import App.Util (validateDir)
 import Control.Monad (unless)
+import Data.Bifunctor (first)
 import Data.Bool (bool)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -22,6 +23,7 @@ import Effect.Logger
 import Options.Applicative
 import System.Environment (lookupEnv)
 import System.Exit (die)
+import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Text.URI.QQ (uri)
 
@@ -133,8 +135,14 @@ analyzeOpts =
     <*> switch (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
-    <*> many (option (maybeReader fail) (long "filter" <> help "Analysis-Target filters (default: none)"))
+    <*> many filterOpt
     <*> baseDirArg
+
+filterOpt :: Parser BuildTargetFilter
+filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-Target filters (default: none)")
+  where
+    parseFilter :: String -> Either String BuildTargetFilter
+    parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
