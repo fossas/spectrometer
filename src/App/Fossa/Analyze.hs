@@ -28,7 +28,10 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import Data.Foldable (for_, traverse_)
-import Data.Maybe (fromMaybe)
+import qualified Data.List.NonEmpty as NE
+import Data.Maybe (catMaybes, fromMaybe)
+import Data.Semigroup (sconcat)
+import Data.Set (Set)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
 import Data.Text.Lazy.Encoding (decodeUtf8)
@@ -39,6 +42,7 @@ import Effect.Logger
 import Effect.ReadFS
 import Network.HTTP.Types (urlEncode)
 import Path
+import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator (..), parseLocator)
 import qualified Strategy.Archive as Archive
@@ -75,12 +79,27 @@ withResult _ (Right res) f = f $ Diag.resultValue res
 
 runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
+  -- | Analysis base directory
+  Path Abs Dir ->
   [BuildTargetFilter] ->
   NewProject (Diag.DiagnosticsC m) ->
   m ()
-runDependencyAnalysis filters project = do
-  graphResult <- runDiagnosticsIO $ projectDependencyGraph project (projectBuildTargets project)
-  withResult SevWarn graphResult (output . mkResult project)
+runDependencyAnalysis basedir filters project = do
+  case applyFilters basedir filters project of
+    Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
+    Just targets -> do
+      graphResult <- runDiagnosticsIO $ projectDependencyGraph project targets
+      withResult SevWarn graphResult (output . mkResult project)
+
+applyFilters :: Path Abs Dir -> [BuildTargetFilter] -> NewProject m -> Maybe (Set BuildTarget)
+applyFilters _ [] project = Just (projectBuildTargets project)
+applyFilters basedir filters NewProject{..} = do
+  rel <- makeRelative basedir projectPath
+
+  let individualResults = map (\one -> applyFilter one projectType rel projectBuildTargets) filters
+  successful <- NE.nonEmpty $ catMaybes individualResults
+
+  pure (sconcat successful)
 
 withDiscoveredProjects ::
   (Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
@@ -109,7 +128,7 @@ analyze ::
   -> Bool -- ^ whether to unpack archives
   -> [BuildTargetFilter]
   -> m ()
-analyze basedir destination override unpackArchives filters = do
+analyze (BaseDir basedir) destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
   let newDiscovers = [Bundler.discover', Cargo.discover', Carthage.discover', Cocoapods.discover', Gradle.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
@@ -121,21 +140,21 @@ analyze basedir destination override unpackArchives filters = do
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
-      $ withDiscoveredProjects newDiscovers unpackArchives (unBaseDir basedir) (runDependencyAnalysis filters)
+      $ withDiscoveredProjects newDiscovers unpackArchives basedir (runDependencyAnalysis basedir filters)
 
   logSticky ""
 
   case destination of
     OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult projectResults)))
     UploadScan baseurl apiKey metadata -> do
-      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
+      revision <- mergeOverride override <$> inferProject basedir
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
       logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projectResults
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis (BaseDir basedir) baseurl apiKey revision metadata projectResults
       case uploadResult of
         Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
@@ -150,7 +169,7 @@ analyze basedir destination override unpackArchives filters = do
             ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) baseurl apiKey $ uploadLocator resp
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors basedir baseurl apiKey $ uploadLocator resp
           case contribResult of
             Left failure -> logDebug (Diag.renderFailureBundle failure)
             Right _ -> pure ()
