@@ -88,6 +88,7 @@ runDependencyAnalysis basedir filters project = do
   case applyFilters basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
+      logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project)
       graphResult <- runDiagnosticsIO $ projectDependencyGraph project targets
       withResult SevWarn graphResult (output . mkResult project)
 
@@ -133,7 +134,6 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
 
   let newDiscovers = [Bundler.discover', Cargo.discover', Carthage.discover', Cocoapods.discover', Gradle.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
 
-  -- FIXME: print projects we found
   (projectResults, ()) <-
     runOutput @ProjectResult
       . runExecIO
