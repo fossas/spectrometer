@@ -23,6 +23,7 @@ import System.Environment (lookupEnv)
 import System.Exit (die)
 import Text.URI (URI)
 import Text.URI.QQ (uri)
+import Types (BuildTargetFilter(..))
 
 appMain :: IO ()
 appMain = do
@@ -132,6 +133,7 @@ analyzeOpts =
     <*> switch (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
+    <*> many (option (maybeReader fail) (long "filter" <> help "Analysis-Target filters (default: none)"))
     <*> baseDirArg
 
 metadataOpts :: Parser ProjectMetadata
@@ -191,6 +193,7 @@ data AnalyzeOptions = AnalyzeOptions
     analyzeUnpackArchives :: Bool,
     analyzeBranch :: Maybe Text,
     analyzeMetadata :: ProjectMetadata,
+    analyzeBuildTargetFilters :: [BuildTargetFilter],
     analyzeBaseDir :: FilePath
   }
 
