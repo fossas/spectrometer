@@ -65,8 +65,8 @@ walk' f base = runM $ do
   pure (fst foo)
     where
       mangled :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> WriterC o (LiftC m) WalkStep
-      mangled _ subdirs files = do
-        (res, step) <- lift $ lift $ f base subdirs files
+      mangled dir subdirs files = do
+        (res, step) <- lift $ lift $ f dir subdirs files
         tell res
         pure step
 
