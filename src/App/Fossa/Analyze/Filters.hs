@@ -1,19 +1,26 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Analyze.Filters
   ( BuildTargetFilter (..),
     filterParser,
     applyFilter,
+    applyFilters,
   )
 where
 
+import qualified Data.List.NonEmpty as NE
+import Data.Maybe (mapMaybe)
+import Data.Semigroup (sconcat)
 import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import Path
+import Path.IO
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Types (BuildTarget(..))
+import Types (BuildTarget (..), NewProject (..))
 
 data BuildTargetFilter
   = -- | buildtool, directory. if a project matches this filter, all of its
@@ -24,16 +31,28 @@ data BuildTargetFilter
     TargetFilter Text (Path Rel Dir) BuildTarget
   deriving (Eq, Ord, Show)
 
+applyFilters :: Path Abs Dir -> [BuildTargetFilter] -> NewProject m -> Maybe (Set BuildTarget)
+applyFilters _ [] project = Just (projectBuildTargets project)
+applyFilters basedir filters NewProject {..} = do
+  rel <- makeRelative basedir projectPath
+
+  let individualResults = mapMaybe (\one -> applyFilter one projectType rel projectBuildTargets) filters
+  successful <- NE.nonEmpty $ individualResults
+
+  pure (sconcat successful)
+
 -- | Apply the filter, returning the set of buildtargets that succeed
 applyFilter :: BuildTargetFilter -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
 applyFilter (ProjectFilter tool dir) tool' dir' targets
-  | tool == tool'
-  , dir == dir' = Just targets
+  | tool == tool',
+    dir == dir' =
+    Just targets
   | otherwise = Nothing
 applyFilter (TargetFilter tool dir target) tool' dir' targets
-  | tool == tool'
-  , dir == dir'
-  , S.member target targets = Just $ S.singleton target
+  | tool == tool',
+    dir == dir',
+    S.member target targets =
+    Just $ S.singleton target
   | otherwise = Nothing
 
 type Parser = Parsec Void Text

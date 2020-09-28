@@ -28,10 +28,7 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import Data.Foldable (for_, traverse_)
-import qualified Data.List.NonEmpty as NE
-import Data.Maybe (catMaybes, fromMaybe)
-import Data.Semigroup (sconcat)
-import Data.Set (Set)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
 import Data.Text.Lazy.Encoding (decodeUtf8)
@@ -42,7 +39,6 @@ import Effect.Logger
 import Effect.ReadFS
 import Network.HTTP.Types (urlEncode)
 import Path
-import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator (..), parseLocator)
 import qualified Strategy.Archive as Archive
@@ -91,16 +87,6 @@ runDependencyAnalysis basedir filters project = do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project)
       graphResult <- runDiagnosticsIO $ projectDependencyGraph project targets
       withResult SevWarn graphResult (output . mkResult project)
-
-applyFilters :: Path Abs Dir -> [BuildTargetFilter] -> NewProject m -> Maybe (Set BuildTarget)
-applyFilters _ [] project = Just (projectBuildTargets project)
-applyFilters basedir filters NewProject{..} = do
-  rel <- makeRelative basedir projectPath
-
-  let individualResults = map (\one -> applyFilter one projectType rel projectBuildTargets) filters
-  successful <- NE.nonEmpty $ catMaybes individualResults
-
-  pure (sconcat successful)
 
 withDiscoveredProjects ::
   (Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
