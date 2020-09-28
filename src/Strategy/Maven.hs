@@ -30,7 +30,7 @@ discover' dir = map mkProject <$> Pom.findProjects dir
 mkProject :: Pom.MavenProjectClosure -> NewProject
 mkProject closure = 
   NewProject
-    { projectType = "Maven",
+    { projectType = "maven",
       projectPath = parent $ Pom.closurePath closure,
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps closure,
