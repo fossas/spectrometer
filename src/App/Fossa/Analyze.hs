@@ -6,6 +6,7 @@
 module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)
+  , discoverFuncs
   ) where
 
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -65,6 +66,29 @@ analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool
 analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity $
   analyze basedir destination project unpackArchives filters
 
+discoverFuncs ::
+  ( Has (Lift IO) sig m,
+    MonadIO m,
+    Has ReadFS sig m,
+    Has Exec sig m,
+    Has Logger sig m,
+    Has Diag.Diagnostics sig m
+  ) =>
+  -- | Discover functions
+  [Path Abs Dir -> m [NewProject]]
+discoverFuncs =
+  [ Bundler.discover',
+    Cargo.discover',
+    Carthage.discover',
+    Cocoapods.discover',
+    Gradle.discover',
+    Rebar3.discover',
+    Gomodules.discover',
+    Godep.discover',
+    Setuptools.discover',
+    Maven.discover'
+  ]
+
 runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
@@ -99,15 +123,13 @@ analyze ::
 analyze (BaseDir basedir) destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
-  let newDiscovers = [Bundler.discover', Cargo.discover', Carthage.discover', Cocoapods.discover', Gradle.discover', Rebar3.discover', Gomodules.discover', Godep.discover', Setuptools.discover', Maven.discover']
-
   (projectResults, ()) <-
     runOutput @ProjectResult
       . runExecIO
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
-      $ withDiscoveredProjects newDiscovers unpackArchives basedir (runDependencyAnalysis basedir filters)
+      $ withDiscoveredProjects discoverFuncs unpackArchives basedir (runDependencyAnalysis basedir filters)
 
   logSticky ""
 

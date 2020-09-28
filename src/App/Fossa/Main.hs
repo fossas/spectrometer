@@ -8,6 +8,7 @@ where
 
 import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
+import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
 import App.OptionExtensions
@@ -31,7 +32,7 @@ appMain :: IO ()
 appMain = do
   CmdOptions {..} <- customExecParser (prefs (showHelpOnError <> subparserInline)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   let logSeverity = bool SevInfo SevDebug optDebug
-  --
+
   maybeApiKey <- checkAPIKey optAPIKey
   let override =
         OverrideProject
@@ -39,7 +40,7 @@ appMain = do
             overrideRevision = optProjectRevision,
             overrideBranch = Nothing
           }
-  --
+
   case optCommand of
     AnalyzeCommand AnalyzeOptions {..} -> do
       baseDir <- validateDir analyzeBaseDir
@@ -49,20 +50,24 @@ appMain = do
         else do
           key <- requireKey maybeApiKey
           analyzeMain baseDir logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
-    --
+
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
       key <- requireKey maybeApiKey
       testMain optBaseUrl baseDir key logSeverity testTimeout testOutputType override
-    --
+
     InitCommand ->
       withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
-    --
+
     ReportCommand ReportOptions {..} -> do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
       baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
       reportMain optBaseUrl baseDir key logSeverity reportTimeout reportType override
+
+    ListTargetsCommand dir -> do
+      baseDir <- validateDir dir
+      listTargetsMain baseDir
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -114,6 +119,12 @@ commands =
               (ReportCommand <$> reportOpts)
               (progDesc "Access various reports from FOSSA and print to stdout")
           )
+        <> command
+          "list-targets"
+          ( info
+              (ListTargetsCommand <$> baseDirArg)
+              (progDesc "List available analysis-targets in a directory (projects and subprojects)")
+          )
     )
 
 hiddenCommands :: Parser Command
@@ -139,7 +150,7 @@ analyzeOpts =
     <*> baseDirArg
 
 filterOpt :: Parser BuildTargetFilter
-filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-Target filters (default: none)")
+filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
   where
     parseFilter :: String -> Either String BuildTargetFilter
     parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack
@@ -188,6 +199,7 @@ data Command
   | TestCommand TestOptions
   | ReportCommand ReportOptions
   | InitCommand
+  | ListTargetsCommand FilePath
 
 data ReportOptions = ReportOptions
   { reportJsonOutput :: Bool,

@@ -81,6 +81,7 @@ library
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
     App.Fossa.FossaAPIV1
+    App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ProjectInference
     App.Fossa.Report
