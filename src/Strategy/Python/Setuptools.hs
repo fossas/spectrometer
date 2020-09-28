@@ -65,7 +65,7 @@ data SetuptoolsProject = SetuptoolsProject
 mkProject :: SetuptoolsProject -> NewProject
 mkProject project =
   NewProject
-    { projectType = "python-setuptools",
+    { projectType = "setuptools",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,
       projectPath = setuptoolsDir project,

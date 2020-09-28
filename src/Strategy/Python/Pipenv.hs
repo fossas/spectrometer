@@ -64,7 +64,7 @@ getDeps project = do
 
 mkProject :: PipenvProject -> NewProject
 mkProject project = NewProject
-  { projectType = "python-pipenv"
+  { projectType = "pipenv"
   , projectBuildTargets = mempty
   , projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project
   , projectPath = parent $ pipenvLockfile project
