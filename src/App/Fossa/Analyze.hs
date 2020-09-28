@@ -167,7 +167,6 @@ fossaProjectUrl baseUrl rawLocator branch = URI.render baseUrl <> "projects/" <>
     encodedProject = underBS (urlEncode True) (locatorFetcher <> "+" <> locatorProject)
     encodedRevision = underBS (urlEncode True) (fromMaybe "" locatorRevision)
 
--- FIXME: move these elsewhere?
 buildResult :: [ProjectResult] -> Aeson.Value
 buildResult projects = Aeson.object
   [ "projects" .= map buildProject projects
