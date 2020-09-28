@@ -134,14 +134,6 @@ data NewProject = NewProject
 newtype BuildTarget = BuildTarget { unBuildTarget :: Text }
   deriving (Eq, Ord, Show)
 
--- discovery can find many multi-projects
--- each multi-project has a Graphing BuildTarget
--- --> discovery: essentially Path Abs Dir -> [MultiProject]
--- where MultiProject has a `Graphing BuildTarget` (AdjacencyMap?), among other metadata
---
--- analysis can span multiple build targets
--- [BuildTarget] -> Graphing
-
 data ProjectClosureBody = ProjectClosureBody
   { bodyModuleDir    :: Path Abs Dir
   , bodyDependencies :: ProjectDependencies

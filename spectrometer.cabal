@@ -104,7 +104,6 @@ library
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.Output.IO
-    Control.Carrier.Output.Interpret
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
     Control.Effect.Diagnostics
