@@ -116,6 +116,7 @@ library
     Data.Text.Extra
     DepTypes
     Discovery.Filters
+    Discovery.Projects
     Discovery.Walk
     Effect.Exec
     Effect.Grapher

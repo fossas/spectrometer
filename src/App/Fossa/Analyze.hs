@@ -20,12 +20,11 @@ import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
-import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
@@ -33,6 +32,7 @@ import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Filters
+import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
@@ -40,7 +40,6 @@ import Network.HTTP.Types (urlEncode)
 import Path
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator (..), parseLocator)
-import qualified Strategy.Archive as Archive
 import qualified Strategy.Bundler as Bundler
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
@@ -78,22 +77,6 @@ runDependencyAnalysis basedir filters project = do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project)
       graphResult <- sendIO . Diag.runDiagnosticsIO $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
-
-withDiscoveredProjects ::
-  (Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
-  -- | Discover functions
-  [Path Abs Dir -> Diag.DiagnosticsC m [NewProject]] ->
-  -- | whether to unpack archives
-  Bool ->
-  Path Abs Dir ->
-  (NewProject -> m ()) ->
-  m ()
-withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
-  for_ discoverFuncs $ \discover -> forkTask $ do
-    projectsResult <- Diag.runDiagnosticsIO (discover basedir)
-    Diag.withResult SevError projectsResult (traverse_ (forkTask . f))
-
-  when unpackArchives $ Archive.discover (\dir -> withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
 
 analyze ::
   ( Has (Lift IO) sig m
