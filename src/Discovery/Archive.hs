@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Strategy.Archive
+module Discovery.Archive
   ( discover,
   )
 where
@@ -15,10 +15,10 @@ import Control.Monad.IO.Class (MonadIO)
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
+import Discovery.Archive.RPM (extractRpm)
 import Discovery.Walk
 import Path
 import qualified Path.IO as PIO
-import Strategy.Archive.RPM (extractRpm)
 import Prelude hiding (zip)
 
 -- FIXME: exception safety of forkTask? what happens when an exception is thrown in withArchive?
@@ -66,7 +66,6 @@ mkTempDir name = do
   dir <- sendIO $ PIO.createTempDir systemTmpDir name
   onExit . sendIO . PIO.removeDirRecur $ dir
   pure dir
-
 
 ---------- Tar files
 

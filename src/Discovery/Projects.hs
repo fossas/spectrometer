@@ -10,9 +10,9 @@ import Control.Effect.TaskPool
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (for_, traverse_)
+import qualified Discovery.Archive as Archive
 import Effect.Logger
 import Path
-import qualified Strategy.Archive as Archive
 import Types (NewProject)
 
 -- | Run a list of discover functions in parallel, running the provided function

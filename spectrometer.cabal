@@ -115,6 +115,8 @@ library
     Data.FileEmbed.Extra
     Data.Text.Extra
     DepTypes
+    Discovery.Archive
+    Discovery.Archive.RPM
     Discovery.Filters
     Discovery.Projects
     Discovery.Walk
@@ -126,8 +128,6 @@ library
     Parse.XML
     Srclib.Converter
     Srclib.Types
-    Strategy.Archive
-    Strategy.Archive.RPM
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
