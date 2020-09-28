@@ -20,7 +20,6 @@ import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
-import Control.Exception.Extra (safeCatch)
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
@@ -65,14 +64,6 @@ analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool
 analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity $
   analyze basedir destination project unpackArchives filters
 
--- FIXME: move these elsewhere
-runDiagnosticsIO :: Has (Lift IO) sig m => Diag.DiagnosticsC m a -> m (Either Diag.FailureBundle (Diag.ResultBundle a))
-runDiagnosticsIO act = Diag.runDiagnostics $ act `safeCatch` (\(e :: SomeException) -> Diag.fatal e)
-
-withResult :: Has Logger sig m => Severity -> Either Diag.FailureBundle (Diag.ResultBundle a) -> (a -> m ()) -> m ()
-withResult sev (Left e) _ = Effect.Logger.log sev $ Diag.renderFailureBundle e
-withResult _ (Right res) f = f $ Diag.resultValue res
-
 runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
@@ -85,8 +76,8 @@ runDependencyAnalysis basedir filters project = do
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project)
-      graphResult <- sendIO . runDiagnosticsIO $ projectDependencyGraph project targets
-      withResult SevWarn graphResult (output . mkResult project)
+      graphResult <- sendIO . Diag.runDiagnosticsIO $ projectDependencyGraph project targets
+      Diag.withResult SevWarn graphResult (output . mkResult project)
 
 withDiscoveredProjects ::
   (Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
@@ -99,8 +90,8 @@ withDiscoveredProjects ::
   m ()
 withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
   for_ discoverFuncs $ \discover -> forkTask $ do
-    projectsResult <- runDiagnosticsIO (discover basedir)
-    withResult SevError projectsResult (traverse_ (forkTask . f))
+    projectsResult <- Diag.runDiagnosticsIO (discover basedir)
+    Diag.withResult SevError projectsResult (traverse_ (forkTask . f))
 
   when unpackArchives $ Archive.discover (\dir -> withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
 
