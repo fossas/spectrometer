@@ -7,7 +7,6 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
-import App.Fossa.Analyze.Filters (BuildTargetFilter(..), filterParser)
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
@@ -19,6 +18,7 @@ import Data.Bifunctor (first)
 import Data.Bool (bool)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Discovery.Filters (BuildTargetFilter(..), filterParser)
 import Effect.Logger
 import Options.Applicative
 import System.Environment (lookupEnv)

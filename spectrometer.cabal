@@ -76,7 +76,6 @@ library
   exposed-modules:
     App.Fossa.API.BuildWait
     App.Fossa.Analyze
-    App.Fossa.Analyze.Filters
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
@@ -116,6 +115,7 @@ library
     Data.FileEmbed.Extra
     Data.Text.Extra
     DepTypes
+    Discovery.Filters
     Discovery.Walk
     Effect.Exec
     Effect.Grapher

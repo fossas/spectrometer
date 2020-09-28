@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.Analyze.Filters
+module Discovery.Filters
   ( BuildTargetFilter (..),
     filterParser,
     applyFilter,

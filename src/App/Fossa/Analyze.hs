@@ -8,7 +8,6 @@ module App.Fossa.Analyze
   , ScanDestination(..)
   ) where
 
-import App.Fossa.Analyze.Filters
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult(..), mkResult)
 import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysis, uploadContributors)
@@ -34,6 +33,7 @@ import qualified Data.Text.Encoding as TE
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+import Discovery.Filters
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
