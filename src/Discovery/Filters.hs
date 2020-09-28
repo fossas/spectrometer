@@ -31,6 +31,12 @@ data BuildTargetFilter
     TargetFilter Text (Path Rel Dir) BuildTarget
   deriving (Eq, Ord, Show)
 
+-- | Apply a set of filters to a project, determining:
+-- 1. Whether the project should be scanned (@Maybe@)
+-- 2. The buildtargets that should be scanned (@Set BuildTarget@)
+--
+-- This is the same as using 'applyFilter' on each filter in the list, unioning
+-- the results: if all filters fail, this returns @Nothing@
 applyFilters :: Path Abs Dir -> [BuildTargetFilter] -> NewProject m -> Maybe (Set BuildTarget)
 applyFilters _ [] project = Just (projectBuildTargets project)
 applyFilters basedir filters NewProject {..} = do
@@ -41,7 +47,9 @@ applyFilters basedir filters NewProject {..} = do
 
   pure (sconcat successful)
 
--- | Apply the filter, returning the set of buildtargets that succeed
+-- | Apply a filter to a set of BuildTargets, returning:
+-- 1. Whether the targets should be scanned (@Maybe@)
+-- 2. The BuildTargets that should be scanned (@Set BuildTarget@)
 applyFilter :: BuildTargetFilter -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
 applyFilter (ProjectFilter tool dir) tool' dir' targets
   | tool == tool',
