@@ -105,9 +105,10 @@ runDependencyAnalysis basedir filters project = do
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
 applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> NewProject -> Maybe (Set BuildTarget)
-applyFiltersToProject basedir filters NewProject{..} = do
-  rel <- makeRelative basedir projectPath
-  applyFilters filters projectType rel projectBuildTargets
+applyFiltersToProject basedir filters NewProject{..} =
+  case makeRelative basedir projectPath of
+    Nothing -> Just projectBuildTargets -- FIXME: this is required for --unpack-archives to continue to work
+    Just rel -> applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
   ( Has (Lift IO) sig m
