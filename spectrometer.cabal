@@ -223,6 +223,7 @@ test-suite unit-tests
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
     Composer.ComposerLockSpec
+    Discovery.FiltersSpec
     Effect.ExecSpec
     Erlang.Rebar3TreeSpec
     Extra.TextSpec

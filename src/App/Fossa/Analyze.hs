@@ -26,6 +26,7 @@ import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
 import Data.Text.Lazy.Encoding (decodeUtf8)
@@ -38,6 +39,7 @@ import Effect.Logger
 import Effect.ReadFS
 import Network.HTTP.Types (urlEncode)
 import Path
+import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator (..), parseLocator)
 import qualified Strategy.Bundler as Bundler
@@ -71,12 +73,17 @@ runDependencyAnalysis ::
   NewProject ->
   m ()
 runDependencyAnalysis basedir filters project = do
-  case applyFilters basedir filters project of
+  case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project)
       graphResult <- sendIO . Diag.runDiagnosticsIO $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
+
+applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> NewProject -> Maybe (Set BuildTarget)
+applyFiltersToProject basedir filters NewProject{..} = do
+  rel <- makeRelative basedir projectPath
+  applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
   ( Has (Lift IO) sig m

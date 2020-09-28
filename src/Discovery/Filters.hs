@@ -17,10 +17,9 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import Path
-import Path.IO
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Types (BuildTarget (..), NewProject (..))
+import Types (BuildTarget (..))
 
 data BuildTargetFilter
   = -- | buildtool, directory. if a project matches this filter, all of its
@@ -31,18 +30,16 @@ data BuildTargetFilter
     TargetFilter Text (Path Rel Dir) BuildTarget
   deriving (Eq, Ord, Show)
 
--- | Apply a set of filters to a project, determining:
+-- | Apply a set of filters determining:
 -- 1. Whether the project should be scanned (@Maybe@)
 -- 2. The buildtargets that should be scanned (@Set BuildTarget@)
 --
 -- This is the same as using 'applyFilter' on each filter in the list, unioning
--- the results: if all filters fail, this returns @Nothing@
-applyFilters :: Path Abs Dir -> [BuildTargetFilter] -> NewProject -> Maybe (Set BuildTarget)
-applyFilters _ [] project = Just (projectBuildTargets project)
-applyFilters basedir filters NewProject {..} = do
-  rel <- makeRelative basedir projectPath
-
-  let individualResults = mapMaybe (\one -> applyFilter one projectType rel projectBuildTargets) filters
+-- the successful results. If all filters fail, this returns @Nothing@
+applyFilters :: [BuildTargetFilter] -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
+applyFilters [] _ _ targets = Just targets
+applyFilters filters tool dir targets = do
+  let individualResults = mapMaybe (\one -> applyFilter one tool dir targets) filters
   successful <- NE.nonEmpty $ individualResults
 
   pure (sconcat successful)
