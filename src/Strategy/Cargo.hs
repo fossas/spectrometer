@@ -127,13 +127,7 @@ discover = walk $ \dir _ files ->
       runSimpleStrategy "rust-cargo" RustGroup $ fmap (mkProjectClosure dir) (analyze dir)
       pure WalkSkipAll
 
-discover' ::
-  ( MonadIO m,
-    Has Exec sig m,
-    Has Diagnostics sig m
-  ) =>
-  Path Abs Dir ->
-  m [NewProject m]
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CargoProject]
@@ -154,12 +148,12 @@ data CargoProject = CargoProject
     cargoToml :: Path Abs File
   } deriving (Eq, Ord, Show)
 
-mkProject :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> NewProject m
+mkProject :: CargoProject -> NewProject
 mkProject project =
   NewProject
     { projectType = "cargo",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
+      projectDependencyGraph = const . runExecIO $ getDeps project,
       projectPath = cargoDir project,
       projectLicenses = pure []
     }

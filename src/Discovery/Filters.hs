@@ -37,7 +37,7 @@ data BuildTargetFilter
 --
 -- This is the same as using 'applyFilter' on each filter in the list, unioning
 -- the results: if all filters fail, this returns @Nothing@
-applyFilters :: Path Abs Dir -> [BuildTargetFilter] -> NewProject m -> Maybe (Set BuildTarget)
+applyFilters :: Path Abs Dir -> [BuildTargetFilter] -> NewProject -> Maybe (Set BuildTarget)
 applyFilters _ [] project = Just (projectBuildTargets project)
 applyFilters basedir filters NewProject {..} = do
   rel <- makeRelative basedir projectPath

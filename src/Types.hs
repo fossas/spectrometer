@@ -122,15 +122,13 @@ toProjectClosure strategyGroup name body = ProjectClosure
   , closureLicenses = bodyLicenses body
   }
 
--- FIXME: the m is problematic (especially without existentials)
--- TODO: build targets
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
-data NewProject m = NewProject
+data NewProject = NewProject
   { projectType :: Text,
     projectPath :: Path Abs Dir,
     projectBuildTargets :: Set BuildTarget,
-    projectDependencyGraph :: Set BuildTarget -> m (Graphing Dependency),
-    projectLicenses :: m [LicenseResult]
+    projectDependencyGraph :: Set BuildTarget -> DiagnosticsC IO (Graphing Dependency),
+    projectLicenses :: DiagnosticsC IO [LicenseResult]
   }
 
 newtype BuildTarget = BuildTarget { unBuildTarget :: Text }

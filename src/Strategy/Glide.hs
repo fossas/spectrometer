@@ -13,13 +13,7 @@ import Path
 import qualified Strategy.Go.GlideLock as GlideLock
 import Types
 
-discover' ::
-  ( MonadIO m,
-    Has ReadFS sig m,
-    Has Diagnostics sig m
-  ) =>
-  Path Abs Dir ->
-  m [NewProject m]
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GlideProject]
@@ -33,12 +27,12 @@ data GlideProject = GlideProject
     glideDir :: Path Abs Dir
   }
 
-mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => GlideProject -> NewProject m
+mkProject :: GlideProject -> NewProject
 mkProject project =
   NewProject
     { projectType = "glide",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
       projectPath = glideDir project,
       projectLicenses = pure []
     }

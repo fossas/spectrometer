@@ -20,28 +20,20 @@ import Types
 discover' ::
   ( MonadIO m,
     Has (Lift IO) sig m,
-    Has Exec sig m,
-    Has ReadFS sig m,
-    Has Diagnostics sig m
+    Has Diagnostics sig m,
+    Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  m [NewProject m]
+  m [NewProject]
 discover' dir = map mkProject <$> Pom.findProjects dir
 
-mkProject ::
-  ( Has (Lift IO) sig m,
-    Has Diagnostics sig m,
-    Has ReadFS sig m,
-    Has Exec sig m
-  ) =>
-  Pom.MavenProjectClosure ->
-  NewProject m
+mkProject :: Pom.MavenProjectClosure -> NewProject
 mkProject closure = 
   NewProject
     { projectType = "Maven",
       projectPath = parent $ Pom.closurePath closure,
       projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps closure,
+      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps closure,
       projectLicenses = pure [] -- FIXME
     }
 

@@ -78,24 +78,24 @@ runDependencyAnalysis ::
   -- | Analysis base directory
   Path Abs Dir ->
   [BuildTargetFilter] ->
-  NewProject (Diag.DiagnosticsC m) ->
+  NewProject ->
   m ()
 runDependencyAnalysis basedir filters project = do
   case applyFilters basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project)
-      graphResult <- runDiagnosticsIO $ projectDependencyGraph project targets
+      graphResult <- sendIO . runDiagnosticsIO $ projectDependencyGraph project targets
       withResult SevWarn graphResult (output . mkResult project)
 
 withDiscoveredProjects ::
   (Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
   -- | Discover functions
-  [Path Abs Dir -> Diag.DiagnosticsC m [NewProject (Diag.DiagnosticsC m)]] ->
+  [Path Abs Dir -> Diag.DiagnosticsC m [NewProject]] ->
   -- | whether to unpack archives
   Bool ->
   Path Abs Dir ->
-  (NewProject (Diag.DiagnosticsC m) -> m ()) ->
+  (NewProject -> m ()) ->
   m ()
 withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
   for_ discoverFuncs $ \discover -> forkTask $ do

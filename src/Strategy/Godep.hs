@@ -17,14 +17,7 @@ import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import Types
 
-discover' ::
-  ( MonadIO m,
-    Has ReadFS sig m,
-    Has Exec sig m,
-    Has Diagnostics sig m
-  ) =>
-  Path Abs Dir ->
-  m [NewProject m]
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GodepProject]
@@ -49,12 +42,12 @@ data GodepProject = GodepProject
     godepLock :: Maybe (Path Abs File)
   }
 
-mkProject :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> NewProject m
+mkProject :: GodepProject -> NewProject
 mkProject project =
   NewProject
     { projectType = "godep",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
+      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,
       projectPath = godepDir project,
       projectLicenses = pure []
     }

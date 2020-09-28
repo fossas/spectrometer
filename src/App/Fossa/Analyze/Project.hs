@@ -27,7 +27,7 @@ import Path
 import Prettyprinter (Pretty(..))
 import Types
 
-mkResult :: NewProject m -> Graphing Dependency -> ProjectResult
+mkResult :: NewProject -> Graphing Dependency -> ProjectResult
 mkResult project graph = ProjectResult
   { projectResultType = projectType project
   , projectResultPath = projectPath project

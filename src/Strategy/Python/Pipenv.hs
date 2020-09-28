@@ -41,13 +41,7 @@ discover = walk $ \_ _ files -> do
 
   pure WalkContinue
 
-discover' ::
-  ( MonadIO m,
-    Has ReadFS sig m,
-    Has Exec sig m,
-    Has Diagnostics sig m
-  ) =>
-  Path Abs Dir -> m [NewProject m]
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [PipenvProject]
@@ -68,16 +62,11 @@ getDeps project = do
 
   pure (buildGraph lock maybeDeps)
 
-mkProject ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
-  )
-  => PipenvProject -> NewProject m
+mkProject :: PipenvProject -> NewProject
 mkProject project = NewProject
   { projectType = "python-pipenv"
   , projectBuildTargets = mempty
-  , projectDependencyGraph = const $ getDeps project
+  , projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project
   , projectPath = parent $ pipenvLockfile project
   , projectLicenses = pure []
   }

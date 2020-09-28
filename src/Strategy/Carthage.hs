@@ -51,13 +51,7 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesComplete = Complete
     }
 
-discover' ::
-  ( MonadIO m,
-    Has ReadFS sig m,
-    Has Diagnostics sig m
-  ) =>
-  Path Abs Dir ->
-  m [NewProject m]
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CarthageProject]
@@ -79,12 +73,12 @@ data CarthageProject = CarthageProject
   , carthageLock :: Path Abs File
   } deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> NewProject m
+mkProject :: CarthageProject -> NewProject
 mkProject project =
   NewProject
     { projectType = "carthage",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
       projectPath = carthageDir project,
       projectLicenses = pure []
     }

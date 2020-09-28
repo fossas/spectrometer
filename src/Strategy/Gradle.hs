@@ -49,11 +49,10 @@ discover' ::
   ( Has (Lift IO) sig m,
     MonadIO m,
     Has Exec sig m,
-    Has Diagnostics sig m,
     Has Logger sig m
   ) =>
   Path Abs Dir ->
-  m [NewProject m]
+  m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
 pathToText :: Path ar fd -> Text
@@ -117,12 +116,12 @@ parseProjects outBL = if S.null subprojects then S.singleton "" else subprojects
 parseSubproject :: Text -> Maybe Text
 parseSubproject line = T.takeWhile (/= '\'') <$> T.stripPrefix "+--- Project '" (T.strip line)
 
-mkProject :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> NewProject m
+mkProject :: GradleProject -> NewProject
 mkProject project =
   NewProject
     { projectType = "gradle",
       projectBuildTargets = S.map BuildTarget $ gradleProjects project,
-      projectDependencyGraph = getDeps project,
+      projectDependencyGraph = runExecIO . getDeps project,
       projectPath = gradleDir project,
       projectLicenses = pure []
     }
