@@ -5,6 +5,7 @@
 
 module Strategy.Haskell.Cabal
   ( discover,
+    discover',
 
     -- * Testing
     BuildPlan (..),
@@ -18,6 +19,7 @@ where
 
 import Control.Effect.Diagnostics
 import Control.Monad (when)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
 import Data.Foldable (for_)
 import Data.List (isSuffixOf)
@@ -126,6 +128,38 @@ discover = walk $ \dir _ files ->
       runSimpleStrategy "haskell-cabal" HaskellGroup $ fmap (mkProjectClosure dir) (analyze dir)
       pure WalkSkipAll
     else pure WalkContinue
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [CabalProject]
+findProjects = walk' $ \dir _ files -> do
+  let project =
+        CabalProject
+          { cabalDir = dir
+          }
+
+  if any isCabalFile files
+    then do
+      pure ([project], WalkSkipAll)
+    else pure ([], WalkContinue)
+
+mkProject :: CabalProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "cabal",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,
+      projectPath = cabalDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (Graphing Dependency)
+getDeps = analyze . cabalDir
+
+data CabalProject = CabalProject
+  { cabalDir :: Path Abs Dir
+  } deriving (Eq, Ord, Show)
 
 mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure dir graph =

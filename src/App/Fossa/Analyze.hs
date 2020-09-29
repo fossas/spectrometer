@@ -44,6 +44,7 @@ import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator (..), parseLocator)
 import qualified Strategy.Bundler as Bundler
+import qualified Strategy.Haskell.Cabal as Cabal
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods as Cocoapods
@@ -90,7 +91,8 @@ discoverFuncs =
     Setuptools.discover',
     Maven.discover',
     Leiningen.discover',
-    Composer.discover'
+    Composer.discover',
+    Cabal.discover'
   ]
 
 runDependencyAnalysis ::
