@@ -3,6 +3,7 @@
 
 module Strategy.Haskell.Stack
   ( discover,
+    discover',
     -- * Testing
     buildGraph,
     PackageName (..),
@@ -12,6 +13,7 @@ module Strategy.Haskell.Stack
 where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
 import Data.Foldable (for_, find)
 import qualified Data.Map.Strict as M
@@ -65,6 +67,37 @@ discover = walk $ \dir _ files ->
     Just _ -> do
       runSimpleStrategy "haskell-stack" HaskellGroup $ fmap (mkProjectClosure dir) (analyze dir)
       pure WalkSkipAll
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [StackProject]
+findProjects = walk' $ \dir _ files -> do
+  let project =
+        StackProject
+          { stackDir = dir
+          }
+
+  case find (\f -> fileName f == "stack.yaml") files of
+    Nothing -> pure ([], WalkContinue)
+    Just _ -> pure ([project], WalkSkipAll)
+
+mkProject :: StackProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "stack",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runExecIO $ getDeps project,
+      projectPath = stackDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m (G.Graphing Dependency)
+getDeps = analyze . stackDir
+
+data StackProject = StackProject
+  { stackDir :: Path Abs Dir
+  } deriving (Eq, Ord, Show)
 
 stackJSONDepsCmd :: Command
 stackJSONDepsCmd =

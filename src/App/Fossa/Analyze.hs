@@ -44,7 +44,6 @@ import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator (..), parseLocator)
 import qualified Strategy.Bundler as Bundler
-import qualified Strategy.Haskell.Cabal as Cabal
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods as Cocoapods
@@ -52,6 +51,8 @@ import qualified Strategy.Composer as Composer
 import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
 import qualified Strategy.Gradle as Gradle
+import qualified Strategy.Haskell.Cabal as Cabal
+import qualified Strategy.Haskell.Stack as Stack
 import qualified Strategy.Leiningen as Leiningen
 import qualified Strategy.Maven as Maven
 import qualified Strategy.Rebar3 as Rebar3
@@ -92,7 +93,8 @@ discoverFuncs =
     Maven.discover',
     Leiningen.discover',
     Composer.discover',
-    Cabal.discover'
+    Cabal.discover',
+    Stack.discover'
   ]
 
 runDependencyAnalysis ::
