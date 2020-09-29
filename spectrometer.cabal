@@ -67,7 +67,6 @@ common deps
     , zip                          ^>=1.5.0
     , zlib                         ^>=0.6.2.1
 
--- FIXME: cpio-conduit depends on this, and 1.0.0.0 doesn't compile
 library
   import:          lang
   import:          deps
@@ -131,7 +130,6 @@ library
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
-    Strategy.Clojure
     Strategy.Cocoapods
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
@@ -151,6 +149,7 @@ library
     Strategy.Gradle
     Strategy.Haskell.Cabal
     Strategy.Haskell.Stack
+    Strategy.Leiningen
     Strategy.Maven
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy

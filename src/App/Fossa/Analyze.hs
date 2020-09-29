@@ -50,6 +50,7 @@ import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
 import qualified Strategy.Gradle as Gradle
+import qualified Strategy.Leiningen as Leiningen
 import qualified Strategy.Maven as Maven
 import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.Python.Setuptools as Setuptools
@@ -86,7 +87,8 @@ discoverFuncs =
     Gomodules.discover',
     Godep.discover',
     Setuptools.discover',
-    Maven.discover'
+    Maven.discover',
+    Leiningen.discover'
   ]
 
 runDependencyAnalysis ::
