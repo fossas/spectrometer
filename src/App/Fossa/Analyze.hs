@@ -47,6 +47,7 @@ import qualified Strategy.Bundler as Bundler
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods as Cocoapods
+import qualified Strategy.Composer as Composer
 import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
 import qualified Strategy.Gradle as Gradle
@@ -88,7 +89,8 @@ discoverFuncs =
     Godep.discover',
     Setuptools.discover',
     Maven.discover',
-    Leiningen.discover'
+    Leiningen.discover',
+    Composer.discover'
   ]
 
 runDependencyAnalysis ::

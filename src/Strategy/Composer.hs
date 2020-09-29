@@ -2,6 +2,7 @@
 
 module Strategy.Composer
   ( discover,
+    discover',
     analyze,
     buildGraph,
     ComposerLock (..),
@@ -11,6 +12,7 @@ module Strategy.Composer
 where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -33,6 +35,40 @@ discover = walk $ \_ _ files -> do
     Just file -> runSimpleStrategy "php-composerlock" PHPGroup $ analyze file
 
   pure WalkContinue
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [ComposerProject]
+findProjects = walk' $ \dir _ files -> do
+  case find (\f -> fileName f == "composer.lock") files of
+    Nothing -> pure ([], WalkContinue)
+    Just lock -> do
+      let project =
+            ComposerProject
+              { composerDir = dir,
+                composerLock = lock
+              }
+
+      pure ([project], WalkContinue)
+
+mkProject :: ComposerProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "composer",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = composerDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m (Graphing Dependency)
+getDeps project = buildGraph <$> readContentsJson @ComposerLock (composerLock project)
+
+data ComposerProject = ComposerProject
+  { composerDir :: Path Abs Dir
+  , composerLock :: Path Abs File
+  } deriving (Eq, Ord, Show)
 
 data ComposerLock = ComposerLock
   { lockPackages :: [CompDep],
@@ -105,9 +141,9 @@ data CompLabel
   deriving (Eq, Ord, Show)
 
 buildGraph :: ComposerLock -> Graphing Dependency
-buildGraph composerLock = run . withLabeling toDependency $ do
-  traverse_ (addDeps EnvProduction) $ lockPackages composerLock
-  traverse_ (addDeps EnvDevelopment) $ lockPackagesDev composerLock
+buildGraph lock = run . withLabeling toDependency $ do
+  traverse_ (addDeps EnvProduction) $ lockPackages lock
+  traverse_ (addDeps EnvDevelopment) $ lockPackagesDev lock
   where
     addDeps :: Has CompGrapher sig m => DepEnvironment -> CompDep -> m ()
     addDeps env dep = do
