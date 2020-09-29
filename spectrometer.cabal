@@ -178,6 +178,7 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
+    Strategy.Yarn
     Types
     VCS.Git
 

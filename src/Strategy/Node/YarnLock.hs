@@ -3,6 +3,7 @@
 module Strategy.Node.YarnLock
   ( discover
   , analyze
+  , analyze'
   ) where
 
 import Control.Effect.Diagnostics
@@ -29,24 +30,27 @@ discover = walk $ \_ _ files -> do
 
   pure (WalkSkipSome ["node_modules"])
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze lockfile = do
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' lockfile = do
   let path = fromAbsFile lockfile
 
   contents <- readContentsText lockfile
   case YL.parse path contents of
     Left err -> fatal (FileParseError path (YL.prettyLockfileError err))
-    Right a -> pure (mkProjectClosure lockfile a)
+    Right parsed -> pure (buildGraph parsed)
 
-mkProjectClosure :: Path Abs File -> YL.Lockfile -> ProjectClosureBody
-mkProjectClosure file lock = ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
+analyze lockfile = mkProjectClosure lockfile <$> analyze' lockfile
+
+mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure file deps = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies
   , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph lock
+    { dependenciesGraph    = deps
     , dependenciesOptimal  = Optimal
     , dependenciesComplete = Complete
     }

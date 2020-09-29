@@ -57,6 +57,7 @@ import qualified Strategy.Leiningen as Leiningen
 import qualified Strategy.Maven as Maven
 import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.Python.Setuptools as Setuptools
+import qualified Strategy.Yarn as Yarn
 import Text.URI (URI)
 import qualified Text.URI as URI
 import Types
@@ -94,7 +95,8 @@ discoverFuncs =
     Leiningen.discover',
     Composer.discover',
     Cabal.discover',
-    Stack.discover'
+    Stack.discover',
+    Yarn.discover'
   ]
 
 runDependencyAnalysis ::
