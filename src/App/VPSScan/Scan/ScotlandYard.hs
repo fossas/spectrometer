@@ -180,7 +180,7 @@ chunkJSON (Object obj) key chunkSize = do
     _ -> Nothing
   let chunked = chunksOf chunkSize $ V.toList arr
   let chunker :: [Value] -> Value
-      chunker v = object ["Files" .= v]
+      chunker v = object [key .= v]
   Just $ map chunker chunked
 
 chunkJSON _ _ _ = Nothing
