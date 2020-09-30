@@ -184,11 +184,8 @@ parseGitProjectRevision dir = do
     Nothing -> fatal (InvalidBranchName rawPath)
     Just path -> do
       branchExists <- doesFileExist (dir </> path)
-
-      unless branchExists (fatal (MissingBranch rawPath))
-
       revision <- removeNewlines <$> readContentsText (dir </> path)
-      let branch = dropPrefix "refs/heads/" rawPath
+      let branch = if branchExists then dropPrefix "refs/heads/" rawPath else "master"
       pure (branch, revision)
 
 removeNewlines :: Text -> Text
