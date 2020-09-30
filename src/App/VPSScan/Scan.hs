@@ -51,7 +51,7 @@ vpsScan ::
   ) => Path Abs Dir -> ScanCmdOpts -> BinaryPaths -> m ()
 vpsScan basedir ScanCmdOpts{..} binaryPaths = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
-  
+
   -- Build the revision
   projectRevision <- buildRevision userProvidedRevision
 
@@ -123,5 +123,6 @@ runIPRScan basedir scanId binaryPaths syOpts vpsOpts =
     iprResult <- execIPR binaryPaths $ IPROpts basedir vpsOpts
     trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
     context "uploading scan results" $ uploadIPRResults scanId iprResult syOpts
+    trace ""
     trace "[IPR] Post to Scotland Yard complete"
     trace "[IPR] IPR scan complete"

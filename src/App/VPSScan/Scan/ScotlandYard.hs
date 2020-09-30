@@ -52,7 +52,7 @@ createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: 
 
 -- /projects/{projectID}/scans/{scanID}/discovered_licenses
 uploadIPRChunkEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
-uploadIPRChunkEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
+uploadIPRChunkEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses" /: "partial"
 
 -- /projects/{projectID}/scans/{scanID}/discovered_licenses/complete
 uploadIPRCompleteEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
@@ -97,19 +97,19 @@ uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
       FossaOpts{..} = fossa
       auth = coreAuthHeader fossaApiKey
       locator = unLocator projectId
-
   (baseUrl, baseOptions) <- parseUri fossaUrl
-  let chunkedJSON = fromMaybe [] (chunkJSON value "Files" 1000)
+  let url = uploadIPRChunkEndpoint baseUrl locator scanId
+      authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json" <> auth
+      chunkedJSON = fromMaybe [] (chunkJSON value "Files" 1000)
 
   capabilities <- liftIO getNumCapabilities
-  let url = uploadIPRChunkEndpoint baseUrl projectName scanId
-  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadIPRChunk url baseOptions) chunkedJSON
-  _ <- req PUT (uploadIPRCompleteEndpoint baseUrl locator scanId) (ReqBodyJson $ object []) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadIPRChunk url authenticatedHttpOptions) chunkedJSON
+  _ <- req PUT (uploadIPRCompleteEndpoint baseUrl locator scanId) (ReqBodyJson $ object []) ignoreResponse authenticatedHttpOptions
   pure ()
 
 uploadIPRChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> Value -> m ()
-uploadIPRChunk url postOptions jsonChunk = do
-  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse (postOptions <> header "Content-Type" "application/json")
+uploadIPRChunk url httpOptions jsonChunk = do
+  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse httpOptions
   pure ()
 
 -- /projects/{projectID}/scans/{scanID}/build-graphs
