@@ -132,7 +132,7 @@ analyze basedir destination override unpackArchives = runFinally $ do
             [ "============================================================"
             , ""
             , "    View FOSSA Report:"
-            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) (projectBranch revision))
+            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) revision)
             , ""
             , "============================================================"
             ]
@@ -158,14 +158,15 @@ tryUploadContributors baseDir baseUrl apiKey locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors baseUrl apiKey locator contributors
 
-fossaProjectUrl :: URI -> Text -> Text -> Text
-fossaProjectUrl baseUrl rawLocator branch = URI.render baseUrl <> "projects/" <> encodedProject <> "/refs/branch/" <> branch <> "/" <> encodedRevision
+fossaProjectUrl :: URI -> Text -> ProjectRevision -> Text
+fossaProjectUrl baseUrl rawLocator revision = URI.render baseUrl <> "projects/" <> encodedProject <> "/refs/branch/" <> branch <> "/" <> encodedRevision
   where
     Locator{locatorFetcher, locatorProject, locatorRevision} = parseLocator rawLocator
 
     underBS :: (ByteString -> ByteString) -> Text -> Text
     underBS f = TE.decodeUtf8 . f . TE.encodeUtf8
 
+    branch = underBS (urlEncode True) (fromMaybe undefined (projectBranch revision))
     encodedProject = underBS (urlEncode True) (locatorFetcher <> "+" <> locatorProject)
     encodedRevision = underBS (urlEncode True) (fromMaybe "" locatorRevision)
 
