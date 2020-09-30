@@ -118,7 +118,7 @@ createBuildGraphEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "
 
 -- /projects/{projectID}/scans/{scanID}/build-graphs/{buildGraphID}/rules
 uploadBuildGraphChunkEndpoint :: Url 'Https -> Text -> Text -> Text ->  Url 'Https
-uploadBuildGraphChunkEndpoint baseurl projectId scanId buildGraphId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs" /: buildGraphId /: "rules"
+uploadBuildGraphChunkEndpoint baseurl projectId scanId buildGraphId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs" /: buildGraphId /: "rules" /: "partial"
 
 -- /projects/{projectID}/scans/{scanID}/build-graphs/{buildGraphID}/rules/complete
 uploadBuildGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text ->  Url 'Https
