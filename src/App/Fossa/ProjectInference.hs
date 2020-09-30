@@ -105,7 +105,7 @@ inferDefault dir = sendIO $ do
   tmp <- getTempDir
   writeFile (fromAbsDir tmp FP.</> ".fossa.revision") (show time)
 
-  pure (InferredProject (T.pack name) (T.pack (show time)) (Just "master"))
+  pure (InferredProject (T.pack name) (T.pack (show time)) Nothing)
 
 -- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
 dropPrefix :: Text -> Text -> Text
