@@ -17,7 +17,10 @@ import Control.Monad.IO.Class
 import Control.Effect.Lift
 import App.VPSScan.Types
 import Data.Foldable (traverse_)
+import qualified Data.HashMap.Strict as HM
 import Data.List.Split
+import Data.Maybe (fromMaybe)
+import qualified Data.Vector as V
 import Effect.Logger
 import GHC.Conc.Sync (getNumCapabilities)
 import App.VPSScan.Scan.Core
@@ -48,8 +51,12 @@ createScanEndpoint :: Url 'Https -> Text -> Url 'Https
 createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans"
 
 -- /projects/{projectID}/scans/{scanID}/discovered_licenses
-scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
-scanDataEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
+uploadIPRChunkEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
+uploadIPRChunkEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
+
+-- /projects/{projectID}/scans/{scanID}/discovered_licenses/complete
+uploadIPRCompleteEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
+uploadIPRCompleteEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses" /: "complete"
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
@@ -82,9 +89,9 @@ createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
--- post the IPR result to the "Upload Scan Data" endpoint on Scotland Yard
--- POST /scans/{scanID}/discovered_licenses
-uploadIPRResults :: (ToJSON a, Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> a -> ScotlandYardOpts -> m ()
+-- post the IPR result in chunks of 1000 entries to the "Upload IPR Data" endpoint on Scotland Yard.
+-- once all of the chunks are complete, PUT to the "upload IPR data complete" endpoint,
+uploadIPRResults :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Value -> ScotlandYardOpts -> m ()
 uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
   let VPSOpts{..} = syVpsOpts
       FossaOpts{..} = fossa
@@ -92,7 +99,17 @@ uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
       locator = unLocator projectId
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
-  _ <- req POST (scanDataEndpoint baseUrl locator scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  let chunkedJSON = fromMaybe [] (chunkJSON value "Files" 1000)
+
+  capabilities <- liftIO getNumCapabilities
+  let url = uploadIPRChunkEndpoint baseUrl projectName scanId
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadIPRChunk url baseOptions) chunkedJSON
+  _ <- req PUT (uploadIPRCompleteEndpoint baseUrl locator scanId) (ReqBodyJson $ object []) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  pure ()
+
+uploadIPRChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> Value -> m ()
+uploadIPRChunk url postOptions jsonChunk = do
+  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse (postOptions <> header "Content-Type" "application/json")
   pure ()
 
 -- /projects/{projectID}/scans/{scanID}/build-graphs
@@ -154,3 +171,16 @@ updateProgress Progress{..} =
             <> annotate (color Green) (pretty pCompleted)
             <> " Completed"
             <> " ]" )
+
+chunkJSON :: Value -> Text -> Int -> Maybe [Value]
+chunkJSON (Object obj) key chunkSize = do
+  a <- HM.lookup key obj
+  arr <- case a of
+    Array aa -> Just aa
+    _ -> Nothing
+  let chunked = chunksOf chunkSize $ V.toList arr
+  let chunker :: [Value] -> Value
+      chunker v = object ["Files" .= v]
+  Just $ map chunker chunked
+
+chunkJSON _ _ _ = Nothing
