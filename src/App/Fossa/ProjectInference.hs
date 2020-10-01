@@ -79,7 +79,7 @@ inferSVN dir = do
               . dropPrefix rootRelativeToUrl
               . dropPrefix "^" $ relUrl
 
-        pure $ InferredProject root revision (Just $ if T.null trimmedRelative then "trunk" else trimmedRelative)
+        pure . InferredProject root revision $ if T.null trimmedRelative then Nothing else Just trimmedRelative
 
   case maybeProject of
     Nothing -> fatal (CommandParseError svnCommand "Invalid output (missing Repository Root or Revision)")
