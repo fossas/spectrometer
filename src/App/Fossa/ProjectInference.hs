@@ -183,7 +183,7 @@ parseGitProjectRevision dir = do
 
   if "ref: " `T.isPrefixOf` headText
     then do
-      rawPath <- removeNewlines . dropPrefix "ref: " <$> readContentsText (dir </> relHead)
+      let rawPath = removeNewlines . dropPrefix "ref: " $ headText
 
       case parseRelFile (T.unpack rawPath) of
         Nothing -> fatal (InvalidBranchName rawPath)
