@@ -11,7 +11,6 @@ module App.VPSScan.Scan.ScotlandYard
   )
 where
 
-import Basement.IntegralConv
 import Control.Carrier.TaskPool
 import Control.Carrier.Diagnostics
 import Control.Monad.IO.Class
@@ -195,11 +194,11 @@ chunkedBySize d maxByteSize =
   where
     addToList :: (ToJSON a) => Int -> a -> [[a]] -> [[a]]
     addToList maxLength ele (first:rest) =
-      if currentLength + newLength > maxLength then
+      if (fromIntegral $ currentLength + newLength) > maxLength then
         [ele]:first:rest
       else
         (ele:first):rest
       where
-        currentLength = sum $ map (int64ToInt . BS.length . encode) first
-        newLength = int64ToInt $ BS.length $ encode ele
+        currentLength = sum $ map (BS.length . encode) first
+        newLength = BS.length $ encode ele
     addToList _ ele [] = [[ele]]
