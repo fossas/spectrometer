@@ -59,7 +59,7 @@ vpsScan basedir ScanCmdOpts{..} binaryPaths = do
   SherlockInfo{..} <- getSherlockInfo fossa
   let locator = createLocator projectName sherlockOrgId
   let revisionLocator = createRevisionLocator projectName sherlockOrgId projectRevision
-  trace $ unpack $ "[All] Creating project with locator '" <> unLocator revisionLocator <> "'"
+  trace $ unpack $ "[All] Creating project with locator '" <> unRevisionLocator revisionLocator <> "'"
 
   -- Create scan in Core
   trace "[All] Creating project in FOSSA"
@@ -95,7 +95,7 @@ vpsScan basedir ScanCmdOpts{..} binaryPaths = do
       sendIO exitFailure
 
   trace "[All] Completing scan in FOSSA"
-  _ <- context "completing project in FOSSA" $ completeCoreProject (unLocator revisionLocator) fossa
+  _ <- context "completing project in FOSSA" $ completeCoreProject revisionLocator fossa
   trace "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
 
 runSherlockScan ::

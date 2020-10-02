@@ -10,6 +10,7 @@ module App.VPSScan.Scan.Core
   , createRevisionLocator
   , buildRevision
   , Locator(..)
+  , RevisionLocator(..)
   , SherlockInfo(..)
   )
 where
@@ -52,10 +53,12 @@ newtype Locator = Locator { unLocator :: Text }
 createLocator :: Text -> Int -> Locator
 createLocator projectName organizationId = Locator $ "custom+" <> (pack $ show organizationId) <> "/" <> projectName
 
-createRevisionLocator :: Text -> Int -> Text -> Locator
+newtype RevisionLocator = RevisionLocator { unRevisionLocator :: Text }
+
+createRevisionLocator :: Text -> Int -> Text -> RevisionLocator
 createRevisionLocator projectName organizationId revision = do
   let locator = createLocator projectName organizationId
-  Locator $ unLocator locator <> "$" <> revision
+  RevisionLocator $ unLocator locator <> "$" <> revision
 
 -- /api/vendored-package-scan/sherlock-info
 sherlockInfoEndpoint :: Url 'Https -> Url 'Https
@@ -78,10 +81,10 @@ createCoreProject name revision FossaOpts{..} = runHTTP $ do
   _ <- req POST (createProjectEndpoint baseUrl) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure ()
 
-completeCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> FossaOpts -> m ()
+completeCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => RevisionLocator -> FossaOpts -> m ()
 completeCoreProject locator FossaOpts{..} = runHTTP $ do
   let auth = coreAuthHeader fossaApiKey
-  let body = object ["locator" .= locator]
+  let body = object ["locator" .= (unRevisionLocator locator)]
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
   _ <- req POST (completeProjectEndpoint baseUrl) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
