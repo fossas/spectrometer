@@ -140,8 +140,7 @@ findProjects = walk' $ \dir _ files -> do
           }
 
   if any isCabalFile files
-    then do
-      pure ([project], WalkSkipAll)
+    then pure ([project], WalkSkipAll)
     else pure ([], WalkContinue)
 
 mkProject :: CabalProject -> NewProject

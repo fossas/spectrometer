@@ -98,7 +98,6 @@ gradleProjectsCmd baseCmd = Command
   }
 
 
--- TODO: use megaparsec here? this logic is unreadable.
 -- we use a single empty-string target when no subprojects exist. gradle uses an
 -- empty string to denote the root project when invoking tasks, e.g., ":task"
 -- instead of ":subproject:task"
@@ -112,7 +111,14 @@ parseProjects outBL = if S.null subprojects then S.singleton "" else subprojects
 
 -- | Parse a subproject line from the gradle output, e.g.,
 --
---     +--- Project ':foo'
+-- >>> parseSubproject "+--- Project ':foo'"
+-- Just ":foo"
+--
+-- >>> parseSubproject "    +--- Project ':bar'"
+-- Just ":bar"
+--
+-- >>> parseSubproject "anything else"
+-- Nothing
 parseSubproject :: Text -> Maybe Text
 parseSubproject line = T.takeWhile (/= '\'') <$> T.stripPrefix "+--- Project '" (T.strip line)
 

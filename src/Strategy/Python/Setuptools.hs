@@ -24,10 +24,7 @@ findProjects :: MonadIO m => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walk' $ \dir _ files -> do
   let reqTxtFiles =
         filter
-          ( \f ->
-              "req" `isInfixOf` fileName f
-                && ".txt" `isSuffixOf` fileName f
-          )
+          (\f -> "req" `isInfixOf` fileName f && ".txt" `isSuffixOf` fileName f)
           files
 
   let setupPyFile = find (\f -> fileName f == "setup.py") files

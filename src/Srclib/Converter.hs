@@ -24,8 +24,8 @@ toSourceUnit :: ProjectResult -> SourceUnit
 toSourceUnit ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath,
-      sourceUnitType = SourceUnitTypeDummyCLI, -- TODO: use value here instea of renderedPath?
-      sourceUnitManifest = renderedPath,
+      sourceUnitType = SourceUnitTypeDummyCLI,
+      sourceUnitManifest = renderedPath, -- TODO: use a real value here instead of renderedPath?
       sourceUnitBuild =
         SourceUnitBuild
           { buildArtifact = "default",
