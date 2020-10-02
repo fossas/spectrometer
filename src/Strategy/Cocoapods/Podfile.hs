@@ -13,7 +13,6 @@ module Strategy.Cocoapods.Podfile
   ) where
 
 import Control.Effect.Diagnostics
-import Data.Foldable (find)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
@@ -33,7 +32,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "Podfile") files of
+  case findFileNamed "Podfile" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "cocoapods-podfile" CocoapodsGroup $ analyze file
 
@@ -68,7 +67,7 @@ buildGraph podfile = Graphing.fromList (map toDependency direct)
                  , dependencyVersion = case version of
                                             Nothing -> Nothing
                                             Just ver -> Just (CEq ver)
-                 , dependencyLocations = case M.lookup SourceProperty properties of 
+                 , dependencyLocations = case M.lookup SourceProperty properties of
                                             Just repo -> [repo]
                                             _ -> [source podfile]
                  , dependencyEnvironments = []
@@ -120,10 +119,10 @@ podParser = do
   properties <- many property
   _ <- restOfLine
   pure [PodLine $ Pod name version (M.fromList properties)]
-            
+
 comma :: Parser ()
 comma = () <$ symbol ","
-          
+
 property :: Parser (PropertyType, Text)
 property = do
   comma
@@ -136,19 +135,19 @@ property = do
   _ <- symbol "=>"
   value <- stringLiteral
   pure (propertyType, value)
-            
+
 symbol :: Text -> Parser Text
 symbol = lexeme . chunk
-          
+
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
-          
+
 stringLiteral :: Parser Text
 stringLiteral = T.pack <$> go
   where
   go = (char '"'  *> manyTill L.charLiteral (char '"'))
    <|> (char '\'' *> manyTill L.charLiteral (char '\''))
-             
+
 sc :: Parser ()
 sc =  L.space (void $ some (char ' ')) (L.skipLineComment "#") empty
 

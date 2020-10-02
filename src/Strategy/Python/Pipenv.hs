@@ -18,7 +18,7 @@ module Strategy.Python.Pipenv
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
-import Data.Foldable (find, for_, traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -35,7 +35,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "Pipfile.lock") files of
+  case findFileNamed "Pipfile.lock" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file
 
@@ -46,7 +46,7 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [PipenvProject]
 findProjects = walk' $ \_ _ files -> do
-  case find (\f -> fileName f == "Pipfile.lock") files of
+  case findFileNamed "Pipfile.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PipenvProject file], WalkContinue)
 

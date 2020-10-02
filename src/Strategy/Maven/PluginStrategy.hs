@@ -9,7 +9,7 @@ module Strategy.Maven.PluginStrategy
 
 import Control.Effect.Diagnostics
 import Control.Effect.Lift
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import DepTypes
@@ -24,7 +24,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "pom.xml") files of
+  case findFileNamed "pom.xml" files of
     Nothing -> pure WalkContinue
     Just file -> do
       runSimpleStrategy "maven-cli" MavenGroup $ analyze (parent file)

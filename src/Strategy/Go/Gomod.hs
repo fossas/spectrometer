@@ -15,7 +15,7 @@ module Strategy.Go.Gomod
   where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
@@ -38,7 +38,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "go.mod") files of
+  case findFileNamed "go.mod" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gomod" GolangGroup $ analyze file
 

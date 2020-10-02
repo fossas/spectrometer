@@ -5,7 +5,6 @@ where
 
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Monad.IO.Class
-import Data.List (find)
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing
@@ -18,7 +17,7 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GlideProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "glide.lock") files of
+  case findFileNamed "glide.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just lockfile -> pure ([GlideProject lockfile dir], WalkSkipAll)
 

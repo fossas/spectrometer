@@ -6,7 +6,6 @@ where
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import qualified Control.Effect.Diagnostics as Diag
 import Control.Monad.IO.Class
-import Data.List (find)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -21,8 +20,8 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [BundlerProject]
 findProjects = walk' $ \dir _ files -> do
-  let maybeGemfile = find (\f -> fileName f == "Gemfile") files
-  let gemfileLock = find (\f -> fileName f == "Gemfile.lock") files
+  let maybeGemfile = findFileNamed "Gemfile" files
+  let gemfileLock = findFileNamed "Gemfile.lock" files
 
   case maybeGemfile of
     Nothing -> pure ([], WalkContinue)

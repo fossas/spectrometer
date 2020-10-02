@@ -15,7 +15,6 @@ module Strategy.Go.GlideLock
 
 import Control.Effect.Diagnostics
 import Data.Aeson
-import Data.Foldable (find)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -29,7 +28,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "glide.lock") files of
+  case findFileNamed "glide.lock" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-glidelock" GolangGroup $ analyze file
 

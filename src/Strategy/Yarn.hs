@@ -4,7 +4,6 @@ module Strategy.Yarn
 
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
-import Data.Foldable (find)
 import Discovery.Walk
 import Effect.ReadFS
 import qualified Graphing as G
@@ -18,7 +17,7 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [YarnProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "yarn.lock") files of
+  case findFileNamed "yarn.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just lock -> do
       let project =

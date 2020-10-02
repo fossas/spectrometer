@@ -12,7 +12,7 @@ module Strategy.Go.GoList
 
 import Control.Effect.Diagnostics
 import qualified Data.ByteString.Lazy as BL
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -29,7 +29,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "go.mod") files of
+  case findFileNamed "go.mod" files of
     Nothing -> pure ()
     Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
 

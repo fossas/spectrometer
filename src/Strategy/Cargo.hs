@@ -16,7 +16,7 @@ module Strategy.Cargo
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
-import Data.Foldable (find, for_, traverse_)
+import Data.Foldable (for_, traverse_)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import qualified Data.Text as T
@@ -27,7 +27,7 @@ import Graphing (Graphing, stripRoot)
 import Path
 import Types
 
-newtype CargoLabel = 
+newtype CargoLabel =
   CargoDepKind DepEnvironment
   deriving (Eq, Ord, Show)
 
@@ -69,7 +69,7 @@ data ResolveNode = ResolveNode
   } deriving (Eq, Ord, Show)
 
 newtype Resolve = Resolve
-  { resolvedNodes :: [ResolveNode] 
+  { resolvedNodes :: [ResolveNode]
   } deriving (Eq, Ord, Show)
 
 data CargoMetadata = CargoMetadata
@@ -105,7 +105,7 @@ instance FromJSON NodeDependency where
                    <*> obj .: "dep_kinds"
 
 instance FromJSON ResolveNode where
-  parseJSON = withObject "ResolveNode" $ \obj -> 
+  parseJSON = withObject "ResolveNode" $ \obj ->
     ResolveNode <$> (obj .: "id" >>= parsePkgId)
                 <*> obj .: "deps"
 
@@ -121,7 +121,7 @@ instance FromJSON CargoMetadata where
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files ->
-  case find (\f -> fileName f == "Cargo.toml") files of
+  case findFileNamed "Cargo.toml" files of
     Nothing -> pure WalkContinue
     Just _ -> do
       runSimpleStrategy "rust-cargo" RustGroup $ fmap (mkProjectClosure dir) (analyze dir)
@@ -132,7 +132,7 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CargoProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "Cargo.toml") files of
+  case findFileNamed "Cargo.toml" files of
     Nothing -> pure ([], WalkContinue)
     Just toml -> do
       let project =
@@ -197,8 +197,8 @@ analyze manifestDir = do
   pure $ buildGraph meta
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
-toDependency pkg = foldr applyLabel Dependency 
-  { dependencyType = CargoType 
+toDependency pkg = foldr applyLabel Dependency
+  { dependencyType = CargoType
   , dependencyName = pkgIdName pkg
   , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
   , dependencyLocations = []
@@ -235,7 +235,7 @@ buildGraph meta = stripRoot $ run . withLabeling toDependency $ do
   traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
 parsePkgId :: T.Text -> Parser PackageId
-parsePkgId t = 
+parsePkgId t =
   case T.splitOn " " t of
     [a,b,c] -> pure $ PackageId a b c
     _ -> fail "malformed Package ID"

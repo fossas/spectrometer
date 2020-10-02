@@ -7,7 +7,6 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import qualified Control.Effect.Diagnostics as Diag
 import Control.Monad.IO.Class
-import Data.List (find)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -22,8 +21,8 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GodepProject]
 findProjects = walk' $ \dir _ files -> do
-  let gopkgToml = find (\f -> fileName f == "Gopkg.toml") files
-  let gopkgLock = find (\f -> fileName f == "Gopkg.lock") files
+  let gopkgToml = findFileNamed "Gopkg.toml" files
+  let gopkgLock = findFileNamed "Gopkg.lock" files
 
   let project =
         GodepProject

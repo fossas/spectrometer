@@ -16,7 +16,7 @@ import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Diagnostics
 import Control.Effect.Output
 import Control.Monad.IO.Class (MonadIO)
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import qualified Data.Map.Strict as M
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
@@ -39,7 +39,7 @@ discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover basedir =
   walk
     ( \_ _ files ->
-        case find (\f -> fileName f == "build.sbt") files of
+        case findFileNamed "build.sbt" files of
           Nothing -> pure WalkContinue
           Just file -> do
             runStrategy "scala-sbt" ScalaGroup (analyze basedir file)
@@ -55,7 +55,7 @@ pathToText = T.pack . toFilePath
 
 findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "build.sbt") files of
+  case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
 

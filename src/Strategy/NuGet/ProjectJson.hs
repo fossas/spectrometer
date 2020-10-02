@@ -12,7 +12,6 @@ module Strategy.NuGet.ProjectJson
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
 import Data.Aeson.Types
-import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
@@ -27,7 +26,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "project.json") files of
+  case findFileNamed "project.json" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-projectjson" DotnetGroup $ analyze file
 
@@ -53,7 +52,7 @@ instance FromJSON DependencyInfo where
     parseJSONObject = withObject "DependencyInfo" $ \obj ->
         DependencyInfo <$> obj .: "version"
                         <*> obj .:? "type"
-            
+
     parseJSONText :: Value -> Parser DependencyInfo
     parseJSONText = withText "DependencyVersion" $ \text ->
         pure $ DependencyInfo text Nothing

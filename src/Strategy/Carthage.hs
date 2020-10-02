@@ -12,7 +12,7 @@ module Strategy.Carthage
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Char (isSpace)
-import Data.Foldable (find, for_, traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
@@ -32,7 +32,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files ->
-  case find (\f -> fileName f == "Cartfile.resolved") files of
+  case findFileNamed "Cartfile.resolved" files of
     Nothing -> pure WalkContinue
     Just file -> do
       runSimpleStrategy "carthage-lock" CarthageGroup $ fmap (mkProjectClosure file) (analyze file)
@@ -56,7 +56,7 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CarthageProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "Cartfile.resolved") files of
+  case findFileNamed "Cartfile.resolved" files of
     Nothing -> pure ([], WalkContinue)
     Just cartfile -> do
 

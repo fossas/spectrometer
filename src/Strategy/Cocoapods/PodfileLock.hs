@@ -12,7 +12,7 @@ module Strategy.Cocoapods.PodfileLock
 
 import Control.Effect.Diagnostics
 import qualified Data.Char as C
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
@@ -33,7 +33,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "Podfile.lock") files of
+  case findFileNamed "Podfile.lock" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "cocoapods-podfilelock" CocoapodsGroup $ analyze file
 
@@ -106,7 +106,7 @@ type Parser = Parsec Void Text
 data Section =
       PodSection [Pod]
       | DependencySection [Dep]
-      | SpecRepos [Remote] 
+      | SpecRepos [Remote]
       | ExternalSources [SourceDep]
       | CheckoutOptions [SourceDep]
       | UnknownSection Text

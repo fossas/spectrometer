@@ -6,7 +6,6 @@ module Strategy.Python.SetupPy
   where
 
 import Control.Effect.Diagnostics
-import Data.Foldable (find)
 import Data.Text (Text)
 import Data.Void (Void)
 import Discovery.Walk
@@ -21,7 +20,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "setup.py") files of
+  case findFileNamed "setup.py" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "python-setuppy" PythonGroup $
       analyze file

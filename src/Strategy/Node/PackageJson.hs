@@ -12,7 +12,6 @@ module Strategy.Node.PackageJson
 
 import Control.Effect.Diagnostics
 import Data.Aeson
-import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -27,7 +26,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "package.json") files of
+  case findFileNamed "package.json" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-packagejson" NodejsGroup $ analyze file
 

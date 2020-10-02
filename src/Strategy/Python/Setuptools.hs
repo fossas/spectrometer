@@ -7,7 +7,6 @@ import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics)
 import qualified Control.Effect.Diagnostics as Diag
 import Control.Monad.IO.Class
-import Data.Foldable (find)
 import Data.List (isInfixOf, isSuffixOf)
 import Discovery.Walk
 import Effect.ReadFS
@@ -27,7 +26,7 @@ findProjects = walk' $ \dir _ files -> do
           (\f -> "req" `isInfixOf` fileName f && ".txt" `isSuffixOf` fileName f)
           files
 
-  let setupPyFile = find (\f -> fileName f == "setup.py") files
+  let setupPyFile = findFileNamed "setup.py" files
 
   let project =
         SetuptoolsProject

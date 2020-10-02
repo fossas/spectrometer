@@ -7,7 +7,6 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import qualified Control.Effect.Diagnostics as Diag
 import Control.Monad.IO.Class
-import Data.List (find)
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing
@@ -21,8 +20,8 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CocoapodsProject]
 findProjects = walk' $ \dir _ files -> do
-  let podfile = find (\f -> fileName f == "Podfile") files
-  let podfileLock = find (\f -> fileName f == "Podfile.lock") files
+  let podfile = findFileNamed "Podfile" files
+  let podfileLock = findFileNamed "Podfile.lock" files
 
   let project =
         CocoapodsProject

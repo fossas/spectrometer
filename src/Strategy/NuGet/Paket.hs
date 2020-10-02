@@ -12,7 +12,7 @@ module Strategy.NuGet.Paket
 import Control.Effect.Diagnostics
 import Control.Monad (guard)
 import qualified Data.Char as C
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor (void)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -34,7 +34,7 @@ type Parser = Parsec Void Text
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "paket.lock") files of
+  case findFileNamed "paket.lock" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "paket-paketlock" DotnetGroup $ analyze file
 
@@ -87,7 +87,7 @@ toDependency pkg = foldr applyLabel start
   applyLabel (GroupName name) dep = dep { dependencyTags = M.insertWith (++) "group" [name] (dependencyTags dep) }
   applyLabel (DepLocation loc) dep = dep { dependencyTags = M.insertWith (++) "location" [loc] (dependencyTags dep) }
   applyLabel (PaketRemote repo) dep = dep { dependencyLocations = repo : dependencyLocations dep }
-  
+
 buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
       traverse_ (addSection "MAIN") sections
@@ -148,7 +148,7 @@ groupSection = do
           pure $ GroupSection name sections
 
 unknownSection :: Parser Section
-unknownSection = do 
+unknownSection = do
       emptyLine <- restOfLine
       guard $ not $ "GROUP" `T.isPrefixOf` emptyLine
       _ <- eol
@@ -171,7 +171,7 @@ specParser = L.indentBlock scn $ do
         version <- findVersion
         _ <- restOfLine
         pure $ L.IndentMany Nothing (\a -> pure $ PaketDep name version a) specsParser
-      
+
 specsParser :: Parser Text
 specsParser = findDep <* restOfLine
 

@@ -17,7 +17,7 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import Data.Aeson.Types
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Text (Text)
 import Data.Maybe (fromMaybe)
 import DepTypes
@@ -30,7 +30,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "composer.lock") files of
+  case findFileNamed "composer.lock" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "php-composerlock" PHPGroup $ analyze file
 
@@ -41,7 +41,7 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [ComposerProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "composer.lock") files of
+  case findFileNamed "composer.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just lock -> do
       let project =
@@ -157,7 +157,7 @@ buildGraph lock = run . withLabeling toDependency $ do
     addEdge pkg name _ = edge pkg (CompPkg name)
 
     toDependency :: CompPkg -> Set CompLabel -> Dependency
-    toDependency pkg = foldr addLabel $ 
+    toDependency pkg = foldr addLabel $
       Dependency
         { dependencyType = ComposerType,
           dependencyName = pkgName pkg,

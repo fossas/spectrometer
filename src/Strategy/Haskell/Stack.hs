@@ -15,7 +15,7 @@ where
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
-import Data.Foldable (for_, find)
+import Data.Foldable (for_)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -62,7 +62,7 @@ parseLocationType txt
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files ->
-  case find (\f -> fileName f == "stack.yaml") files of
+  case findFileNamed "stack.yaml" files of
     Nothing -> pure WalkContinue
     Just _ -> do
       runSimpleStrategy "haskell-stack" HaskellGroup $ fmap (mkProjectClosure dir) (analyze dir)
@@ -78,7 +78,7 @@ findProjects = walk' $ \dir _ files -> do
           { stackDir = dir
           }
 
-  case find (\f -> fileName f == "stack.yaml") files of
+  case findFileNamed "stack.yaml" files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> pure ([project], WalkSkipAll)
 

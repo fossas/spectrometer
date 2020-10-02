@@ -15,7 +15,7 @@ module Strategy.Go.GopkgLock
   where
 
 import Control.Effect.Diagnostics
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
 import DepTypes
@@ -33,7 +33,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "Gopkg.lock") files of
+  case findFileNamed "Gopkg.lock" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkglock" GolangGroup $ analyze file
 

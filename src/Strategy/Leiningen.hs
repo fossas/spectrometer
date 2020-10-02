@@ -23,7 +23,7 @@ import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import qualified Data.EDN as EDN
 import Data.EDN.Class.Parser (Parser)
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -49,7 +49,7 @@ leinDepsCmd =
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files -> do
-  case find (\f -> fileName f == "project.clj") files of
+  case findFileNamed "project.clj" files of
     Nothing -> pure WalkContinue
     Just file -> do
       runSimpleStrategy "clojure-lein" ClojureGroup $ mkProjectClosure dir <$> analyze file
@@ -60,7 +60,7 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [LeiningenProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "project.clj") files of
+  case findFileNamed "project.clj" files of
     Nothing -> pure ([], WalkContinue)
     Just projectClj -> do
       let project =

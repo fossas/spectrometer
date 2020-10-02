@@ -6,7 +6,6 @@ where
 import Control.Effect.Diagnostics ((<||>), Diagnostics)
 import qualified Control.Effect.Diagnostics as Diag
 import Control.Monad.IO.Class
-import Data.List (find)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -22,10 +21,10 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [NpmProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "package.json") files of
+  case findFileNamed "package.json" files of
     Nothing -> pure ([], WalkContinue)
     Just packageJson -> do
-      let packageLock = find (\f -> fileName f == "package-lock.json") files
+      let packageLock = findFileNamed "package-lock.json" files
 
       let project =
             NpmProject

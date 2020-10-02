@@ -5,7 +5,6 @@ where
 
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Monad.IO.Class
-import Data.List (find)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -20,7 +19,7 @@ discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GomodulesProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> fileName f == "go.mod") files of
+  case findFileNamed "go.mod" files of
     Nothing -> pure ([], WalkSkipSome ["vendor"])
     Just gomod -> pure ([GomodulesProject gomod dir], WalkSkipSome ["vendor"])
 

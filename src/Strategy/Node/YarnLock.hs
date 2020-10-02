@@ -8,7 +8,7 @@ module Strategy.Node.YarnLock
 
 import Control.Effect.Diagnostics
 import Data.Bifunctor (first)
-import Data.Foldable (find, for_)
+import Data.Foldable (for_)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as M
 import qualified Data.MultiKeyedMap as MKM
@@ -24,7 +24,7 @@ import qualified Yarn.Lock.Types as YL
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "yarn.lock") files of
+  case findFileNamed "yarn.lock" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-yarnlock" NodejsGroup $ analyze file
 

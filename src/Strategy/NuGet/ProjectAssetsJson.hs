@@ -11,7 +11,6 @@ module Strategy.NuGet.ProjectAssetsJson
 
 import Control.Effect.Diagnostics
 import Data.Aeson
-import Data.Foldable (find)
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Text (Text)
@@ -25,7 +24,7 @@ import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "project.assets.json") files of
+  case findFileNamed "project.assets.json" files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-projectassetsjson" DotnetGroup $ analyze file
 
@@ -43,7 +42,7 @@ data DependencyInfo = DependencyInfo
   { depType    :: Text
   , deepDeps   :: M.Map Text Text
   } deriving Show
-   
+
 instance FromJSON DependencyInfo where
   parseJSON = withObject "Dependency" $ \obj ->
     DependencyInfo <$> obj .: "type"
@@ -75,12 +74,12 @@ data NuGetDep = NuGetDep
 buildGraph :: ProjectAssetsJson -> Graphing Dependency
 buildGraph project = unfold direct deepList toDependency
     where
-    direct :: [NuGetDep] 
+    direct :: [NuGetDep]
     direct = concatMap (mapMaybe convertDep . M.toList) (M.elems (targets project))
-                    
+
     convertDep :: (Text, DependencyInfo) -> Maybe NuGetDep
     convertDep (depString, dep) = case T.splitOn "/" depString of
-                  [name, ver] -> Just $ NuGetDep name ver (depType dep) (deepDeps dep) 
+                  [name, ver] -> Just $ NuGetDep name ver (depType dep) (deepDeps dep)
                   _ -> Nothing
 
     deepList nugetDep = (\(x,y) -> NuGetDep x y "" M.empty) <$> (M.toList $ completeDeepDeps nugetDep)

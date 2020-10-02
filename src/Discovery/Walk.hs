@@ -6,13 +6,17 @@ module Discovery.Walk
     walk,
     walk',
     WalkStep (..),
+
+    -- * Helpers
     fileName,
+    findFileNamed,
   )
 where
 
 import Control.Carrier.Writer.Church
 import Control.Monad.Trans
 import Control.Carrier.Lift
+import Data.Foldable (find)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -72,3 +76,6 @@ walk' f base = runM $ do
 
 fileName :: Path a File -> String
 fileName = toFilePath . filename
+
+findFileNamed :: String -> [Path a File] -> Maybe (Path a File)
+findFileNamed name files = find (\f -> fileName f == name) files
