@@ -50,7 +50,7 @@ coreProxyPrefix baseurl = baseurl /: "api" /: "proxy" /: "scotland-yard"
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https
 createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans"
 
--- /projects/{projectID}/scans/{scanID}/discovered_licenses
+-- /projects/{projectID}/scans/{scanID}/discovered_licenses/partial
 uploadIPRChunkEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 uploadIPRChunkEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses" /: "partial"
 
@@ -89,7 +89,7 @@ createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
--- post the IPR result in chunks of 1000 entries to the "Upload IPR Data" endpoint on Scotland Yard.
+-- post the IPR result in chunks of ~ 1 MB to the "Upload IPR Data" endpoint on Scotland Yard.
 -- once all of the chunks are complete, PUT to the "upload IPR data complete" endpoint,
 uploadIPRResults :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Value -> ScotlandYardOpts -> m ()
 uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
@@ -124,7 +124,7 @@ uploadBuildGraphChunkEndpoint baseurl projectId scanId buildGraphId = coreProxyP
 uploadBuildGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text ->  Url 'Https
 uploadBuildGraphCompleteEndpoint baseurl projectId scanId buildGraphId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs" /: buildGraphId /: "rules" /: "complete"
 
--- create the build graph in SY, upload it in chunks and then complete it.
+-- create the build graph in SY, upload it in chunks of ~ 1 MB and then complete it.
 uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
 uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
