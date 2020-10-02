@@ -110,11 +110,11 @@ discoverFuncs =
 runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
-  Path Abs Dir ->
+  BaseDir ->
   [BuildTargetFilter] ->
   NewProject ->
   m ()
-runDependencyAnalysis basedir filters project = do
+runDependencyAnalysis (BaseDir basedir) filters project = do
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
@@ -139,7 +139,7 @@ analyze ::
   -> Bool -- ^ whether to unpack archives
   -> [BuildTargetFilter]
   -> m ()
-analyze (BaseDir basedir) destination override unpackArchives filters = do
+analyze basedir destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
@@ -148,21 +148,21 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
-      $ withDiscoveredProjects discoverFuncs unpackArchives basedir (runDependencyAnalysis basedir filters)
+      $ withDiscoveredProjects discoverFuncs unpackArchives (unBaseDir basedir) (runDependencyAnalysis basedir filters)
 
   logSticky ""
 
   case destination of
     OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult projectResults)))
     UploadScan baseurl apiKey metadata -> do
-      revision <- mergeOverride override <$> inferProject basedir
+      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
       logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis (BaseDir basedir) baseurl apiKey revision metadata projectResults
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projectResults
       case uploadResult of
         Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
@@ -177,7 +177,7 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
             ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors basedir baseurl apiKey $ uploadLocator resp
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) baseurl apiKey $ uploadLocator resp
           case contribResult of
             Left failure -> logDebug (Diag.renderFailureBundle failure)
             Right _ -> pure ()

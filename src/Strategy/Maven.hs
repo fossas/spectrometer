@@ -15,7 +15,7 @@ import Graphing (Graphing)
 import Path
 import qualified Strategy.Maven.PluginStrategy as Plugin
 import qualified Strategy.Maven.Pom as Pom
-import qualified Strategy.Maven.Pom.Closure as Pom
+import qualified Strategy.Maven.Pom.Closure as PomClosure
 import Types
 
 discover' ::
@@ -26,13 +26,13 @@ discover' ::
   ) =>
   Path Abs Dir ->
   m [NewProject]
-discover' dir = map mkProject <$> Pom.findProjects dir
+discover' dir = map mkProject <$> PomClosure.findProjects dir
 
-mkProject :: Pom.MavenProjectClosure -> NewProject
+mkProject :: PomClosure.MavenProjectClosure -> NewProject
 mkProject closure = 
   NewProject
     { projectType = "maven",
-      projectPath = parent $ Pom.closurePath closure,
+      projectPath = parent $ PomClosure.closurePath closure,
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps closure,
       projectLicenses = pure [] -- FIXME
@@ -44,6 +44,6 @@ getDeps ::
     Has ReadFS sig m,
     Has Exec sig m
   ) =>
-  Pom.MavenProjectClosure ->
+  PomClosure.MavenProjectClosure ->
   m (Graphing Dependency)
-getDeps closure = Plugin.analyze' (parent (Pom.closurePath closure)) <||> pure (Pom.analyze' closure)
+getDeps closure = Plugin.analyze' (parent (PomClosure.closurePath closure)) <||> pure (Pom.analyze' closure)

@@ -37,11 +37,8 @@ toSourceUnit ProjectResult{..} =
   where
     renderedPath = Text.pack (toFilePath projectResultPath) <> "||" <> projectResultType
 
-    graph :: Graphing Dependency
-    graph = projectResultGraph
-
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
+    filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) projectResultGraph
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph

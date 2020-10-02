@@ -1,15 +1,11 @@
 module Data.Text.Extra
   ( splitOnceOn,
     splitOnceOnEnd,
-    strippedPrefix,
   )
 where
 
 import Data.Text (Text)
 import qualified Data.Text as T
-
-strippedPrefix :: Text -> Text -> Text
-strippedPrefix pre txt = maybe txt id (T.stripPrefix pre txt)
 
 splitOnceOn :: Text -> Text -> (Text, Text)
 splitOnceOn needle haystack = (first, strippedRemaining)

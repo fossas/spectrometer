@@ -11,7 +11,7 @@ import qualified Graphing as G
 import Path
 import Types
 import Prelude
-import Strategy.Node.YarnLock (analyze')
+import qualified Strategy.Node.YarnLock as YarnLock
 
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
@@ -40,7 +40,7 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
-getDeps = analyze' . yarnLock
+getDeps = YarnLock.analyze' . yarnLock
 
 data YarnProject = YarnProject
   { yarnDir :: Path Abs Dir
