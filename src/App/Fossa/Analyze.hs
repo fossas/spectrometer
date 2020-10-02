@@ -56,8 +56,9 @@ import qualified Strategy.Haskell.Stack as Stack
 import qualified Strategy.Leiningen as Leiningen
 import qualified Strategy.Maven as Maven
 import qualified Strategy.Npm as Npm
-import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.Python.Setuptools as Setuptools
+import qualified Strategy.Rebar3 as Rebar3
+import qualified Strategy.Scala as Scala
 import qualified Strategy.Yarn as Yarn
 import Text.URI (URI)
 import qualified Text.URI as URI
@@ -98,7 +99,8 @@ discoverFuncs =
     Cabal.discover',
     Stack.discover',
     Yarn.discover',
-    Npm.discover'
+    Npm.discover',
+    Scala.discover'
   ]
 
 runDependencyAnalysis ::

@@ -2,6 +2,7 @@
 
 module Strategy.Maven
   ( discover',
+    mkProject,
   )
 where
 
