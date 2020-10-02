@@ -58,6 +58,7 @@ import qualified Strategy.Maven as Maven
 import qualified Strategy.Npm as Npm
 import qualified Strategy.Python.Setuptools as Setuptools
 import qualified Strategy.Rebar3 as Rebar3
+import qualified Strategy.RPM as RPM
 import qualified Strategy.Scala as Scala
 import qualified Strategy.Yarn as Yarn
 import Text.URI (URI)
@@ -100,7 +101,8 @@ discoverFuncs =
     Stack.discover',
     Yarn.discover',
     Npm.discover',
-    Scala.discover'
+    Scala.discover',
+    RPM.discover'
   ]
 
 runDependencyAnalysis ::

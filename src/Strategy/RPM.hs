@@ -4,6 +4,7 @@
 module Strategy.RPM
   ( buildGraph,
     discover,
+    discover',
     getSpecDeps,
     getTypeFromLine,
     toDependency,
@@ -14,6 +15,7 @@ module Strategy.RPM
 where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
@@ -57,6 +59,33 @@ discover = walk $ \dir _ files ->
   let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
       analyzeFile specFile = runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
    in traverse_ analyzeFile specs >> pure WalkContinue
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [RpmProject]
+findProjects = walk' $ \_ _ files -> do
+  let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
+
+  pure (map RpmProject specs, WalkContinue)
+
+data RpmProject = RpmProject
+  { rpmFile :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: RpmProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "rpm3",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ rpmFile project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m (Graphing Dependency)
+getDeps = analyze . rpmFile
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze specFile = do
