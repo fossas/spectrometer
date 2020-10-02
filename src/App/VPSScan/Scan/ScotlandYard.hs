@@ -11,6 +11,7 @@ module App.VPSScan.Scan.ScotlandYard
   )
 where
 
+import Basement.IntegralConv
 import Control.Carrier.TaskPool
 import Control.Carrier.Diagnostics
 import Control.Monad.IO.Class
@@ -18,9 +19,9 @@ import Control.Effect.Lift
 import App.VPSScan.Types
 import Data.Foldable (traverse_)
 import qualified Data.HashMap.Strict as HM
-import Data.List.Split
 import Data.Maybe (fromMaybe)
 import qualified Data.Vector as V
+import qualified Data.ByteString.Lazy as BS
 import Effect.Logger
 import GHC.Conc.Sync (getNumCapabilities)
 import App.VPSScan.Scan.Core
@@ -100,7 +101,7 @@ uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
   (baseUrl, baseOptions) <- parseUri fossaUrl
   let url = uploadIPRChunkEndpoint baseUrl locator scanId
       authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json" <> auth
-      chunkedJSON = fromMaybe [] (chunkJSON value "Files" 1000)
+      chunkedJSON = fromMaybe [] (chunkJSON value "Files" (1024 * 1024))
 
   capabilities <- liftIO getNumCapabilities
   _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadIPRChunk url authenticatedHttpOptions) chunkedJSON
@@ -140,7 +141,7 @@ uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
 
   -- split the build graph data into chunks and upload it
   let chunkUrl = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
-      chunkedTargets = chunksOf 10 targets
+      chunkedTargets = chunkedBySize targets (1024 * 1024)
   capabilities <- liftIO getNumCapabilities
   _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedTargets
 
@@ -178,9 +179,27 @@ chunkJSON (Object obj) key chunkSize = do
   arr <- case a of
     Array aa -> Just aa
     _ -> Nothing
-  let chunked = chunksOf chunkSize $ V.toList arr
   let chunker :: [Value] -> Value
       chunker v = object [key .= v]
+      chunked = chunkedBySize (V.toList arr) chunkSize
   Just $ map chunker chunked
 
 chunkJSON _ _ _ = Nothing
+
+-- chunk a list of Values by their size, trying to keep each chunk of values
+-- under maxByteSize. This is not guaranteed if one of the elements in the list is
+-- greater than maxByteSize.
+chunkedBySize :: (ToJSON a) => [a] -> Int -> [[a]]
+chunkedBySize d maxByteSize =
+  foldr (addToList maxByteSize) [[]] d
+  where
+    addToList :: (ToJSON a) => Int -> a -> [[a]] -> [[a]]
+    addToList maxLength ele (first:rest) =
+      if currentLength + newLength > maxLength then
+        [ele]:first:rest
+      else
+        (ele:first):rest
+      where
+        currentLength = sum $ map (int64ToInt . BS.length . encode) first
+        newLength = int64ToInt $ BS.length $ encode ele
+    addToList _ ele [] = [[ele]]
