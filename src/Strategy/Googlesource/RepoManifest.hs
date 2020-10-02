@@ -7,6 +7,7 @@
 
 module Strategy.Googlesource.RepoManifest
   ( discover
+  , discover'
   , buildGraph
   , analyze
   , validateProject
@@ -30,6 +31,7 @@ import qualified Data.Text as T
 
 import Control.Applicative ((<|>), optional)
 import Control.Monad (unless)
+import Control.Monad.IO.Class (MonadIO)
 import DepTypes
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (pretty)
@@ -56,8 +58,41 @@ discover = walk $ \_ _ files ->
         pure WalkSkipAll
       else pure WalkContinue
 
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [RepoManifestProject]
+findProjects = walk' $ \_ _ files -> do
+  case find (\f -> "manifest.xml" == fileName f) files of
+    Nothing -> pure ([], WalkContinue)
+    Just file ->
+      if dirname (parent file) == $(mkRelDir ".repo")
+        then pure ([RepoManifestProject file], WalkSkipAll)
+        else pure ([], WalkContinue)
+
+data RepoManifestProject = RepoManifestProject
+  { repoManifestXml :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: RepoManifestProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "repomanifest",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ repoManifestXml project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m (Graphing Dependency)
+getDeps = analyze' . repoManifestXml
+
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> nestedValidatedProjects (parent file) file
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> nestedValidatedProjects (parent file) file
 
 nestedValidatedProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do

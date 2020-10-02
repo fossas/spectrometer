@@ -50,6 +50,7 @@ import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Composer as Composer
 import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
+import qualified Strategy.Googlesource.RepoManifest as RepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Haskell.Cabal as Cabal
 import qualified Strategy.Haskell.Stack as Stack
@@ -102,7 +103,8 @@ discoverFuncs =
     Yarn.discover',
     Npm.discover',
     Scala.discover',
-    RPM.discover'
+    RPM.discover',
+    RepoManifest.discover'
   ]
 
 runDependencyAnalysis ::
