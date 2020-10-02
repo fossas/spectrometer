@@ -6,6 +6,7 @@
 module Strategy.Node.NpmLock
   ( discover
   , analyze
+  , analyze'
   , buildGraph
 
   , NpmPackageJson(..)
@@ -67,6 +68,9 @@ instance FromJSON NpmDep where
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @NpmPackageJson file
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsJson @NpmPackageJson file
 
 mkProjectClosure :: Path Abs File -> NpmPackageJson -> ProjectClosureBody
 mkProjectClosure file lock = ProjectClosureBody

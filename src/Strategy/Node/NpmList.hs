@@ -4,6 +4,7 @@
 module Strategy.Node.NpmList
   ( discover
   , analyze
+  , analyze'
   ) where
 
 import Control.Effect.Diagnostics
@@ -36,6 +37,9 @@ npmListCmd = Command
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execJson @NpmOutput dir npmListCmd
+
+analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = buildGraph <$> execJson @NpmOutput dir npmListCmd
 
 mkProjectClosure :: Path Abs Dir -> NpmOutput -> ProjectClosureBody
 mkProjectClosure dir npmOutput = ProjectClosureBody

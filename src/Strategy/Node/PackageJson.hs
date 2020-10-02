@@ -5,6 +5,7 @@
 module Strategy.Node.PackageJson
   ( discover
   , buildGraph
+  , analyze'
 
   , PackageJson(..)
   ) where
@@ -44,6 +45,9 @@ instance FromJSON PackageJson where
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @PackageJson file
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsJson @PackageJson file
 
 mkProjectClosure :: Path Abs File -> PackageJson -> ProjectClosureBody
 mkProjectClosure file package = ProjectClosureBody
