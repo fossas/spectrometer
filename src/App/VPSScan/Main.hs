@@ -8,6 +8,8 @@ import App.VPSScan.NinjaGraph (NinjaGraphCmdOpts(..), ninjaGraphMain)
 import App.VPSScan.Types
 import Control.Monad (join)
 import Options.Applicative
+import Data.Aeson
+import Data.String
 
 appMain :: IO ()
 appMain = join (customExecParser (prefs showHelpOnEmpty) opts)
@@ -44,7 +46,7 @@ basedirOpt :: Parser FilePath
 basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
 
 filterOpt :: Parser FilterExpressions
-filterOpt = FilterExpressions <$> strOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value "[]")
+filterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
 
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
@@ -55,3 +57,7 @@ ninjaGraphCommand :: Mod CommandFields (IO ())
 ninjaGraphCommand = command "ninja-graph" (info (ninjaGraphMain <$> ninjaGraphOptsParser) (progDesc "Get a dependency graph for a ninja build"))
   where
     ninjaGraphOptsParser = NinjaGraphCmdOpts <$> basedirOpt <*> ninjaGraphOpts
+
+-- this is like `strOption` with a slightly different type signature
+jsonOption :: FromJSON a => Mod OptionFields a -> Parser a
+jsonOption = option (eitherReader (eitherDecode . fromString))

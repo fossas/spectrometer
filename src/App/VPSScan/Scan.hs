@@ -100,7 +100,7 @@ vpsScan basedir ScanCmdOpts{..} binaryPaths = do
 
   trace "[All] Completing scan in FOSSA"
   _ <- context "completing project in FOSSA" $ completeCoreProject revisionLocator fossa
-  _ <- context "updating scan file filter" $ updateScanFileFilter areFiltersOverridden locator filterBlob fossa
+  _ <- context "updating scan file filter" $ updateScanFileFilter areFiltersOverridden locator fileFilter fossa
   trace "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
 
 runSherlockScan ::
