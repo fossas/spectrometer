@@ -114,24 +114,23 @@ getProjectScanFilters FossaOpts{..} locator = runHTTP $ do
   pure (responseBody resp)
 
 overrideScanFilters :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Trace sig m) => VPSOpts -> Locator -> m (VPSOpts, Bool)
-overrideScanFilters vpsOpts@VPSOpts{..} locator
-  | (unFilterExpressions fileFilter) == [] = do
-    trace "[All] Fetching scan file filter from FOSSA"
-    overrideFilters <- getProjectScanFilters fossa locator
-    trace $ unpack $ "[All] Using scan file filter: " <> encodeFilterExpressions overrideFilters
-    pure (VPSOpts fossa projectName userProvidedRevision skipIprScan overrideFilters, True)
-  | otherwise = do
-    trace "[All] Scan file filters provided locally"
-    pure (vpsOpts, False)
-
+overrideScanFilters vpsOpts@VPSOpts { fileFilter = (FilterExpressions []) } locator = do
+  let VPSOpts{..} = vpsOpts
+  trace "[All] Fetching scan file filter from FOSSA"
+  overrideFilters <- getProjectScanFilters fossa locator
+  trace $ unpack $ "[All] Using scan file filter: " <> encodeFilterExpressions overrideFilters
+  pure (VPSOpts fossa projectName userProvidedRevision skipIprScan overrideFilters, True)
+overrideScanFilters vpsOpts _ = do
+  trace "[All] Scan file filters provided locally"
+  pure (vpsOpts, False)
+  
 storeUpdatedScanFilters :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Trace sig m) => Locator -> FilterExpressions -> FossaOpts -> m ()
-storeUpdatedScanFilters locator filters FossaOpts{..}
-  | (unFilterExpressions filters) == [] = do
-    trace "[All] No scan file filter was set, skipping update"
-    pure ()
-  | otherwise = runHTTP $ do
-    let auth = coreAuthHeader fossaApiKey
-    trace "[All] Updating FOSSA with new scan file filter for this project"
-    (baseUrl, baseOptions) <- parseUri fossaUrl
-    _ <- req POST (projectScanFiltersEndpoint baseUrl locator) (ReqBodyJson filters) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
-    pure ()
+storeUpdatedScanFilters _ (FilterExpressions []) _ = do
+  trace "[All] No scan file filter was set, skipping update"
+  pure ()
+storeUpdatedScanFilters locator filters FossaOpts{..} = runHTTP $ do
+  let auth = coreAuthHeader fossaApiKey
+  trace "[All] Updating FOSSA with new scan file filter for this project"
+  (baseUrl, baseOptions) <- parseUri fossaUrl
+  _ <- req POST (projectScanFiltersEndpoint baseUrl locator) (ReqBodyJson filters) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  pure ()  
