@@ -8,8 +8,6 @@ import App.VPSScan.NinjaGraph (NinjaGraphCmdOpts(..), ninjaGraphMain)
 import App.VPSScan.Types
 import Control.Monad (join)
 import Options.Applicative
-import Data.Aeson
-import Data.String
 
 appMain :: IO ()
 appMain = join (customExecParser (prefs showHelpOnEmpty) opts)
@@ -57,7 +55,3 @@ ninjaGraphCommand :: Mod CommandFields (IO ())
 ninjaGraphCommand = command "ninja-graph" (info (ninjaGraphMain <$> ninjaGraphOptsParser) (progDesc "Get a dependency graph for a ninja build"))
   where
     ninjaGraphOptsParser = NinjaGraphCmdOpts <$> basedirOpt <*> ninjaGraphOpts
-
--- this is like `strOption` with a slightly different type signature
-jsonOption :: FromJSON a => Mod OptionFields a -> Parser a
-jsonOption = option (eitherReader (eitherDecode . fromString))

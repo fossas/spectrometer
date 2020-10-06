@@ -119,7 +119,7 @@ overrideScanFilters vpsOpts@VPSOpts { fileFilter = (FilterExpressions []) } loca
   trace "[All] Fetching scan file filter from FOSSA"
   overrideFilters <- getProjectScanFilters fossa locator
   trace $ unpack $ "[All] Using scan file filter: " <> encodeFilterExpressions overrideFilters
-  pure (VPSOpts fossa projectName userProvidedRevision skipIprScan overrideFilters, True)
+  pure (vpsOpts{fileFilter = overrideFilters}, True)
 overrideScanFilters vpsOpts _ = do
   trace "[All] Scan file filters provided locally"
   pure (vpsOpts, False)
