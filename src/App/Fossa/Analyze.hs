@@ -158,17 +158,24 @@ tryUploadContributors baseDir baseUrl apiKey locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors baseUrl apiKey locator contributors
 
+-- This url can have a two forms (Core may allow more, but we don't care here):
+--    https://<fossa host>/projects/<project>/
+--    https://<fossa host>/projects/<project>/refs/branch/<branch>/<revision>
 fossaProjectUrl :: URI -> Text -> ProjectRevision -> Text
-fossaProjectUrl baseUrl rawLocator revision = URI.render baseUrl <> "projects/" <> encodedProject <> "/refs/branch/" <> branch <> "/" <> encodedRevision
+fossaProjectUrl baseUrl rawLocator revision = URI.render baseUrl <> "projects/" <> encodedProject <> buildSelector
   where
     Locator{locatorFetcher, locatorProject, locatorRevision} = parseLocator rawLocator
 
     underBS :: (ByteString -> ByteString) -> Text -> Text
     underBS f = TE.decodeUtf8 . f . TE.encodeUtf8
+    urlEncode' = underBS (urlEncode True)
 
-    branch = underBS (urlEncode True) (fromMaybe undefined (projectBranch revision))
-    encodedProject = underBS (urlEncode True) (locatorFetcher <> "+" <> locatorProject)
-    encodedRevision = underBS (urlEncode True) (fromMaybe "" locatorRevision)
+    encodedProject = urlEncode' (locatorFetcher <> "+" <> locatorProject)
+    encodedRevision = urlEncode' (fromMaybe "" locatorRevision)
+    -- | buildSelector is empty string unless we have a real branch to work with.
+    buildSelector = fromMaybe "" $ do
+      branch <- projectBranch revision
+      Just $ "/refs/branch/" <> urlEncode' branch <> "/" <> encodedRevision
 
 buildResult :: [Project] -> [ProjectFailure] -> Aeson.Value
 buildResult projects failures = Aeson.object
