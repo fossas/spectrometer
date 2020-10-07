@@ -121,7 +121,8 @@ analyze basedir destination override unpackArchives = runFinally $ do
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-      logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
+      let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+      logInfo ("Using branch: `" <> pretty branchText <> "`")
 
       uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projects
       case uploadResult of
