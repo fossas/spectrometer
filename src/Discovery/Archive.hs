@@ -21,7 +21,6 @@ import Path
 import qualified Path.IO as PIO
 import Prelude hiding (zip)
 
--- FIXME: exception safety of forkTask? what happens when an exception is thrown in withArchive?
 -- Given a function to run over unarchived contents, unpack archives
 discover :: (Has (Lift IO) sig m, MonadIO m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
 discover go = walk $ \_ _ files -> do
