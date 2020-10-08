@@ -2,6 +2,7 @@
 
 module Strategy.NuGet.PackagesConfig
   ( discover
+  , discover'
   , buildGraph
   , analyze
 
@@ -10,6 +11,7 @@ module Strategy.NuGet.PackagesConfig
   ) where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
@@ -29,6 +31,36 @@ discover = walk $ \_ _ files -> do
     Just file -> runSimpleStrategy "nuget-packagesconfig" DotnetGroup $ analyze file
 
   pure WalkContinue
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [PackagesConfigProject]
+findProjects = walk' $ \_ _ files -> do
+  case find (\f -> fileName f == "packages.config") files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([PackagesConfigProject file], WalkContinue)
+
+data PackagesConfigProject = PackagesConfigProject
+  { packagesConfigFile :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: PackagesConfigProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "packagesconfig",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ packagesConfigFile project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackagesConfigProject -> m (Graphing Dependency)
+getDeps = analyze' . packagesConfigFile
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsXML file
 
 instance FromXML PackagesConfig where
   parseElement el = PackagesConfig <$> children "package" el
