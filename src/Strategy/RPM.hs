@@ -77,7 +77,7 @@ data RpmProject = RpmProject
 mkProject :: RpmProject -> NewProject
 mkProject project =
   NewProject
-    { projectType = "rpm3",
+    { projectType = "rpm",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,
       projectPath = parent $ rpmFile project,
