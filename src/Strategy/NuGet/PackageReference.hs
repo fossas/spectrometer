@@ -3,6 +3,7 @@
 
 module Strategy.NuGet.PackageReference
   ( discover
+  , discover'
   , buildGraph
   , analyze
 
@@ -13,6 +14,7 @@ module Strategy.NuGet.PackageReference
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -34,9 +36,38 @@ discover = walk $ \_ _ files -> do
 
   pure WalkContinue
  
-  where 
-      isPackageRefFile :: Path b File -> Bool
-      isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
+isPackageRefFile :: Path b File -> Bool
+isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [PackageReferenceProject]
+findProjects = walk' $ \_ _ files -> do
+  case find isPackageRefFile files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([PackageReferenceProject file], WalkContinue)
+
+data PackageReferenceProject = PackageReferenceProject
+  { packageReferenceFile :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: PackageReferenceProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "packagereference",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ packageReferenceFile project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m (Graphing Dependency)
+getDeps = analyze' . packageReferenceFile
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsXML @PackageReference file
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML @PackageReference file
