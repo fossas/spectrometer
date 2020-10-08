@@ -26,16 +26,18 @@ discover' ::
   ) =>
   Path Abs Dir ->
   m [NewProject]
-discover' dir = map mkProject <$> PomClosure.findProjects dir
+discover' dir = map (mkProject dir) <$> PomClosure.findProjects dir
 
-mkProject :: PomClosure.MavenProjectClosure -> NewProject
-mkProject closure = 
+mkProject ::
+  -- | basedir; required for licenses
+  Path Abs Dir -> PomClosure.MavenProjectClosure -> NewProject
+mkProject basedir closure = 
   NewProject
     { projectType = "maven",
       projectPath = parent $ PomClosure.closurePath closure,
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps closure,
-      projectLicenses = pure [] -- FIXME
+      projectLicenses = pure $ Pom.getLicenses basedir closure
     }
 
 getDeps ::

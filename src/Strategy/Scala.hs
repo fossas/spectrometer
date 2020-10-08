@@ -48,7 +48,7 @@ discover basedir =
     basedir
 
 discover' :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [NewProject]
-discover' dir = map mkProject <$> findProjects dir
+discover' dir = map (mkProject dir) <$> findProjects dir
 
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath

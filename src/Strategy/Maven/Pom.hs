@@ -5,6 +5,7 @@ module Strategy.Maven.Pom
     analyze,
     analyze',
     mkProjectClosure,
+    getLicenses,
   )
 where
 
@@ -61,7 +62,7 @@ mkProjectClosure basedir mvnClosure =
       closureStrategyName = "maven-pom",
       closureModuleDir = parent (closurePath mvnClosure),
       closureDependencies = dependencies,
-      closureLicenses = licenses
+      closureLicenses = getLicenses basedir mvnClosure
     }
   where
     dependencies =
@@ -71,16 +72,16 @@ mkProjectClosure basedir mvnClosure =
           dependenciesComplete = NotComplete
         }
 
-    licenses :: [LicenseResult]
-    licenses = do
-      (abspath, pom) <- M.elems (closurePoms mvnClosure)
-      case Path.makeRelative basedir abspath of
-        Nothing -> []
-        Just relpath ->
-          let path = toFilePath relpath
-              validated = mapMaybe validateLicense (pomLicenses pom)
-           in pure (LicenseResult path validated)
-
+getLicenses :: Path Abs Dir -> MavenProjectClosure -> [LicenseResult]
+getLicenses basedir closure = do
+  (abspath, pom) <- M.elems (closurePoms closure)
+  case Path.makeRelative basedir abspath of
+    Nothing -> []
+    Just relpath ->
+      let path = toFilePath relpath
+          validated = mapMaybe validateLicense (pomLicenses pom)
+        in pure (LicenseResult path validated)
+  where
     -- we prefer URLs over SPDX because name isn't guaranteed to be an SPDX expression
     validateLicense :: PomLicense -> Maybe License
     validateLicense license = licenseAsUrl <|> licenseAsSpdx
