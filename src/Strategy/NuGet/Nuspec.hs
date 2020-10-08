@@ -61,7 +61,7 @@ mkProject project =
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,
       projectPath = parent $ nuspecFile project,
-      projectLicenses = pure []
+      projectLicenses = runReadFSIO $ analyzeLicenses (nuspecFile project)
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m (Graphing Dependency)
@@ -69,6 +69,11 @@ getDeps = analyze' . nuspecFile
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = buildGraph <$> readContentsXML @Nuspec file
+
+analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
+analyzeLicenses file = do
+  nuspec <- readContentsXML @Nuspec file
+  pure [LicenseResult (toFilePath file) (nuspecLicenses nuspec)]
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file
