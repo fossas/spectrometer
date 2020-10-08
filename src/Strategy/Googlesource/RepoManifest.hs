@@ -6,7 +6,7 @@
 {-# language TypeApplications #-}
 
 module Strategy.Googlesource.RepoManifest
-  ( discover'
+  ( discover
   , buildGraph
   , validateProject
   , validateProjects
@@ -44,8 +44,8 @@ import Text.GitConfig.Parser (Section(..), parseConfig)
 import qualified Data.HashMap.Strict as HM
 import Text.Megaparsec (errorBundlePretty)
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 findProjects :: MonadIO m => Path Abs Dir -> m [RepoManifestProject]

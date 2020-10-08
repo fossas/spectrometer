@@ -1,5 +1,5 @@
 module Strategy.Yarn
-  ( discover'
+  ( discover
   ) where
 
 import Control.Effect.Diagnostics
@@ -12,8 +12,8 @@ import Types
 import Prelude
 import qualified Strategy.Node.YarnLock as YarnLock
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [YarnProject]
 findProjects = walk' $ \dir _ files -> do

@@ -1,5 +1,5 @@
 module Strategy.Cocoapods
-  ( discover',
+  ( discover,
   )
 where
 
@@ -15,8 +15,8 @@ import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CocoapodsProject]
 findProjects = walk' $ \dir _ files -> do

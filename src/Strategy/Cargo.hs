@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Cargo
-  ( discover'
+  ( discover
   , CargoMetadata(..)
   , NodeDependency(..)
   , NodeDepKind(..)
@@ -118,8 +118,8 @@ instance FromJSON CargoMetadata where
                   <*> (obj .: "workspace_members" >>= traverse parsePkgId)
                   <*> obj .: "resolve"
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CargoProject]
 findProjects = walk' $ \dir _ files -> do

@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Haskell.Stack
-  ( discover',
+  ( discover,
     -- * Testing
     buildGraph,
     PackageName (..),
@@ -59,8 +59,8 @@ parseLocationType txt
   | txt `elem` ["project package", "archive"] = pure Local
   | otherwise = fail $ "Bad location type: " ++ T.unpack txt
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [StackProject]
 findProjects = walk' $ \dir _ files -> do

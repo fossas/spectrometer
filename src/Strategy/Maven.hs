@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Strategy.Maven
-  ( discover',
+  ( discover,
     mkProject,
   )
 where
@@ -18,7 +18,7 @@ import qualified Strategy.Maven.Pom as Pom
 import qualified Strategy.Maven.Pom.Closure as PomClosure
 import Types
 
-discover' ::
+discover ::
   ( MonadIO m,
     Has (Lift IO) sig m,
     Has Diagnostics sig m,
@@ -26,7 +26,7 @@ discover' ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject]
-discover' dir = map (mkProject dir) <$> PomClosure.findProjects dir
+discover dir = map (mkProject dir) <$> PomClosure.findProjects dir
 
 mkProject ::
   -- | basedir; required for licenses

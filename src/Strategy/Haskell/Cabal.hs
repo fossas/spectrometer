@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Haskell.Cabal
-  ( discover',
+  ( discover,
 
     -- * Testing
     BuildPlan (..),
@@ -120,8 +120,8 @@ isCabalFile file = isDotCabal || isCabalDotProject
     isDotCabal = ".cabal" `isSuffixOf` name
     isCabalDotProject = "cabal.project" == name
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CabalProject]
 findProjects = walk' $ \dir _ files -> do

@@ -1,5 +1,5 @@
 module Strategy.NuGet.Paket
-  ( discover'
+  ( discover
   , findSections
   , buildGraph
 
@@ -32,8 +32,8 @@ import Types
 
 type Parser = Parsec Void Text
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [PaketProject]
 findProjects = walk' $ \_ _ files -> do

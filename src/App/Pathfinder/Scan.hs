@@ -83,7 +83,7 @@ discoverFuncs ::
   ) =>
   -- | Discover functions
   [Path Abs Dir -> m [DiscoveredProject]]
-discoverFuncs = [Maven.discover', Nuspec.discover']
+discoverFuncs = [Maven.discover, Nuspec.discover]
 
 data ProjectLicenseScan = ProjectLicenseScan
   { licenseStrategyType :: Text

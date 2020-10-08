@@ -1,5 +1,5 @@
 module Strategy.Bundler
-  ( discover',
+  ( discover,
   )
 where
 
@@ -15,8 +15,8 @@ import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [BundlerProject]
 findProjects = walk' $ \dir _ files -> do

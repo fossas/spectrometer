@@ -1,5 +1,5 @@
 module Strategy.Rebar3
-  ( discover',
+  ( discover,
   )
 where
 
@@ -12,8 +12,8 @@ import Path
 import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [RebarProject]
 findProjects = walk' $ \dir _ files -> do

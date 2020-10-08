@@ -3,7 +3,7 @@
 
 module Strategy.RPM
   ( buildGraph,
-    discover',
+    discover,
     getSpecDeps,
     getTypeFromLine,
     toDependency,
@@ -52,8 +52,8 @@ data Dependencies
       }
   deriving (Eq, Ord, Show)
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [RpmProject]
 findProjects = walk' $ \_ _ files -> do

@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Carthage
-  ( discover'
+  ( discover
   , analyze
   , ResolvedEntry(..)
   , EntryType(..)
@@ -29,8 +29,8 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CarthageProject]
 findProjects = walk' $ \dir _ files -> do

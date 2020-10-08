@@ -10,7 +10,7 @@
 -- >  {[org.clojure/core.specs.alpha "0.2.44"] nil,
 -- >   [org.clojure/spec.alpha "0.2.176"] nil}}
 module Strategy.Leiningen
-  ( discover',
+  ( discover,
     buildGraph,
     Deps (..),
     ClojureDep (..),
@@ -46,8 +46,8 @@ leinDepsCmd =
       cmdAllowErr = Never
     }
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [LeiningenProject]
 findProjects = walk' $ \dir _ files -> do

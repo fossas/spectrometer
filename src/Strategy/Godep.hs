@@ -1,5 +1,5 @@
 module Strategy.Godep
-  ( discover',
+  ( discover,
   )
 where
 
@@ -16,8 +16,8 @@ import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GodepProject]
 findProjects = walk' $ \dir _ files -> do

@@ -1,5 +1,5 @@
 module Strategy.Python.Setuptools
-  ( discover',
+  ( discover,
   )
 where
 
@@ -16,8 +16,8 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walk' $ \dir _ files -> do

@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Gradle
-  ( discover'
+  ( discover
 
   , buildGraph
   , JsonDep(..)
@@ -45,7 +45,7 @@ gradleJsonDepsCmd baseCmd initScriptFilepath targets = Command
   , cmdAllowErr = Never
   }
 
-discover' ::
+discover ::
   ( Has (Lift IO) sig m,
     MonadIO m,
     Has Exec sig m,
@@ -53,7 +53,7 @@ discover' ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover dir = map mkProject <$> findProjects dir
 
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath

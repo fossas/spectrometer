@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Strategy.Python.Pipenv
-  ( discover'
+  ( discover
 
   , PipenvGraphDep(..)
   , PipfileLock(..)
@@ -31,8 +31,8 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [PipenvProject]
 findProjects = walk' $ \_ _ files -> do

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Composer
-  ( discover',
+  ( discover,
     buildGraph,
     ComposerLock (..),
     CompDep (..),
@@ -26,8 +26,8 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [ComposerProject]
 findProjects = walk' $ \dir _ files -> do

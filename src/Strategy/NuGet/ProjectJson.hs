@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.NuGet.ProjectJson
-  ( discover'
+  ( discover
   , buildGraph
 
   , ProjectJson(..)
@@ -24,8 +24,8 @@ import qualified Graphing
 import Path
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [ProjectJsonProject]
 findProjects = walk' $ \_ _ files -> do

@@ -1,5 +1,5 @@
 module Strategy.Npm
-  ( discover'
+  ( discover
   )
 where
 
@@ -16,8 +16,8 @@ import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [NpmProject]
 findProjects = walk' $ \dir _ files -> do

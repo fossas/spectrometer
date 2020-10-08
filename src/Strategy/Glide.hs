@@ -1,5 +1,5 @@
 module Strategy.Glide
-  ( discover',
+  ( discover,
   )
 where
 
@@ -12,8 +12,8 @@ import Path
 import qualified Strategy.Go.GlideLock as GlideLock
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
-discover' dir = map mkProject <$> findProjects dir
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GlideProject]
 findProjects = walk' $ \dir _ files -> do
