@@ -15,7 +15,7 @@ import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CocoapodsProject]
@@ -41,9 +41,9 @@ data CocoapodsProject = CocoapodsProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: CocoapodsProject -> NewProject
+mkProject :: CocoapodsProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "cocoapods",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,

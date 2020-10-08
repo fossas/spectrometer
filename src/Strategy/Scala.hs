@@ -31,7 +31,7 @@ import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..))
 import Strategy.Maven.Pom.Resolver (GlobalClosure (..), buildGlobalClosure)
 import Types
 
-discover' :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [NewProject]
+discover' :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map (mkProject dir) <$> findProjects dir
 
 pathToText :: Path ar fd -> Text

@@ -45,7 +45,7 @@ scanMain basedir debug = do
 
 runLicenseAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>
-  NewProject ->
+  DiscoveredProject ->
   m ()
 runLicenseAnalysis project = do
   licenseResult <- sendIO . Diag.runDiagnosticsIO $ projectLicenses project
@@ -82,7 +82,7 @@ discoverFuncs ::
     Has Diag.Diagnostics sig m
   ) =>
   -- | Discover functions
-  [Path Abs Dir -> m [NewProject]]
+  [Path Abs Dir -> m [DiscoveredProject]]
 discoverFuncs = [Maven.discover', Nuspec.discover']
 
 data ProjectLicenseScan = ProjectLicenseScan
@@ -109,7 +109,7 @@ instance ToJSON CompletedLicenseScan where
       , "licenseResults"  .=  completedLicenses
       ]
 
-mkLicenseScan :: NewProject -> [LicenseResult] -> ProjectLicenseScan
+mkLicenseScan :: DiscoveredProject -> [LicenseResult] -> ProjectLicenseScan
 mkLicenseScan project licenses =
   ProjectLicenseScan
     { licenseStrategyType = projectType project,

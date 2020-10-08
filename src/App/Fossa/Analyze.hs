@@ -92,7 +92,7 @@ discoverFuncs ::
     Has Diag.Diagnostics sig m
   ) =>
   -- | Discover functions
-  [Path Abs Dir -> m [NewProject]]
+  [Path Abs Dir -> m [DiscoveredProject]]
 discoverFuncs =
   [ Bundler.discover',
     Cargo.discover',
@@ -128,7 +128,7 @@ runDependencyAnalysis ::
   -- | Analysis base directory
   BaseDir ->
   [BuildTargetFilter] ->
-  NewProject ->
+  DiscoveredProject ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project = do
   case applyFiltersToProject basedir filters project of
@@ -138,8 +138,8 @@ runDependencyAnalysis (BaseDir basedir) filters project = do
       graphResult <- sendIO . Diag.runDiagnosticsIO $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
-applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> NewProject -> Maybe (Set BuildTarget)
-applyFiltersToProject basedir filters NewProject{..} =
+applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject -> Maybe (Set BuildTarget)
+applyFiltersToProject basedir filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
     Nothing -> Just projectBuildTargets -- FIXME: this is required for --unpack-archives to continue to work
     Just rel -> applyFilters filters projectType rel projectBuildTargets

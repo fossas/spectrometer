@@ -46,7 +46,7 @@ leinDepsCmd =
       cmdAllowErr = Never
     }
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [LeiningenProject]
@@ -62,9 +62,9 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkContinue)
 
-mkProject :: LeiningenProject -> NewProject
+mkProject :: LeiningenProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "leiningen",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runExecIO $ getDeps project,

@@ -120,7 +120,7 @@ isCabalFile file = isDotCabal || isCabalDotProject
     isDotCabal = ".cabal" `isSuffixOf` name
     isCabalDotProject = "cabal.project" == name
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CabalProject]
@@ -134,9 +134,9 @@ findProjects = walk' $ \dir _ files -> do
     then pure ([project], WalkSkipAll)
     else pure ([], WalkContinue)
 
-mkProject :: CabalProject -> NewProject
+mkProject :: CabalProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "cabal",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,

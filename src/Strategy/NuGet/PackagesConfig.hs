@@ -22,7 +22,7 @@ import Parse.XML
 import Path
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [PackagesConfigProject]
@@ -36,9 +36,9 @@ data PackagesConfigProject = PackagesConfigProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: PackagesConfigProject -> NewProject
+mkProject :: PackagesConfigProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "packagesconfig",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,

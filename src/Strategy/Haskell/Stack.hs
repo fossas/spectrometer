@@ -59,7 +59,7 @@ parseLocationType txt
   | txt `elem` ["project package", "archive"] = pure Local
   | otherwise = fail $ "Bad location type: " ++ T.unpack txt
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [StackProject]
@@ -73,9 +73,9 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just _ -> pure ([project], WalkSkipAll)
 
-mkProject :: StackProject -> NewProject
+mkProject :: StackProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "stack",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runExecIO $ getDeps project,

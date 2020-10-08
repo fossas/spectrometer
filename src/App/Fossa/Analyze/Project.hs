@@ -12,7 +12,7 @@ import qualified Graphing
 import Path
 import Types
 
-mkResult :: NewProject -> Graphing Dependency -> ProjectResult
+mkResult :: DiscoveredProject -> Graphing Dependency -> ProjectResult
 mkResult project graph = ProjectResult
   { projectResultType = projectType project
   , projectResultPath = projectPath project

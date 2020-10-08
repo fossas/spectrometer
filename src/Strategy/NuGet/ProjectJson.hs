@@ -24,7 +24,7 @@ import qualified Graphing
 import Path
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [ProjectJsonProject]
@@ -38,9 +38,9 @@ data ProjectJsonProject = ProjectJsonProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: ProjectJsonProject -> NewProject
+mkProject :: ProjectJsonProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "projectjson",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,

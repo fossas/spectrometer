@@ -13,7 +13,7 @@ import Data.Foldable (for_, traverse_)
 import qualified Discovery.Archive as Archive
 import Effect.Logger
 import Path
-import Types (NewProject)
+import Types (DiscoveredProject)
 
 -- | Run a list of discover functions in parallel, running the provided function
 -- on each discovered project. Note that the provided function is also run in
@@ -21,11 +21,11 @@ import Types (NewProject)
 withDiscoveredProjects ::
   (Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
   -- | Discover functions
-  [Path Abs Dir -> Diag.DiagnosticsC m [NewProject]] ->
+  [Path Abs Dir -> Diag.DiagnosticsC m [DiscoveredProject]] ->
   -- | whether to unpack archives
   Bool ->
   Path Abs Dir ->
-  (NewProject -> m ()) ->
+  (DiscoveredProject -> m ()) ->
   m ()
 withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
   for_ discoverFuncs $ \discover -> forkTask $ do

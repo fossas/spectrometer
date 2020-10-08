@@ -44,7 +44,7 @@ import Text.GitConfig.Parser (Section(..), parseConfig)
 import qualified Data.HashMap.Strict as HM
 import Text.Megaparsec (errorBundlePretty)
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
@@ -62,9 +62,9 @@ data RepoManifestProject = RepoManifestProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: RepoManifestProject -> NewProject
+mkProject :: RepoManifestProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "repomanifest",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,

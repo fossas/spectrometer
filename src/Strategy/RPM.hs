@@ -52,7 +52,7 @@ data Dependencies
       }
   deriving (Eq, Ord, Show)
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [RpmProject]
@@ -66,9 +66,9 @@ data RpmProject = RpmProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: RpmProject -> NewProject
+mkProject :: RpmProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "rpm",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,

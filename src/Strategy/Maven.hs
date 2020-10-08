@@ -25,14 +25,14 @@ discover' ::
     Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  m [NewProject]
+  m [DiscoveredProject]
 discover' dir = map (mkProject dir) <$> PomClosure.findProjects dir
 
 mkProject ::
   -- | basedir; required for licenses
-  Path Abs Dir -> PomClosure.MavenProjectClosure -> NewProject
+  Path Abs Dir -> PomClosure.MavenProjectClosure -> DiscoveredProject
 mkProject basedir closure = 
-  NewProject
+  DiscoveredProject
     { projectType = "maven",
       projectPath = parent $ PomClosure.closurePath closure,
       projectBuildTargets = mempty,

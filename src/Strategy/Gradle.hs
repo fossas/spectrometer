@@ -52,7 +52,7 @@ discover' ::
     Has Logger sig m
   ) =>
   Path Abs Dir ->
-  m [NewProject]
+  m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 pathToText :: Path ar fd -> Text
@@ -122,9 +122,9 @@ parseProjects outBL = if S.null subprojects then S.singleton "" else subprojects
 parseSubproject :: Text -> Maybe Text
 parseSubproject line = T.takeWhile (/= '\'') <$> T.stripPrefix "+--- Project '" (T.strip line)
 
-mkProject :: GradleProject -> NewProject
+mkProject :: GradleProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "gradle",
       projectBuildTargets = S.map BuildTarget $ gradleProjects project,
       projectDependencyGraph = runExecIO . getDeps project,

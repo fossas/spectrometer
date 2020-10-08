@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Types
-  ( NewProject(..)
+  ( DiscoveredProject(..)
   , BuildTarget(..)
 
   , LicenseResult(..)
@@ -24,7 +24,7 @@ import Graphing
 import Path
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
-data NewProject = NewProject
+data DiscoveredProject = DiscoveredProject
   { projectType :: Text,
     projectPath :: Path Abs Dir,
     projectBuildTargets :: Set BuildTarget,

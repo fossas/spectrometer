@@ -16,7 +16,7 @@ import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GodepProject]
@@ -41,9 +41,9 @@ data GodepProject = GodepProject
     godepLock :: Maybe (Path Abs File)
   }
 
-mkProject :: GodepProject -> NewProject
+mkProject :: GodepProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "godep",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,

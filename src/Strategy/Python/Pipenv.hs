@@ -31,7 +31,7 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [PipenvProject]
@@ -52,8 +52,8 @@ getDeps project = do
 
   pure (buildGraph lock maybeDeps)
 
-mkProject :: PipenvProject -> NewProject
-mkProject project = NewProject
+mkProject :: PipenvProject -> DiscoveredProject
+mkProject project = DiscoveredProject
   { projectType = "pipenv"
   , projectBuildTargets = mempty
   , projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project

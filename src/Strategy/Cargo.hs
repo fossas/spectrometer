@@ -118,7 +118,7 @@ instance FromJSON CargoMetadata where
                   <*> (obj .: "workspace_members" >>= traverse parsePkgId)
                   <*> obj .: "resolve"
 
-discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover' dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CargoProject]
@@ -139,9 +139,9 @@ data CargoProject = CargoProject
     cargoToml :: Path Abs File
   } deriving (Eq, Ord, Show)
 
-mkProject :: CargoProject -> NewProject
+mkProject :: CargoProject -> DiscoveredProject
 mkProject project =
-  NewProject
+  DiscoveredProject
     { projectType = "cargo",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runExecIO $ getDeps project,
