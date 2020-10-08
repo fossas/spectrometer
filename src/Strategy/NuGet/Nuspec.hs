@@ -3,6 +3,7 @@
 
 module Strategy.NuGet.Nuspec
   ( discover
+  , discover'
   , buildGraph
   , analyze
 
@@ -16,6 +17,7 @@ module Strategy.NuGet.Nuspec
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -37,6 +39,36 @@ discover = walk $ \_ _ files -> do
     Just file -> runSimpleStrategy "nuget-nuspec" DotnetGroup $ analyze file
 
   pure WalkContinue
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [NuspecProject]
+findProjects = walk' $ \_ _ files -> do
+  case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([NuspecProject file], WalkContinue)
+
+data NuspecProject = NuspecProject
+  { nuspecFile :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: NuspecProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "nuspec",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ nuspecFile project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m (Graphing Dependency)
+getDeps = analyze' . nuspecFile
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsXML @Nuspec file
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file

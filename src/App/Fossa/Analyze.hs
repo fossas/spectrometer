@@ -57,6 +57,7 @@ import qualified Strategy.Haskell.Stack as Stack
 import qualified Strategy.Leiningen as Leiningen
 import qualified Strategy.Maven as Maven
 import qualified Strategy.Npm as Npm
+import qualified Strategy.NuGet.Nuspec as Nuspec
 import qualified Strategy.Python.Setuptools as Setuptools
 import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.RPM as RPM
@@ -104,7 +105,8 @@ discoverFuncs =
     Npm.discover',
     Scala.discover',
     RPM.discover',
-    RepoManifest.discover'
+    RepoManifest.discover',
+    Nuspec.discover'
   ]
 
 runDependencyAnalysis ::
