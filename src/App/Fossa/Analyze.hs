@@ -62,6 +62,7 @@ import qualified Strategy.NuGet.PackageReference as PackageReference
 import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
 import qualified Strategy.NuGet.Paket as Paket
 import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
+import qualified Strategy.NuGet.ProjectJson as ProjectJson
 import qualified Strategy.Python.Setuptools as Setuptools
 import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.RPM as RPM
@@ -114,7 +115,8 @@ discoverFuncs =
     PackageReference.discover',
     PackagesConfig.discover',
     Paket.discover',
-    ProjectAssetsJson.discover'
+    ProjectAssetsJson.discover',
+    ProjectJson.discover'
   ]
 
 runDependencyAnalysis ::
