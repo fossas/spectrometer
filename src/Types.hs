@@ -35,7 +35,6 @@ data DiscoveredProject = DiscoveredProject
 newtype BuildTarget = BuildTarget { unBuildTarget :: Text }
   deriving (Eq, Ord, Show)
 
--- FIXME: we also need to annotate dep graphs with Path Rel File -- merge these somehow?
 data LicenseResult = LicenseResult
   { licenseFile   :: FilePath
   , licensesFound :: [License]
