@@ -25,7 +25,7 @@ spec = do
       runParser filterParser "" `shouldFailOn` "foo@"
     it "should work for a subset of weird parse cases" $ do
       runParser filterParser "" "foo@bar@baz" `shouldParse` ProjectFilter "foo" $(mkRelDir "bar@baz")
-      runParser filterParser "" "foo@\2" `shouldParse` ProjectFilter "foo" $(mkRelDir "\2")
+      runParser filterParser "" "foo@\127" `shouldParse` ProjectFilter "foo" $(mkRelDir "\127")
 
   describe "applyFilter" $ do
     it "should allow all BuildTargets when a project filter succeeds" $ do
