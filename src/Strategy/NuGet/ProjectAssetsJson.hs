@@ -3,6 +3,7 @@
 
 module Strategy.NuGet.ProjectAssetsJson
   ( discover
+  , discover'
   , buildGraph
   , analyze
 
@@ -10,6 +11,7 @@ module Strategy.NuGet.ProjectAssetsJson
   ) where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import qualified Data.Map.Strict as M
 import Data.Maybe
@@ -29,6 +31,36 @@ discover = walk $ \_ _ files -> do
     Just file -> runSimpleStrategy "nuget-projectassetsjson" DotnetGroup $ analyze file
 
   pure WalkContinue
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [ProjectAssetsJsonProject]
+findProjects = walk' $ \_ _ files -> do
+  case findFileNamed "project.assets.json" files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([ProjectAssetsJsonProject file], WalkContinue)
+
+data ProjectAssetsJsonProject = ProjectAssetsJsonProject
+  { projectAssetsJsonFile :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: ProjectAssetsJsonProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "projectassetsjson",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ projectAssetsJsonFile project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectAssetsJsonProject -> m (Graphing Dependency)
+getDeps = analyze' . projectAssetsJsonFile
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsJson @ProjectAssetsJson file
 
 data ProjectAssetsJson = ProjectAssetsJson
   { targets     :: M.Map Text (M.Map Text DependencyInfo)
