@@ -1,5 +1,6 @@
 module Strategy.NuGet.Paket
   ( discover
+  , discover'
   , analyze
   , findSections
   , buildGraph
@@ -11,6 +12,7 @@ module Strategy.NuGet.Paket
 
 import Control.Effect.Diagnostics
 import Control.Monad (guard)
+import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Char as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -39,6 +41,36 @@ discover = walk $ \_ _ files -> do
     Just file -> runSimpleStrategy "paket-paketlock" DotnetGroup $ analyze file
 
   pure WalkContinue
+
+discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
+discover' dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [PaketProject]
+findProjects = walk' $ \_ _ files -> do
+  case findFileNamed "paket.lock" files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([PaketProject file], WalkContinue)
+
+data PaketProject = PaketProject
+  { paketLock :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: PaketProject -> NewProject
+mkProject project =
+  NewProject
+    { projectType = "paket",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ paketLock project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m (Graphing Dependency)
+getDeps = analyze' . paketLock
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsParser findSections file
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser findSections file
