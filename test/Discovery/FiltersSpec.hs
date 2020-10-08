@@ -18,10 +18,14 @@ spec = do
   describe "filterParser" $ do
     it "should parse both types of projects" $ do
       runParser filterParser "" "foo@bar" `shouldParse` (ProjectFilter "foo" $(mkRelDir "bar"))
-      runParser filterParser "" "foo@bar:baz" `shouldParse` (TargetFilter "foo" $(mkRelDir "bar") (BuildTarget "baz"))
+      runParser filterParser "" "foo@bar/baz" `shouldParse` (ProjectFilter "foo" $(mkRelDir "bar/baz"))
+      runParser filterParser "" "foo@bar/baz:quux" `shouldParse` (TargetFilter "foo" $(mkRelDir "bar/baz") (BuildTarget "quux"))
     it "should fail on malformed input" $ do
       runParser filterParser "" `shouldFailOn` "foo@bar:"
       runParser filterParser "" `shouldFailOn` "foo@"
+    it "should work for a subset of weird parse cases" $ do
+      runParser filterParser "" "foo@bar@baz" `shouldParse` ProjectFilter "foo" $(mkRelDir "bar@baz")
+      runParser filterParser "" "foo@\2" `shouldParse` ProjectFilter "foo" $(mkRelDir "\2")
 
   describe "applyFilter" $ do
     it "should allow all BuildTargets when a project filter succeeds" $ do
