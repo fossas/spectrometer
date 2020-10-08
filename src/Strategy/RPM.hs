@@ -14,10 +14,11 @@ module Strategy.RPM
 where
 
 import Control.Effect.Diagnostics
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, catMaybes)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Extra (splitOnceOn)
@@ -56,13 +57,16 @@ discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [RpmProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects = walk' $ \dir _ files -> do
   let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
 
-  pure (map RpmProject specs, WalkContinue)
+  case specs of
+    [] -> pure ([], WalkContinue)
+    _ -> pure ([RpmProject dir specs], WalkContinue)
 
 data RpmProject = RpmProject
-  { rpmFile :: Path Abs File
+  { rpmDir :: Path Abs Dir
+  , rpmFiles :: [Path Abs File]
   }
   deriving (Eq, Ord, Show)
 
@@ -72,16 +76,28 @@ mkProject project =
     { projectType = "rpm",
       projectBuildTargets = mempty,
       projectDependencyGraph = const . runReadFSIO $ getDeps project,
-      projectPath = parent $ rpmFile project,
+      projectPath = rpmDir project,
       projectLicenses = pure []
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m (Graphing Dependency)
-getDeps = analyze . rpmFile
+getDeps = analyze . rpmFiles
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze specFile = do
-  specFileText <- readContentsText specFile
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m (Graphing Dependency)
+analyze specFiles = do
+  results <- traverse (recover . analyzeSingle) specFiles
+  let successful = catMaybes results
+
+  when (null successful) $ fatalText "Analysis failed for all discovered *.spec files"
+
+  let graphing :: Graphing Dependency
+      graphing = mconcat successful
+
+  pure graphing
+
+analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyzeSingle file = do 
+  specFileText <- readContentsText file
   pure . buildGraph $ getSpecDeps specFileText
 
 toDependency :: RPMDependency -> Dependency

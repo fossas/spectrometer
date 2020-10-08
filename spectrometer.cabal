@@ -26,6 +26,7 @@ common deps
     , algebraic-graphs             ^>=0.5
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.13.2.3
+    -- TODO: This fixes a bug in cpio-conduit that prevents it from compiling. Remove this once we fix or bump cpio-conduit
     , base16-bytestring            ^>=0.1.1.7
     , bytestring                   ^>=0.10.8
     , codec-rpm                    ^>=0.2.2
@@ -51,6 +52,7 @@ common deps
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , req                          >=3.4      && <3.6
+    , split                        ^>=0.2.3.4
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , tar                          ^>=0.5.1.1
@@ -134,6 +136,7 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
     Strategy.Glide
     Strategy.Go.GlideLock
@@ -225,6 +228,7 @@ test-suite unit-tests
     Composer.ComposerLockSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
+    Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
     Extra.TextSpec
     Go.GlideLockSpec

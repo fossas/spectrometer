@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Erlang.Rebar3Tree
   ( analyze'
@@ -11,13 +12,16 @@ module Strategy.Erlang.Rebar3Tree
 
 import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import DepTypes
 import Effect.Exec
+import Effect.ReadFS
 import Graphing (Graphing, unfold)
 import Path
+import Strategy.Erlang.ConfigParser (parseConfig, ErlValue (..), ConfigValues (..), AtomText (..))
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -28,8 +32,41 @@ rebar3TreeCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
-analyze' dir = buildGraph <$> execParser rebar3TreeParser dir rebar3TreeCmd
+analyze' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = do
+  aliasMap <- extractAliasLookup <$> readContentsParser parseConfig (dir </> configFile)
+  buildGraph . unaliasDeps aliasMap <$> execParser rebar3TreeParser dir rebar3TreeCmd
+
+configFile :: Path Rel File
+configFile = $(mkRelFile "rebar.config")
+
+extractAliasLookup :: ConfigValues -> M.Map Text Text
+extractAliasLookup (ConfigValues erls) = foldr extract M.empty erls
+  where
+    extract :: ErlValue -> M.Map Text Text -> M.Map Text Text
+    extract val aliasMap = aliasMap <> M.fromList (mapMaybe getAlias packages)
+      where
+        packages :: [ErlValue]
+        packages = case val of
+          ErlTuple [ErlAtom (AtomText "deps"), ErlArray deplist] -> deplist
+          _ -> []
+        
+        getAlias :: ErlValue -> Maybe (Text, Text)
+        getAlias erl = case erl of
+          ErlTuple [ErlAtom (AtomText realname), ErlString _, ErlTuple [ErlAtom (AtomText "pkg"), ErlAtom (AtomText alias)]] -> Just (realname, alias)
+          ErlTuple [ErlAtom (AtomText realname), ErlTuple [ErlAtom (AtomText "pkg"), ErlAtom (AtomText alias)]] -> Just (realname, alias)
+          _ -> Nothing
+          
+
+unaliasDeps :: M.Map Text Text -> [Rebar3Dep] -> [Rebar3Dep]
+unaliasDeps aliasMap = map unalias
+  where
+    unalias :: Rebar3Dep -> Rebar3Dep
+    unalias dep = changeName dep . lookupName aliasMap $ depName dep
+    lookupName :: M.Map Text Text -> Text -> Text
+    lookupName map' name = M.findWithDefault name name map'
+    changeName :: Rebar3Dep -> Text -> Rebar3Dep
+    changeName dep name = dep { depName = name }
 
 buildGraph :: [Rebar3Dep] -> Graphing Dependency
 buildGraph deps = unfold deps subDeps toDependency
@@ -99,5 +136,4 @@ rebar3TreeParser = concat <$> ((try (rebarDep 0) <|> ignoredLine) `sepBy` eol) <
   rebarRecurse :: Int -> Parser [Rebar3Dep]
   rebarRecurse depth = do
     _ <- chunk "\n"
-    deps <- rebarDep depth
-    pure deps
+    rebarDep depth

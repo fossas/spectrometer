@@ -179,7 +179,8 @@ analyze basedir destination override unpackArchives filters = do
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-      logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
+      let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+      logInfo ("Using branch: `" <> pretty branchText <> "`")
 
       uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projectResults
       case uploadResult of
@@ -190,7 +191,7 @@ analyze basedir destination override unpackArchives filters = do
             [ "============================================================"
             , ""
             , "    View FOSSA Report:"
-            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) (projectBranch revision))
+            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) revision)
             , ""
             , "============================================================"
             ]
@@ -216,16 +217,24 @@ tryUploadContributors baseDir baseUrl apiKey locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors baseUrl apiKey locator contributors
 
-fossaProjectUrl :: URI -> Text -> Text -> Text
-fossaProjectUrl baseUrl rawLocator branch = URI.render baseUrl <> "projects/" <> encodedProject <> "/refs/branch/" <> branch <> "/" <> encodedRevision
+-- This url can have a two forms (Core may allow more, but we don't care here):
+--    https://<fossa host>/projects/<project>/
+--    https://<fossa host>/projects/<project>/refs/branch/<branch>/<revision>
+fossaProjectUrl :: URI -> Text -> ProjectRevision -> Text
+fossaProjectUrl baseUrl rawLocator revision = URI.render baseUrl <> "projects/" <> encodedProject <> buildSelector
   where
     Locator{locatorFetcher, locatorProject, locatorRevision} = parseLocator rawLocator
 
     underBS :: (ByteString -> ByteString) -> Text -> Text
     underBS f = TE.decodeUtf8 . f . TE.encodeUtf8
+    urlEncode' = underBS (urlEncode True)
 
-    encodedProject = underBS (urlEncode True) (locatorFetcher <> "+" <> locatorProject)
-    encodedRevision = underBS (urlEncode True) (fromMaybe "" locatorRevision)
+    encodedProject = urlEncode' (locatorFetcher <> "+" <> locatorProject)
+    encodedRevision = urlEncode' (fromMaybe "" locatorRevision)
+    -- | buildSelector is empty string unless we have a real branch to work with.
+    buildSelector = fromMaybe "" $ do
+      branch <- projectBranch revision
+      Just $ "/refs/branch/" <> urlEncode' branch <> "/" <> encodedRevision
 
 buildResult :: [ProjectResult] -> Aeson.Value
 buildResult projects = Aeson.object

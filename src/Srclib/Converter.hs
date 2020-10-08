@@ -38,7 +38,7 @@ toSourceUnit ProjectResult{..} =
     renderedPath = Text.pack (toFilePath projectResultPath) <> "||" <> projectResultType
 
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) projectResultGraph
+    filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph
@@ -58,9 +58,13 @@ mkSourceUnitDependency gr locator = SourceUnitDependency
   , sourceDepImports = Set.toList $ AM.postSet locator gr
   }
 
-isProdDep :: Dependency -> Bool
-isProdDep Dependency{dependencyEnvironments} =
-  null dependencyEnvironments || EnvProduction `elem` dependencyEnvironments
+shouldPublishDep :: Dependency -> Bool
+shouldPublishDep Dependency{dependencyEnvironments} =
+  null dependencyEnvironments || EnvProduction `elem` dependencyEnvironments || any isOtherEnv dependencyEnvironments
+
+isOtherEnv :: DepEnvironment -> Bool
+isOtherEnv (EnvOther _) = True
+isOtherEnv _ = False
 
 -- core can't handle subprojects
 isSupportedType :: Dependency -> Bool

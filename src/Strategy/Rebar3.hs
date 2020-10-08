@@ -7,6 +7,7 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Monad.IO.Class
 import Discovery.Walk
 import Effect.Exec
+import Effect.ReadFS
 import Graphing
 import Path
 import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
@@ -31,10 +32,10 @@ mkProject project =
   DiscoveredProject
     { projectType = "rebar3",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runExecIO $ getDeps project,
+      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,
       projectPath = rebarDir project,
       projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => RebarProject -> m (Graphing Dependency)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => RebarProject -> m (Graphing Dependency)
 getDeps project = Rebar3Tree.analyze' (rebarDir project)
