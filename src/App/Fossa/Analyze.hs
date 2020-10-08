@@ -141,7 +141,10 @@ runDependencyAnalysis (BaseDir basedir) filters project = do
 applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject -> Maybe (Set BuildTarget)
 applyFiltersToProject basedir filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
-    Nothing -> Just projectBuildTargets -- FIXME: this is required for --unpack-archives to continue to work
+    -- FIXME: this is required for --unpack-archives to continue to work.
+    -- archives are not unpacked relative to the scan basedir, so "makeRelative"
+    -- will always fail
+    Nothing -> Just projectBuildTargets
     Just rel -> applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
