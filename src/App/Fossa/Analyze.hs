@@ -48,6 +48,7 @@ import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Composer as Composer
+import qualified Strategy.Glide as Glide
 import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
 import qualified Strategy.Googlesource.RepoManifest as RepoManifest
@@ -63,6 +64,7 @@ import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
 import qualified Strategy.NuGet.Paket as Paket
 import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
 import qualified Strategy.NuGet.ProjectJson as ProjectJson
+import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.Setuptools as Setuptools
 import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.RPM as RPM
@@ -116,7 +118,9 @@ discoverFuncs =
     PackagesConfig.discover',
     Paket.discover',
     ProjectAssetsJson.discover',
-    ProjectJson.discover'
+    ProjectJson.discover',
+    Glide.discover',
+    Pipenv.discover'
   ]
 
 runDependencyAnalysis ::

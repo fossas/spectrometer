@@ -2,9 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Strategy.Python.Pipenv
-  ( discover
-  , discover'
-  , analyze
+  ( discover'
 
   , PipenvGraphDep(..)
   , PipfileLock(..)
@@ -32,14 +30,6 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Path
 import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "Pipfile.lock" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file
-
-  pure WalkContinue
 
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
@@ -82,31 +72,6 @@ pipenvGraphCmd = Command
   , cmdArgs = ["graph", "--json-tree"]
   , cmdAllowErr = Never
   }
-
-analyze ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs File -> m ProjectClosureBody
-analyze lockfile = do
-  lock <- readContentsJson lockfile
-  maybeDeps <- recover (execJson (parent lockfile) pipenvGraphCmd)
-
-  pure (mkProjectClosure lockfile lock maybeDeps)
-
-mkProjectClosure :: Path Abs File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosureBody
-mkProjectClosure file lockfile maybeDeps = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph lockfile maybeDeps
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
 
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do

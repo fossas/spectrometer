@@ -4,9 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Node.NpmLock
-  ( discover
-  , analyze
-  , analyze'
+  ( analyze'
   , buildGraph
 
   , NpmPackageJson(..)
@@ -23,20 +21,10 @@ import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import Data.Text (Text)
 import DepTypes
-import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "package-lock.json" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "npm-packagelock" NodejsGroup $ analyze file
-
-  pure $ WalkSkipSome ["node_modules"]
 
 data NpmPackageJson = NpmPackageJson
   { packageName         :: Text
@@ -66,24 +54,8 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsJson @NpmPackageJson file
-
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = buildGraph <$> readContentsJson @NpmPackageJson file
-
-mkProjectClosure :: Path Abs File -> NpmPackageJson -> ProjectClosureBody
-mkProjectClosure file lock = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph lock
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = NotComplete
-    }
 
 data NpmPackage = NpmPackage
   { pkgName    :: Text

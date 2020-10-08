@@ -2,9 +2,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Go.GlideLock
-  ( discover
-  , analyze
-  , analyze'
+  ( analyze'
 
   , GlideLockfile(..)
   , GlideDep(..)
@@ -19,39 +17,13 @@ import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import qualified Data.Text as T
 import DepTypes
-import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing
 import Path
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "glide.lock" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "golang-glidelock" GolangGroup $ analyze file
-
-  pure WalkContinue
-
-analyze :: ( Has ReadFS sig m , Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file
 
 analyze' :: (Has ReadFS sig m , Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = buildGraph <$> readContentsYaml @GlideLockfile file
-
-mkProjectClosure :: Path Abs File -> GlideLockfile -> ProjectClosureBody
-mkProjectClosure file lock = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph lock
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = NotComplete
-    }
 
 buildGraph :: GlideLockfile -> Graphing Dependency
 buildGraph lockfile = Graphing.fromList (map toDependency direct)

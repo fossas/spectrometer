@@ -2,8 +2,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Carthage
-  ( discover
-  , discover'
+  ( discover'
   , analyze
   , ResolvedEntry(..)
   , EntryType(..)
@@ -29,27 +28,6 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files ->
-  case findFileNamed "Cartfile.resolved" files of
-    Nothing -> pure WalkContinue
-    Just file -> do
-      runSimpleStrategy "carthage-lock" CarthageGroup $ fmap (mkProjectClosure file) (analyze file)
-      pure WalkSkipAll
-
-mkProjectClosure :: Path Abs File -> G.Graphing ResolvedEntry -> ProjectClosureBody
-mkProjectClosure file graph = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = G.gmap toDependency graph
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
 
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir

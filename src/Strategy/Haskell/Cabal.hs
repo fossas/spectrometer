@@ -4,8 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Haskell.Cabal
-  ( discover,
-    discover',
+  ( discover',
 
     -- * Testing
     BuildPlan (..),
@@ -121,14 +120,6 @@ isCabalFile file = isDotCabal || isCabalDotProject
     isDotCabal = ".cabal" `isSuffixOf` name
     isCabalDotProject = "cabal.project" == name
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files ->
-  if any isCabalFile files
-    then do
-      runSimpleStrategy "haskell-cabal" HaskellGroup $ fmap (mkProjectClosure dir) (analyze dir)
-      pure WalkSkipAll
-    else pure WalkContinue
-
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
@@ -159,21 +150,6 @@ getDeps = analyze . cabalDir
 data CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
   } deriving (Eq, Ord, Show)
-
-mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph =
-  ProjectClosureBody
-    { bodyModuleDir = dir,
-      bodyDependencies = dependencies,
-      bodyLicenses = []
-    }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = graph,
-          dependenciesOptimal = Optimal,
-          dependenciesComplete = Complete
-        }
 
 doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
 doGraph plan = do

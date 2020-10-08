@@ -1,9 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Composer
-  ( discover,
-    discover',
-    analyze,
+  ( discover',
     buildGraph,
     ComposerLock (..),
     CompDep (..),
@@ -27,14 +25,6 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Path
 import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "composer.lock" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "php-composerlock" PHPGroup $ analyze file
-
-  pure WalkContinue
 
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
@@ -111,24 +101,6 @@ instance FromJSON Source where
     Source <$> obj .: "type"
       <*> obj .: "url"
       <*> obj .: "reference"
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsJson @ComposerLock file
-
-mkProjectClosure :: Path Abs File -> ComposerLock -> ProjectClosureBody
-mkProjectClosure file lock =
-  ProjectClosureBody
-    { bodyModuleDir = parent file,
-      bodyDependencies = dependencies,
-      bodyLicenses = []
-    }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = buildGraph lock,
-          dependenciesOptimal = Optimal,
-          dependenciesComplete = Complete
-        }
 
 newtype CompPkg = CompPkg {pkgName :: Text}
   deriving (Eq, Ord, Show)

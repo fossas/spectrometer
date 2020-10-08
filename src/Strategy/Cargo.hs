@@ -1,8 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Cargo
-  ( discover
-  , discover'
+  ( discover'
   , CargoMetadata(..)
   , NodeDependency(..)
   , NodeDepKind(..)
@@ -119,14 +118,6 @@ instance FromJSON CargoMetadata where
                   <*> (obj .: "workspace_members" >>= traverse parsePkgId)
                   <*> obj .: "resolve"
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files ->
-  case findFileNamed "Cargo.toml" files of
-    Nothing -> pure WalkContinue
-    Just _ -> do
-      runSimpleStrategy "rust-cargo" RustGroup $ fmap (mkProjectClosure dir) (analyze dir)
-      pure WalkSkipAll
-
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
@@ -174,19 +165,6 @@ cargoMetadataCmd = Command
   , cmdArgs = ["metadata"]
   , cmdAllowErr = Never
   }
-
-mkProjectClosure :: Path Abs Dir ->  Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = graph
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m)
   => Path Abs Dir -> m (Graphing Dependency)

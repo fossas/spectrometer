@@ -1,7 +1,5 @@
 module Strategy.NuGet.Paket
-  ( discover
-  , discover'
-  , analyze
+  ( discover'
   , findSections
   , buildGraph
 
@@ -34,14 +32,6 @@ import Types
 
 type Parser = Parsec Void Text
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "paket.lock" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "paket-paketlock" DotnetGroup $ analyze file
-
-  pure WalkContinue
-
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
@@ -71,22 +61,6 @@ getDeps = analyze' . paketLock
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = buildGraph <$> readContentsParser findSections file
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsParser findSections file
-
-mkProjectClosure :: Path Abs File -> [Section] -> ProjectClosureBody
-mkProjectClosure file sections = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph sections
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
 
 newtype PaketPkg = PaketPkg { pkgName :: Text }
   deriving (Eq, Ord, Show)

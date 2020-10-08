@@ -3,7 +3,6 @@
 
 module Strategy.RPM
   ( buildGraph,
-    discover,
     discover',
     getSpecDeps,
     getTypeFromLine,
@@ -16,7 +15,6 @@ where
 
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
-import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
@@ -54,12 +52,6 @@ data Dependencies
       }
   deriving (Eq, Ord, Show)
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files ->
-  let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
-      analyzeFile specFile = runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
-   in traverse_ analyzeFile specs >> pure WalkContinue
-
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
@@ -91,21 +83,6 @@ analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Grap
 analyze specFile = do
   specFileText <- readContentsText specFile
   pure . buildGraph $ getSpecDeps specFileText
-
-mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph =
-  ProjectClosureBody
-    { bodyModuleDir = dir,
-      bodyDependencies = dependencies,
-      bodyLicenses = []
-    }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = graph,
-          dependenciesOptimal = Optimal,
-          dependenciesComplete = NotComplete
-        }
 
 toDependency :: RPMDependency -> Dependency
 toDependency pkg =

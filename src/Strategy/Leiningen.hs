@@ -10,8 +10,7 @@
 -- >  {[org.clojure/core.specs.alpha "0.2.44"] nil,
 -- >   [org.clojure/spec.alpha "0.2.176"] nil}}
 module Strategy.Leiningen
-  ( discover,
-    discover',
+  ( discover',
     buildGraph,
     Deps (..),
     ClojureDep (..),
@@ -47,14 +46,6 @@ leinDepsCmd =
       cmdAllowErr = Never
     }
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files -> do
-  case findFileNamed "project.clj" files of
-    Nothing -> pure WalkContinue
-    Just file -> do
-      runSimpleStrategy "clojure-lein" ClojureGroup $ mkProjectClosure dir <$> analyze file
-      pure WalkSkipAll
-
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
@@ -88,19 +79,6 @@ data LeiningenProject = LeiningenProject
   { leinDir :: Path Abs Dir
   , leinProjectClj :: Path Abs File
   } deriving (Eq, Ord, Show)
-
-mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir deps =
-  ProjectClosureBody
-    { bodyModuleDir = dir,
-      bodyDependencies =
-        ProjectDependencies
-          { dependenciesGraph = deps,
-            dependenciesComplete = Complete,
-            dependenciesOptimal = Optimal
-          },
-      bodyLicenses = []
-    }
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = do

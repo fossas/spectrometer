@@ -2,10 +2,8 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.NuGet.ProjectAssetsJson
-  ( discover
-  , discover'
+  ( discover'
   , buildGraph
-  , analyze
 
   , ProjectAssetsJson(..)
   ) where
@@ -23,14 +21,6 @@ import Effect.ReadFS
 import Graphing (Graphing, unfold)
 import Path
 import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "project.assets.json" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "nuget-projectassetsjson" DotnetGroup $ analyze file
-
-  pure WalkContinue
 
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
@@ -79,22 +69,6 @@ instance FromJSON DependencyInfo where
   parseJSON = withObject "Dependency" $ \obj ->
     DependencyInfo <$> obj .: "type"
              <*> obj .:? "dependencies" .!= M.empty
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsJson @ProjectAssetsJson file
-
-mkProjectClosure :: Path Abs File -> ProjectAssetsJson -> ProjectClosureBody
-mkProjectClosure file projectAssetsJson = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph projectAssetsJson
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
 
 data NuGetDep = NuGetDep
   { depName            :: Text

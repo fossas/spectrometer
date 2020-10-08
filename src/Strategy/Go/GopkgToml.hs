@@ -2,12 +2,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.GopkgToml
-  ( discover
-
-  , Gopkg(..)
+  ( Gopkg(..)
   , PkgConstraint(..)
 
-  , analyze
   , analyze'
   , buildGraph
 
@@ -23,7 +20,6 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
@@ -33,15 +29,6 @@ import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Toml (TomlCodec, (.=))
 import qualified Toml
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "Gopkg.toml" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "golang-gopkgtoml" GolangGroup $ analyze file
-
-  pure $ WalkSkipSome ["vendor"]
 
 gopkgCodec :: TomlCodec Gopkg
 gopkgCodec = Gopkg
@@ -82,27 +69,6 @@ analyze' file = graphingGolang $ do
 
   _ <- recover (fillInTransitive (parent file))
   pure ()
-
-analyze ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> analyze' file
-
-mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure file graph = ProjectClosureBody
-  { bodyModuleDir     = parent file
-  , bodyDependencies  = dependencies
-  , bodyLicenses      = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = graph
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = NotComplete
-    }
 
 buildGraph :: Has GolangGrapher sig m => Gopkg -> m ()
 buildGraph = void . M.traverseWithKey go . resolve

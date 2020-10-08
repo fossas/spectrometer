@@ -2,10 +2,8 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.NuGet.ProjectJson
-  ( discover
-  , discover'
+  ( discover'
   , buildGraph
-  , analyze
 
   , ProjectJson(..)
   ) where
@@ -25,14 +23,6 @@ import Graphing (Graphing)
 import qualified Graphing
 import Path
 import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "project.json" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "nuget-projectjson" DotnetGroup $ analyze file
-
-  pure WalkContinue
 
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
@@ -88,22 +78,6 @@ instance FromJSON DependencyInfo where
     parseJSONText :: Value -> Parser DependencyInfo
     parseJSONText = withText "DependencyVersion" $ \text ->
         pure $ DependencyInfo text Nothing
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsJson @ProjectJson file
-
-mkProjectClosure :: Path Abs File -> ProjectJson -> ProjectClosureBody
-mkProjectClosure file projectJson = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph projectJson
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
 
 data NuGetDependency = NuGetDependency
   { name            :: Text

@@ -168,7 +168,6 @@ library
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
-    Strategy.Python.PipList
     Strategy.Python.Pipenv
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
@@ -248,7 +247,6 @@ test-suite unit-tests
     NuGet.PaketSpec
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
-    Python.PipListSpec
     Python.PipenvSpec
     Python.ReqTxtSpec
     Python.RequirementsSpec

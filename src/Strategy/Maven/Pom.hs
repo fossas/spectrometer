@@ -1,10 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Strategy.Maven.Pom
-  ( discover,
-    analyze,
-    analyze',
-    mkProjectClosure,
+  ( analyze',
     getLicenses,
   )
 where
@@ -12,8 +9,6 @@ where
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics hiding (fromMaybe)
-import Control.Effect.Output
-import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
@@ -24,7 +19,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import DepTypes
 import Effect.Grapher
-import Effect.ReadFS
 import Graphing (Graphing)
 import Path
 import qualified Path.IO as Path
@@ -37,40 +31,8 @@ data MavenStrategyOpts = MavenStrategyOpts
   , strategyGraph :: Graphing Dependency
   } deriving (Eq, Ord, Show)
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = runStrategy "maven-pom" MavenGroup . analyze
-
-analyze ::
-  ( Has ReadFS sig m,
-    Has Diagnostics sig m,
-    Has (Output ProjectClosure) sig m,
-    MonadIO m
-  ) =>
-  Path Abs Dir ->
-  m ()
-analyze dir = do
-  (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
-  traverse_ (output . mkProjectClosure dir) mvnClosures
-
 analyze' :: MavenProjectClosure -> Graphing Dependency
 analyze' = buildProjectGraph
-
-mkProjectClosure :: Path Abs Dir -> MavenProjectClosure -> ProjectClosure
-mkProjectClosure basedir mvnClosure =
-  ProjectClosure
-    { closureStrategyGroup = MavenGroup,
-      closureStrategyName = "maven-pom",
-      closureModuleDir = parent (closurePath mvnClosure),
-      closureDependencies = dependencies,
-      closureLicenses = getLicenses basedir mvnClosure
-    }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = buildProjectGraph mvnClosure,
-          dependenciesOptimal = NotOptimal,
-          dependenciesComplete = NotComplete
-        }
 
 getLicenses :: Path Abs Dir -> MavenProjectClosure -> [LicenseResult]
 getLicenses basedir closure = do

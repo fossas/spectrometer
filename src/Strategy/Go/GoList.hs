@@ -2,9 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.GoList
-  ( discover
-  , analyze
-  , analyze'
+  ( analyze'
 
   , Require(..)
   )
@@ -18,22 +16,12 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
 import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "go.mod" files of
-    Nothing -> pure ()
-    Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
-
-  pure $ WalkSkipSome ["vendor"]
 
 data Require = Require
   { reqPackage :: Text
@@ -68,26 +56,6 @@ analyze' dir = graphingGolang $ do
 
   _ <- recover (fillInTransitive dir)
   pure ()
-
-analyze ::
-  ( Has Exec sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs Dir -> m ProjectClosureBody
-analyze dir = mkProjectClosure dir <$> analyze' dir
-
-mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = graph
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = NotComplete
-    }
 
 buildGraph :: Has GolangGrapher sig m => [Require] -> m ()
 buildGraph = traverse_ go

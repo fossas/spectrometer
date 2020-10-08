@@ -2,10 +2,8 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.NuGet.PackageReference
-  ( discover
-  , discover'
+  ( discover'
   , buildGraph
-  , analyze
 
   , PackageReference(..)
   , ItemGroup(..)
@@ -28,14 +26,6 @@ import Parse.XML
 import Path
 import Types
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find isPackageRefFile files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "nuget-packagereference" DotnetGroup $ analyze file
-
-  pure WalkContinue
- 
 isPackageRefFile :: Path b File -> Bool
 isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
@@ -68,22 +58,6 @@ getDeps = analyze' . packageReferenceFile
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = buildGraph <$> readContentsXML @PackageReference file
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsXML @PackageReference file
-
-mkProjectClosure :: Path Abs File -> PackageReference -> ProjectClosureBody
-mkProjectClosure file package = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph package
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]

@@ -2,9 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.Gomod
-  ( discover
-  , analyze
-  , analyze'
+  ( analyze'
   , buildGraph
 
   , Gomod(..)
@@ -23,7 +21,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
@@ -34,15 +31,6 @@ import Strategy.Go.Types
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case findFileNamed "go.mod" files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "golang-gomod" GolangGroup $ analyze file
-
-  pure $ WalkSkipSome ["vendor"]
 
 data Statement =
     RequireStatement Text Text -- ^ package, version
@@ -195,27 +183,6 @@ analyze' file = graphingGolang $ do
 
   _ <- recover (fillInTransitive (parent file))
   pure ()
-
-analyze ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> analyze' file
-
-mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure file graph = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = graph
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
 
 buildGraph :: Has GolangGrapher sig m => Gomod -> m ()
 buildGraph = traverse_ go . resolve

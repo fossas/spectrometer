@@ -2,8 +2,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Haskell.Stack
-  ( discover,
-    discover',
+  ( discover',
     -- * Testing
     buildGraph,
     PackageName (..),
@@ -60,14 +59,6 @@ parseLocationType txt
   | txt `elem` ["project package", "archive"] = pure Local
   | otherwise = fail $ "Bad location type: " ++ T.unpack txt
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files ->
-  case findFileNamed "stack.yaml" files of
-    Nothing -> pure WalkContinue
-    Just _ -> do
-      runSimpleStrategy "haskell-stack" HaskellGroup $ fmap (mkProjectClosure dir) (analyze dir)
-      pure WalkSkipAll
-
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
 
@@ -106,21 +97,6 @@ stackJSONDepsCmd =
       cmdArgs = ["ls", "dependencies", "json"],
       cmdAllowErr = Never
     }
-
-mkProjectClosure :: Path Abs Dir -> G.Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph =
-  ProjectClosureBody
-    { bodyModuleDir = dir,
-      bodyDependencies = dependencies,
-      bodyLicenses = []
-    }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = graph,
-          dependenciesOptimal = Optimal,
-          dependenciesComplete = Complete
-        }
 
 doGraph :: Has (MappedGrapher PackageName StackDep) sig m => StackDep -> m ()
 doGraph dep = do

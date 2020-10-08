@@ -1,10 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.NuGet.PackagesConfig
-  ( discover
-  , discover'
+  ( discover'
   , buildGraph
-  , analyze
 
   , PackagesConfig(..)
   , NuGetDependency(..)
@@ -23,14 +21,6 @@ import qualified Graphing
 import Parse.XML
 import Path
 import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> (fileName f) == "packages.config") files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "nuget-packagesconfig" DotnetGroup $ analyze file
-
-  pure WalkContinue
 
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
@@ -73,22 +63,6 @@ instance FromXML NuGetDependency where
 newtype PackagesConfig = PackagesConfig
   { deps :: [NuGetDependency]
   } deriving (Eq, Ord, Show)
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsXML file
-
-mkProjectClosure :: Path Abs File -> PackagesConfig -> ProjectClosureBody
-mkProjectClosure file config = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph config
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
 
 data NuGetDependency = NuGetDependency
   { depID      :: Text

@@ -2,17 +2,13 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.NuGet.Nuspec
-  ( discover
-  , discover'
+  ( discover'
   , buildGraph
-  , analyze
 
   , Nuspec(..)
   , Group(..)
   , NuGetDependency(..)
   , NuspecLicense(..)
-
-  , mkProjectClosure
   ) where
 
 import Control.Applicative (optional)
@@ -31,14 +27,6 @@ import qualified Graphing
 import Parse.XML
 import Path
 import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "nuget-nuspec" DotnetGroup $ analyze file
-
-  pure WalkContinue
 
 discover' :: MonadIO m => Path Abs Dir -> m [NewProject]
 discover' dir = map mkProject <$> findProjects dir
@@ -74,22 +62,6 @@ analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File ->
 analyzeLicenses file = do
   nuspec <- readContentsXML @Nuspec file
   pure [LicenseResult (toFilePath file) (nuspecLicenses nuspec)]
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file
-
-mkProjectClosure :: Path Abs File -> Nuspec -> ProjectClosureBody
-mkProjectClosure file nuspec = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = [LicenseResult (toFilePath file) (nuspecLicenses nuspec)]
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph nuspec
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
 
 nuspecLicenses :: Nuspec -> [License]
 nuspecLicenses nuspec = url ++ licenseField

@@ -1,9 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Erlang.Rebar3Tree
-  ( discover
-  , analyze
-  , analyze'
+  ( analyze'
 
   , buildGraph
   , rebar3TreeParser
@@ -12,27 +10,16 @@ module Strategy.Erlang.Rebar3Tree
   where
 
 import Control.Effect.Diagnostics
-import Data.Foldable (find)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Graphing (Graphing, unfold)
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files -> do
-  case find (\f -> (fileName f) == "rebar.config") files of
-    Nothing -> pure WalkContinue
-    Just _  -> do
-      runSimpleStrategy "erlang-rebar3tree" ErlangGroup $ analyze dir
-      pure WalkSkipAll
 
 rebar3TreeCmd :: Command
 rebar3TreeCmd = Command
@@ -41,24 +28,8 @@ rebar3TreeCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
-analyze dir = mkProjectClosure dir <$> execParser rebar3TreeParser dir rebar3TreeCmd
-
 analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
 analyze' dir = buildGraph <$> execParser rebar3TreeParser dir rebar3TreeCmd
-
-mkProjectClosure :: Path Abs Dir -> [Rebar3Dep] -> ProjectClosureBody
-mkProjectClosure dir deps = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph deps
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
 
 buildGraph :: [Rebar3Dep] -> Graphing Dependency
 buildGraph deps = unfold deps subDeps toDependency
