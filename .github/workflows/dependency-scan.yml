@@ -13,6 +13,6 @@ jobs:
 
       - name: Run dependency scan
         env:
-          FOSSA_API_TOKEN: ${{ secrets.FOSSA_API_TOKEN }}
+          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
           fossa analyze --filter cabal@.
