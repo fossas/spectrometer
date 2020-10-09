@@ -9,6 +9,19 @@ on: push
 
 jobs:
 
+  dependency-scan:
+    name: dependency-scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install spectrometer from github
+        run: |
+          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+
+      - name: Run dependency scan
+        run: |
+          fossa analyze --filter cabal@.
+
   build-all:
     name: ${{ matrix.os-name }}-build
     runs-on: ${{ matrix.os }}
