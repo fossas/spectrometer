@@ -9,6 +9,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Update cabal cache for spectrometer run
+        run: |
+          cabal update
+
       - name: Install spectrometer from github
         run: |
           curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
@@ -18,3 +22,9 @@ jobs:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
           fossa analyze --filter cabal@.
+
+      - name: Check for scan results
+        env:
+          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
+        run: |
+          fossa test
