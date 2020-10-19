@@ -38,15 +38,6 @@ data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   , ninjaCmdNinjaGraphOpts :: NinjaGraphOpts
   }
 
--- data NinjaGraphOpts = NinjaGraphOpts
---   { ninjaFossaOpts :: FossaOpts
---   , ninjaGraphNinjaPath :: Maybe FilePath
---   , lunchTarget :: Maybe Text
---   , scanId :: Text
---   , ninjaProjectName :: Text
---   , buildName :: Text
---   }
-
 data NinjaGraphError = ErrorRunningNinja Text
                      | NoNinjaDepsStartLineFound
                      | NoNinjaDepsEndLineFound
