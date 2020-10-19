@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.VPSScan.EmbeddedBinary 
+module App.Fossa.VPS.EmbeddedBinary 
   ( BinaryPaths(..)
   , extractEmbeddedBinaries
   , cleanupExtractedBinaries
