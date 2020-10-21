@@ -6,6 +6,7 @@ module Discovery.Archive.RPM
 where
 
 import qualified Codec.RPM.Conduit as RPM
+import qualified Codec.RPM.Types as RPMTypes
 import Conduit
 import Control.Effect.Lift
 import Control.Exception (throwIO)
@@ -13,6 +14,8 @@ import Control.Monad.Except
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.Conduit.Lzma as Lzma
+import qualified Data.Conduit.Zlib as Zlib
 import qualified Data.CPIO as CPIO
 import Path
 import Prelude
@@ -29,7 +32,7 @@ extractRpm dir rpmFile = do
   where
     -- morally: :: Path b File -> ConduitT i CPIO.Entry m ()
     -- (has a couple of additional constraints, e.g., MonadError for attoparsec ParseError)
-    readRPMEntries file = sourceFileBS (toFilePath file) .| RPM.parseRPMC .| RPM.payloadContentsC
+    readRPMEntries file = sourceFileBS (toFilePath file) .| RPM.parseRPMC .| rpmPayload
     --
     sinkDir :: MonadIO m => ConduitT CPIO.Entry o m ()
     sinkDir = mapM_C $ \entry -> do
@@ -41,3 +44,8 @@ extractRpm dir rpmFile = do
         Just filepath' -> do
           liftIO . PIO.ensureDir $ (dir </> parent filepath')
           liftIO . BS.writeFile (fromAbsFile (dir </> filepath')) . BL.toStrict $ CPIO.cpioFileData entry
+
+-- TODO: lzma
+-- TODO: comment about payloadContentsC
+rpmPayload :: (PrimMonad m, MonadThrow m) => ConduitT RPMTypes.RPM CPIO.Entry m ()
+rpmPayload = RPM.payloadC .| Zlib.ungzip .| CPIO.readCPIO
