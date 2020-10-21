@@ -112,9 +112,9 @@ opts :: Parser CmdOptions
 opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
-    <*> uriOption (long "endpoint" <> long "fossa-url" <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)" <> value [uri|https://app.fossa.com|])
-    <*> optional (strOption (long "project" <> long "project-name" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
-    <*> optional (strOption (long "revision" <> long "project-revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
+    <*> uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)" <> value [uri|https://app.fossa.com|])
+    <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
+    <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
     <*> (commands <|> hiddenCommands)
     <**> helper
