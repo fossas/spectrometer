@@ -19,7 +19,6 @@ import App.Fossa.VPS.Scan.ScotlandYard
 import App.Fossa.VPS.Types
 import App.Fossa.ProjectInference
 import App.Types (BaseDir (..), ApiKey (..), OverrideProject (..), ProjectRevision (..))
-import Control.Effect.Exception (bracket)
 import Data.Aeson
 import Data.Text (Text)
 import Effect.Logger
@@ -33,7 +32,7 @@ scanMain baseuri basedir apikey logSeverity overrideProject fileFilters skipIprS
   let fossaOpts = FossaOpts baseuri $ unApiKey apikey
       partVpsOpts = PartialVPSOpts fossaOpts (unSkipIPRScan skipIprScan) fileFilters
 
-  result <- runDiagnostics $ bracket extractEmbeddedBinaries cleanupExtractedBinaries $ vpsScan basedir logSeverity overrideProject partVpsOpts
+  result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject partVpsOpts
   case result of
     Left failure -> do
       print $ renderFailureBundle failure
