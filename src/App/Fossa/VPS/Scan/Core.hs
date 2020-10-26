@@ -18,8 +18,9 @@ module App.Fossa.VPS.Scan.Core
 where
 
 -- I REALLY don't like mixing these modules together.
-import App.Fossa.FossaAPIV1 (mkMetadataOpts, ProjectMetadata)
+import App.Fossa.FossaAPIV1 (mkMetadataOpts)
 import App.Fossa.VPS.Types
+import App.Types (ProjectMetadata)
 import App.Util (parseUri)
 import Data.Text (pack, Text)
 import Prelude

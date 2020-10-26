@@ -8,7 +8,6 @@ module App.Fossa.FossaAPIV1
   ( uploadAnalysis
   , uploadContributors
   , UploadResponse(..)
-  , ProjectMetadata(..)
   , mkMetadataOpts
   , FossaError(..)
   , FossaReq(..)
@@ -120,15 +119,6 @@ instance ToDiagnostic FossaError where
     JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API: " <> pretty err
     OtherError err -> "An unknown error occurred when accessing the FOSSA API: " <> viaShow err
     BadURI uri -> "Invalid FOSSA URL: " <> pretty (URI.render uri)
-
-data ProjectMetadata = ProjectMetadata
-  { projectTitle :: Maybe Text
-  , projectUrl :: Maybe Text
-  , projectJiraKey :: Maybe Text
-  , projectLink :: Maybe Text
-  , projectTeam :: Maybe Text
-  , projectPolicy :: Maybe Text
-  } deriving (Eq, Ord, Show)
 
 uploadAnalysis
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)

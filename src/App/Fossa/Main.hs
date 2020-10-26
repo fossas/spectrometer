@@ -7,7 +7,6 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
-import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
@@ -59,7 +58,7 @@ appMain = do
         then analyzeMain baseDir logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
         else do
           key <- requireKey maybeApiKey
-          analyzeMain baseDir logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
+          analyzeMain baseDir logSeverity (UploadScan $ UploadInfo optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
 
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
@@ -85,7 +84,8 @@ appMain = do
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           baseDir <- validateDir vpsAnalyzeBaseDir
-          scanMain optBaseUrl baseDir apikey logSeverity override vpsFileFilter (SkipIPRScan skipIprScan)
+          let uploadInfo = UploadInfo optBaseUrl apikey vpsAnalyzeMeta
+          scanMain baseDir logSeverity uploadInfo override vpsFileFilter (SkipIPRScan skipIprScan)
         NinjaGraphCommand ninjaGraphOptions -> do
           ninjaGraphMain optBaseUrl apikey logSeverity override ninjaGraphOptions
           
