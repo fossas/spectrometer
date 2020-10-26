@@ -9,6 +9,7 @@ module App.Fossa.FossaAPIV1
   , uploadContributors
   , UploadResponse(..)
   , ProjectMetadata(..)
+  , mkMetadataOpts
   , FossaError(..)
   , FossaReq(..)
   , Contributors(..)
@@ -153,7 +154,6 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "v" =: cliVersion
           <> "managedBuild" =: True
-          <> "title" =: fromMaybe projectName (projectTitle metadata)
           <> apiHeader key
           <> mkMetadataOpts metadata
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
@@ -168,6 +168,7 @@ mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes
   , ("link" =:) <$> projectLink
   , ("team" =:) <$> projectTeam
   , ("policy" =:) <$> projectPolicy
+  , ("title" =:) <$> projectTitle
   ]
 
 mangleError :: HttpException -> FossaError
