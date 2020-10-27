@@ -6,6 +6,7 @@
 module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)
+  , UnpackArchives(..)
   , discoverFuncs
   ) where
 
@@ -25,6 +26,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
+import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
@@ -79,7 +81,10 @@ data ScanDestination
   = UploadScan URI ApiKey ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
 
-analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> [BuildTargetFilter] -> IO ()
+-- | UnpackArchives bool flag
+data UnpackArchives = UnpackArchives
+
+analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
 analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity $
   analyze basedir destination project unpackArchives filters
 
@@ -155,7 +160,7 @@ analyze ::
   => BaseDir
   -> ScanDestination
   -> OverrideProject
-  -> Bool -- ^ whether to unpack archives
+  -> Flag UnpackArchives
   -> [BuildTargetFilter]
   -> m ()
 analyze basedir destination override unpackArchives filters = do
@@ -167,7 +172,7 @@ analyze basedir destination override unpackArchives filters = do
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
-      $ withDiscoveredProjects discoverFuncs unpackArchives (unBaseDir basedir) (runDependencyAnalysis basedir filters)
+      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) (unBaseDir basedir) (runDependencyAnalysis basedir filters)
 
   logSticky ""
 

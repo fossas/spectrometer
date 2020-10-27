@@ -1,30 +1,29 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Main
   ( appMain,
   )
 where
 
-import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
+import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
 import App.Fossa.VPS.NinjaGraph
-import App.Fossa.VPS.Scan
-    ( scanMain,
-      SkipIPRScan(..) )
-import App.Fossa.VPS.Types ( FilterExpressions(..) )
+import App.Fossa.VPS.Scan (SkipIPRScan (..), scanMain)
+import App.Fossa.VPS.Types (FilterExpressions (..))
 import App.OptionExtensions
 import App.Types
 import App.Util (validateDir)
-import Control.Monad (when, unless)
+import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
+import Data.Flag (Flag, flagOpt)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Discovery.Filters (BuildTargetFilter(..), filterParser)
+import Discovery.Filters (BuildTargetFilter (..), filterParser)
 import Effect.Logger
 import Options.Applicative
 import System.Environment (lookupEnv)
@@ -33,7 +32,6 @@ import qualified System.Info as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Text.URI.QQ (uri)
-
 
 windowsOsName :: String
 windowsOsName = "mingw32"
@@ -60,35 +58,34 @@ appMain = do
         else do
           key <- requireKey maybeApiKey
           analyzeMain baseDir logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
-
+    --
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
       key <- requireKey maybeApiKey
       testMain optBaseUrl baseDir key logSeverity testTimeout testOutputType override
-
+    --
     InitCommand ->
       withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
-
+    --
     ReportCommand ReportOptions {..} -> do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
       baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
       reportMain optBaseUrl baseDir key logSeverity reportTimeout reportType override
-    
+    --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
       listTargetsMain baseDir
-
+    --
     VPSCommand VPSOptions {..} -> do
       when (SysInfo.os == windowsOsName) $ die "VPS functionality is not supported on Windows"
       apikey <- requireKey maybeApiKey
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           baseDir <- validateDir vpsAnalyzeBaseDir
-          scanMain optBaseUrl baseDir apikey logSeverity override vpsFileFilter (SkipIPRScan skipIprScan)
+          scanMain optBaseUrl baseDir apikey logSeverity override vpsFileFilter skipIprScan
         NinjaGraphCommand ninjaGraphOptions -> do
           ninjaGraphMain optBaseUrl apikey logSeverity override ninjaGraphOptions
-          
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -170,7 +167,7 @@ analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
-    <*> switch (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
+    <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
@@ -203,7 +200,7 @@ reportOpts =
 reportCmd :: Parser ReportType
 reportCmd =
   hsubparser $
-    command "attribution" (info (pure AttributionReport) $ progDesc "Generate attribution report" )
+    command "attribution" (info (pure AttributionReport) $ progDesc "Generate attribution report")
 
 testOpts :: Parser TestOptions
 testOpts =
@@ -215,7 +212,7 @@ testOpts =
 vpsOpts :: Parser VPSOptions
 vpsOpts = VPSOptions <$> skipIprScanOpt <*> fileFilterOpt <*> vpsCommands
   where
-    skipIprScanOpt = switch (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
+    skipIprScanOpt = flagOpt SkipIPRScan (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
     fileFilterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
 
 vpsAnalyzeOpts :: Parser VPSAnalyzeOptions
@@ -232,18 +229,17 @@ ninjaGraphOpts = NinjaGraphCLIOptions <$> baseDirArg <*> ninjaDepsOpt <*> lunchT
 vpsCommands :: Parser VPSCommand
 vpsCommands =
   hsubparser
-    (
-      command "analyze"
-        (info (VPSAnalyzeCommand <$> vpsAnalyzeOpts) $
-          progDesc "Scan for projects and their vendored dependencies"
+    ( command
+        "analyze"
+        ( info (VPSAnalyzeCommand <$> vpsAnalyzeOpts) $
+            progDesc "Scan for projects and their vendored dependencies"
         )
-    <>
-      command "ninja-graph"
-        (info (NinjaGraphCommand <$> ninjaGraphOpts) $
-          progDesc "Get a dependency graph for a ninja build"
-        )
+        <> command
+          "ninja-graph"
+          ( info (NinjaGraphCommand <$> ninjaGraphOpts) $
+              progDesc "Get a dependency graph for a ninja build"
+          )
     )
-
 
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
@@ -275,7 +271,7 @@ data ReportOptions = ReportOptions
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool,
-    analyzeUnpackArchives :: Bool,
+    analyzeUnpackArchives :: Flag UnpackArchives,
     analyzeBranch :: Maybe Text,
     analyzeMetadata :: ProjectMetadata,
     analyzeBuildTargetFilters :: [BuildTargetFilter],
@@ -289,10 +285,10 @@ data TestOptions = TestOptions
   }
 
 data VPSOptions = VPSOptions
-  { skipIprScan :: Bool,
+  { skipIprScan :: Flag SkipIPRScan,
     vpsFileFilter :: FilterExpressions,
     vpsCommand :: VPSCommand
   }
 
 newtype VPSAnalyzeOptions = VPSAnalyzeOptions
-  { vpsAnalyzeBaseDir :: FilePath }
+  {vpsAnalyzeBaseDir :: FilePath}

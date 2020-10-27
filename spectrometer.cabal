@@ -88,11 +88,6 @@ library
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.Test
-    App.OptionExtensions
-    App.Pathfinder.Main
-    App.Pathfinder.Scan
-    App.Types
-    App.Util
     App.Fossa.VPS.EmbeddedBinary
     App.Fossa.VPS.NinjaGraph
     App.Fossa.VPS.Scan
@@ -101,6 +96,11 @@ library
     App.Fossa.VPS.Scan.RunSherlock
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Types
+    App.OptionExtensions
+    App.Pathfinder.Main
+    App.Pathfinder.Scan
+    App.Types
+    App.Util
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.Output.IO
@@ -113,6 +113,7 @@ library
     Control.Effect.TaskPool
     Control.Exception.Extra
     Data.FileEmbed.Extra
+    Data.Flag
     Data.Text.Extra
     DepTypes
     Discovery.Archive

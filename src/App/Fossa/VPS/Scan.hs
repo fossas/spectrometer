@@ -20,17 +20,19 @@ import App.Fossa.VPS.Types
 import App.Fossa.ProjectInference
 import App.Types (BaseDir (..), ApiKey (..), OverrideProject (..), ProjectRevision (..))
 import Data.Aeson
+import Data.Flag (Flag, fromFlag)
 import Data.Text (Text)
 import Effect.Logger
 import Path
 import Text.URI (URI)
 
-newtype SkipIPRScan = SkipIPRScan {unSkipIPRScan :: Bool}
+-- | SkipIPRScan bool flag
+data SkipIPRScan = SkipIPRScan
 
-scanMain :: URI -> BaseDir -> ApiKey -> Severity -> OverrideProject -> FilterExpressions -> SkipIPRScan ->  IO ()
+scanMain :: URI -> BaseDir -> ApiKey -> Severity -> OverrideProject -> FilterExpressions -> Flag SkipIPRScan ->  IO ()
 scanMain baseuri basedir apikey logSeverity overrideProject fileFilters skipIprScan = do
   let fossaOpts = FossaOpts baseuri $ unApiKey apikey
-      partVpsOpts = PartialVPSOpts fossaOpts (unSkipIPRScan skipIprScan) fileFilters
+      partVpsOpts = PartialVPSOpts fossaOpts (fromFlag SkipIPRScan skipIprScan) fileFilters
 
   result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject partVpsOpts
   case result of
