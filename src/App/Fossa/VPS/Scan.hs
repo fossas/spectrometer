@@ -72,7 +72,7 @@ vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag fileFilters ap
   logDebug "[All] Creating scan in Scotland Yard"
   let syOpts = ScotlandYardOpts locator projectRevision sherlockOrgId vpsOpts'
   response <- context "creating scan ID" $ createScotlandYardScan apiOpts syOpts
-  let scanId = responseScanId response
+  let scanId = createScanResponseId response
 
   -- Run IPR and Sherlock CLIs concurrently
   logDebug . pretty $ "[All] Running scan on directory " ++ show basedir

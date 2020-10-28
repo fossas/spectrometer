@@ -5,8 +5,9 @@ module App.Fossa.VPS.Scan.ScotlandYard
   ( createScotlandYardScan
   , uploadIPRResults
   , uploadBuildGraph
+  , getScan
   , getLatestScan
-  , LatestScanResponse (..)
+  , CreateScanResponse (..)
   , ScanResponse (..)
   , ScotlandYardOpts (..)
   , ScotlandYardNinjaOpts (..)
@@ -60,25 +61,32 @@ uploadIPRChunkEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "pr
 uploadIPRCompleteEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 uploadIPRCompleteEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses" /: "complete"
 
+getScanEndpoint :: Url 'Https -> Locator -> Text -> Url 'Https
+getScanEndpoint baseurl (Locator projectId) scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId
+
 getLatestScanEndpoint :: Url 'Https -> Locator -> Url 'Https
-getLatestScanEndpoint baseurl (Locator projectId) = coreProxyPrefix baseurl /: "projects" /: "projects" /: projectId /: "scans" /: "latest"
+getLatestScanEndpoint baseurl (Locator projectId) = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: "latest"
 
-data LatestScanResponse = LatestScanResponse
-  { latestScanId :: Text
+data CreateScanResponse = CreateScanResponse
+  { createScanResponseId :: Text
   } deriving (Eq, Ord, Show)
-
-instance FromJSON LatestScanResponse where
-  parseJSON = withObject "LatestScanResponse" $ \obj ->
-    LatestScanResponse <$> obj .: "id"
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
+  , responseScanStatus :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
+instance FromJSON CreateScanResponse where
+  parseJSON = withObject "CreateScanResponse" $ \obj ->
+    CreateScanResponse
+      <$> obj .: "scanId"
+
 instance FromJSON ScanResponse where
   parseJSON = withObject "ScanResponse" $ \obj ->
-    ScanResponse <$> obj .: "scanId"
+    ScanResponse
+      <$> obj .: "id"
+      <*> obj .:? "status"
 
 data CreateBuildGraphResponse = CreateBuildGraphResponse
   { responseBuildGraphId :: Text
@@ -89,7 +97,7 @@ instance FromJSON CreateBuildGraphResponse where
   parseJSON = withObject "CreateBuildGraphResponse" $ \obj ->
     CreateBuildGraphResponse <$> obj .: "id"
 
-createScotlandYardScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> ScotlandYardOpts -> m ScanResponse
+createScotlandYardScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> ScotlandYardOpts -> m CreateScanResponse
 createScotlandYardScan apiOpts ScotlandYardOpts {..} = runHTTP $ do
   let body = object ["revisionId" .= projectRevision, "organizationId" .= organizationId]
       locator = unLocator projectId
@@ -98,10 +106,21 @@ createScotlandYardScan apiOpts ScotlandYardOpts {..} = runHTTP $ do
   resp <- req POST (createScanEndpoint baseUrl locator) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" )
   pure (responseBody resp)
 
-getLatestScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> m LatestScanResponse
-getLatestScan apiOpts locator = runHTTP $ do
+getLatestScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> Text -> m ScanResponse
+getLatestScan apiOpts locator revisionId = runHTTP $ do
   (baseUrl, baseOptions) <- useApiOpts apiOpts
-  resp <- req GET (getLatestScanEndpoint baseUrl locator) NoReqBody jsonResponse (baseOptions <> header "Content-Type" "application/json" )
+  let opts = baseOptions
+        <> header "Content-Type" "application/json"
+        <> "revisionID" =: revisionId
+  resp <- req GET (getLatestScanEndpoint baseUrl locator) NoReqBody jsonResponse opts
+  pure (responseBody resp)
+
+getScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> Text -> m ScanResponse
+getScan apiOpts locator scanId = runHTTP $ do
+  (baseUrl, baseOptions) <- useApiOpts apiOpts
+  let opts = baseOptions
+        <> header "Content-Type" "application/json"
+  resp <- req GET (getScanEndpoint baseUrl locator scanId) NoReqBody jsonResponse opts
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,

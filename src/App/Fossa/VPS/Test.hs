@@ -7,7 +7,6 @@ module App.Fossa.VPS.Test
 where
 
 import App.Fossa.API.BuildWait
-import App.Fossa.VPS.EmbeddedBinary
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import qualified App.Fossa.VPS.Scan.Core as VPSCore
@@ -29,37 +28,15 @@ import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Exec
 import Effect.Logger
 import Fossa.API.Types (ApiOpts)
-import Path
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
+import Control.Carrier.Lift (Lift)
 
 data TestOutputType
   = -- | pretty output format for issues
     TestOutputPretty
   | -- | use json output for issues
     TestOutputJson
-
-sherlockMonitorCmd ::
-  -- | path to sherlock-cli binary
-  Path Abs File ->
-  VPSCore.SherlockInfo ->
-  -- | scan ID
-  Text ->
-  Command
-sherlockMonitorCmd sherlockCliPath sherlockInfo scanId =
-  Command
-    { cmdName = T.pack (fromAbsFile sherlockCliPath),
-      cmdArgs =
-        [ scanId,
-          "-sherlock-api-host",
-          VPSCore.sherlockUrl sherlockInfo,
-          "-sherlock-api-client-id",
-          VPSCore.sherlockClientId sherlockInfo,
-          "-sherlock-api-secret-key",
-          VPSCore.sherlockClientToken sherlockInfo
-        ],
-      cmdAllowErr = Never
-    }
 
 testMain ::
   BaseDir ->
@@ -72,7 +49,7 @@ testMain ::
   IO ()
 testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
   _ <- timeout timeoutSeconds . withLogger logSeverity . runExecIO $ do
-    result <- runDiagnostics $ withEmbeddedBinaries $ \binaries -> do
+    result <- runDiagnostics $ do
       revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
       logInfo ""
@@ -82,19 +59,16 @@ testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
       logSticky "[ Getting latest scan ID ]"
 
       Fossa.Organization orgId <- Fossa.getOrganization apiOpts
-      ScotlandYard.LatestScanResponse scanId <- ScotlandYard.getLatestScan apiOpts (VPSCore.createLocator (projectName revision) orgId)
-      sherlockInfo <- VPSCore.getSherlockInfo apiOpts
+      let locator = VPSCore.createLocator (projectName revision) orgId
+
+      scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
 
       logSticky "[ Waiting for component scan... ]"
 
       -- FIXME: this should probably call out to the real API
       -- we may not be able to count on stability for the API, though, which is
       -- why we use this command instead
-      _ <- execThrow (unBaseDir basedir) (sherlockMonitorCmd (sherlockBinaryPath binaries) sherlockInfo scanId)
-
-      logSticky "[ Waiting for build completion... ]"
-
-      waitForBuild apiOpts revision
+      waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
 
       logSticky "[ Waiting for issue scan completion... ]"
       issues <- waitForIssues apiOpts revision
@@ -118,6 +92,28 @@ testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
   -- here is if we time out
   hPutStrLn stderr "Timed out while waiting for issues scan"
   exitFailure
+
+pollDelaySeconds :: Int
+pollDelaySeconds = 8
+
+waitForSherlockScan ::
+  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) =>
+  ApiOpts ->
+  VPSCore.Locator ->
+  -- | scan ID
+  Text ->
+  m ()
+waitForSherlockScan apiOpts locator scanId = do
+  scan <- ScotlandYard.getScan apiOpts locator scanId
+  case ScotlandYard.responseScanStatus scan of
+    Just "AVAILABLE" -> pure ()
+    Just otherStatus -> do
+      logSticky $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
+      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      waitForSherlockScan apiOpts locator scanId
+    Nothing -> do
+      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      waitForSherlockScan apiOpts locator scanId
 
 renderedIssues :: Fossa.Issues -> Doc ann
 renderedIssues issues = rendered
