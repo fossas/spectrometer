@@ -10,9 +10,10 @@ import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Report (ReportType (..), reportMain)
-import App.Fossa.Test (TestOutputType (..), testMain)
+import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
 import App.Fossa.VPS.Scan (SkipIPRScan (..), scanMain)
+import qualified App.Fossa.VPS.Test as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..))
 import App.OptionExtensions
 import App.Types
@@ -25,6 +26,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Discovery.Filters (BuildTargetFilter (..), filterParser)
 import Effect.Logger
+import Fossa.API.Types (ApiKey(..), ApiOpts(..))
 import Options.Applicative
 import System.Environment (lookupEnv)
 import System.Exit (die)
@@ -57,12 +59,14 @@ appMain = do
         then analyzeMain baseDir logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
         else do
           key <- requireKey maybeApiKey
-          analyzeMain baseDir logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
+          let apiOpts = ApiOpts optBaseUrl key
+          analyzeMain baseDir logSeverity (UploadScan apiOpts analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
     --
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
       key <- requireKey maybeApiKey
-      testMain optBaseUrl baseDir key logSeverity testTimeout testOutputType override
+      let apiOpts = ApiOpts optBaseUrl key
+      Test.testMain baseDir apiOpts logSeverity testTimeout testOutputType override
     --
     InitCommand ->
       withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
@@ -71,7 +75,8 @@ appMain = do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
       baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
-      reportMain optBaseUrl baseDir key logSeverity reportTimeout reportType override
+      let apiOpts = ApiOpts optBaseUrl key
+      reportMain baseDir apiOpts logSeverity reportTimeout reportType override
     --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
@@ -80,12 +85,16 @@ appMain = do
     VPSCommand VPSOptions {..} -> do
       when (SysInfo.os == windowsOsName) $ die "VPS functionality is not supported on Windows"
       apikey <- requireKey maybeApiKey
+      let apiOpts = ApiOpts optBaseUrl apikey
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           baseDir <- validateDir vpsAnalyzeBaseDir
-          scanMain optBaseUrl baseDir apikey logSeverity override vpsFileFilter skipIprScan
+          scanMain baseDir apiOpts logSeverity override vpsFileFilter skipIprScan
         NinjaGraphCommand ninjaGraphOptions -> do
-          ninjaGraphMain optBaseUrl apikey logSeverity override ninjaGraphOptions
+          ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
+        VPSTestCommand VPSTestOptions {..} -> do
+          baseDir <- validateDir vpsTestBaseDir
+          VPSTest.testMain baseDir apiOpts logSeverity vpsTestTimeout vpsTestOutputType override
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -206,7 +215,7 @@ testOpts :: Parser TestOptions
 testOpts =
   TestOptions
     <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
-    <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
+    <*> flag Test.TestOutputPretty Test.TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
 
 vpsOpts :: Parser VPSOptions
@@ -217,6 +226,13 @@ vpsOpts = VPSOptions <$> skipIprScanOpt <*> fileFilterOpt <*> vpsCommands
 
 vpsAnalyzeOpts :: Parser VPSAnalyzeOptions
 vpsAnalyzeOpts = VPSAnalyzeOptions <$> baseDirArg
+
+vpsTestOpts :: Parser VPSTestOptions
+vpsTestOpts =
+  VPSTestOptions
+    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> flag VPSTest.TestOutputPretty VPSTest.TestOutputJson (long "json" <> help "Output issues as json")
+    <*> baseDirArg
 
 ninjaGraphOpts :: Parser NinjaGraphCLIOptions
 ninjaGraphOpts = NinjaGraphCLIOptions <$> baseDirArg <*> ninjaDepsOpt <*> lunchTargetOpt <*> scanIdOpt <*> buildNameOpt
@@ -238,6 +254,11 @@ vpsCommands =
           "ninja-graph"
           ( info (NinjaGraphCommand <$> ninjaGraphOpts) $
               progDesc "Get a dependency graph for a ninja build"
+          )
+        <> command
+          "test"
+          ( info (VPSTestCommand <$> vpsTestOpts) $
+              progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
           )
     )
 
@@ -261,6 +282,7 @@ data Command
 data VPSCommand
   = VPSAnalyzeCommand VPSAnalyzeOptions
   | NinjaGraphCommand NinjaGraphCLIOptions
+  | VPSTestCommand VPSTestOptions
 
 data ReportOptions = ReportOptions
   { reportJsonOutput :: Bool,
@@ -280,7 +302,7 @@ data AnalyzeOptions = AnalyzeOptions
 
 data TestOptions = TestOptions
   { testTimeout :: Int,
-    testOutputType :: TestOutputType,
+    testOutputType :: Test.TestOutputType,
     testBaseDir :: FilePath
   }
 
@@ -292,3 +314,9 @@ data VPSOptions = VPSOptions
 
 newtype VPSAnalyzeOptions = VPSAnalyzeOptions
   {vpsAnalyzeBaseDir :: FilePath}
+
+data VPSTestOptions = VPSTestOptions
+  { vpsTestTimeout :: Int,
+    vpsTestOutputType :: VPSTest.TestOutputType,
+    vpsTestBaseDir :: FilePath
+  }

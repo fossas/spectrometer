@@ -19,9 +19,9 @@ import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
+import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
-import Text.URI (URI)
 
 data ReportType =
     AttributionReport
@@ -31,15 +31,14 @@ reportName r = case r of
   AttributionReport -> "attribution"
 
 reportMain ::
-  URI -- ^ api base url
-  -> BaseDir
-  -> ApiKey -- ^ api key
+  BaseDir
+  -> ApiOpts
   -> Severity
   -> Int -- ^ timeout (seconds)
   -> ReportType
   -> OverrideProject
   -> IO ()
-reportMain baseUri basedir apiKey logSeverity timeoutSeconds reportType override = do
+reportMain basedir apiOpts logSeverity timeoutSeconds reportType override = do
   -- TODO: refactor this code duplicate from `fossa test`
   {-
   Most of this module (almost everything below this line) has been copied
@@ -62,16 +61,16 @@ reportMain baseUri basedir apiKey logSeverity timeoutSeconds reportType override
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild baseUri apiKey revision
+      waitForBuild apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      _ <- waitForIssues baseUri apiKey revision
+      _ <- waitForIssues apiOpts revision
       logSticky ""
 
       logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
       jsonValue <- case reportType of
         AttributionReport ->
-          Fossa.getAttribution baseUri apiKey revision
+          Fossa.getAttribution apiOpts revision
       logSticky ""
         
       logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue

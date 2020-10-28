@@ -95,6 +95,7 @@ library
     App.Fossa.VPS.Scan.RunIPR
     App.Fossa.VPS.Scan.RunSherlock
     App.Fossa.VPS.Scan.ScotlandYard
+    App.Fossa.VPS.Test
     App.Fossa.VPS.Types
     App.OptionExtensions
     App.Pathfinder.Main
@@ -125,6 +126,7 @@ library
     Effect.Grapher
     Effect.Logger
     Effect.ReadFS
+    Fossa.API.Types
     Graphing
     Parse.XML
     Srclib.Converter

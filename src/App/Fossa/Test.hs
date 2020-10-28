@@ -23,24 +23,23 @@ import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
+import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
-import Text.URI (URI)
 
 data TestOutputType
   = TestOutputPretty -- ^ pretty output format for issues
   | TestOutputJson -- ^ use json output for issues
 
 testMain
-  :: URI -- ^ api base url
-  -> BaseDir
-  -> ApiKey -- ^ api key
+  :: BaseDir
+  -> ApiOpts
   -> Severity
   -> Int -- ^ timeout (seconds)
   -> TestOutputType
   -> OverrideProject
   -> IO ()
-testMain baseurl basedir apiKey logSeverity timeoutSeconds outputType override = do
+testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
     result <- runDiagnostics $ do
       revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
@@ -51,10 +50,10 @@ testMain baseurl basedir apiKey logSeverity timeoutSeconds outputType override =
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild baseurl apiKey revision
+      waitForBuild apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues baseurl apiKey revision
+      issues <- waitForIssues apiOpts revision
       logSticky ""
 
       if null (Fossa.issuesIssues issues)
