@@ -25,6 +25,9 @@ module App.Fossa.FossaAPIV1
   , renderIssueType
   , IssueRule(..)
 
+  , Organization(..)
+  , getOrganization
+
   , getAttribution
   ) where
 
@@ -245,7 +248,7 @@ getLatestBuild
 getLatestBuild apiOpts ProjectRevision {..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
+  Organization orgId <- getOrganization apiOpts
  
   response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
@@ -263,7 +266,7 @@ getIssues
 getIssues apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
  
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
+  Organization orgId <- getOrganization apiOpts
   response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
@@ -378,7 +381,7 @@ getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
         <> "includeDeepDependencies" =: True
         <> "includeHashAndVersionData" =: True
         <> "includeDownloadUrl" =: True
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
+  Organization orgId <- getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
@@ -394,6 +397,11 @@ instance FromJSON Organization where
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
+
+getOrganization :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> m Organization
+getOrganization apiOpts = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 ----------
 

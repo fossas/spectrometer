@@ -6,6 +6,7 @@ module App.Fossa.VPS.Scan.ScotlandYard
   , uploadIPRResults
   , uploadBuildGraph
   , getLatestScan
+  , LatestScanResponse (..)
   , ScanResponse (..)
   , ScotlandYardOpts (..)
   , ScotlandYardNinjaOpts (..)
@@ -59,8 +60,8 @@ uploadIPRChunkEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "pr
 uploadIPRCompleteEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 uploadIPRCompleteEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses" /: "complete"
 
-getLatestScanEndpoint :: Url 'Https -> Text -> Url 'Https
-getLatestScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: "projects" /: projectId /: "scans" /: "latest"
+getLatestScanEndpoint :: Url 'Https -> Locator -> Url 'Https
+getLatestScanEndpoint baseurl (Locator projectId) = coreProxyPrefix baseurl /: "projects" /: "projects" /: projectId /: "scans" /: "latest"
 
 data LatestScanResponse = LatestScanResponse
   { latestScanId :: Text
@@ -97,10 +98,8 @@ createScotlandYardScan apiOpts ScotlandYardOpts {..} = runHTTP $ do
   resp <- req POST (createScanEndpoint baseUrl locator) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" )
   pure (responseBody resp)
 
-getLatestScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> ScotlandYardOpts -> m LatestScanResponse
-getLatestScan apiOpts ScotlandYardOpts {..} = runHTTP $ do
-  let locator = unLocator projectId
-
+getLatestScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> m LatestScanResponse
+getLatestScan apiOpts locator = runHTTP $ do
   (baseUrl, baseOptions) <- useApiOpts apiOpts
   resp <- req GET (getLatestScanEndpoint baseUrl locator) NoReqBody jsonResponse (baseOptions <> header "Content-Type" "application/json" )
   pure (responseBody resp)
