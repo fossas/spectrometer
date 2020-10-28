@@ -61,9 +61,6 @@ testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
 
       logSticky "[ Waiting for component scan... ]"
 
-      -- FIXME: this should probably call out to the real API
-      -- we may not be able to count on stability for the API, though, which is
-      -- why we use this command instead
       waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
 
       logSticky "[ Waiting for issue scan completion... ]"
