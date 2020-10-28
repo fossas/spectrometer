@@ -100,6 +100,7 @@ waitForSherlockScan apiOpts locator scanId = do
   scan <- ScotlandYard.getScan apiOpts locator scanId
   case ScotlandYard.responseScanStatus scan of
     Just "AVAILABLE" -> pure ()
+    Just "ERROR" -> fatalText "The component scan failed. Check the FOSSA webapp for more details."
     Just otherStatus -> do
       logSticky $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
