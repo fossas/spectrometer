@@ -325,7 +325,7 @@ instance FromJSON Issue where
     Issue <$> obj .: "id"
            <*> obj .:? "priorityString"
            <*> obj .: "resolved"
-           <*> obj .: "revisionId"
+           <*> obj .:? "revisionId" .!= "unknown project"
            <*> obj .: "type"
            <*> obj .:? "rule"
 

@@ -18,11 +18,7 @@ import qualified Control.Concurrent.Async as Async
 import Control.Effect.Lift (sendIO)
 import qualified Data.Aeson as Aeson
 import Data.Functor (($>))
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Exec
@@ -78,7 +74,7 @@ testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
         then logInfo "Test passed! 0 issues found"
         else do
           case outputType of
-            TestOutputPretty -> logError (renderedIssues issues)
+            TestOutputPretty -> logError $ "Test failed: " <> pretty (length (Fossa.issuesIssues issues)) <> " issues found"
             TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
           sendIO exitFailure
 
@@ -114,61 +110,6 @@ waitForSherlockScan apiOpts locator scanId = do
     Nothing -> do
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForSherlockScan apiOpts locator scanId
-
-renderedIssues :: Fossa.Issues -> Doc ann
-renderedIssues issues = rendered
-  where
-    padding :: Int
-    padding = 20
-
-    issuesList :: [Fossa.Issue]
-    issuesList = Fossa.issuesIssues issues
-
-    categorize :: Ord k => (v -> k) -> [v] -> Map k [v]
-    categorize f = M.fromListWith (++) . map (\v -> (f v, [v]))
-
-    issuesByType :: Map Fossa.IssueType [Fossa.Issue]
-    issuesByType = categorize Fossa.issueType issuesList
-
-    renderSection :: Fossa.IssueType -> [Fossa.Issue] -> Doc ann
-    renderSection issueType rawIssues =
-      renderHeader issueType <> line <> vsep (map renderIssue rawIssues) <> line
-
-    rendered :: Doc ann
-    rendered =
-      vsep
-        [renderSection issueType rawIssues | (issueType, rawIssues) <- M.toList issuesByType]
-
-    renderHeader :: Fossa.IssueType -> Doc ann
-    renderHeader ty =
-      vsep
-        [ "========================================================================",
-          pretty $ Fossa.renderIssueType ty,
-          "========================================================================",
-          hsep $
-            map (fill padding) $ case ty of
-              Fossa.IssuePolicyConflict -> ["Dependency", "Revision", "License"]
-              Fossa.IssuePolicyFlag -> ["Dependency", "Revision", "License"]
-              _ -> ["Dependency", "Revision"],
-          ""
-        ]
-
-    renderIssue :: Fossa.Issue -> Doc ann
-    renderIssue issue = hsep (map format [name, revision, license])
-      where
-        format :: Text -> Doc ann
-        format = fill padding . pretty
-
-        locatorSplit = T.split (\c -> c == '$' || c == '+') (Fossa.issueRevisionId issue)
-
-        name = fromMaybe (Fossa.issueRevisionId issue) (locatorSplit !? 1)
-        revision = fromMaybe "" (locatorSplit !? 2)
-        license = fromMaybe "" (Fossa.ruleLicenseId =<< Fossa.issueRule issue)
-
-        (!?) :: [a] -> Int -> Maybe a
-        xs !? ix
-          | length xs <= ix = Nothing
-          | otherwise = Just (xs !! ix)
 
 timeout ::
   -- | number of seconds before timeout
