@@ -13,12 +13,8 @@ import qualified App.Fossa.VPS.Scan.Core as VPSCore
 import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Async as Async
 import Control.Effect.Lift (sendIO)
 import qualified Data.Aeson as Aeson
-import Data.Functor (($>))
-import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Exec
@@ -26,7 +22,6 @@ import Effect.Logger
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
-import Control.Carrier.Lift (Lift)
 
 data TestOutputType
   = -- | pretty output format for issues
@@ -85,33 +80,3 @@ testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
   -- here is if we time out
   hPutStrLn stderr "Timed out while waiting for issues scan"
   exitFailure
-
-pollDelaySeconds :: Int
-pollDelaySeconds = 8
-
-waitForSherlockScan ::
-  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) =>
-  ApiOpts ->
-  VPSCore.Locator ->
-  -- | scan ID
-  Text ->
-  m ()
-waitForSherlockScan apiOpts locator scanId = do
-  scan <- ScotlandYard.getScan apiOpts locator scanId
-  case ScotlandYard.responseScanStatus scan of
-    Just "AVAILABLE" -> pure ()
-    Just "ERROR" -> fatalText "The component scan failed. Check the FOSSA webapp for more details."
-    Just otherStatus -> do
-      logSticky $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
-      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForSherlockScan apiOpts locator scanId
-    Nothing -> do
-      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForSherlockScan apiOpts locator scanId
-
-timeout ::
-  -- | number of seconds before timeout
-  Int ->
-  IO a ->
-  IO (Maybe a)
-timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)

@@ -10,11 +10,9 @@ import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import App.Types
 import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Async as Async
 import Control.Effect.Lift (sendIO)
 import qualified Data.Aeson as Aeson
-import Data.Functor (void, ($>))
+import Data.Functor (void)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
@@ -126,9 +124,3 @@ renderedIssues issues = rendered
         xs !? ix
           | length xs <= ix = Nothing
           | otherwise = Just (xs !! ix)
-
-timeout
-  :: Int -- ^ number of seconds before timeout
-  -> IO a
-  -> IO (Maybe a)
-timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)

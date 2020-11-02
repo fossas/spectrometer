@@ -3,14 +3,21 @@
 module App.Fossa.API.BuildWait
   ( waitForBuild,
     waitForIssues,
+    waitForSherlockScan,
+    timeout,
   )
 where
 
 import qualified App.Fossa.FossaAPIV1 as Fossa
+import qualified App.Fossa.VPS.Scan.Core as VPSCore
+import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)
+import qualified Control.Concurrent.Async as Async
 import Control.Effect.Lift (Lift, sendIO)
+import Data.Functor (($>))
+import Data.Text (Text)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts)
 
@@ -25,6 +32,7 @@ data WaitError
 instance ToDiagnostic WaitError where
   renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
 
+-- | Wait for a "normal" (non-VPS) build completion
 waitForBuild ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) =>
   ApiOpts ->
@@ -53,3 +61,31 @@ waitForIssues apiOpts revision = do
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForIssues apiOpts revision
     _ -> pure issues
+
+-- | Wait for sherlock scan completion (VPS)
+waitForSherlockScan ::
+  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) =>
+  ApiOpts ->
+  VPSCore.Locator ->
+  -- | scan ID
+  Text ->
+  m ()
+waitForSherlockScan apiOpts locator scanId = do
+  scan <- ScotlandYard.getScan apiOpts locator scanId
+  case ScotlandYard.responseScanStatus scan of
+    Just "AVAILABLE" -> pure ()
+    Just "ERROR" -> fatalText "The component scan failed. Check the FOSSA webapp for more details."
+    Just otherStatus -> do
+      logSticky $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
+      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      waitForSherlockScan apiOpts locator scanId
+    Nothing -> do
+      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      waitForSherlockScan apiOpts locator scanId
+
+timeout ::
+  -- | number of seconds before timeout
+  Int ->
+  IO a ->
+  IO (Maybe a)
+timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)

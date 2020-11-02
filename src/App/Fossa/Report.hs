@@ -10,11 +10,9 @@ import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import App.Types
 import Control.Carrier.Diagnostics
-import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Async as Async
 import Control.Effect.Lift (sendIO)
 import qualified Data.Aeson as Aeson
-import Data.Functor (void, ($>))
+import Data.Functor (void)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
@@ -83,10 +81,3 @@ reportMain basedir apiOpts logSeverity timeoutSeconds reportType override = do
 
   hPutStrLn stderr "Timed out while waiting for build/issues scan"
   exitFailure
-
-timeout
-  :: Int -- ^ number of seconds before timeout
-  -> IO a
-  -> IO (Maybe a)
--- timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) *> pure Nothing)
-timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)
