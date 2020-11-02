@@ -18,7 +18,7 @@ import App.Fossa.VPS.Scan.RunSherlock
 import App.Fossa.VPS.Scan.ScotlandYard
 import App.Fossa.VPS.Types
 import App.Fossa.ProjectInference
-import App.Types (BaseDir (..), OverrideProject (..), ProjectRevision (..))
+import App.Types (BaseDir (..), OverrideProject (..), ProjectRevision (..), ProjectMetadata (..))
 import Data.Aeson
 import Data.Flag (Flag, fromFlag)
 import Data.Text (Text)
@@ -29,9 +29,9 @@ import Fossa.API.Types (ApiOpts(..))
 -- | SkipIPRScan bool flag
 data SkipIPRScan = SkipIPRScan
 
-scanMain :: BaseDir -> ApiOpts -> Severity -> OverrideProject -> FilterExpressions -> Flag SkipIPRScan ->  IO ()
-scanMain basedir apiOpts logSeverity overrideProject fileFilters skipIprScan = do
-  result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject skipIprScan fileFilters apiOpts
+scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag SkipIPRScan ->  IO ()
+scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters skipIprScan = do
+  result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject skipIprScan fileFilters apiOpts metadata
   case result of
     Left failure -> do
       print $ renderFailureBundle failure
@@ -43,8 +43,8 @@ scanMain basedir apiOpts logSeverity overrideProject fileFilters skipIprScan = d
 vpsScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  ) => BaseDir -> Severity -> OverrideProject -> Flag SkipIPRScan -> FilterExpressions -> ApiOpts -> BinaryPaths -> m ()
-vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag fileFilters apiOpts binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
+  ) => BaseDir -> Severity -> OverrideProject -> Flag SkipIPRScan -> FilterExpressions -> ApiOpts -> ProjectMetadata -> BinaryPaths -> m ()
+vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag fileFilters apiOpts metadata binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
   -- Build the revision
   ProjectRevision {..} <- mergeOverride overrideProject <$> inferProject basedir
 
@@ -66,7 +66,7 @@ vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag fileFilters ap
 
   -- Create scan in Core
   logDebug "[All] Creating project in FOSSA"
-  _ <- context "creating project in FOSSA" $ createCoreProject vpsProjectName projectRevision apiOpts
+  _ <- context "creating project in FOSSA" $ createCoreProject vpsProjectName projectRevision metadata apiOpts
 
   -- Create scan in SY
   logDebug "[All] Creating scan in Scotland Yard"

@@ -7,7 +7,6 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
-import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Report (ReportType (..), reportMain)
 import qualified App.Fossa.Test as Test
@@ -89,7 +88,7 @@ appMain = do
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           baseDir <- validateDir vpsAnalyzeBaseDir
-          scanMain baseDir apiOpts logSeverity override vpsFileFilter skipIprScan
+          scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan
         NinjaGraphCommand ninjaGraphOptions -> do
           ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
         VPSTestCommand VPSTestOptions {..} -> do
@@ -225,7 +224,7 @@ vpsOpts = VPSOptions <$> skipIprScanOpt <*> fileFilterOpt <*> vpsCommands
     fileFilterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
 
 vpsAnalyzeOpts :: Parser VPSAnalyzeOptions
-vpsAnalyzeOpts = VPSAnalyzeOptions <$> baseDirArg
+vpsAnalyzeOpts = VPSAnalyzeOptions <$> baseDirArg <*> metadataOpts
 
 vpsTestOpts :: Parser VPSTestOptions
 vpsTestOpts =
@@ -312,8 +311,10 @@ data VPSOptions = VPSOptions
     vpsCommand :: VPSCommand
   }
 
-newtype VPSAnalyzeOptions = VPSAnalyzeOptions
-  {vpsAnalyzeBaseDir :: FilePath}
+data VPSAnalyzeOptions = VPSAnalyzeOptions
+  { vpsAnalyzeBaseDir :: FilePath,
+    vpsAnalyzeMeta :: ProjectMetadata
+  }
 
 data VPSTestOptions = VPSTestOptions
   { vpsTestTimeout :: Int,

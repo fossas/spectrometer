@@ -16,7 +16,10 @@ module App.Fossa.VPS.Scan.Core
   )
 where
 
+-- I REALLY don't like mixing these modules together.
+import App.Fossa.FossaAPIV1 (mkMetadataOpts)
 import App.Fossa.VPS.Types
+import App.Types (ProjectMetadata (..))
 import Data.Text (pack, Text)
 import Prelude
 import Network.HTTP.Req
@@ -79,12 +82,13 @@ projectScanFiltersEndpoint baseurl locator = baseurl /: "api" /: "vendored-packa
   FIXME: Every function below this line is using a data structure designed for the CLI.
   This tightly couples us to our CLI API, and is very tedious to change with the merge of `vpscli` and `fossa` exe's.
 -}
-createCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Text -> ApiOpts -> m ()
-createCoreProject name revision apiOpts = runHTTP $ do
+createCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Text -> ProjectMetadata -> ApiOpts -> m ()
+createCoreProject name revision metadata apiOpts = runHTTP $ do
+  let metaOpts = mkMetadataOpts metadata
   let body = object ["name" .= name, "revision" .= revision]
 
   (baseUrl, baseOptions) <- useApiOpts apiOpts
-  _ <- req POST (createProjectEndpoint baseUrl) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
+  _ <- req POST (createProjectEndpoint baseUrl) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> metaOpts)
   pure ()
 
 completeCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => RevisionLocator -> ApiOpts -> m ()
