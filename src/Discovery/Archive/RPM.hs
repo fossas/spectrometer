@@ -33,9 +33,11 @@ extractRpm dir rpmFile = do
     Left parseErr -> sendIO . throwIO $ parseErr
     Right () -> pure ()
 
+-- | Extract RPM entries to a directory
 extractEntries :: (PrimMonad m, MonadThrow m, MonadIO m) => Path Abs Dir -> RPMTypes.RPM -> ConduitT i o m ()
-extractEntries dir rpm = yield rpm .| RPM.payloadC .| decompress rpm .| CPIO.readCPIO .| filterC (not . CPIO.isEntryDirectory) .| sinkDir dir
+extractEntries dir rpm = yield rpm .| RPM.payloadC .| decompressorFor rpm .| CPIO.readCPIO .| filterC (not . CPIO.isEntryDirectory) .| sinkDir dir
 
+-- | Extract each incoming CPIO entry on the Conduit to a directory
 sinkDir :: MonadIO m => Path Abs Dir -> ConduitT CPIO.Entry o m ()
 sinkDir dir = mapM_C $ \entry -> do
   let filepath = BS8.unpack $ CPIO.cpioFileName entry
@@ -47,18 +49,21 @@ sinkDir dir = mapM_C $ \entry -> do
       liftIO . PIO.ensureDir $ (dir </> parent filepath')
       liftIO . BS.writeFile (fromAbsFile (dir </> filepath')) . BL.toStrict $ CPIO.cpioFileData entry
 
-decompress :: (PrimMonad m, MonadThrow m, MonadIO m) => RPMTypes.RPM -> ConduitT BS.ByteString BS.ByteString m ()
-decompress rpm =
+-- | Choose the correct decompressor for a given RPM.
+-- By default, we choose lzma: this is what the reference implementation does.
+decompressorFor :: (PrimMonad m, MonadThrow m, MonadIO m) => RPMTypes.RPM -> ConduitT BS.ByteString BS.ByteString m ()
+decompressorFor rpm =
   case getCompressor rpm of
-    Nothing -> pure ()
+    Nothing -> Lzma.decompress Nothing -- default to lzma
     Just GZIP -> Zlib.ungzip
     Just LZMA -> Lzma.decompress Nothing
 
 data Compressor
   = LZMA
   | GZIP
+  deriving (Eq, Ord, Show)
 
--- There are two types of supported compressors in RPM files: "gzip" and "lzma"
+-- | There are two types of supported compressors in RPM files: "gzip" and "lzma"
 -- We assume the RPM is well-formed, and pick the first tag we see.
 getCompressor :: RPMTypes.RPM -> Maybe Compressor
 getCompressor = asum . map go . concatMap RPMTypes.headerTags . RPMTypes.rpmHeaders
