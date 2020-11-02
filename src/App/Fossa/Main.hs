@@ -8,9 +8,10 @@ where
 
 import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
 import App.Fossa.ListTargets (listTargetsMain)
-import App.Fossa.Report (ReportType (..), reportMain)
+import qualified App.Fossa.Report as Report
 import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
+import qualified App.Fossa.VPS.Report as VPSReport
 import App.Fossa.VPS.Scan (SkipIPRScan (..), scanMain)
 import qualified App.Fossa.VPS.Test as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..))
@@ -75,7 +76,7 @@ appMain = do
       baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl key
-      reportMain baseDir apiOpts logSeverity reportTimeout reportType override
+      Report.reportMain baseDir apiOpts logSeverity reportTimeout reportType override
     --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
@@ -94,6 +95,10 @@ appMain = do
         VPSTestCommand VPSTestOptions {..} -> do
           baseDir <- validateDir vpsTestBaseDir
           VPSTest.testMain baseDir apiOpts logSeverity vpsTestTimeout vpsTestOutputType override
+        VPSReportCommand VPSReportOptions {..} -> do
+          unless vpsReportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
+          baseDir <- validateDir vpsReportBaseDir
+          VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -205,10 +210,11 @@ reportOpts =
     <*> reportCmd
     <*> baseDirArg
 
-reportCmd :: Parser ReportType
+-- FIXME: make report type a positional argument, rather than a subcommand
+reportCmd :: Parser Report.ReportType
 reportCmd =
   hsubparser $
-    command "attribution" (info (pure AttributionReport) $ progDesc "Generate attribution report")
+    command "attribution" (info (pure Report.AttributionReport) $ progDesc "Generate attribution report")
 
 testOpts :: Parser TestOptions
 testOpts =
@@ -225,6 +231,20 @@ vpsOpts = VPSOptions <$> skipIprScanOpt <*> fileFilterOpt <*> vpsCommands
 
 vpsAnalyzeOpts :: Parser VPSAnalyzeOptions
 vpsAnalyzeOpts = VPSAnalyzeOptions <$> baseDirArg <*> metadataOpts
+
+vpsReportOpts :: Parser VPSReportOptions
+vpsReportOpts =
+  VPSReportOptions
+    <$> switch (long "json" <> help "Output the report in JSON format (Currently required).")
+    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> vpsReportCmd
+    <*> baseDirArg
+
+-- FIXME: make report type a positional argument, rather than a subcommand
+vpsReportCmd :: Parser VPSReport.ReportType
+vpsReportCmd =
+  hsubparser $
+    command "attribution" (info (pure VPSReport.AttributionReport) $ progDesc "Generate attribution report")
 
 vpsTestOpts :: Parser VPSTestOptions
 vpsTestOpts =
@@ -259,6 +279,12 @@ vpsCommands =
           ( info (VPSTestCommand <$> vpsTestOpts) $
               progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
           )
+        <> command
+          "report"
+          ( info
+              (VPSReportCommand <$> vpsReportOpts)
+              (progDesc "Access various reports from FOSSA and print to stdout")
+          )
     )
 
 data CmdOptions = CmdOptions
@@ -282,11 +308,19 @@ data VPSCommand
   = VPSAnalyzeCommand VPSAnalyzeOptions
   | NinjaGraphCommand NinjaGraphCLIOptions
   | VPSTestCommand VPSTestOptions
+  | VPSReportCommand VPSReportOptions
+
+data VPSReportOptions = VPSReportOptions
+  { vpsReportJsonOutput :: Bool,
+    vpsReportTimeout :: Int,
+    vpsReportType :: VPSReport.ReportType,
+    vpsReportBaseDir :: FilePath
+  }
 
 data ReportOptions = ReportOptions
   { reportJsonOutput :: Bool,
     reportTimeout :: Int,
-    reportType :: ReportType,
+    reportType :: Report.ReportType,
     reportBaseDir :: FilePath
   }
 

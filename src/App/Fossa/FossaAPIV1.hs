@@ -29,6 +29,7 @@ module App.Fossa.FossaAPIV1
   , getOrganization
 
   , getAttribution
+  , getAttributionRaw
   ) where
 
 import App.Fossa.Analyze.Project
@@ -366,6 +367,22 @@ getAttribution
   -> ProjectRevision
   -> m Attr.Attribution
 getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = baseOpts
+        <> "includeDeepDependencies" =: True
+        <> "includeHashAndVersionData" =: True
+        <> "includeDownloadUrl" =: True
+  Organization orgId <- getOrganization apiOpts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  pure (responseBody response)
+
+getAttributionRaw
+  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
+  => ApiOpts
+  -> ProjectRevision
+  -> m Value
+getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts = baseOpts

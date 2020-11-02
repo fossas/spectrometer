@@ -90,6 +90,7 @@ library
     App.Fossa.Test
     App.Fossa.VPS.EmbeddedBinary
     App.Fossa.VPS.NinjaGraph
+    App.Fossa.VPS.Report
     App.Fossa.VPS.Scan
     App.Fossa.VPS.Scan.Core
     App.Fossa.VPS.Scan.RunIPR
