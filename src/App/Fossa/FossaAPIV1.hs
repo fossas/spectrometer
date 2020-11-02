@@ -317,6 +317,7 @@ instance FromJSON Issue where
     Issue <$> obj .: "id"
            <*> obj .:? "priorityString"
            <*> obj .: "resolved"
+           -- VPS issues don't have a revisionId
            <*> obj .:? "revisionId" .!= "unknown project"
            <*> obj .: "type"
            <*> obj .:? "rule"
