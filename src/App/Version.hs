@@ -44,7 +44,7 @@ fullVersionDescription = T.concat items
     version =
       if isDirty
         then branch
-        else maybe branch (<> "version ") versionNumber
+        else maybe branch ("version " <>) versionNumber
     branch = "branch " <> currentBranch
     dirty = if isDirty then " (dirty)" else ""
     items :: [Text]
