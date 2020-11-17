@@ -1,13 +1,7 @@
 {-# language TemplateHaskell #-}
 
 module Strategy.Node.YarnLock
-<<<<<<< HEAD
   ( analyze'
-=======
-  ( discover
-  , analyze
-  , buildGraph
->>>>>>> be4a7f2 (testing for yarn.lock)
   ) where
 
 import Control.Effect.Diagnostics
