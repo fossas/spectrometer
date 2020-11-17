@@ -21,9 +21,6 @@ import GitHash
 import Instances.TH.Lift ()
 import Language.Haskell.TH
 import Path
-import Language.Haskell.TH.Syntax (addDependentFile)
-import Path.IO (getCurrentDir)
-import Data.Foldable (traverse_)
 
 
 gitTagPointCommand :: Text -> Command
@@ -34,28 +31,8 @@ gitTagPointCommand commit =
       cmdAllowErr = Always
     }
 
-gitLogFile :: Path Rel File
-gitLogFile = $(mkRelFile ".git/logs/HEAD")
-
-gitHEADFile :: Path Rel File
-gitHEADFile = $(mkRelFile ".git/HEAD")
-
-addDependent :: Path Rel File -> Q ()
-addDependent file = do
-  absFile' <- runIO $ (</> file) <$> getCurrentDir
-  {- addDependentFile will cause this function to recompile when the given file
-      changes. This is required for accuracy during dev since this value is not
-      always needed in the final binary.
-
-      NOTE that there is potentially a bug with this function, which causes it to
-      do nothing.  https://github.com/haskell/cabal/issues/4746
-  -}
-  addDependentFile $ toFilePath absFile'
-
 getCurrentTag :: TExpQ (Maybe Text)
 getCurrentTag = do
-  traverse_ addDependent [gitLogFile, gitHEADFile]
-
   let commitHash = giHash $$(tGitInfoCwd)
   result <- runIO . runDiagnostics . runExecIO . getTags $ T.pack commitHash
 
