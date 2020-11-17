@@ -4,7 +4,6 @@ module App.Fossa.VersionSpec
 where
 
 import App.Version
-import Data.Maybe (isJust)
 import Test.Hspec
 
 spec :: Spec
