@@ -3,6 +3,7 @@
 module App.Version
   ( versionNumber,
     fullVersionDescription,
+    isDirty,
   )
 where
 
