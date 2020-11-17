@@ -3,6 +3,7 @@
 module Strategy.Maven.Pom
   ( analyze',
     getLicenses,
+    interpolateProperties,
   )
 where
 
@@ -116,7 +117,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
         addDep (group, artifact) body = do
-          let interpolatedVersion = classify . naiveInterpolate (pomProperties completePom) <$> depVersion body
+          let interpolatedVersion = classify . interpolateProperties completePom <$> depVersion body
               -- maven classifiers are appended to the end of versions, e.g., 3.0.0 with a classifier
               -- of "sources" would result in "3.0.0-sources"
               classify version = case depClassifier body of
@@ -141,6 +142,20 @@ reifyDeps pom = M.mapWithKey overlayDepManagement (pomDependencies pom)
   where
     overlayDepManagement :: (Group, Artifact) -> MvnDepBody -> MvnDepBody
     overlayDepManagement key body = maybe body (body <>) (M.lookup key (pomDependencyManagement pom))
+
+-- | Interpolate Pom properties into a string with the ${property} format This
+-- interpolates both computed/built-in properties and user-specified properties,
+-- preferring user-specified properties
+interpolateProperties :: Pom -> Text -> Text
+interpolateProperties pom = naiveInterpolate (pomProperties pom <> computeBuiltinProperties pom)
+
+-- | Compute the most-commonly-used builtin properties for package resolution
+computeBuiltinProperties :: Pom -> Map Text Text
+computeBuiltinProperties pom = M.fromList
+  [ ("project.groupId", coordGroup (pomCoord pom))
+  , ("project.artifactId", coordArtifact (pomCoord pom))
+  , ("project.version", coordVersion (pomCoord pom))
+  ]
 
 -- Naively interpolate properties into a Text. This only interpolates Text that
 -- starts with "${" and ends with "}", e.g.,
