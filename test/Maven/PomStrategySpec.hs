@@ -20,5 +20,10 @@ spec = do
     it "should prefer user-specified properties over computed ones" $ do
       let pom' = pom { pomProperties = M.singleton "project.groupId" "OTHERGROUP" }
       interpolateProperties pom' "${project.groupId}" `shouldBe` "OTHERGROUP"
-      
+
+    it "should work in the middle of strings" $ do
+      interpolateProperties pom "foo${project.groupId}bar" `shouldBe` "fooMYGROUPbar"
+
+    it "should interpolate multiple properties" $ do
+      interpolateProperties pom "${project.groupId}${project.artifactId}" `shouldBe` "MYGROUPMYARTIFACT"
       

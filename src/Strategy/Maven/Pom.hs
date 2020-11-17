@@ -147,7 +147,7 @@ reifyDeps pom = M.mapWithKey overlayDepManagement (pomDependencies pom)
 -- interpolates both computed/built-in properties and user-specified properties,
 -- preferring user-specified properties
 interpolateProperties :: Pom -> Text -> Text
-interpolateProperties pom = naiveInterpolate (pomProperties pom <> computeBuiltinProperties pom)
+interpolateProperties pom = interpolate (pomProperties pom <> computeBuiltinProperties pom)
 
 -- | Compute the most-commonly-used builtin properties for package resolution
 computeBuiltinProperties :: Pom -> Map Text Text
@@ -157,16 +157,25 @@ computeBuiltinProperties pom = M.fromList
   , ("project.version", coordVersion (pomCoord pom))
   ]
 
--- Naively interpolate properties into a Text. This only interpolates Text that
--- starts with "${" and ends with "}", e.g.,
---     "${myproperty}"
--- will interpolate the value of "myproperty", but
---     "blah-${myproperty}"
--- will not have its property interpolated
-naiveInterpolate :: Map Text Text -> Text -> Text
-naiveInterpolate properties text
-  | T.isPrefixOf "${" text,
-    T.isSuffixOf "}" text =
-    let stripped = T.drop 2 (T.init text)
-     in fromMaybe ("PROPERTY NOT FOUND: " <> text) (M.lookup stripped properties)
+interpolate :: Map Text Text -> Text -> Text
+interpolate properties text
+  | Just (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
+  , Just (property, afterEnd) <- breakOnAndRemove "}" afterBegin =
+      interpolate properties $
+        beforeBegin <> fromMaybe ("PROPERTY NOT FOUND: " <> property) (M.lookup property properties) <> afterEnd
   | otherwise = text
+
+-- | Like Text.breakOn, but with two differences:
+-- 1. This removes the text that was broken on, e.g., `Text.breakOn "foo" "foobar" == ("", "foobar")` `breakOnAndRemove "foo" "foobar" == ("", "bar")`
+-- 2. This returns a `Maybe` value if the substring wasn't able to be found
+--
+-- >>> breakOnAndRemove "foo" "bazfoobar"
+-- Just ("baz","bar")
+--
+-- >>> breakOnAndRemove "foo" "bar"
+-- Nothing
+breakOnAndRemove :: Text -> Text -> Maybe (Text, Text)
+breakOnAndRemove needle haystack
+  | (before,after) <- T.breakOn needle haystack
+  , T.isPrefixOf needle after = Just (before, T.drop (T.length needle) after)
+  | otherwise = Nothing
