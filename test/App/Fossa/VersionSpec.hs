@@ -4,13 +4,10 @@ module App.Fossa.VersionSpec
 where
 
 import App.Version
-import Test.Hspec
 import Data.Maybe (isJust)
+import Test.Hspec
 
 spec :: Spec
 spec = describe "Version" $ do
   it "is not dirty" $
     isDirty `shouldBe` False
-
-  it "should have a version" $
-    isJust versionNumber `shouldBe` True
