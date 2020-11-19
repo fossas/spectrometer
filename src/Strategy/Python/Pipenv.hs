@@ -91,9 +91,7 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
     start = Dependency
       { dependencyType = PipType
       , dependencyName = pipPkgName pkg
-      , dependencyVersion = case pipPkgVersion pkg of
-                              Nothing -> Nothing
-                              Just ver -> Just (CEq ver)
+      , dependencyVersion = CEq <$> pipPkgVersion pkg
       , dependencyLocations = []
       , dependencyEnvironments = []
       , dependencyTags = M.empty
@@ -130,9 +128,7 @@ buildNodes PipfileLock{..} = do
                -> PipfileDep
                -> m ()
   addWithEnv env sourcesMap depName dep = do
-    let pkg = PipPkg depName $ case fileDepVersion dep of
-                                 Nothing -> Nothing
-                                 Just ver -> Just (T.drop 2 ver)
+    let pkg = PipPkg depName $ T.drop 2 <$> fileDepVersion dep
     -- TODO: reachable instead of direct
     direct pkg
     label pkg (PipEnvironment env)
