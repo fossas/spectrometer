@@ -7,6 +7,8 @@ import DepTypes
 import GraphUtil
 import Strategy.Python.Pipenv
 import Test.Hspec hiding (xit)
+import Data.Aeson (eitherDecodeStrict)
+import qualified Data.ByteString as BS
 
 pipfileLock :: PipfileLock
 pipfileLock = PipfileLock
@@ -100,6 +102,8 @@ xit _ _ = it "is an ignored test" $ () `shouldBe` ()
 
 spec :: Spec
 spec = do
+  pipLockFile <- runIO (BS.readFile "test/Python/testdata/Pipfile.lock")
+
   describe "analyzeWithCmd" $
     -- FIXME: graphing needs to be refactored to include "reachable" alongside "direct"
     xit "should use pipenv output for edges and tags" $ do
@@ -116,3 +120,13 @@ spec = do
       expectDeps [depOne, depTwo, depThree, depFour] result
       expectDirect [depOne, depTwo, depThree, depFour] result
       expectEdges [] result
+
+  describe "analyzeNoCmdFromFile" $
+    it "should set all dependencies as direct" $ do
+      case eitherDecodeStrict pipLockFile of
+        Right res -> do
+          let result = buildGraph res Nothing
+          expectDeps [depOne, depTwo, depThree, depFour] result
+          expectDirect [depOne, depTwo, depThree, depFour] result
+          expectEdges [] result
+        Left _ -> expectationFailure "failed to parse"
