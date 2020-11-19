@@ -17,7 +17,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text.Extra (breakOnAndRemove)
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
@@ -158,24 +158,16 @@ computeBuiltinProperties pom = M.fromList
   ]
 
 interpolate :: Map Text Text -> Text -> Text
-interpolate properties text
-  | Just (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
-  , Just (property, afterEnd) <- breakOnAndRemove "}" afterBegin =
-      interpolate properties $
-        beforeBegin <> fromMaybe ("PROPERTY NOT FOUND: " <> property) (M.lookup property properties) <> afterEnd
-  | otherwise = text
+interpolate properties text =
+  case splitMavenProperty text of
+    Nothing -> text
+    Just (before, property, after) -> interpolate properties $
+        before <> fromMaybe ("PROPERTY NOT FOUND: " <> property) (M.lookup property properties) <> after
 
--- | Like Text.breakOn, but with two differences:
--- 1. This removes the text that was broken on, e.g., `Text.breakOn "foo" "foobar" == ("", "foobar")` `breakOnAndRemove "foo" "foobar" == ("", "bar")`
--- 2. This returns a `Maybe` value if the substring wasn't able to be found
---
--- >>> breakOnAndRemove "foo" "bazfoobar"
--- Just ("baz","bar")
---
--- >>> breakOnAndRemove "foo" "bar"
--- Nothing
-breakOnAndRemove :: Text -> Text -> Maybe (Text, Text)
-breakOnAndRemove needle haystack
-  | (before,after) <- T.breakOn needle haystack
-  , T.isPrefixOf needle after = Just (before, T.drop (T.length needle) after)
+-- find the first maven property in the string, e.g., `${foo}`, returning text
+-- before the property, the property, and the text after the property
+splitMavenProperty :: Text -> Maybe (Text, Text, Text)
+splitMavenProperty text
+  | Just (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
+  , Just (property, afterEnd) <- breakOnAndRemove "}" afterBegin = Just (beforeBegin, property, afterEnd)
   | otherwise = Nothing
