@@ -128,7 +128,7 @@ buildNodes PipfileLock{..} = do
                -> PipfileDep
                -> m ()
   addWithEnv env sourcesMap depName dep = do
-    let pkg = PipPkg depName $ T.drop 2 <$> fileDepVersion dep
+    let pkg = PipPkg depName (T.drop 2 <$> fileDepVersion dep)
     -- TODO: reachable instead of direct
     direct pkg
     label pkg (PipEnvironment env)
