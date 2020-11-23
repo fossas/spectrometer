@@ -24,7 +24,7 @@ toSourceUnit :: ProjectResult -> SourceUnit
 toSourceUnit ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath,
-      sourceUnitType = SourceUnitTypeDummyCLI,
+      sourceUnitType = projectResultType,
       sourceUnitManifest = renderedPath, -- TODO: use a real value here instead of renderedPath?
       sourceUnitBuild =
         SourceUnitBuild
@@ -35,7 +35,7 @@ toSourceUnit ProjectResult{..} =
           }
     }
   where
-    renderedPath = Text.pack (toFilePath projectResultPath) <> "||" <> projectResultType
+    renderedPath = Text.pack (toFilePath projectResultPath)
 
     filteredGraph :: Graphing Dependency
     filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
