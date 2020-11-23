@@ -25,7 +25,7 @@ toSourceUnit ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath,
       sourceUnitType = projectResultType,
-      sourceUnitManifest = renderedPath, -- TODO: use a real value here instead of renderedPath?
+      sourceUnitManifest = renderedPath,
       sourceUnitBuild =
         SourceUnitBuild
           { buildArtifact = "default",
