@@ -38,7 +38,7 @@ data PackageId = PackageId
 
 data PackageDependency = PackageDependency
   { pkgDepName :: T.Text
-  , pkgDepSource :: T.Text
+  , pkgDepSource :: Maybe T.Text
   , pkgDepReq :: T.Text
   , pkgDepKind :: Maybe T.Text
   } deriving (Eq, Ord, Show)
@@ -80,7 +80,7 @@ data CargoMetadata = CargoMetadata
 instance FromJSON PackageDependency where
   parseJSON = withObject "PackageDependency" $ \obj ->
     PackageDependency <$> obj .: "name"
-                      <*> obj .: "source"
+                      <*> obj .:? "source"
                       <*> obj .: "req"
                       <*> obj .:? "kind"
 
