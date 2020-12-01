@@ -23,6 +23,7 @@ data BinaryPaths = BinaryPaths
   , nomosBinaryPath :: Path Abs File
   , pathfinderBinaryPath :: Path Abs File
   , sherlockBinaryPath :: Path Abs File
+  , wigginsBinaryPath :: Path Abs File
   }
 
 withEmbeddedBinaries :: (Has (Lift IO) sig m, MonadIO m) => (BinaryPaths -> m c) -> m c
@@ -42,15 +43,17 @@ extractEmbeddedBinaries = do
   nomosBinaryPath <- extractedPath $(mkRelFile "nomossa")
   pathfinderBinaryPath <- extractedPath $(mkRelFile "pathfinder")
   sherlockBinaryPath <- extractedPath $(mkRelFile "sherlock-cli")
+  wigginsBinaryPath <- extractedPath $(mkRelFile "wiggins")
 
   -- Write the binaries
   liftIO $ writeExecutable ramjetBinaryPath embeddedBinaryRamjetCli
   liftIO $ writeExecutable nomosBinaryPath embeddedBinaryNomossa
   liftIO $ writeExecutable pathfinderBinaryPath embeddedBinaryPathfinder
   liftIO $ writeExecutable sherlockBinaryPath embeddedBinarySherlockCli
+  liftIO $ writeExecutable wigginsBinaryPath embeddedBinaryWiggins
 
   -- Return the paths
-  pure (BinaryPaths container ramjetBinaryPath nomosBinaryPath pathfinderBinaryPath sherlockBinaryPath)
+  pure (BinaryPaths container ramjetBinaryPath nomosBinaryPath pathfinderBinaryPath sherlockBinaryPath wigginsBinaryPath)
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -88,3 +91,6 @@ embeddedBinaryPathfinder = $(embedFileIfExists "vendor/pathfinder")
 
 embeddedBinaryNomossa :: ByteString
 embeddedBinaryNomossa = $(embedFileIfExists "vendor/nomossa")
+
+embeddedBinaryWiggins :: ByteString
+embeddedBinaryWiggins = $(embedFileIfExists "vendor/wiggins")
