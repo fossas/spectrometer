@@ -15,6 +15,7 @@ import App.Fossa.VPS.EmbeddedBinary
 import App.Fossa.VPS.Scan.Core
 import App.Fossa.VPS.Scan.RunIPR
 import App.Fossa.VPS.Scan.RunSherlock
+import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Scan.ScotlandYard
 import App.Fossa.VPS.Types
 import App.Fossa.ProjectInference
@@ -45,6 +46,7 @@ vpsScan ::
   , Has (Lift IO) sig m
   ) => BaseDir -> Severity -> OverrideProject -> Flag SkipIPRScan -> FilterExpressions -> ApiOpts -> ProjectMetadata -> BinaryPaths -> m ()
 vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag fileFilters apiOpts metadata binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
+
   -- Build the revision
   ProjectRevision {..} <- mergeOverride overrideProject <$> inferProject basedir
 
@@ -102,6 +104,16 @@ vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag fileFilters ap
   _ <- context "updating scan file filter" $ updateScanFileFilter areFiltersOverridden locator fileFilter apiOpts
   logDebug "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
 
+  logDebug "Running wiggins plugin scan"
+  let wigginsOpts = WigginsOpts basedir [""] -- placeholder args
+  wigginsResult <- sendIO $ runIt (runWiggins binaryPaths wigginsOpts)
+  case wigginsResult of
+    (Right _) -> logDebug "Wiggins plugin scan complete"
+    (Left wigginsFailure) -> do
+      logDebug "Wiggins plugin failed to scan"
+      logDebug $ renderFailureBundle wigginsFailure
+      sendIO exitFailure
+
 runSherlockScan ::
   ( Has Exec sig m
   , Has Diagnostics sig m
@@ -110,6 +122,14 @@ runSherlockScan ::
 runSherlockScan binaryPaths sherlockOpts = do
   execSherlock binaryPaths sherlockOpts
   logDebug "[Sherlock] Sherlock scan complete"
+
+runWiggins ::
+  ( Has Exec sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) => BinaryPaths -> WigginsOpts -> m ()
+runWiggins binaryPaths opts = do
+  execWiggins binaryPaths opts
 
 runIPRScan ::
   ( Has Diagnostics sig m
