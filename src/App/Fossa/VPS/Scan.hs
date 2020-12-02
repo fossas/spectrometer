@@ -53,8 +53,8 @@ vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlySca
   case wigginsResult of
     (Right _) -> logDebug "VPS plugin scan complete"
     (Left wigginsFailure) -> do
-      logDebug "VPS plugin failed to scan"
-      logDebug $ renderFailureBundle wigginsFailure
+      logError "VPS plugin failed to scan"
+      logError $ renderFailureBundle wigginsFailure
       sendIO exitFailure
 
 runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
