@@ -10,24 +10,14 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Carrier.Diagnostics
 import Effect.Exec
 import System.Exit (exitFailure)
-import Control.Concurrent.Async (concurrently)
 
 import App.Fossa.VPS.EmbeddedBinary
-import App.Fossa.VPS.Scan.Core
-import App.Fossa.VPS.Scan.RunIPR
-import App.Fossa.VPS.Scan.RunSherlock
 import App.Fossa.VPS.Scan.RunWiggins
-import App.Fossa.VPS.Scan.ScotlandYard
 import App.Fossa.VPS.Types
-import App.Fossa.ProjectInference
-import App.Types (BaseDir (..), OverrideProject (..), ProjectRevision (..), ProjectMetadata (..))
-import Data.Aeson
+import App.Types (BaseDir (..), OverrideProject (..), ProjectMetadata (..))
 import Data.Flag (Flag, fromFlag)
-import Data.Text (pack, Text)
 import Effect.Logger
-import Path
-import Fossa.API.Types (unApiKey, ApiOpts(..))
-import System.Environment
+import Fossa.API.Types (ApiOpts(..))
 
 -- | SkipIPRScan bool flag
 data SkipIPRScan = SkipIPRScan
