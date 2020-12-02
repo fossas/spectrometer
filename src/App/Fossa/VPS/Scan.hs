@@ -44,14 +44,14 @@ vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlySca
   let scanType = ScanType (fromFlag SkipIPRScan skipIprFlag) (fromFlag LicenseOnlyScan licenseOnlyScan)
   let wigginsOpts = generateWigginsOpts basedir logSeverity overrideProject scanType fileFilters apiOpts metadata
 
-  logDebug "Running wiggins plugin scan"
+  logDebug "Running VPS plugin scan"
   let runIt = runLogger queue . runDiagnostics . runExecIO
 
   wigginsResult <- sendIO $ runIt (runWiggins binaryPaths wigginsOpts)
   case wigginsResult of
-    (Right _) -> logDebug "Wiggins plugin scan complete"
+    (Right _) -> logDebug "VPS plugin scan complete"
     (Left wigginsFailure) -> do
-      logDebug "Wiggins plugin failed to scan"
+      logDebug "VPS plugin failed to scan"
       logDebug $ renderFailureBundle wigginsFailure
       sendIO exitFailure
 

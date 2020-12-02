@@ -39,7 +39,7 @@ generateWigginsOpts scanDir logSeverity overrideProject scanType fileFilters api
 generateSpectrometerArgs :: Severity -> OverrideProject -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
 generateSpectrometerArgs logSeverity OverrideProject{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
     "analyze"
-      : ["-endpoint", render apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
+      : ["-endpoint", renderUri apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
       ++ optMaybeText "-name" overrideName
       ++ optMaybeText "-revision" overrideRevision
       ++ optMaybeText "-jira-project-key" projectJiraKey
@@ -53,6 +53,14 @@ generateSpectrometerArgs logSeverity OverrideProject{..} ScanType{..} fileFilter
       ++ optBool "-debug" (logSeverity == SevDebug)
       ++ optFilterExpressions fileFilters
       ++ ["."]
+
+-- (kit) wiggins currently expects `endpoint` to not have a trailing slash. 
+-- I'll fix that, but for now, remove any trailing slash from the rendered URI.
+renderUri :: URI -> Text
+renderUri uri = do
+  let rendered = T.unpack $ render uri
+  let trimmed = if last rendered == '/' then init rendered else rendered
+  T.pack trimmed
 
 optFilterExpressions :: FilterExpressions -> [Text]
 optFilterExpressions (FilterExpressions []) = []
