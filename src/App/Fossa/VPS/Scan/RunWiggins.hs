@@ -9,7 +9,6 @@ module App.Fossa.VPS.Scan.RunWiggins
 where
 
 import App.Fossa.VPS.Types
-import App.Fossa.VPS.Scan.Core
 import App.Fossa.VPS.EmbeddedBinary
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
