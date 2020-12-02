@@ -6,7 +6,7 @@ module App.Fossa.VPS.Scan
     LicenseOnlyScan (..)
   ) where
 
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Control.Carrier.Diagnostics
 import Effect.Exec
 import System.Exit (exitFailure)
@@ -41,21 +41,13 @@ vpsScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   ) => BaseDir -> Severity -> OverrideProject -> Flag SkipIPRScan -> Flag LicenseOnlyScan -> FilterExpressions -> ApiOpts -> ProjectMetadata -> BinaryPaths -> m ()
-vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
+vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata binaryPaths = withLogger logSeverity $ do
   projectRevision <- mergeOverride overrideProject <$> inferProject basedir
   let scanType = ScanType (fromFlag SkipIPRScan skipIprFlag) (fromFlag LicenseOnlyScan licenseOnlyScan)
   let wigginsOpts = generateWigginsOpts basedir logSeverity projectRevision scanType fileFilters apiOpts metadata
 
   logDebug "Running VPS plugin scan"
-  let runIt = runLogger queue . runDiagnostics . runExecIO
-
-  wigginsResult <- sendIO $ runIt (runWiggins binaryPaths wigginsOpts)
-  case wigginsResult of
-    (Right _) -> logDebug "VPS plugin scan complete"
-    (Left wigginsFailure) -> do
-      logError "VPS plugin failed to scan"
-      logError $ renderFailureBundle wigginsFailure
-      sendIO exitFailure
+  runExecIO $ runWiggins binaryPaths wigginsOpts
 
 runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
 runWiggins binaryPaths opts = do
