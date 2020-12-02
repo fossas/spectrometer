@@ -70,8 +70,3 @@ makeExecutable path = do
 -- If you wish to build `vpscli` for your local system, populate these binaries via `vendor_download.sh`.
 embeddedBinaryWiggins :: ByteString
 embeddedBinaryWiggins = $(embedFileIfExists "vendor/wiggins")
-
-
-
-
-
