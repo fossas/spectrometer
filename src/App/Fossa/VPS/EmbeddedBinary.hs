@@ -19,10 +19,6 @@ import Data.FileEmbed.Extra
 
 data BinaryPaths = BinaryPaths
   { binaryPathContainer :: Path Abs Dir
-  , ramjetBinaryPath :: Path Abs File
-  , nomosBinaryPath :: Path Abs File
-  , pathfinderBinaryPath :: Path Abs File
-  , sherlockBinaryPath :: Path Abs File
   , wigginsBinaryPath :: Path Abs File
   }
 
@@ -39,21 +35,13 @@ extractEmbeddedBinaries = do
   container <- extractDir
 
   -- Determine paths to which we should write the binaries
-  ramjetBinaryPath <- extractedPath $(mkRelFile "ramjet-cli-ipr")
-  nomosBinaryPath <- extractedPath $(mkRelFile "nomossa")
-  pathfinderBinaryPath <- extractedPath $(mkRelFile "pathfinder")
-  sherlockBinaryPath <- extractedPath $(mkRelFile "sherlock-cli")
   wigginsBinaryPath <- extractedPath $(mkRelFile "wiggins")
 
   -- Write the binaries
-  liftIO $ writeExecutable ramjetBinaryPath embeddedBinaryRamjetCli
-  liftIO $ writeExecutable nomosBinaryPath embeddedBinaryNomossa
-  liftIO $ writeExecutable pathfinderBinaryPath embeddedBinaryPathfinder
-  liftIO $ writeExecutable sherlockBinaryPath embeddedBinarySherlockCli
   liftIO $ writeExecutable wigginsBinaryPath embeddedBinaryWiggins
 
   -- Return the paths
-  pure (BinaryPaths container ramjetBinaryPath nomosBinaryPath pathfinderBinaryPath sherlockBinaryPath wigginsBinaryPath)
+  pure (BinaryPaths container wigginsBinaryPath)
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -80,17 +68,5 @@ makeExecutable path = do
 -- The versions vendored into the repository are suitable for running on MacOS.
 -- The below functions are expectd to warn since the vendor directory is typically populated in CI.
 -- If you wish to build `vpscli` for your local system, populate these binaries via `vendor_download.sh`.
-embeddedBinarySherlockCli :: ByteString
-embeddedBinarySherlockCli = $(embedFileIfExists "vendor/sherlock-cli")
-
-embeddedBinaryRamjetCli :: ByteString
-embeddedBinaryRamjetCli = $(embedFileIfExists "vendor/ramjet-cli-ipr")
-
-embeddedBinaryPathfinder :: ByteString
-embeddedBinaryPathfinder = $(embedFileIfExists "vendor/pathfinder")
-
-embeddedBinaryNomossa :: ByteString
-embeddedBinaryNomossa = $(embedFileIfExists "vendor/nomossa")
-
 embeddedBinaryWiggins :: ByteString
 embeddedBinaryWiggins = $(embedFileIfExists "vendor/wiggins")
