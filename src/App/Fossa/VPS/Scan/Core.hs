@@ -11,7 +11,6 @@ module App.Fossa.VPS.Scan.Core
   )
 where
 
--- I REALLY don't like mixing these modules together.
 import App.Fossa.VPS.Types
 import Data.Text (pack, Text)
 import Prelude
@@ -50,11 +49,6 @@ createRevisionLocator projectName organizationId revision = do
 -- /api/vendored-package-scan/sherlock-info
 sherlockInfoEndpoint :: Url 'Https -> Url 'Https
 sherlockInfoEndpoint baseurl = baseurl /: "api" /: "vendored-package-scan" /: "sherlock-info"
-
-{-
-  FIXME: Every function below this line is using a data structure designed for the CLI.
-  This tightly couples us to our CLI API, and is very tedious to change with the merge of `vpscli` and `fossa` exe's.
--}
 
 getSherlockInfo :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> m SherlockInfo
 getSherlockInfo apiOpts = runHTTP $ do
