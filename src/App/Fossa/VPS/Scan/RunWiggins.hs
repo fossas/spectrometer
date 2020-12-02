@@ -32,16 +32,15 @@ data WigginsOpts = WigginsOpts
   , spectrometerArgs :: [Text]
   }
 
-generateWigginsOpts :: Path Abs Dir -> Severity -> OverrideProject -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
-generateWigginsOpts scanDir logSeverity overrideProject scanType fileFilters apiOpts metadata =
-  WigginsOpts scanDir (generateSpectrometerArgs logSeverity overrideProject scanType fileFilters apiOpts metadata)
+generateWigginsOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
+generateWigginsOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
+  WigginsOpts scanDir (generateSpectrometerArgs logSeverity projectRevision scanType fileFilters apiOpts metadata)
 
-generateSpectrometerArgs :: Severity -> OverrideProject -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
-generateSpectrometerArgs logSeverity OverrideProject{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
+generateSpectrometerArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
+generateSpectrometerArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
     "analyze"
       : ["-endpoint", renderUri apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
-      ++ optMaybeText "-name" overrideName
-      ++ optMaybeText "-revision" overrideRevision
+      ++ ["-name", projectName, "-revision", projectRevision]
       ++ optMaybeText "-jira-project-key" projectJiraKey
       ++ optMaybeText "-link" projectLink
       ++ optMaybeText "-policy" projectPolicy

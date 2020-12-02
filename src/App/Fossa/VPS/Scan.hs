@@ -18,6 +18,7 @@ import App.Types (BaseDir (..), OverrideProject (..), ProjectMetadata (..))
 import Data.Flag (Flag, fromFlag)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts(..))
+import App.Fossa.ProjectInference
 
 -- | SkipIPRScan bool flag
 data SkipIPRScan = SkipIPRScan
@@ -41,8 +42,9 @@ vpsScan ::
   , Has (Lift IO) sig m
   ) => BaseDir -> Severity -> OverrideProject -> Flag SkipIPRScan -> Flag LicenseOnlyScan -> FilterExpressions -> ApiOpts -> ProjectMetadata -> BinaryPaths -> m ()
 vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
+  projectRevision <- mergeOverride overrideProject <$> inferProject basedir
   let scanType = ScanType (fromFlag SkipIPRScan skipIprFlag) (fromFlag LicenseOnlyScan licenseOnlyScan)
-  let wigginsOpts = generateWigginsOpts basedir logSeverity overrideProject scanType fileFilters apiOpts metadata
+  let wigginsOpts = generateWigginsOpts basedir logSeverity projectRevision scanType fileFilters apiOpts metadata
 
   logDebug "Running VPS plugin scan"
   let runIt = runLogger queue . runDiagnostics . runExecIO
