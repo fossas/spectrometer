@@ -85,6 +85,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
+    - name: Touch vendor placeholders
+      if: ${{ contains(matrix.os, 'windows') }}
+      run: |
+        mkdir vendor
+        touch vendor/wiggins
+
     - name: Build
       run: |
         cabal update
