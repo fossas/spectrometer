@@ -182,8 +182,14 @@ toGomod name = foldr apply (Gomod name [] M.empty M.empty [])
 
 -- lookup modRequires and replace them with modReplaces as appropriate, producing the resolved list of requires
 resolve :: Gomod -> [Require]
-resolve gomod = map resolveReplace (modRequires gomod)
+resolve gomod = map resolveReplace . filter nonLocalPackage $ modRequires gomod
   where
+  -- nonLocalPackage determines whether the package name is used in a "local
+  -- replace" statement -- i.e., a replace statement pointing to a filepath as a
+  -- local module
+  nonLocalPackage :: Require -> Bool
+  nonLocalPackage = not . (`elem` M.keys (modLocalReplaces gomod)) . reqPackage
+
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
 analyze' ::
