@@ -156,6 +156,7 @@ library
     Strategy.Go.Types
     Strategy.Godep
     Strategy.Gomodules
+    Strategy.Gomodules.Resolver
     Strategy.Googlesource.RepoManifest
     Strategy.Gradle
     Strategy.Haskell.Cabal
