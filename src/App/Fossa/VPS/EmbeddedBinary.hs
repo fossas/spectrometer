@@ -68,7 +68,5 @@ makeExecutable path = do
 -- The versions vendored into the repository are suitable for running on MacOS.
 -- The below functions are expectd to warn since the vendor directory is typically populated in CI.
 -- If you wish to build `vpscli` for your local system, populate these binaries via `vendor_download.sh`.
-
--- Version: 2020-12-11-5d581ea
 embeddedBinaryWiggins :: ByteString
 embeddedBinaryWiggins = $(embedFileIfExists "vendor/wiggins")
