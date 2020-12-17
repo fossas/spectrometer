@@ -7,6 +7,7 @@
 module App.Fossa.FossaAPIV1
   ( uploadAnalysis
   , uploadContributors
+  , uploadContainerScan
   , UploadResponse(..)
   , mkMetadataOpts
   , FossaError(..)
@@ -28,6 +29,7 @@ module App.Fossa.FossaAPIV1
   ) where
 
 import App.Fossa.Analyze.Project
+import App.Fossa.Container (ContainerScan (..))
 import qualified App.Fossa.Report.Attribution as Attr
 import App.Types
 import Control.Effect.Diagnostics hiding (fromMaybe)
@@ -114,6 +116,25 @@ instance ToDiagnostic FossaError where
     JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API: " <> pretty err
     OtherError err -> "An unknown error occurred when accessing the FOSSA API: " <> viaShow err
     BadURI uri -> "Invalid FOSSA URL: " <> pretty (URI.render uri)
+
+containerUploadUrl :: Url scheme -> Url scheme
+containerUploadUrl baseurl = baseurl /: "api" /: "container" /: "upload"
+
+uploadContainerScan
+  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
+  => ApiOpts
+  -> ProjectMetadata
+  -> ContainerScan
+  -> m Text -- ^ Locator as text
+uploadContainerScan apiOpts metadata ContainerScan {..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let locator = renderLocator (Locator "custom" imageTag $ Just imageDigest)
+      opts = "locator" =: locator
+          <> "cliVersion" =: cliVersion
+          <> mkMetadataOpts metadata imageTag
+  _ <- req POST (containerUploadUrl baseUrl) (ReqBodyJson imageData) ignoreResponse (baseOpts <> opts)
+  pure locator
+
 
 uploadAnalysis
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)
