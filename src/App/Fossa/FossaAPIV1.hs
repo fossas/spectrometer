@@ -19,11 +19,6 @@ module App.Fossa.FossaAPIV1
   , BuildTask(..)
   , BuildStatus(..)
   , getIssues
-  , Issues(..)
-  , Issue(..)
-  , IssueType(..)
-  , renderIssueType
-  , IssueRule(..)
 
   , Organization(..)
   , getOrganization
@@ -52,7 +47,7 @@ import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Text.URI (URI)
 import qualified Text.URI as URI
-import Fossa.API.Types (ApiOpts, useApiOpts)
+import Fossa.API.Types (ApiOpts, useApiOpts, Issues)
 import App.Version (versionNumber)
 
 newtype FossaReq m a = FossaReq { unFossaReq :: m a }
@@ -235,101 +230,6 @@ getIssues apiOpts ProjectRevision{..} = fossaReq $ do
   Organization orgId <- getOrganization apiOpts
   response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
-
-data Issues = Issues
-  { issuesCount :: Int
-  , issuesIssues :: [Issue]
-  , issuesStatus :: Text
-  } deriving (Eq, Ord, Show)
-
-data IssueType
-  = IssuePolicyConflict
-  | IssuePolicyFlag
-  | IssueVulnerability
-  | IssueUnlicensedDependency
-  | IssueOutdatedDependency
-  | IssueOther Text
-  deriving (Eq, Ord, Show)
-
-renderIssueType :: IssueType -> Text
-renderIssueType = \case
-  IssuePolicyConflict -> "Denied by Policy"
-  IssuePolicyFlag -> "Flagged by Policy"
-  IssueVulnerability -> "Vulnerability"
-  IssueUnlicensedDependency -> "Unlicensed Dependency"
-  IssueOutdatedDependency -> "Outdated Dependency"
-  IssueOther other -> other
-
-data Issue = Issue
-  { issueId :: Int
-  , issuePriorityString :: Maybe Text -- we only use this field for `fossa test --json`
-  , issueResolved :: Bool
-  , issueRevisionId :: Text
-  , issueType :: IssueType
-  , issueRule :: Maybe IssueRule
-  } deriving (Eq, Ord, Show)
-
-newtype IssueRule = IssueRule
-  { ruleLicenseId :: Maybe Text
-  } deriving (Eq, Ord, Show)
-
-instance FromJSON Issues where
-  parseJSON = withObject "Issues" $ \obj ->
-    Issues <$> obj .: "count"
-           <*> obj .:? "issues" .!= []
-           <*> obj .: "status"
-
-instance ToJSON Issues where
-  toJSON Issues{..} = object
-    [ "count" .= issuesCount
-    , "issues" .= issuesIssues
-    , "status" .= issuesStatus
-    ]
-
-instance FromJSON Issue where
-  parseJSON = withObject "Issue" $ \obj ->
-    Issue <$> obj .: "id"
-           <*> obj .:? "priorityString"
-           <*> obj .: "resolved"
-           -- VPS issues don't have a revisionId
-           <*> obj .:? "revisionId" .!= "unknown project"
-           <*> obj .: "type"
-           <*> obj .:? "rule"
-
-instance ToJSON Issue where
-  toJSON Issue{..} = object
-    [ "id" .= issueId
-    , "priorityString" .= issuePriorityString
-    , "resolved" .= issueResolved
-    , "revisionId" .= issueRevisionId
-    , "type" .= issueType
-    , "rule" .= issueRule
-    ]
-
-instance FromJSON IssueType where
-  parseJSON = withText "IssueType" $ \case
-    "policy_conflict" -> pure IssuePolicyConflict
-    "policy_flag" -> pure IssuePolicyFlag
-    "vulnerability" -> pure IssueVulnerability
-    "unlicensed_dependency" -> pure IssueUnlicensedDependency
-    "outdated_dependency" -> pure IssueOutdatedDependency
-    other -> pure (IssueOther other)
-
-instance ToJSON IssueType where
-  toJSON = String . \case
-    IssuePolicyConflict -> "policy_conflict"
-    IssuePolicyFlag -> "policy_flag"
-    IssueVulnerability -> "vulnerability"
-    IssueUnlicensedDependency -> "unlicensed_dependency"
-    IssueOutdatedDependency -> "outdated_dependency"
-    IssueOther text -> text
-
-instance FromJSON IssueRule where
-  parseJSON = withObject "IssueRule" $ \obj ->
-    IssueRule <$> obj .:? "licenseId"
-
-instance ToJSON IssueRule where
-  toJSON IssueRule{..} = object ["licenseId" .= ruleLicenseId]
 
 ---------------
 
