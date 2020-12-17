@@ -83,7 +83,7 @@ jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $SY
   echo "Downloading '$NAME' to '$OUTPUT'"
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
   echo "Extracting syft binary from tarball"
-  tar xaf $OUTPUT fossa-container-scanning
+  tar xzf $OUTPUT fossa-container-scanning
   mv fossa-container-scanning vendor/syft
   rm $OUTPUT
 
