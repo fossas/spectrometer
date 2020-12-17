@@ -42,7 +42,7 @@ echo "Downloading asset information from latest tag for architecture '$ASSET_POS
 
 
 echo "Downloading wiggins binary"
-WIGGINS_RELEASE_JSON=$(tempfile)
+WIGGINS_RELEASE_JSON=$(mktemp wiggins-release.XXXX)
 curl -sSL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
@@ -64,7 +64,7 @@ echo "Wiggins download successful"
 echo
 
 echo "Downloading forked syft binary"
-SYFT_RELEASE_JSON=$(tempfile)
+SYFT_RELEASE_JSON=$(mktemp syft-release.XXXX)
 curl -sSL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
