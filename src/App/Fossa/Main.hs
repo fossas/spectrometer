@@ -10,6 +10,7 @@ import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain
 import App.Fossa.Container (imageTextArg, ImageText (..))
 import qualified App.Fossa.Container.Analyze as ContainerAnalyze
 import qualified App.Fossa.Container.Test as ContainerTest
+import qualified App.Fossa.EmbeddedBinary as Embed
 import App.Fossa.ListTargets (listTargetsMain)
 import qualified App.Fossa.Report as Report
 import qualified App.Fossa.Test as Test
@@ -26,6 +27,7 @@ import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
 import Data.Flag (Flag, flagOpt)
+import Data.Foldable (for_)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Discovery.Filters (BuildTargetFilter (..), filterParser)
@@ -118,6 +120,11 @@ appMain = do
           apikey <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl apikey
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
+    --
+    DumpBinsCommand dir -> do
+      basedir <- validateDir dir
+      for_ Embed.allBins $ Embed.dumpEmbeddedBinary $ unBaseDir basedir
+
 
 dieOnWindows :: String -> IO ()
 dieOnWindows op = when (SysInfo.os == windowsOsName) $ die $ "Operation is not supported on Windows: " <> op
@@ -202,6 +209,12 @@ hiddenCommands =
           ( info
               (pure InitCommand)
               (progDesc "Deprecated, has no effect.")
+          )
+        <> command
+          "dump-binaries"
+          ( info
+              (DumpBinsCommand <$> baseDirArg)
+              (progDesc "Output all embedded binaries to specified path")
           )
     )
 
@@ -364,8 +377,9 @@ data Command
   | ReportCommand ReportOptions
   | VPSCommand VPSOptions
   | ContainerCommand ContainerOptions
-  | InitCommand
   | ListTargetsCommand FilePath
+  | InitCommand
+  | DumpBinsCommand FilePath
 
 data VPSCommand
   = VPSAnalyzeCommand VPSAnalyzeOptions
