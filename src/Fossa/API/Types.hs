@@ -7,6 +7,9 @@ module Fossa.API.Types
     ApiOpts (..),
     useApiOpts,
     Issues (..),
+    IssueRule (..),
+    IssueType (..),
+    Issue (..),
   )
 where
 
