@@ -63,7 +63,7 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
 
-    - uses: actions/cache@v1
+    - uses: actions/cache@v2
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
