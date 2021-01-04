@@ -27,7 +27,7 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, for_)
 import Data.List (isInfixOf, stripPrefix)
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe)
@@ -183,7 +183,10 @@ analyze basedir destination override unpackArchives filters = do
 
   case checkForEmptyUpload projectResults filteredProjects of
     NoneDiscovered -> logError "No projects were discovered" >> sendIO exitFailure
-    FilteredAll count -> logError ("Filtered out all " <> pretty count <> " projects due to directory name") >> sendIO exitFailure
+    FilteredAll count -> do
+      logError ("Filtered out all " <> pretty count <> " projects due to directory name")
+      for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
+      sendIO exitFailure
     FoundSome someProjects -> case destination of
       OutputStdout -> logStdout . pretty . decodeUtf8 . Aeson.encode . buildResult $ NE.toList someProjects
       UploadScan apiOpts metadata -> do
