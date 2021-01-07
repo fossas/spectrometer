@@ -71,10 +71,14 @@ testInner apiOpts outputType override image = do
   issues <- waitForIssues apiOpts revision
   logSticky ""
 
-  if null $ issuesIssues issues
-    then logInfo "Test passed! 0 issues found"
-    else do
-      case outputType of
-        TestOutputPretty -> logError $ pretty issues
-        TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
-      sendIO exitFailure
+  case issuesCount issues of
+    0 -> logInfo "Test passed! 0 issues found"
+    n -> do
+      logError $ "Test failed. Number of issues found: " <> pretty n
+      if null (issuesIssues issues)
+        then logError "Check webapp for more details, or use a full-access API key (currently using a push-only API key)"
+        else do
+          case outputType of
+            TestOutputPretty -> logError $ pretty issues
+            TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+          sendIO exitFailure
