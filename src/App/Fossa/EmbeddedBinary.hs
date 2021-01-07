@@ -24,11 +24,6 @@ import Path
 import Path.IO
 import Prelude hiding (writeFile)
 
--- data BinaryPaths = BinaryPaths
--- { binaryPathContainer :: Path Abs Dir
--- , wigginsBinaryPath :: Path Abs File
--- }
-
 data PackagedBinary
   = Syft
   | Wiggins
