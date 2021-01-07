@@ -166,12 +166,22 @@ extractRevision OverrideProject {..} ContainerScan {..} = ProjectRevision name r
 
 toContainerScan :: Has Diagnostics sig m => SyftResponse -> m ContainerScan
 toContainerScan SyftResponse {..} = do
-  let convertArtifact (ResponseArtifact a b c d e f) = ContainerArtifact a b c d e f
-      newArts = map convertArtifact responseArtifacts
+  let newArts = map convertArtifact responseArtifacts
       image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro)
       target = sourceTarget responseSource
   tag <- extractTag $ targetTags target
   pure . ContainerScan image tag $ targetDigest target
+
+convertArtifact :: ResponseArtifact -> ContainerArtifact
+convertArtifact ResponseArtifact {..} = 
+  ContainerArtifact
+    { conArtifactName = artifactName,
+      conArtifactVersion = artifactVersion,
+      conArtifactType = artifactType,
+      conArtifactPkgUrl = artifactPkgUrl,
+      conArtifactMetadataType = artifactMetadataType,
+      conArtifactMetadata = artifactMetadata
+    }
 
 extractTag :: Has Diagnostics sig m => [Text] -> m Text
 extractTag tags = do
