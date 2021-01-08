@@ -3,6 +3,9 @@
 
 module Strategy.NuGet.PackageReference
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , buildGraph
 
   , PackageReference(..)

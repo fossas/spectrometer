@@ -3,6 +3,9 @@
 
 module Strategy.NuGet.ProjectJson
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , buildGraph
 
   , ProjectJson(..)

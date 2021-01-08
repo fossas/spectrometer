@@ -1,5 +1,8 @@
 module Strategy.NuGet.Paket
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , findSections
   , buildGraph
 

@@ -2,6 +2,9 @@
 
 module Strategy.NuGet.PackagesConfig
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , buildGraph
 
   , PackagesConfig(..)

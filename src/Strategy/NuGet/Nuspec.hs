@@ -2,13 +2,16 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.NuGet.Nuspec
-  ( discover
-  , buildGraph
+  ( discover,
+    findProjects,
+    getDeps,
+    mkProject,
+    buildGraph,
 
-  , Nuspec(..)
-  , Group(..)
-  , NuGetDependency(..)
-  , NuspecLicense(..)
+    Nuspec(..),
+    Group(..),
+    NuGetDependency(..),
+    NuspecLicense(..),
   ) where
 
 import Control.Applicative (optional)
