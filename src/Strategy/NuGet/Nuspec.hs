@@ -36,11 +36,11 @@ discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [NuspecProject]
 findProjects = walk' $ \_ _ files -> do
-  case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
+  case find (L.isSuffixOf ".nuspec" . fileName) files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([NuspecProject file], WalkContinue)
 
-data NuspecProject = NuspecProject
+newtype NuspecProject = NuspecProject
   { nuspecFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
@@ -113,7 +113,7 @@ instance FromXML NuspecLicense where
                   <*> content el
 
 instance FromXML Group where
-  parseElement el = Group <$> (children "dependency" el)
+  parseElement el = Group <$> children "dependency" el
 
 instance FromXML NuGetDependency where
   parseElement el =

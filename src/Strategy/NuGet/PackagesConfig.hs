@@ -34,7 +34,7 @@ findProjects = walk' $ \_ _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PackagesConfigProject file], WalkContinue)
 
-data PackagesConfigProject = PackagesConfigProject
+newtype PackagesConfigProject = PackagesConfigProject
   { packagesConfigFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
