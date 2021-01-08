@@ -3,6 +3,9 @@
 
 module Strategy.Python.Pipenv
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
 
   , PipenvGraphDep(..)
   , PipfileLock(..)
