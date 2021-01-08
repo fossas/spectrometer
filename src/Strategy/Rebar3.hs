@@ -1,5 +1,8 @@
 module Strategy.Rebar3
   ( discover,
+    findProjects,
+    getDeps,
+    mkProject,
   )
 where
 
