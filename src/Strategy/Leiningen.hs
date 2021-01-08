@@ -12,6 +12,9 @@
 module Strategy.Leiningen
   ( discover,
     buildGraph,
+    findProjects,
+    getDeps,
+    mkProject,
     Deps (..),
     ClojureDep (..),
   )
