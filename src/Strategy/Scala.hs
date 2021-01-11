@@ -7,7 +7,8 @@
 -- between poms in the maven "global closure", before building the individual
 -- multi-project closures.
 module Strategy.Scala
-  ( discover
+  ( discover,
+    findProjects,
   )
 where
 
