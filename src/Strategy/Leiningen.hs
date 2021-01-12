@@ -17,6 +17,7 @@ module Strategy.Leiningen
     mkProject,
     Deps (..),
     ClojureDep (..),
+    LeiningenProject (..),
   )
 where
 
