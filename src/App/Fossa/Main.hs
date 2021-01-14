@@ -107,6 +107,7 @@ appMain = do
           VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
     --
     ContainerCommand ContainerOptions {..} -> do
+      die "Fatal: Container scanning is not available yet" >> pure ()
       dieOnWindows "container scanning"
       case containerCommand of
         ContainerAnalyze ContainerAnalyzeOptions {..} ->
@@ -192,13 +193,7 @@ commands =
               (VPSCommand <$> vpsOpts)
               (progDesc "Run in Vendored Package Scan mode")
           )
-        <> command
-          "container"
-          ( info
-              (ContainerCommand <$> containerOpts)
-              (progDesc "Run in Container Scan mode")
           )
-    )
 
 hiddenCommands :: Parser Command
 hiddenCommands =
@@ -216,6 +211,12 @@ hiddenCommands =
               (DumpBinsCommand <$> baseDirArg)
               (progDesc "Output all embedded binaries to specified path")
           )
+        <> command
+          "container"
+          ( info
+              (ContainerCommand <$> containerOpts)
+              (progDesc "Run in Container Scan mode")
+    )
     )
 
 analyzeOpts :: Parser AnalyzeOptions
