@@ -131,6 +131,7 @@ uploadContainerScan apiOpts metadata ContainerScan {..} = fossaReq $ do
   let locator = renderLocator (Locator "custom" imageTag $ Just imageDigest)
       opts = "locator" =: locator
           <> "cliVersion" =: cliVersion
+          <> "managedBuild" =: True
           <> mkMetadataOpts metadata imageTag
   _ <- req POST (containerUploadUrl baseUrl) (ReqBodyJson imageData) ignoreResponse (baseOpts <> opts)
   pure locator
