@@ -100,9 +100,9 @@ curl -sSL \
 
 # Remove leading 'v' from version tag
 # 'v123' -> '123'
-SYFT_TAG=$(jq -cr '.name' $CLIV1_RELEASE_JSON | sed 's/^v//')
+CLIV1_TAG=$(jq -cr '.name' $CLIV1_RELEASE_JSON | sed 's/^v//')
 echo "Using fossas/fossa-cli release: $CLIV1_TAG"
-FILTER=".name == \"fossa-cli__${CLIV1_TAG}_${ASSET_POSTFIX}_amd64.tar.gz\""
+FILTER=".name == \"fossa-cli_${CLIV1_TAG}_${ASSET_POSTFIX}_amd64.tar.gz\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
@@ -116,7 +116,7 @@ jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $_R
   rm $OUTPUT
 
 done
-rm $SYFT_RELEASE_JSON
+rm $CLIV1_RELEASE_JSON
 echo "CLI v1 download successful"
 
 echo "Marking binaries executable"
