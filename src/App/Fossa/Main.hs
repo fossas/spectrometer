@@ -7,7 +7,7 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
-import App.Fossa.Container (imageTextArg, ImageText (..))
+import App.Fossa.Container (ImageText (..), imageTextArg)
 import qualified App.Fossa.Container.Analyze as ContainerAnalyze
 import qualified App.Fossa.Container.Test as ContainerTest
 import qualified App.Fossa.EmbeddedBinary as Embed
@@ -32,7 +32,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Discovery.Filters (BuildTargetFilter (..), filterParser)
 import Effect.Logger
-import Fossa.API.Types (ApiKey(..), ApiOpts(..))
+import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Options.Applicative
 import System.Environment (lookupEnv)
 import System.Exit (die)
@@ -96,8 +96,18 @@ appMain = do
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           baseDir <- validateDir vpsAnalyzeBaseDir
           scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
-        NinjaGraphCommand ninjaGraphOptions -> do
-          ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
+        NinjaGraphCommand NinjaGraphCLIOptions {..} -> do
+          androidTopDir <- validateDir ninjaAndroidTopDir
+          ninjaGraphMain
+            NinjaGraphOptions
+              { ngoLogSeverity = logSeverity,
+                ngoAPIOptions = apiOpts,
+                ngoProjectOverride = override,
+                ngoAndroidTopDir = androidTopDir,
+                ngoLunchCombo = ninjaLunchCombo,
+                ngoScanID = ninjaScanId,
+                ngoBuildName = ninjaBuildName
+              }
         VPSTestCommand VPSTestOptions {..} -> do
           baseDir <- validateDir vpsTestBaseDir
           VPSTest.testMain baseDir apiOpts logSeverity vpsTestTimeout vpsTestOutputType override
@@ -125,7 +135,6 @@ appMain = do
     DumpBinsCommand dir -> do
       basedir <- validateDir dir
       for_ Embed.allBins $ Embed.dumpEmbeddedBinary $ unBaseDir basedir
-
 
 dieOnWindows :: String -> IO ()
 dieOnWindows op = when (SysInfo.os == windowsOsName) $ die $ "Operation is not supported on Windows: " <> op
@@ -193,7 +202,7 @@ commands =
               (VPSCommand <$> vpsOpts)
               (progDesc "Run in Vendored Package Scan mode")
           )
-          )
+    )
 
 hiddenCommands :: Parser Command
 hiddenCommands =
@@ -216,7 +225,7 @@ hiddenCommands =
           ( info
               (ContainerCommand <$> containerOpts)
               (progDesc "Run in Container Scan mode")
-    )
+          )
     )
 
 analyzeOpts :: Parser AnalyzeOptions
@@ -298,12 +307,11 @@ vpsTestOpts =
     <*> baseDirArg
 
 ninjaGraphOpts :: Parser NinjaGraphCLIOptions
-ninjaGraphOpts = NinjaGraphCLIOptions <$> baseDirArg <*> ninjaDepsOpt <*> lunchTargetOpt <*> scanIdOpt <*> buildNameOpt
+ninjaGraphOpts = NinjaGraphCLIOptions <$> baseDirArg <*> lunchComboOpt <*> scanIdOpt <*> buildNameOpt
   where
-    ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING")
-    lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "Build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
-    scanIdOpt = strOption (long "scan-id" <> metavar "STRING" <> help "The scan ID that this build applies to")
-    buildNameOpt = strOption (long "build-name" <> metavar "STRING" <> help "Human readable name of this build. This will be shown on the FOSSA website.")
+    lunchComboOpt = strOption (long "lunch-combo" <> metavar "STRING" <> help "The lunch target to scan (e.g. \"aosp_coral\")")
+    scanIdOpt = strOption (long "scan-id" <> metavar "STRING" <> help "The scan ID of the associated build")
+    buildNameOpt = strOption (long "build-name" <> metavar "STRING" <> help "A human-readable name for this build (this will be shown in the web application)")
 
 vpsCommands :: Parser VPSCommand
 vpsCommands =
@@ -336,7 +344,7 @@ containerOpts = ContainerOptions <$> containerCommands
 
 containerCommands :: Parser ContainerCommand
 containerCommands =
-  hsubparser 
+  hsubparser
     ( command
         "analyze"
         ( info (ContainerAnalyze <$> containerAnalyzeOpts) $
@@ -436,7 +444,7 @@ data VPSTestOptions = VPSTestOptions
   }
 
 newtype ContainerOptions = ContainerOptions
-  { containerCommand :: ContainerCommand }
+  {containerCommand :: ContainerCommand}
 
 data ContainerCommand
   = ContainerAnalyze ContainerAnalyzeOptions
@@ -450,6 +458,6 @@ data ContainerAnalyzeOptions = ContainerAnalyzeOptions
 
 data ContainerTestOptions = ContainerTestOptions
   { containerTestTimeout :: Int,
-    containerTestOutputType:: ContainerTest.TestOutputType,
+    containerTestOutputType :: ContainerTest.TestOutputType,
     containerTestImage :: ImageText
   }

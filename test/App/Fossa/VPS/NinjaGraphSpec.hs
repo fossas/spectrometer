@@ -124,6 +124,8 @@ spec = do
   smallNinjaDeps <- runIO (TIO.readFile "test/App/Fossa/VPS/testdata/small-ninja-deps")
   weirdNinjaDeps <- runIO (TIO.readFile "test/App/Fossa/VPS/testdata/ninja-deps-with-weird-targets")
 
+  let scanNinjaDeps = undefined
+
   describe "scanNinjaDeps for a standard ninja deps file" $
     it "parses a small ninja deps file and generates a dependency graph" $ do
       eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 smallNinjaDeps)

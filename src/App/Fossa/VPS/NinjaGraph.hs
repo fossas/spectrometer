@@ -1,275 +1,207 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.VPS.NinjaGraph
-(
-  ninjaGraphMain
-, NinjaGraphCmdOpts(..)
-, scanNinjaDeps
-) where
+  ( ninjaGraphMain,
+    NinjaGraphOptions (..),
+  )
+where
 
-import App.Fossa.VPS.Types
-import App.Fossa.VPS.Scan.Core
-import App.Fossa.VPS.Scan.ScotlandYard
-import App.Fossa.ProjectInference
-import App.Types (BaseDir (..), NinjaGraphCLIOptions (..), OverrideProject (..), ProjectRevision (..))
-import App.Util (validateDir)
-import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Control.Effect.Lift (Lift, sendIO)
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
-import Effect.Exec
-import Effect.Logger hiding (line)
-import Effect.ReadFS
-import Path
-import System.Exit (exitFailure)
-import qualified System.FilePath as FP
-import System.Process.Typed as PROC
+import App.Fossa.ProjectInference (inferProject, mergeOverride)
+import App.Types (BaseDir (..), OverrideProject (..), ProjectRevision (..))
+import Control.Carrier.Diagnostics (Diagnostics, fatalText, runDiagnostics, withResult)
+import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Monad (unless, void)
+import Data.Char (isSpace)
+import Data.Functor (($>))
+import Data.Map (Map, fromList)
+import Data.Text (Text, pack)
+import Data.Void (Void)
+import Effect.Logger (Severity, withLogger)
+import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser, resolveFile, runReadFSIO)
 import Fossa.API.Types (ApiOpts)
+import Path (Abs, File, Path)
+import System.Exit (exitSuccess)
+import Text.Megaparsec (MonadParsec (eof, label, takeWhile1P), Parsec, anySingle, chunk, empty, many, manyTill, noneOf, oneOf, some, someTill, (<|>))
+import Text.Megaparsec.Char (alphaNumChar, eol, letterChar, space1)
+import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Debug (dbg)
 
-data NinjaGraphCmdOpts = NinjaGraphCmdOpts
-  { ninjaCmdBasedir :: FilePath
-  , ninjaCmdNinjaGraphOpts :: NinjaGraphOpts
+data NinjaGraphOptions = NinjaGraphOptions
+  { -- TODO: These three fields seem fairly common. Factor out into `CommandOptions t`?
+    ngoLogSeverity :: Severity,
+    ngoAPIOptions :: ApiOpts,
+    ngoProjectOverride :: OverrideProject,
+    --
+    ngoAndroidTopDir :: BaseDir,
+    ngoLunchCombo :: Text,
+    ngoScanID :: Text,
+    ngoBuildName :: Text
   }
 
-data NinjaGraphError = ErrorRunningNinja Text
-                     | NoNinjaDepsStartLineFound
-                     | NoNinjaDepsEndLineFound
-                     | NinjaDepsParseError
-  deriving (Eq, Ord, Show)
+ninjaGraphMain :: NinjaGraphOptions -> IO ()
+ninjaGraphMain n@NinjaGraphOptions {..} =
+  withLogger ngoLogSeverity $ do
+    result <- runReadFSIO $ runDiagnostics $ ninjaGraph n
+    withResult ngoLogSeverity result pure
 
-instance ToDiagnostic NinjaGraphError where
-  renderDiagnostic = \case
-    ErrorRunningNinja err -> "Error while running Ninja: " <> pretty err
-    NoNinjaDepsStartLineFound -> "The output of \"ninja -t deps\" did not contain the \"Starting ninja...\" line"
-    NoNinjaDepsEndLineFound   -> "The output of \"ninja -t deps\" did not contain the \"build completed successfully\" line"
-    NinjaDepsParseError   -> "There was an error while parsing the output of \"ninja -t deps\""
+ninjaFileNotFoundError :: Path Abs File -> Text
+ninjaFileNotFoundError p =
+  pack $
+    unlines
+      [ "Could not find the generated Ninja build file at " <> show p <> ".",
+        "",
+        "Debugging checklist:",
+        "",
+        "- Did you run an Android build?",
+        "  If so, this file should be generated. Check if it exists.",
+        "",
+        "- Is base directory set to the root of the Android build?",
+        "  This is the positional argument passed to the CLI. By default, this is the current working directory.",
+        "",
+        "- Are you using a custom $OUT directory for your Android build?",
+        "  This is unsupported. Rename your $OUT directory to \"//out\"."
+      ]
 
-data NinjaParseState = Starting | Parsing | Complete | Error
+ninjaGraph :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => NinjaGraphOptions -> m ()
+ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
+  -- Resolve the Ninja files from the Android repository's root.
+  let (BaseDir top) = ngoAndroidTopDir
+  soongNinjaFilePath <- resolveFile top "out/soong/build.ninja"
+  katiNinjaFilePath <- resolveFile top $ "out/build-" <> ngoLunchCombo <> ".ninja"
 
-ninjaGraphMain :: ApiOpts -> Severity -> OverrideProject -> NinjaGraphCLIOptions -> IO ()
-ninjaGraphMain apiOpts logSeverity overrideProject NinjaGraphCLIOptions{..} = do
-  basedir <- validateDir ninjaBaseDir
+  -- Check if the files exist.
+  ok <- doesFileExist soongNinjaFilePath
+  unless ok $ fatalText $ ninjaFileNotFoundError soongNinjaFilePath
+  ok' <- doesFileExist katiNinjaFilePath
+  unless ok' $ fatalText $ ninjaFileNotFoundError katiNinjaFilePath
 
-  withLogger logSeverity $ do
-    ProjectRevision {..} <- mergeOverride overrideProject <$> inferProject (unBaseDir basedir)
-    let ninjaGraphOpts = NinjaGraphOpts apiOpts ninjaDepsFile ninjaLunchTarget ninjaScanId projectName ninjaBuildName
+  -- Parse the Ninja files.
+  soongNinja <- parseNinjaFile soongNinjaFilePath
+  sendIO $ print soongNinja
+  katiNinja <- parseNinjaFile katiNinjaFilePath
+  sendIO $ print katiNinja
+  _ <- sendIO exitSuccess
 
-    ninjaGraphInner basedir apiOpts ninjaGraphOpts
+  -- Upload the parsed Ninja files.
 
-ninjaGraphInner :: (Has Logger sig m, Has (Lift IO) sig m) => BaseDir -> ApiOpts -> NinjaGraphOpts -> m ()
-ninjaGraphInner (BaseDir basedir) apiOpts ninjaGraphOpts = do
-  result <- runDiagnostics $ getAndParseNinjaDeps basedir apiOpts ninjaGraphOpts
-  case result of
-    Left failure -> do
-      sendIO . print $ renderFailureBundle failure
-      sendIO exitFailure
-    Right _ -> pure ()
+  ProjectRevision {..} <- mergeOverride ngoProjectOverride <$> inferProject (unBaseDir ngoAndroidTopDir)
+  return ()
 
+-- result <- runDiagnostics $ getAndParseNinjaDeps undefined undefined undefined
+-- case result of
+--   Left failure -> do
+--     sendIO . print $ renderFailureBundle failure
+--     sendIO exitFailure
+--   Right _ -> pure ()
 
-getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
-getAndParseNinjaDeps dir apiOpts ninjaGraphOpts@NinjaGraphOpts{..} = do
-  ninjaDepsContents <- runReadFSIO . runExecIO $ getNinjaDeps dir ninjaGraphOpts
-  graph <- scanNinjaDeps ninjaDepsContents
-  SherlockInfo{..} <- getSherlockInfo ninjaFossaOpts
-  let locator = createLocator ninjaProjectName sherlockOrgId
-      syOpts = ScotlandYardNinjaOpts locator sherlockOrgId ninjaGraphOpts
-  _ <- uploadBuildGraph apiOpts syOpts graph
-  pure ()
+data NinjaDecl
+  = BuildDecl {outputFiles :: [Text], ruleName :: Text, inputFiles :: [Text]}
+  | VarDecl {name :: Text, value :: Text}
+  | RuleDecl {name :: Text, variables :: Map Text Text}
+  deriving (Show)
 
--- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
--- read that file to get the ninja deps. Otherwise, generate it with
--- NINJA_ARGS="-t deps" make
-getNinjaDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Path Abs Dir -> NinjaGraphOpts -> m ByteString
-getNinjaDeps baseDir opts@NinjaGraphOpts{..} =
-  case ninjaGraphNinjaPath of
-    Nothing -> BL.toStrict <$> generateNinjaDeps baseDir opts
-    Just ninjaPath -> readNinjaDepsFile ninjaPath
+type Parser = Parsec Void Text
 
-scanNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
-scanNinjaDeps ninjaDepsContents = map correctedTarget <$> ninjaDeps
+parseNinjaFile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [NinjaDecl]
+parseNinjaFile = readContentsParser ninja
   where
-    ninjaDeps = parseNinjaDeps ninjaDepsContents
+    ninja :: Parser [NinjaDecl]
+    ninja = do
+      whitespace
+      decls <- many (declarations <* whitespace)
+      eof
+      return decls
 
-readNinjaDepsFile :: (Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => FilePath -> m ByteString
-readNinjaDepsFile ninjaPath = do
-  logDebug . pretty $ "reading ninja deps from " ++ ninjaPath
-  path <- sendIO $ parseAbsFile ninjaPath
-  readContentsBS path
+    declarations :: Parser NinjaDecl
+    declarations = rule <|> build <|> variable
 
-generateNinjaDeps :: (Has Logger sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> NinjaGraphOpts -> m BL.ByteString
-generateNinjaDeps baseDir NinjaGraphOpts{..} = do
-  logDebug . pretty $ "Generating ninja deps with this command: " ++ commandString
-  (exitcode, stdout, stderr) <- sendIO $ PROC.readProcess (setWorkingDir (fromAbsDir baseDir) (PROC.shell commandString))
-  case (exitcode, stdout, stderr) of
-    (ExitSuccess, _, _) -> pure stdout
-    (_, _, err) -> fatal (ErrorRunningNinja (T.pack (show err)))
-  where
-    commandString = case lunchTarget of
-      Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
-      Just lunch ->  "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ T.unpack lunch ++ " && NINJA_ARGS=\"-t deps\" make"
+    lineComment :: Parser ()
+    lineComment = L.skipLineComment "#"
 
-correctedTarget :: DepsTarget -> DepsTarget
-correctedTarget target@DepsTarget { targetDependencies = [] } =
-  target
-correctedTarget target@DepsTarget { targetDependencies = [singleDep] } =
-  target { targetDependencies = [], targetInputs = [singleDep] }
-correctedTarget target@DepsTarget { targetDependencies = (firstDep : remainingDeps) } =
-  fromMaybe (target { targetInputs = [firstDep], targetDependencies = remainingDeps }) (correctTargetWithLeadingTxtDeps target)
+    isHSpace :: Char -> Bool
+    isHSpace x = isSpace x && x /= '\n' && x /= '\r'
 
--- There are cases where the first N dependencies are .txt files and do not match the basename
--- of the target, and the N+1th dependency is a non-.txt file and matches the basename of
--- the target. In this case, the N+1th dependency is the correct input file
--- E.g., in this case we want the input to be "system/bpf/bpfloader/BpfLoader.cpp":
--- out/soong/.intermediates/system/bpf/bpfloader/bpfloader/android_arm64_armv8-a_core/obj/system/bpf/bpfloader/BpfLoader.o: #deps 3, deps mtime 1583962500 (VALID)
---     external/compiler-rt/lib/cfi/cfi_blacklist.txt
---     build/soong/cc/config/integer_overflow_blacklist.txt
---     system/bpf/bpfloader/BpfLoader.cpp
---     bionic/libc/include/arpa/inet.h
-correctTargetWithLeadingTxtDeps :: DepsTarget -> Maybe DepsTarget
-correctTargetWithLeadingTxtDeps target =
-  case (leadingTxtDeps, restOfDeps) of
-    ([], _) -> Nothing
-    (_, []) -> Nothing
-    (_, firstNonTxtDep : remainingDeps) ->
-      if firstNonTxtDepBasename == targetBasenameWithoutExt then
-        Just corrected
-      else
-        Nothing
-      where
-        (firstNonTxtDepBasename, _) = splitBasenameExt $ dependencyPath firstNonTxtDep
-        corrected = target { targetDependencies = leadingTxtDeps ++ remainingDeps, targetInputs = [firstNonTxtDep]}
-  where
-    splitBasenameExt :: Text -> (String, String)
-    splitBasenameExt = FP.splitExtension . FP.takeFileName . T.unpack
+    hspace1 :: Parser ()
+    hspace1 = void (takeWhile1P (Just "whitespace") isHSpace) <|> void (chunk "$\n")
 
-    depsPathIsTxtAndBasenameDoesNotMatch :: String -> DepsDependency -> Bool
-    depsPathIsTxtAndBasenameDoesNotMatch targetBasename dep =
-      depExt == ".txt" && depBasename /= targetBasename
-      where
-        (depBasename, depExt) = splitBasenameExt $ dependencyPath dep
+    lexeme :: Parser a -> Parser a
+    lexeme = L.lexeme $ L.space hspace1 lineComment empty
 
-    (targetBasenameWithoutExt, _) = splitBasenameExt $ targetPath target
-    (leadingTxtDeps, restOfDeps) = span (depsPathIsTxtAndBasenameDoesNotMatch targetBasenameWithoutExt) $ targetDependencies target
+    whitespace :: Parser ()
+    whitespace = L.space space1 lineComment empty
 
-parseNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
-parseNinjaDeps ninjaDepsLines =
-  case finalState of
-    Complete -> pure $ reverse reversedDependenciesResults
-    Starting -> fatal NoNinjaDepsStartLineFound
-    Parsing  -> fatal NoNinjaDepsEndLineFound
-    Error    -> fatal NinjaDepsParseError
-  where
-    newLine = BS.head "\n" -- This is gross, but I couldn't get "BS.split '\n' ninjaDepsLines" to work
-    nLines = BS.split newLine ninjaDepsLines
-    (finalState, results) = foldl parseNinjaLine (Starting, []) nLines
-    reversedDependenciesResults = map reverseDependencies results
+    symbol :: Text -> Parser Text
+    symbol = L.symbol $ L.space hspace1 lineComment empty
 
--- The dependencies are reversed because we were consing them onto the
--- beginning of the array. Fix that here.
-reverseDependencies :: DepsTarget -> DepsTarget
-reverseDependencies target =
-  target { targetDependencies = reverse deps }
-  where
-    deps = targetDependencies target
+    dbg' :: (Show s) => String -> Parser s -> Parser s
+    dbg' = if True then dbg else const id
 
--- You can see a sample ninja deps file in test/App/VPSScan/testdata/small-ninja-deps
--- It starts with a preamble, which ends with a line that looks like
---
--- Starting ninja...
---
--- After the preamble there's the body.
--- The body itself consists of three types of lines:
--- blank lines, which are ignored
--- lines that start with a non-space character, which are target lines.
--- lines that start with spaces, which are dependency lines.
---
--- Target lines look like this:
---
--- out/target/product/coral/obj/JAVA_LIBRARIES/wifi-service_intermediates/dexpreopt.zip: #deps 2, deps mtime 1583991124 (VALID)
---
--- We just want the target, which is everything before the ": #deps"
---
--- Dependency lines are just four spaces followed by a path to a file. Like this:
---
---   device/google/coral/gpt-utils/gpt-utils.cpp
---
--- Again, we are only interested in the path, so we just strip off the leading spaces and return that.
---
--- The body ends with a line that looks like
--- [0;32m#### build completed successfully (20 seconds) ####[00m
+    identifier :: Parser Text
+    identifier =
+      dbg' "identifier" $
+        label "identifier" $
+          lexeme $
+            pack <$> do
+              start <- letterChar
+              rest <- many $ alphaNumChar <|> oneOf ['_', '.', '-']
+              return $ start : rest
 
-parseNinjaLine :: ((NinjaParseState, [DepsTarget]) -> ByteString -> (NinjaParseState, [DepsTarget]))
-parseNinjaLine (state, targets) line =
-  case state of
-    Starting ->
-      if line == "Starting ninja..." then
-        (Parsing, [])
-      else
-        (Starting, [])
-    Parsing ->
-      actuallyParseLine line targets
-    Complete ->
-      (Complete, targets)
-    -- This should never happen
-    _ -> (Error, targets)
+    value :: Parser Text
+    value = dbg' "value" $ label "value" $ pack <$> manyTill escaped eol
 
-actuallyParseLine :: ByteString -> [DepsTarget] -> (NinjaParseState, [DepsTarget])
--- ignore empty lines
-actuallyParseLine "" targets =
-  (Parsing, targets)
+    escaped :: Parser Char
+    escaped = escaped' anySingle
 
-actuallyParseLine line []
--- error if you're trying to add a dependency and there are no targets yet
--- or if you reach the end of the file and no targets have been found
-  | BS.isPrefixOf " " line || BS.isInfixOf "build completed successfully" line =
-    (Error, [])
--- Add the first target
-  | otherwise =
-    (Parsing, [newDepsTarget])
-  where
-    newDepsTarget = targetFromLine line
+    escaped' :: Parser Char -> Parser Char
+    escaped' p =
+      (chunk "$\n" $> '\n')
+        <|> (chunk "$ " $> ' ')
+        <|> (chunk "$:" $> ':')
+        <|> (chunk "$$" $> '$')
+        <|> p
 
-actuallyParseLine line (currentDepsTarget : restOfDepsTargets)
--- The "build completed successfully" line signals that parsing is complete
-  | BS.isInfixOf "build completed successfully" line =
-    (Complete, currentDepsTarget : restOfDepsTargets)
--- Lines starting with a space add a new dep to the current target
-  | BS.isPrefixOf " " line =
-    (Parsing, updatedDepsTarget : restOfDepsTargets)
--- Lines starting with a non-blank char are new targets
-  | otherwise =
-    (Parsing, newDepsTarget : currentDepsTarget : restOfDepsTargets)
-  where
-    newDepsTarget = targetFromLine line
-    updatedDepsTarget = addDepToDepsTarget currentDepsTarget line
+    variable :: Parser NinjaDecl
+    variable = dbg' "variable" $ label "variable" (uncurry VarDecl <$> variable')
 
-targetFromLine :: ByteString -> DepsTarget
-targetFromLine line =
-  DepsTarget (decodeUtf8 tar) [] [] Nothing
-  where
-    (tar, _) = BS.breakSubstring ": #deps" line
+    variable' :: Parser (Text, Text)
+    variable' = dbg' "variable'" $
+      label "variable" $ do
+        name <- identifier
+        _ <- symbol "="
+        val <- value
+        return (name, val)
 
-addDepToDepsTarget :: DepsTarget -> ByteString -> DepsTarget
-addDepToDepsTarget target line =
-  target { targetDependencies = newDep : currentDeps}
-  where
-    currentDeps = targetDependencies target
-    newDep = parseDepLine line
+    indentedVariables :: Parser [(Text, Text)]
+    indentedVariables = dbg' "vars" $ many $ hspace1 >> variable'
 
-parseDepLine :: ByteString -> DepsDependency
-parseDepLine line =
-  DepsDependency (decodeUtf8 path) componentName hasDeps
-  where
-    path = stripLeadingSpace line
-    componentName = Nothing -- TODO: get component name
-    hasDeps = BS.isPrefixOf "out/" path
+    rule :: Parser NinjaDecl
+    rule = dbg' "rule" $
+      label "rule" $ do
+        _ <- symbol "rule "
+        name <- identifier
+        _ <- eol
+        variables <- fromList <$> indentedVariables
+        return RuleDecl {..}
 
-stripLeadingSpace :: ByteString -> ByteString
-stripLeadingSpace = BS.dropWhile (\c -> c == BS.head " ")
+    path :: Parser Text
+    path = dbg' "path" $ label "path" $ pack <$> lexeme (some $ escaped' $ noneOf [' ', '\t', ':', '\r', '\n'])
+
+    -- TODO: parsing for different dependency types (implicit, order-only)
+    build :: Parser NinjaDecl
+    build = dbg' "build" $
+      label "build" $ do
+        _ <- symbol "build "
+        outputFiles <- some path
+        _ <- symbol ":"
+        ruleName <- identifier
+        inputFiles <- manyTill path eol
+        _ <- indentedVariables -- TODO: actually use these variables
+        return BuildDecl {..}
+
+-- getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
+-- getAndParseNinjaDeps dir apiOpts ninjaGraphOpts@NinjaGraphOpts {..} = do
+--   SherlockInfo {..} <- getSherlockInfo ninjaFossaOpts
+--   let locator = createLocator ninjaProjectName sherlockOrgId
+--       syOpts = ScotlandYardNinjaOpts locator sherlockOrgId ninjaGraphOpts
+--   _ <- uploadBuildGraph apiOpts syOpts graph
+--   pure ()

@@ -34,9 +34,8 @@ data ProjectRevision = ProjectRevision
   } deriving (Eq, Ord, Show)
 
 data NinjaGraphCLIOptions = NinjaGraphCLIOptions
-  { ninjaBaseDir :: FilePath,
-    ninjaDepsFile :: Maybe FilePath,
-    ninjaLunchTarget :: Maybe Text,
+  { ninjaAndroidTopDir :: FilePath,
+    ninjaLunchCombo :: Text,
     ninjaScanId :: Text,
     ninjaBuildName :: Text
   }
