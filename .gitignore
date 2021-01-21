@@ -7,6 +7,8 @@ dist-newstyle/
 # profiling
 *.prof
 *.hp
+*.ps
+*.aux
 
 # vendor directory
 vendor

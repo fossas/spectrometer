@@ -21,8 +21,8 @@ import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser, resolveFile, ru
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, File, Path)
 import System.Exit (exitSuccess)
-import Text.Megaparsec (MonadParsec (eof, label, takeWhile1P), Parsec, anySingle, chunk, empty, many, manyTill, noneOf, oneOf, some, someTill, (<|>))
-import Text.Megaparsec.Char (alphaNumChar, eol, letterChar, space1)
+import Text.Megaparsec (Parsec, anySingle, chunk, empty, eof, label, many, manyTill, noneOf, oneOf, some, takeWhile1P, (<|>))
+import Text.Megaparsec.Char (char, alphaNumChar, eol, letterChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Debug (dbg)
 
@@ -108,15 +108,12 @@ parseNinjaFile = readContentsParser ninja
     ninja :: Parser [NinjaDecl]
     ninja = do
       whitespace
-      decls <- many (declarations <* whitespace)
+      decls <- many $ declarations <* whitespace
       eof
       return decls
 
     declarations :: Parser NinjaDecl
     declarations = rule <|> build <|> variable
-
-    lineComment :: Parser ()
-    lineComment = L.skipLineComment "#"
 
     isHSpace :: Char -> Bool
     isHSpace x = isSpace x && x /= '\n' && x /= '\r'
@@ -124,17 +121,23 @@ parseNinjaFile = readContentsParser ninja
     hspace1 :: Parser ()
     hspace1 = void (takeWhile1P (Just "whitespace") isHSpace) <|> void (chunk "$\n")
 
-    lexeme :: Parser a -> Parser a
-    lexeme = L.lexeme $ L.space hspace1 lineComment empty
-
     whitespace :: Parser ()
-    whitespace = L.space space1 lineComment empty
+    whitespace = dbg' "whitespace" $ label "whitespace" $ whitespace' space1
+
+    trailing :: Parser ()
+    trailing = dbg' "trailing" $ label "trailing whitespace" $ whitespace' hspace1
+
+    whitespace' :: Parser () -> Parser ()
+    whitespace' s = void $ many $ void (char '#' >> manyTill anySingle eol) <|> s
+
+    lexeme :: Parser a -> Parser a
+    lexeme = L.lexeme trailing
 
     symbol :: Text -> Parser Text
-    symbol = L.symbol $ L.space hspace1 lineComment empty
+    symbol = L.symbol trailing
 
     dbg' :: (Show s) => String -> Parser s -> Parser s
-    dbg' = if True then dbg else const id
+    dbg' = if False then dbg else const id
 
     identifier :: Parser Text
     identifier =
