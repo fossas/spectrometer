@@ -91,6 +91,34 @@ done
 rm $SYFT_RELEASE_JSON
 echo "Forked Syft download successful"
 
+echo "Downloading cliv1 binary"
+CLIV1_RELEASE_JSON=vendor/cliv1-release.json
+curl -sSL \
+    -H "Authorization: token $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github.v3.raw" \
+    api.github.com/repos/fossas/fossa-cli/releases/latest > $CLIV1_RELEASE_JSON
+
+# Remove leading 'v' from version tag
+# 'v123' -> '123'
+SYFT_TAG=$(jq -cr '.name' $CLIV1_RELEASE_JSON | sed 's/^v//')
+echo "Using fossas/fossa-cli release: $CLIV1_TAG"
+FILTER=".name == \"fossa-cli__${CLIV1_TAG}_${ASSET_POSTFIX}_amd64.tar.gz\""
+jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $_RELEASE_JSON | while read ASSET; do
+  URL="$(echo $ASSET | jq -c -r '.url')"
+  NAME="$(echo $ASSET | jq -c -r '.name')"
+  OUTPUT=vendor/${NAME%"-$ASSET_POSTFIX"}
+
+  echo "Downloading '$NAME' to '$OUTPUT'"
+  curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
+  echo "Extracting cliv1 binary from tarball"
+  tar xzf $OUTPUT fossa-cli-v1
+  mv fossa-cli-v1 vendor/cliv1
+  rm $OUTPUT
+
+done
+rm $SYFT_RELEASE_JSON
+echo "CLI v1 download successful"
+
 echo "Marking binaries executable"
 chmod +x vendor/*
 
