@@ -8,24 +8,24 @@ where
 
 import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types (BaseDir (..), OverrideProject (..), ProjectRevision (..))
-import Conduit (ConduitT, MonadIO (liftIO), decodeUtf8C, encodeUtf8C, foldC, iterMC, mapMC, runConduit, runConduitRes, runResourceT, sourceFile, stderrC, stdoutC, yield, (.|))
+import Conduit (ConduitT, encodeUtf8C, mapC, runConduitRes, stderrC, yield, (.|))
 import Control.Carrier.Diagnostics (Diagnostics, fatalText, runDiagnostics, withResult)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (unless, void)
-import Control.Monad.Trans (MonadTrans (lift))
-import Data.Char (isSpace)
-import Data.Conduit.Combinators (peek)
+import Control.Monad.Trans (MonadIO, lift, liftIO)
+import Data.Char (isPrint, isSpace)
 import Data.Functor (($>))
 import Data.Map (Map, fromList)
-import Data.Text (Text, pack)
+import Data.Text (Text, cons, pack)
+import qualified Data.Text.IO as TIO
 import Data.Void (Void)
 import Effect.Logger (Severity, withLogger)
-import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser, resolveFile, runReadFSIO)
+import Effect.ReadFS (ReadFS, doesFileExist, resolveFile, runReadFSIO)
 import Fossa.API.Types (ApiOpts)
-import Path (Abs, File, Path, fromAbsFile)
+import Path (Abs, File, Path, toFilePath)
 import System.Exit (exitSuccess)
-import Text.Megaparsec (Parsec, PosState (..), State (..), anySingle, chunk, defaultTabWidth, empty, eof, initialPos, label, many, manyTill, noneOf, oneOf, some, takeWhile1P, (<|>))
-import Text.Megaparsec.Char (alphaNumChar, eol, letterChar, space1)
+import Text.Megaparsec (ParsecT, anySingle, chunk, empty, eof, label, many, manyTill, noneOf, optional, runParserT, some, takeWhile1P, takeWhileP, (<|>))
+import Text.Megaparsec.Char (eol, letterChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Debug (dbg)
 
@@ -65,45 +65,6 @@ ninjaFileNotFoundError p =
         "  This is unsupported. Rename your $OUT directory to \"//out\"."
       ]
 
-{-
-
-Read chunk boundaries at literal newlines (because comments are until end-of-line)
-Match whitespace until failure
-- Peek when out of input
-- On EOF, succeed
-
-Match decls <* whitespace until failure
-> can I do this? will I get partial prefix matches e.g. for indented variables?
-
-StateT here for variable dictionary + "am i in a block?" + "am i in a comment?"
-
--}
-conduitTest :: (MonadIO m) => ConduitT Text Text m ()
-conduitTest = do
-  x <- peek
-  case x of
-    Just x' -> do
-      liftIO $ print $ "this is the chunk: " <> show x'
-      yield x'
-    Nothing -> return ()
-  where
-    loop = undefined
-    initialState :: String -> s -> State s e
-    initialState name s =
-      State
-        { stateInput = s,
-          stateOffset = 0,
-          statePosState =
-            PosState
-              { pstateInput = s,
-                pstateOffset = 0,
-                pstateSourcePos = initialPos name,
-                pstateTabWidth = defaultTabWidth,
-                pstateLinePrefix = ""
-              },
-          stateParseErrors = []
-        }
-
 ninjaGraph :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => NinjaGraphOptions -> m ()
 ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
   -- Resolve the Ninja files from the Android repository's root.
@@ -121,9 +82,8 @@ ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
   sendIO $ print "STARTING PARSE"
   sendIO $
     runConduitRes $
-      sourceFile (fromAbsFile soongNinjaFilePath)
-        .| decodeUtf8C
-        .| conduitTest
+      sourceParser ninjaParser katiNinjaFilePath
+        .| mapC (pack . (++ "\n") . show)
         .| encodeUtf8C
         .| stderrC
   -- soongNinja <- parseNinjaFile soongNinjaFilePath
@@ -151,62 +111,80 @@ data NinjaDecl
   | RuleDecl {name :: Text, variables :: Map Text Text}
   deriving (Show)
 
-type Parser = Parsec Void Text
+type ConduitParser o m r = ParsecT Void Text (ConduitT () o m) r
 
-parseNinjaFile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [NinjaDecl]
-parseNinjaFile = readContentsParser ninja
+yieldMany :: (Monad m) => ConduitParser o m o -> ConduitParser o m ()
+yieldMany parser = do
+  result <- optional parser
+  case result of
+    Just r -> lift (yield r) *> yieldMany parser
+    Nothing -> return ()
+
+-- TODO: How do I report parse errors? Can I run the Either from runParseT into a (Has Diagnostics m)?
+sourceParser :: (MonadIO m) => ConduitParser o m r -> Path b File -> ConduitT () o m ()
+sourceParser parser filepath = do
+  contents <- liftIO $ TIO.readFile filepath'
+  void $ runParserT parser filepath' contents
   where
-    ninja :: Parser [NinjaDecl]
-    ninja = do
-      whitespace
-      decls <- many $ declarations <* whitespace
-      eof
-      return decls
+    filepath' = toFilePath filepath
 
-    declarations :: Parser NinjaDecl
+-- TODO: resolve variable substitutions.
+--
+-- Variable rules are simple:
+-- - Variables must be defined before they're referenced.
+-- - Variable values are substituted when they're read, and then considered static.
+-- - Block scoped variables override global scoped variables.
+--
+-- It should be enough to just carry around a Map Text Text of variable names and values.
+ninjaParser :: (Monad m) => ConduitParser NinjaDecl m ()
+ninjaParser = do
+  whitespace
+  yieldMany $ declarations <* whitespace
+  eof
+  where
+    declarations :: ConduitParser o m NinjaDecl
     declarations = rule <|> build <|> variable
 
     isHSpace :: Char -> Bool
     isHSpace x = isSpace x && x /= '\n' && x /= '\r'
 
-    hspace1 :: Parser ()
+    hspace1 :: ConduitParser o m ()
     hspace1 = void (takeWhile1P (Just "whitespace") isHSpace) <|> void (chunk "$\n")
 
-    whitespace' :: Parser () -> Parser ()
+    whitespace' :: ConduitParser o m () -> ConduitParser o m ()
     whitespace' s = L.space s (L.skipLineComment "#") empty
 
-    whitespace :: Parser ()
+    whitespace :: ConduitParser o m ()
     whitespace = dbg' "whitespace" $ label "whitespace" $ whitespace' space1
 
-    trailing :: Parser ()
+    trailing :: ConduitParser o m ()
     trailing = dbg' "trailing" $ label "trailing whitespace" $ whitespace' hspace1
 
-    lexeme :: Parser a -> Parser a
+    lexeme :: ConduitParser o m a -> ConduitParser o m a
     lexeme = L.lexeme trailing
 
-    symbol :: Text -> Parser Text
+    symbol :: Text -> ConduitParser o m Text
     symbol = L.symbol trailing
 
-    dbg' :: (Show s) => String -> Parser s -> Parser s
+    dbg' :: (Show s) => String -> ConduitParser o m s -> ConduitParser o m s
     dbg' = if False then dbg else const id
 
-    identifier :: Parser Text
+    identifier :: ConduitParser o m Text
     identifier =
       dbg' "identifier" $
         label "identifier" $
-          lexeme $
-            pack <$> do
-              start <- letterChar
-              rest <- many $ alphaNumChar <|> oneOf ['_', '.', '-'] -- TODO: express this as takeWhileP?
-              return $ start : rest
+          lexeme $ do
+            start <- letterChar
+            rest <- takeWhileP (Just "") (\c -> isPrint c && not (isSpace c))
+            return $ start `cons` rest
 
-    value :: Parser Text
+    value :: ConduitParser o m Text
     value = dbg' "value" $ label "value" $ pack <$> manyTill escaped eol
 
-    escaped :: Parser Char
+    escaped :: ConduitParser o m Char
     escaped = escaped' anySingle
 
-    escaped' :: Parser Char -> Parser Char
+    escaped' :: ConduitParser o m Char -> ConduitParser o m Char
     escaped' p =
       (chunk "$\n" $> '\n')
         <|> (chunk "$ " $> ' ')
@@ -214,10 +192,10 @@ parseNinjaFile = readContentsParser ninja
         <|> (chunk "$$" $> '$')
         <|> p
 
-    variable :: Parser NinjaDecl
+    variable :: ConduitParser o m NinjaDecl
     variable = dbg' "variable" $ label "variable" (uncurry VarDecl <$> variable')
 
-    variable' :: Parser (Text, Text)
+    variable' :: ConduitParser o m (Text, Text)
     variable' = dbg' "variable'" $
       label "variable" $ do
         name <- identifier
@@ -225,10 +203,10 @@ parseNinjaFile = readContentsParser ninja
         val <- value
         return (name, val)
 
-    indentedVariables :: Parser [(Text, Text)]
+    indentedVariables :: ConduitParser o m [(Text, Text)]
     indentedVariables = dbg' "vars" $ many $ hspace1 >> variable'
 
-    rule :: Parser NinjaDecl
+    rule :: ConduitParser o m NinjaDecl
     rule = dbg' "rule" $
       label "rule" $ do
         _ <- symbol "rule "
@@ -237,11 +215,11 @@ parseNinjaFile = readContentsParser ninja
         variables <- fromList <$> indentedVariables
         return RuleDecl {..}
 
-    path :: Parser Text
+    path :: ConduitParser o m Text
     path = dbg' "path" $ label "path" $ pack <$> lexeme (some $ escaped' $ noneOf [' ', '\t', ':', '\r', '\n'])
 
     -- TODO: parsing for different dependency types (implicit, order-only)
-    build :: Parser NinjaDecl
+    build :: ConduitParser o m NinjaDecl
     build = dbg' "build" $
       label "build" $ do
         _ <- symbol "build "
