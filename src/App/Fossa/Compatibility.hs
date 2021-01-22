@@ -23,13 +23,13 @@ import Effect.Logger (Pretty(pretty), logInfo, logSticky, Severity(SevInfo), wit
 type Argument = Text
 
 argumentParser :: Parser Argument
-argumentParser = pack <$> argument str (metavar "IMAGE" <> help "The image to scan")
+argumentParser = pack <$> argument str (metavar "ARGS" <> help "arguments to fossa v1 analyze")
 
 compatibilityMain ::
   [Argument] ->
   IO ()
 compatibilityMain args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
-  logSticky "[ Waiting for fossa command completion ]"
+  logSticky "[ Waiting for fossa analyze completion ]"
   cmd <- exec [reldir|.|] $ v1Command v1Bin $ args
   logSticky ""
 
@@ -46,6 +46,6 @@ v1Command :: BinaryPaths -> [Text] -> Command
 v1Command bin args =
   Command
     { cmdName = pack . toFilePath $ toExecutablePath bin,
-      cmdArgs = args,
+      cmdArgs = "analyze" : args,
       cmdAllowErr = Never
     }

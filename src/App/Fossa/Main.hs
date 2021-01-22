@@ -225,7 +225,7 @@ hiddenCommands =
           "compatibility"
           ( info
               (CompatibilityCommand <$> compatibilityOpts)
-              (progDesc "Run fossa cli v1. Supply arguments as \"fossa compatibility -- analyze --project test\"")
+              (progDesc "Run fossa cli v1 analyze. Supply arguments as \"fossa compatibility -- --project test\"")
           )
     )
 
