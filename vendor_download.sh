@@ -103,7 +103,7 @@ curl -sSL \
 CLIV1_TAG=$(jq -cr '.name' $CLIV1_RELEASE_JSON | sed 's/^v//')
 echo "Using fossas/fossa-cli release: $CLIV1_TAG"
 FILTER=".name == \"fossa-cli_${CLIV1_TAG}_${ASSET_POSTFIX}_amd64.tar.gz\""
-jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $_RELEASE_JSON | while read ASSET; do
+jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $CLIV1_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
   OUTPUT=vendor/${NAME%"-$ASSET_POSTFIX"}
