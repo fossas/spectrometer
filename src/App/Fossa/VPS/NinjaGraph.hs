@@ -8,10 +8,13 @@ where
 
 import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types (BaseDir (..), OverrideProject (..), ProjectRevision (..))
+import Conduit (ConduitT, MonadIO (liftIO), decodeUtf8C, encodeUtf8C, foldC, iterMC, mapMC, runConduit, runConduitRes, runResourceT, sourceFile, stderrC, stdoutC, yield, (.|))
 import Control.Carrier.Diagnostics (Diagnostics, fatalText, runDiagnostics, withResult)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (unless, void)
+import Control.Monad.Trans (MonadTrans (lift))
 import Data.Char (isSpace)
+import Data.Conduit.Combinators (peek)
 import Data.Functor (($>))
 import Data.Map (Map, fromList)
 import Data.Text (Text, pack)
@@ -19,10 +22,10 @@ import Data.Void (Void)
 import Effect.Logger (Severity, withLogger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser, resolveFile, runReadFSIO)
 import Fossa.API.Types (ApiOpts)
-import Path (Abs, File, Path)
+import Path (Abs, File, Path, fromAbsFile)
 import System.Exit (exitSuccess)
-import Text.Megaparsec (Parsec, anySingle, chunk, empty, eof, label, many, manyTill, noneOf, oneOf, some, takeWhile1P, (<|>))
-import Text.Megaparsec.Char (char, alphaNumChar, eol, letterChar, space1)
+import Text.Megaparsec (Parsec, PosState (..), State (..), anySingle, chunk, defaultTabWidth, empty, eof, initialPos, label, many, manyTill, noneOf, oneOf, some, takeWhile1P, (<|>))
+import Text.Megaparsec.Char (alphaNumChar, eol, letterChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Debug (dbg)
 
@@ -62,6 +65,45 @@ ninjaFileNotFoundError p =
         "  This is unsupported. Rename your $OUT directory to \"//out\"."
       ]
 
+{-
+
+Read chunk boundaries at literal newlines (because comments are until end-of-line)
+Match whitespace until failure
+- Peek when out of input
+- On EOF, succeed
+
+Match decls <* whitespace until failure
+> can I do this? will I get partial prefix matches e.g. for indented variables?
+
+StateT here for variable dictionary + "am i in a block?" + "am i in a comment?"
+
+-}
+conduitTest :: (MonadIO m) => ConduitT Text Text m ()
+conduitTest = do
+  x <- peek
+  case x of
+    Just x' -> do
+      liftIO $ print $ "this is the chunk: " <> show x'
+      yield x'
+    Nothing -> return ()
+  where
+    loop = undefined
+    initialState :: String -> s -> State s e
+    initialState name s =
+      State
+        { stateInput = s,
+          stateOffset = 0,
+          statePosState =
+            PosState
+              { pstateInput = s,
+                pstateOffset = 0,
+                pstateSourcePos = initialPos name,
+                pstateTabWidth = defaultTabWidth,
+                pstateLinePrefix = ""
+              },
+          stateParseErrors = []
+        }
+
 ninjaGraph :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => NinjaGraphOptions -> m ()
 ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
   -- Resolve the Ninja files from the Android repository's root.
@@ -76,10 +118,19 @@ ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
   unless ok' $ fatalText $ ninjaFileNotFoundError katiNinjaFilePath
 
   -- Parse the Ninja files.
-  soongNinja <- parseNinjaFile soongNinjaFilePath
-  sendIO $ print soongNinja
-  katiNinja <- parseNinjaFile katiNinjaFilePath
-  sendIO $ print katiNinja
+  sendIO $ print "STARTING PARSE"
+  sendIO $
+    runConduitRes $
+      sourceFile (fromAbsFile soongNinjaFilePath)
+        .| decodeUtf8C
+        .| conduitTest
+        .| encodeUtf8C
+        .| stderrC
+  -- soongNinja <- parseNinjaFile soongNinjaFilePath
+  -- sendIO $ print soongNinja
+  -- ~katiNinja <- parseNinjaFile katiNinjaFilePath
+  -- sendIO $ print katiNinja
+  sendIO $ print "OK!"
   _ <- sendIO exitSuccess
 
   -- Upload the parsed Ninja files.
@@ -121,14 +172,14 @@ parseNinjaFile = readContentsParser ninja
     hspace1 :: Parser ()
     hspace1 = void (takeWhile1P (Just "whitespace") isHSpace) <|> void (chunk "$\n")
 
+    whitespace' :: Parser () -> Parser ()
+    whitespace' s = L.space s (L.skipLineComment "#") empty
+
     whitespace :: Parser ()
     whitespace = dbg' "whitespace" $ label "whitespace" $ whitespace' space1
 
     trailing :: Parser ()
     trailing = dbg' "trailing" $ label "trailing whitespace" $ whitespace' hspace1
-
-    whitespace' :: Parser () -> Parser ()
-    whitespace' s = void $ many $ void (char '#' >> manyTill anySingle eol) <|> s
 
     lexeme :: Parser a -> Parser a
     lexeme = L.lexeme trailing
@@ -146,7 +197,7 @@ parseNinjaFile = readContentsParser ninja
           lexeme $
             pack <$> do
               start <- letterChar
-              rest <- many $ alphaNumChar <|> oneOf ['_', '.', '-']
+              rest <- many $ alphaNumChar <|> oneOf ['_', '.', '-'] -- TODO: express this as takeWhileP?
               return $ start : rest
 
     value :: Parser Text
@@ -198,7 +249,7 @@ parseNinjaFile = readContentsParser ninja
         _ <- symbol ":"
         ruleName <- identifier
         inputFiles <- manyTill path eol
-        _ <- indentedVariables -- TODO: actually use these variables
+        _ <- indentedVariables -- TODO: actually use these variables?
         return BuildDecl {..}
 
 -- getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
