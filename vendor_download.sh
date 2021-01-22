@@ -91,6 +91,7 @@ done
 rm $SYFT_RELEASE_JSON
 echo "Forked Syft download successful"
 
+echo ""
 echo "Downloading cliv1 binary"
 CLIV1_RELEASE_JSON=vendor/cliv1-release.json
 curl -sSL \
@@ -111,8 +112,8 @@ jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $CL
   echo "Downloading '$NAME' to '$OUTPUT'"
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
   echo "Extracting cliv1 binary from tarball"
-  tar xzf $OUTPUT fossa-cli-v1
-  mv fossa-cli-v1 vendor/cliv1
+  tar xzf $OUTPUT fossa-cli
+  mv fossa-cli vendor/cliv1
   rm $OUTPUT
 
 done
