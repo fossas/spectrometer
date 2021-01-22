@@ -3,7 +3,7 @@
 
 
 module App.Fossa.Compatibility
-  ( main,
+  ( compatibilityMain,
     argumentParser,
     Argument,
   )
@@ -25,10 +25,10 @@ type Argument = Text
 argumentParser :: Parser Argument
 argumentParser = pack <$> argument str (metavar "IMAGE" <> help "The image to scan")
 
-main ::
+compatibilityMain ::
   [Argument] ->
   IO ()
-main args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
+compatibilityMain args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
   logSticky "[ Waiting for fossa command completion ]"
   cmd <- exec [reldir|.|] $ v1Command v1Bin $ args
   logSticky ""

@@ -10,8 +10,7 @@ import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain
 import App.Fossa.Container (imageTextArg, ImageText (..))
 import qualified App.Fossa.Container.Analyze as ContainerAnalyze
 import qualified App.Fossa.Container.Test as ContainerTest
-import qualified App.Fossa.Compatibility as Compatibility
-import App.Fossa.Compatibility (argumentParser, Argument)
+import App.Fossa.Compatibility (argumentParser, Argument, compatibilityMain)
 import qualified App.Fossa.EmbeddedBinary as Embed
 import App.Fossa.ListTargets (listTargetsMain)
 import qualified App.Fossa.Report as Report
@@ -125,7 +124,7 @@ appMain = do
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
     --
     CompatibilityCommand args -> do
-      Compatibility.main args
+      compatibilityMain args
     --
     DumpBinsCommand dir -> do
       basedir <- validateDir dir
