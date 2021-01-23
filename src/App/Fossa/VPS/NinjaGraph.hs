@@ -8,14 +8,14 @@ module App.Fossa.VPS.NinjaGraph
 where
 
 import App.Types (BaseDir (..), OverrideProject (..))
-import Conduit (ConduitT, MonadResource, MonadThrow, concatMapAccumC, decodeUtf8C, encodeUtf8C, filterC, iterMC, mapC, mapMC, runConduitRes, sourceFile, stderrC, (.|))
+import Conduit (mapC, encodeUtf8C, stderrC, sinkNull, ConduitT, MonadResource, MonadThrow, concatMapAccumC, decodeUtf8C, filterC, mapMC, runConduitRes, sourceFile, (.|))
 import Control.Carrier.Diagnostics (Diagnostics, fatalText, runDiagnostics, withResult)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (unless, void)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Char (isPrint, isSpace)
+import Data.Char (isAsciiUpper, isAsciiLower, isAscii, isDigit, isPrint, isSpace)
 import Data.Functor (($>))
-import Data.Text (Text, isPrefixOf, pack, unpack)
+import Data.Text (Text, isPrefixOf, pack)
 import qualified Data.Text as T
 import Data.Void (Void)
 import Effect.Logger (Severity, withLogger)
@@ -23,9 +23,12 @@ import Effect.ReadFS (ReadFS, doesFileExist, resolveFile, runReadFSIO)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, File, Path, toFilePath)
 import System.Exit (die, exitSuccess)
-import Text.Megaparsec (Parsec, anySingle, chunk, eof, errorBundlePretty, label, many, runParser, satisfy, some, takeWhile1P, takeWhileP, (<|>))
+import Text.Megaparsec (ErrorItem(Tokens), MonadParsec(observing, token, lookAhead, takeP), Parsec, anySingle, chunk, eof, errorBundlePretty, label, many, runParser, satisfy, some, takeWhile1P, takeWhileP, (<|>))
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Debug (dbg)
+import Data.Time (utcToZonedTime, getCurrentTime, getCurrentTimeZone)
+import Data.Set (singleton)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 data NinjaGraphOptions = NinjaGraphOptions
   { -- TODO: These three fields seem fairly common. Factor out into `CommandOptions t`?
@@ -63,11 +66,6 @@ ninjaFileNotFoundError p =
         "  This is unsupported. Rename your $OUT directory to \"//out\"."
       ]
 
-debugLeft :: (MonadIO m) => Either Text a -> m ()
-debugLeft e = case e of
-  Right _ -> return ()
-  Left l -> liftIO $ putStrLn $ "ERROR:\n" <> unpack l
-
 ninjaGraph :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => NinjaGraphOptions -> m ()
 ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
   -- Resolve the Ninja files from the Android repository's root.
@@ -82,19 +80,20 @@ ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
   unless ok' $ fatalText $ ninjaFileNotFoundError katiNinjaFilePath
 
   -- Parse the Ninja files.
-  sendIO $ putStrLn "STARTING PARSE"
-  -- sendIO $
-  --   runConduitRes $
-  --     sourceParser ninjaParser katiNinjaFilePath
-  --       .| encodeUtf8C
-  --       .| stderrC
-  -- sendIO $ runConduitRes $ parseNinjaConduit soongNinjaFilePath
+  tz <- sendIO getCurrentTimeZone
+  let showT = show . utcToZonedTime tz
+  t1 <- sendIO getCurrentTime
+  sendIO $ putStrLn $ "STARTING PARSE " <> showT t1
+  -- TODO: Is there a cleaner way to run these conduits other than sendIO? Can
+  -- we run them in the upper m somehow?
+  t2 <- sendIO getCurrentTime
+  sendIO $ putStrLn $ "RUNNING SOONG PARSE " <> showT t2
+  sendIO $ runConduitRes $ parseNinjaConduit soongNinjaFilePath
+  t3 <- sendIO getCurrentTime
+  sendIO $ putStrLn $ "RUNNING KATI PARSE " <> showT t3
   sendIO $ runConduitRes $ parseNinjaConduit katiNinjaFilePath
-  -- soongNinja <- parseNinjaFile soongNinjaFilePath
-  -- sendIO $ print soongNinja
-  -- ~katiNinja <- parseNinjaFile katiNinjaFilePath
-  -- sendIO $ print katiNinja
-  sendIO $ putStrLn "OK!"
+  t4 <- sendIO getCurrentTime
+  sendIO $ putStrLn $ "DONE " <> showT t4
   _ <- sendIO exitSuccess
 
   -- Upload the parsed Ninja files.
@@ -121,24 +120,22 @@ parseNinjaConduit :: (MonadResource m, MonadThrow m) => Path b File -> ConduitT 
 parseNinjaConduit filePath =
   sourceFile (toFilePath filePath)
     .| decodeUtf8C
-    -- .| iterMC (\c -> liftIO $ putStrLn $ "DEBUG 0: " <> show c <> "\n")
     .| intoLines
-    -- .| iterMC (\c -> liftIO $ putStrLn $ "DEBUG 1: " <> show c <> "\n")
     .| removeCommentsAndEmptyLines
-    -- .| iterMC (\c -> liftIO $ putStrLn $ "DEBUG 2: " <> show c <> "\n")
     .| escapeNewlines
-    -- .| iterMC (\c -> liftIO $ putStrLn $ "DEBUG 3: " <> show c <> "\n")
     .| toStatement (toFilePath filePath)
-    -- .| iterMC debugLeft
-    .| filterStatements
+    -- .| filterStatements
     -- TODO: Fold over statements to resolve variable substitutions.
     -- TODO: Upload results to API.
-    .| mapC (\c -> "NEW CHUNK: " <> pack (show c) <> "\n")
-    .| encodeUtf8C
-    .| stderrC
+    -- .| mapC (\s -> "NEW CHUNK: " <> pack (show s) <> "\n")
+    -- .| encodeUtf8C
+    -- .| stderrC
+    .| sinkNull
 
 -- Split chunks into lines (delimited by "\n"). When a chunk does not end in a
 -- newline, hold on to it and add it to the beginning of the next chunk.
+--
+-- TODO: would performance be better if we emitted multiple lines per chunk?
 intoLines :: (Monad m) => ConduitT Text Text m ()
 intoLines = concatMapAccumC split ""
   where
@@ -172,17 +169,17 @@ removeCommentsAndEmptyLines = filterC $ \l -> not (T.null l) && (T.head l /= '#'
 
 -- Handle escaped newlines. The "$\n" sequence escapes newlines. Since we split
 -- on "\n" earlier (and we've already removed comments, so we don't need to
--- worry about commented-out escape sequences), any chunk ending in "$" was
--- actually an escaped newline (it would have been "$\n"), so that chunk should
--- be merged with the next chunk.
+-- worry about commented-out escape sequences), any line ending in "$" was
+-- actually an escaped newline (it would have been "$\n"), so that line should
+-- be merged with the next line.
 escapeNewlines :: (Monad m) => ConduitT Text Text m ()
-escapeNewlines = concatMapAccumC escapeN ""
+escapeNewlines = concatMapAccumC escapeN []
   where
-    escapeN :: Text -> Text -> (Text, [Text])
-    escapeN s prefix =
+    escapeN :: Text -> [Text] -> ([Text], [Text])
+    escapeN s prefixes =
       if T.last s == '$'
-        then (prefix <> T.init s, [])
-        else ("", [prefix <> s])
+        then (prefixes <> [T.init s], [])
+        else ([], [mconcat prefixes <> s])
 
 data NinjaStmt
   = BuildStmt {outputFiles :: [Text], ruleName :: Text, inputFiles :: [Text]}
@@ -219,10 +216,21 @@ toStatement filename = mapMC parse
       | "include " `isPrefixOf` contents = return IncludeStmt
       | "pool " `isPrefixOf` contents = return PoolStmt
       | "build " `isPrefixOf` contents = handleError $ runParser build filename contents
+      -- | "build " `isPrefixOf` contents = return $ BuildStmt [] "" []
       | otherwise = handleError $ runParser variable filename contents
+      -- | otherwise = return $ VarStmt "" "" False
+
     handleError result = case result of
       Right r -> return r
       Left l -> liftIO $ die $ errorBundlePretty l
+
+    -- build outputs: rule inputs
+    parseBuild contents = undefined
+      where
+        withoutPrefix = T.drop (T.length "build ") contents
+
+    -- indent? name = value
+    parseVar contents = undefined
 
 type Parser = Parsec Void Text
 
@@ -238,37 +246,39 @@ lexeme = L.lexeme $ void whitespace
 symbol :: Text -> Parser Text
 symbol = L.symbol $ void whitespace
 
--- TODO: Should this also technically be using escaped?
 identifier :: Parser Text
-identifier = dbg' "identifier" $ lexeme $ takeWhile1P Nothing (\c -> isPrint c && not (isSpace c))
+identifier = dbg' "identifier" $ lexeme $ takeWhile1P Nothing (\c -> isAsciiLower c || isAsciiUpper c || isDigit c || c == '-' || c == '_' || c == '.')
 
 -- TODO: Can we do this escaping in earlier stages, so we can use
 -- takeWhile1P? I think not, because escaping " " and ":" are critical.
-escaped' :: Parser Char -> Parser Char
-escaped' p =
-  (chunk "$ " $> ' ')
-    <|> (chunk "$:" $> ':')
-    <|> (chunk "$$" $> '$')
-    <|> p
+-- escaped' :: Parser Char -> Parser Char
+-- escaped' p =
+--   (chunk "$ " $> ' ')
+--     <|> (chunk "$:" $> ':')
+--     <|> (chunk "$$" $> '$')
+--     <|> p
 
-escaped :: Parser Char
-escaped = escaped' anySingle
+-- escaped :: Parser Char
+-- escaped = escaped' anySingle
 
 path :: Parser Text
-path = dbg' "path" $ pack <$> lexeme (some $ escaped' $ satisfy (\c -> c /= ' ' && c /= ':'))
+path = dbg' "path" $ lexeme $ takeWhile1P Nothing (\c -> c /= ' ' && c /= ':')
 
 statement :: Parser NinjaStmt -> Parser NinjaStmt
 statement p = p <* whitespace <* eof
 
+-- These parsers are cheating a bit: they're not escaping "$$", "$:", or "$ ".
+-- Our generated files don't contain the latter two.
+--
 -- TODO: Parse different dependency type symbols (implicit, order-only).
 build :: Parser NinjaStmt
 build = dbg' "build" $
   statement $ do
     _ <- symbol "build "
-    outputFiles <- some path
+    outputFiles <- filter (not . T.null) . T.splitOn " " <$> takeWhile1P Nothing (/= ':')
     _ <- symbol ":"
     ruleName <- identifier
-    inputFiles <- many path
+    inputFiles <- filter (not . T.null) . T.splitOn " " <$> takeWhileP Nothing (const True)
     return BuildStmt {..}
 
 variable :: Parser NinjaStmt
@@ -277,19 +287,17 @@ variable = dbg' "variable" $
     w <- whitespace
     name <- identifier
     _ <- symbol "="
-    value <- pack <$> many escaped
+    value <- takeWhileP Nothing $ const True
     let isIndented = not $ T.null w
     return VarStmt {..}
 
 -- Filter out all statements we don't care about to avoid doing extra work
 -- downstream.
 --
--- FIXME: This actually doesn't work right - we also have to filter out variable
--- statements scoped to a rule's block, so they don't get mistaken for variables
--- from a preceding build statement's scope.
+-- TODO: When we do variable resolution, we'll need to unfilter variable
+-- statements and rule statements (to correctly resolve block scopes).
 filterStatements :: (Monad m) => ConduitT NinjaStmt NinjaStmt m ()
 filterStatements = filterC f
   where
     f BuildStmt {} = True
-    f VarStmt {} = True
     f _ = False

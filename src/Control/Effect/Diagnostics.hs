@@ -41,9 +41,9 @@ import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Prelude
 
 data Diagnostics m k where
-  Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
-  Recover :: m a -> Diagnostics m (Maybe a)
-  Context :: Text -> m a -> Diagnostics m a
+  Fatal :: ToDiagnostic diag => ~diag -> Diagnostics m a
+  Recover :: ~(m a) -> Diagnostics m (Maybe a)
+  Context :: ~Text -> ~(m a) -> Diagnostics m a
 
 -- | Analagous to @throwError@ from the error effect
 fatal :: (Has Diagnostics sig m, ToDiagnostic diag) => diag -> m a

@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -27,7 +25,7 @@ import Test.Hspec
 runConstExec :: BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = runReader output . runConstExecC
 
-newtype ConstExecC m a = ConstExecC { runConstExecC :: ReaderC (BL.ByteString) m a }
+newtype ConstExecC m a = ConstExecC { runConstExecC :: ReaderC BL.ByteString m a }
   deriving (Functor, Applicative, Monad)
 
 instance Algebra sig m => Algebra (Exec :+: sig) (ConstExecC m) where
