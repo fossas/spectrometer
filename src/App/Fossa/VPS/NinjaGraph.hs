@@ -7,30 +7,23 @@ module App.Fossa.VPS.NinjaGraph
   )
 where
 
-import App.Types (BaseDir (..), OverrideProject (..))
-import Conduit (mapC, encodeUtf8C, stderrC, sinkNull, ConduitT, MonadResource, MonadThrow, concatMapAccumC, decodeUtf8C, filterC, mapMC, runConduitRes, sourceFile, (.|))
+import App.Fossa.VPS.Ninja.Env (newEnv)
+import App.Fossa.VPS.Ninja.Parse (parse)
+import App.Fossa.VPS.Ninja.Type (Ninja (..))
+import App.Types (BaseDir (..), OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics (Diagnostics, fatalText, runDiagnostics, withResult)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Monad (unless, void)
-import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Char (isAsciiUpper, isAsciiLower, isAscii, isDigit, isPrint, isSpace)
-import Data.Functor (($>))
-import Data.Text (Text, isPrefixOf, pack)
-import qualified Data.Text as T
-import Data.Void (Void)
+import Control.Monad (unless)
+import Data.Text (Text, pack)
+import Data.Time (getCurrentTime, getCurrentTimeZone, utcToZonedTime)
 import Effect.Logger (Severity, withLogger)
 import Effect.ReadFS (ReadFS, doesFileExist, resolveFile, runReadFSIO)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, File, Path, toFilePath)
-import System.Exit (die, exitSuccess)
-import Text.Megaparsec (ErrorItem(Tokens), MonadParsec(observing, token, lookAhead, takeP), Parsec, anySingle, chunk, eof, errorBundlePretty, label, many, runParser, satisfy, some, takeWhile1P, takeWhileP, (<|>))
-import qualified Text.Megaparsec.Char.Lexer as L
-import Text.Megaparsec.Debug (dbg)
-import Data.Time (utcToZonedTime, getCurrentTime, getCurrentTimeZone)
-import Data.Set (singleton)
-import Data.List.NonEmpty (NonEmpty((:|)))
-import App.Fossa.VPS.Ninja.Parse (parse)
-import App.Fossa.VPS.Ninja.Env (newEnv)
+import System.Exit (exitSuccess)
+import App.Fossa.ProjectInference (inferProject, mergeOverride)
+import App.Fossa.VPS.Scan.Core (createLocator, getSherlockInfo, SherlockInfo(..))
+import App.Fossa.VPS.Scan.ScotlandYard (uploadBuildGraph, ScotlandYardNinjaOpts(..))
 
 data NinjaGraphOptions = NinjaGraphOptions
   { -- TODO: These three fields seem fairly common. Factor out into `CommandOptions t`?
@@ -86,18 +79,32 @@ ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
   let showT = show . utcToZonedTime tz
 
   t1 <- sendIO getCurrentTime
-  sendIO $ putStrLn $ "STARTING PARSE " <> showT t1
-
-  t2 <- sendIO getCurrentTime
-  sendIO $ putStrLn $ "RUNNING SOONG PARSE " <> showT t2
+  sendIO $ putStrLn $ "RUNNING PARSE " <> showT t1
   e1 <- sendIO newEnv
   n1 <- sendIO $ parse (toFilePath soongNinjaFilePath) e1
-  -- sendIO $ print n1
+  let Ninja {..} = n1
+  sendIO $ putStrLn $ "RULES: " <> show (length rules)
+  sendIO $ putStrLn $ "RULES: " <> show (take 1 rules)
 
-  t3 <- sendIO getCurrentTime
-  sendIO $ putStrLn $ "RUNNING KATI PARSE " <> showT t3
-  e2 <- sendIO newEnv
-  n2 <- sendIO $ parse (toFilePath katiNinjaFilePath) e2
+  sendIO $ putStrLn $ "SINGLES: " <> show (length singles)
+  sendIO $ putStrLn $ "SINGLES: " <> show (take 1 singles)
+
+  sendIO $ putStrLn $ "MULTIPLES: " <> show (length multiples)
+  sendIO $ putStrLn $ "MULTIPLES: " <> show (take 1 multiples)
+
+  sendIO $ putStrLn $ "PHONYS: " <> show (length phonys)
+  sendIO $ putStrLn $ "PHONYS: " <> show (take 1 phonys)
+
+  sendIO $ putStrLn $ "DEFAULTS: " <> show (length defaults)
+  sendIO $ putStrLn $ "DEFAULTS: " <> show defaults
+
+  sendIO $ putStrLn $ "POOLS: " <> show (length pools)
+  sendIO $ putStrLn $ "POOLS: " <> show pools
+
+  -- t3 <- sendIO getCurrentTime
+  -- sendIO $ putStrLn $ "RUNNING SOONG PARSE " <> showT t3
+  -- e2 <- sendIO newEnv
+  -- n2 <- sendIO $ parse (toFilePath soongNinjaFilePath) e2
   -- sendIO $ print n2
 
   t4 <- sendIO getCurrentTime
@@ -107,7 +114,11 @@ ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
   -- Upload the parsed Ninja files.
 
   -- ProjectRevision {..} <- mergeOverride ngoProjectOverride <$> inferProject (unBaseDir ngoAndroidTopDir)
-  return ()
+  -- SherlockInfo {..} <- getSherlockInfo ngoAPIOptions
+  -- let locator = createLocator ninjaProjectName sherlockOrgId
+  --     syOpts = ScotlandYardNinjaOpts locator sherlockOrgId ninjaGraphOpts
+  -- _ <- uploadBuildGraph ngoAPIOptions syOpts graph
+  pure ()
 
 -- result <- runDiagnostics $ getAndParseNinjaDeps undefined undefined undefined
 -- case result of
@@ -118,8 +129,3 @@ ninjaGraph NinjaGraphOptions {..} = withLogger ngoLogSeverity $ do
 
 -- getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
 -- getAndParseNinjaDeps dir apiOpts ninjaGraphOpts@NinjaGraphOpts {..} = do
---   SherlockInfo {..} <- getSherlockInfo ninjaFossaOpts
---   let locator = createLocator ninjaProjectName sherlockOrgId
---       syOpts = ScotlandYardNinjaOpts locator sherlockOrgId ninjaGraphOpts
---   _ <- uploadBuildGraph apiOpts syOpts graph
---   pure ()
