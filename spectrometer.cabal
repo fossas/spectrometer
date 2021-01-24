@@ -209,7 +209,7 @@ executable fossa
   main-is:        Main.hs
   hs-source-dirs: app/fossa
   build-depends:  spectrometer
-  ghc-options:    -threaded -with-rtsopts=-N -O2 -rtsopts
+  ghc-options:    -threaded -with-rtsopts=-N1 -O2 -rtsopts
 
 executable pathfinder
   import:         lang
