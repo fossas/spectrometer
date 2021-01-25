@@ -38,9 +38,7 @@ compatibilityMain args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1B
       _ <- logInfo $ pretty $ decodeUtf8 $ cmdFailureStderr err
       _ <- logInfo $ pretty $ decodeUtf8 $ cmdFailureStdout err
       sendIO exitFailure
-    Right out -> do 
-      _ <- sendIO $ BL.putStr out
-      sendIO exitSuccess
+    Right out -> sendIO (BL.putStr out >> exitSuccess)
 
 v1Command :: BinaryPaths -> [Text] -> Command
 v1Command bin args =
