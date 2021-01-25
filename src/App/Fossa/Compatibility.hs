@@ -35,8 +35,7 @@ compatibilityMain args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1B
 
   case cmd of
     Left err -> do
-      _ <- logInfo $ pretty $ decodeUtf8 $ cmdFailureStderr err
-      _ <- logInfo $ pretty $ decodeUtf8 $ cmdFailureStdout err
+      traverse_ (\accessor -> logInfo . pretty . decodeUtf8 $ accessor err)  [cmdFailureStderr, cmdFailureStdout]
       sendIO exitFailure
     Right out -> sendIO (BL.putStr out >> exitSuccess)
 
