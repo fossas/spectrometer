@@ -12,6 +12,7 @@ where
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withCLIv1Binary)
 import Control.Effect.Lift (sendIO)
 import Data.Text (Text, pack)
+import Data.Foldable (traverse_)
 import Effect.Exec (CmdFailure(cmdFailureStdout), AllowErr (Never), Command (..), exec, runExecIO, cmdFailureStderr)
 import Path
 import qualified Data.ByteString.Lazy.Char8 as BL
