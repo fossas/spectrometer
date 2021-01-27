@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
@@ -29,8 +29,9 @@ import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Encoding
 import qualified Data.Text.Lazy as LText
 import qualified Data.Text.Lazy.Encoding as LEncoding
-import Unsafe.Coerce
 import Path
+import System.Exit
+import Unsafe.Coerce
 
 class Recordable (r :: Type -> Type) where
   record :: r a -> a -> (Value, Value)
@@ -109,25 +110,25 @@ instance (RecordableValue a, RecordableValue b) => RecordableValue (Either a b) 
   toRecordedValue (Right b) = object ["Right" .= toRecordedValue b]
 
 instance (RecordableValue a, RecordableValue b) => RecordableValue (a, b) where
-  toRecordedValue (a,b) = toJSON [toRecordedValue a, toRecordedValue b]
+  toRecordedValue (a, b) = toJSON [toRecordedValue a, toRecordedValue b]
 
 instance (RecordableValue a, RecordableValue b, RecordableValue c) => RecordableValue (a, b, c) where
-  toRecordedValue (a,b,c) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c]
+  toRecordedValue (a, b, c) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c]
 
 instance (RecordableValue a, RecordableValue b, RecordableValue c, RecordableValue d) => RecordableValue (a, b, c, d) where
-  toRecordedValue (a,b,c,d) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d]
+  toRecordedValue (a, b, c, d) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d]
 
 instance (RecordableValue a, RecordableValue b, RecordableValue c, RecordableValue d, RecordableValue e) => RecordableValue (a, b, c, d, e) where
-  toRecordedValue (a,b,c,d,e) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d, toRecordedValue e]
+  toRecordedValue (a, b, c, d, e) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d, toRecordedValue e]
 
 instance (RecordableValue a, RecordableValue b, RecordableValue c, RecordableValue d, RecordableValue e, RecordableValue f) => RecordableValue (a, b, c, d, e, f) where
-  toRecordedValue (a,b,c,d,e,f) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d, toRecordedValue e, toRecordedValue f]
+  toRecordedValue (a, b, c, d, e, f) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d, toRecordedValue e, toRecordedValue f]
 
 instance (RecordableValue a, RecordableValue b, RecordableValue c, RecordableValue d, RecordableValue e, RecordableValue f, RecordableValue g) => RecordableValue (a, b, c, d, e, f, g) where
-  toRecordedValue (a,b,c,d,e,f,g) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d, toRecordedValue e, toRecordedValue f, toRecordedValue g]
+  toRecordedValue (a, b, c, d, e, f, g) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d, toRecordedValue e, toRecordedValue f, toRecordedValue g]
 
 instance (RecordableValue a, RecordableValue b, RecordableValue c, RecordableValue d, RecordableValue e, RecordableValue f, RecordableValue g, RecordableValue h) => RecordableValue (a, b, c, d, e, f, g, h) where
-  toRecordedValue (a,b,c,d,e,f,g,h) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d, toRecordedValue e, toRecordedValue f, toRecordedValue g, toRecordedValue h]
+  toRecordedValue (a, b, c, d, e, f, g, h) = toJSON [toRecordedValue a, toRecordedValue b, toRecordedValue c, toRecordedValue d, toRecordedValue e, toRecordedValue f, toRecordedValue g, toRecordedValue h]
 
 ----- Additional instances
 
@@ -138,3 +139,7 @@ instance RecordableValue BL.ByteString where
   toRecordedValue = toJSON . LEncoding.decodeUtf8
 
 instance RecordableValue (Path a b)
+
+instance RecordableValue ExitCode where
+  toRecordedValue ExitSuccess = toJSON (0 :: Int)
+  toRecordedValue (ExitFailure i) = toJSON (i :: Int)
