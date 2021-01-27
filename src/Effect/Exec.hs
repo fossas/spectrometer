@@ -33,6 +33,8 @@ import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record
 import Control.Effect.Record.TH (deriveRecordable)
+import Control.Effect.Replay
+import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
@@ -88,6 +90,16 @@ instance ToJSON CmdFailure where
     ]
 instance RecordableValue CmdFailure
 
+instance FromJSON CmdFailure where
+  parseJSON = withObject "CmdFailure" $ \obj ->
+    CmdFailure <$> obj .: "cmdFailureName"
+               <*> obj .: "cmdFailureArgs"
+               <*> obj .: "cmdFailureDir"
+               <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
+               <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
+               <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
+instance ReplayableValue CmdFailure
+
 data AllowErr
   = -- | never ignore non-zero exit (return 'ExecErr')
     Never
@@ -112,6 +124,7 @@ data Exec (m :: Type -> Type) k where
   Exec :: Path x Dir -> Command -> Exec m (Either CmdFailure Stdout)
 
 $(deriveRecordable ''Exec)
+$(deriveReplayable ''Exec)
 
 data ExecErr
   = -- | Command execution failed, usually from a non-zero exit

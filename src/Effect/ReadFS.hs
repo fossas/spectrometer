@@ -58,6 +58,8 @@ import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record
 import Control.Effect.Record.TH (deriveRecordable)
+import Control.Effect.Replay
+import Control.Effect.Replay.TH (deriveReplayable)
 import qualified Control.Exception as E
 import Control.Monad ((<=<))
 import Control.Monad.IO.Class
@@ -98,7 +100,10 @@ data ReadFSErr
 
 instance ToJSON ReadFSErr
 instance RecordableValue ReadFSErr
+instance FromJSON ReadFSErr
+instance ReplayableValue ReadFSErr
 $(deriveRecordable ''ReadFS)
+$(deriveReplayable ''ReadFS)
 
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case

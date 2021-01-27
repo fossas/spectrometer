@@ -130,6 +130,8 @@ library
     Control.Effect.Path
     Control.Effect.Record
     Control.Effect.Record.TH
+    Control.Effect.Replay
+    Control.Effect.Replay.TH
     Control.Effect.TaskPool
     Control.Exception.Extra
     Data.FileEmbed.Extra
