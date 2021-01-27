@@ -11,6 +11,7 @@
 module Control.Effect.Replay
   ( Replayable (..),
     ReplayableValue (..),
+    runReplay
   )
 where
 
@@ -45,6 +46,9 @@ newtype ReplayC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> 
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
+runReplay :: Map Value Value -> ReplayC e sig m a -> m a
+runReplay mapping = runReader mapping . runReplayC
+
 instance (Member e sig, Has (Lift IO) sig m, Replayable (e m)) => Algebra (e :+: sig) (ReplayC e sig m) where
   alg hdl sig' ctx = ReplayC $ do
     case sig' of
@@ -54,6 +58,7 @@ instance (Member e sig, Has (Lift IO) sig m, Replayable (e m)) => Algebra (e :+:
         let keyVal = recordKey eff'
         case M.lookup keyVal mapping >>= replay eff' of
           Nothing -> do
+            -- TODO: log warnings on key miss
             res <- lift $ send eff'
             pure (res <$ ctx)
           Just result -> pure (result <$ ctx)
@@ -101,10 +106,8 @@ instance {-# OVERLAPPING #-} ReplayableValue [Char] where
   fromRecordedValue = withText "String" (pure . T.unpack)
 
 instance (ReplayableValue a, ReplayableValue b) => ReplayableValue (Either a b) where
-  fromRecordedValue val = parseLeft val <|> parseRight val
-    where
-      parseLeft = withObject "Left" $ \obj -> (obj .: "Left") >>= fromRecordedValue
-      parseRight = withObject "Right" $ \obj -> (obj .: "Right") >>= fromRecordedValue
+  fromRecordedValue = withObject "Either" $ \obj -> do
+    (Left <$> (obj .: "Left" >>= fromRecordedValue)) <|> (Right <$> (obj .: "Right" >>= fromRecordedValue))
 
 instance (ReplayableValue a, ReplayableValue b) => ReplayableValue (a,b) where
   fromRecordedValue val = do
