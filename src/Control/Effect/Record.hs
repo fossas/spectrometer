@@ -36,7 +36,8 @@ import Unsafe.Coerce
 import Control.Effect.Lift
 
 class Recordable (r :: Type -> Type) where
-  record :: r a -> a -> (Value, Value)
+  recordKey :: r a -> Value
+  recordValue :: r a -> a -> Value
 
 runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Map Value Value, a)
 runRecord = runAtomicState M.empty . runRecordC
@@ -63,7 +64,7 @@ instance (Member e sig, Has (Lift IO) sig m, Recordable (e m)) => Algebra (e :+:
         let eff' = unsafeCoerce eff :: e any a
         res <- lift $ send eff'
 
-        let values = record eff' res
+        let values = (recordKey eff', recordValue eff' res)
         modify (uncurry M.insert values)
 
         pure (res <$ ctx)
