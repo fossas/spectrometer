@@ -56,6 +56,8 @@ import Control.Algebra as X
 import Control.Applicative (Alternative)
 import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Record
+import Control.Effect.Record.TH (deriveRecordable)
 import qualified Control.Exception as E
 import Control.Monad ((<=<))
 import Control.Monad.IO.Class
@@ -69,6 +71,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
+import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path
 import qualified Path.IO as PIO
@@ -91,7 +94,11 @@ data ReadFSErr
     FileParseError FilePath Text
   | -- | An IOException was thrown when resolving a file/directory
     ResolveError FilePath FilePath Text
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReadFSErr
+instance RecordableValue ReadFSErr
+$(deriveRecordable ''ReadFS)
 
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case

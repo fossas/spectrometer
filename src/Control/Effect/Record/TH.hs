@@ -7,7 +7,6 @@ where
 
 import Control.Effect.Record
 import Control.Monad (replicateM)
-import Data.Aeson (toJSON)
 import Language.Haskell.TH
 
 -- | For the given effect type, derive an instance of 'Recordable'
@@ -34,8 +33,8 @@ recordableClause con = do
   clause
     -- record (DataCon a b c) resultValue =
     [conP (conNm con) (map varP args), [p|resultValue|]]
-    -- (toJSON ("DataCon",a,b,c), toJSON resultValue)
-    (normalB (tupE [appE [e|toJSON|] (toJsonTuple con args), [e|toJSON resultValue|]]))
+    -- (toRecordedValue ("DataCon",a,b,c), toRecordedValue resultValue)
+    (normalB (tupE [appE [e|toRecordedValue|] (toJsonTuple con args), [e|toRecordedValue resultValue|]]))
     []
 
 toJsonTuple :: Con -> [Name] -> Q Exp
