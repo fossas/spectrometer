@@ -11,7 +11,7 @@ import Data.Aeson (toJSON)
 import Language.Haskell.TH
 
 -- | For the given effect type, derive an instance of 'Recordable'
-deriveRecordable :: Name -> DecsQ
+deriveRecordable :: Name -> Q [Dec]
 deriveRecordable tyName = do
   TyConI (DataD _ctx _nm _tyVars _kind tyCons _deriv) <- reify tyName
   sequence
@@ -38,7 +38,7 @@ recordableClause con = do
     (normalB (tupE [appE [e|toJSON|] (toJsonTuple con args), [e|toJSON resultValue|]]))
     []
 
-toJsonTuple :: Con -> [Name] -> ExpQ
+toJsonTuple :: Con -> [Name] -> Q Exp
 toJsonTuple con nms = tupE ([e|constructor :: String|] : map varE nms)
   where
     constructor = show $ conNm con

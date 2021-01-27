@@ -1,71 +1,53 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Control.Effect.Record
   ( Recordable (..),
-    RecordC(..),
+    RecordC (..),
   )
 where
 
-import Control.Carrier.Reader
+import Control.Algebra
+import Control.Carrier.State.Strict
+import Control.Effect.Sum
 import Control.Monad.Trans
 import Data.Aeson
 import Data.Kind
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import Control.Effect.Sum
-import Control.Carrier.Interpret
-import Control.Algebra
-import Data.Coerce
 import Unsafe.Coerce
 
-class Recordable r where
+class Recordable (r :: Type -> Type) where
   record :: r a -> a -> (Value, Value)
 
-newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC {runRecordC :: ReaderC (Map Value Value) m a}
+newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
+  { runRecordC :: StateC (Map Value Value) m a
+  }
   deriving (Functor, Applicative, Monad, MonadTrans)
 
---runRecord :: forall eff sig m n a. (Monad m, Member eff sig, Algebra sig n) => (forall s. Reifies s (Interpreter eff m) => InterpretC s eff m a) -> m a
---runRecord = runInterpret $ \_ r ctx -> do
-  --res <- send (unsafeCoerce @(eff n _) r)
-  --undefined
-
+-- | We can handle an arbitrary effect 'e' -- @Algebra (e :+: sig) (RecordC e sig m)@
+-- ..but we require a few things:
+-- 1. 'e' must also appear somewhere else in the effect stack -- @Member e sig, Algebra sig m@
+-- 2. 'e' is Recordable -- @Recordable (e m)@
+--
+-- There's a third claim we make, not reflected in the types: in the
+-- instantiated effect type 'e m a', 'm' must be a phantom type variable. This
+-- is reflected in our use of 'unsafeCoerce', and is required for us to 'send'
+-- the effect further down the handler stack
 instance (Member e sig, Algebra sig m, Recordable (e m)) => Algebra (e :+: sig) (RecordC e sig m) where
-  --alg hdl sig' ctx = case sig' of
-    --L something -> do
-      --res <- lift $ send (unsafeCoerce something)
-      --send something
-      --undefined
-    --R something -> undefined
-  alg :: Functor ctx => Handler ctx n (RecordC e sig m) -> (e :+: sig) n a -> ctx () -> RecordC e sig m (ctx a)
+  -- The type signature is here to bring 'n' into scope for 'unsafeCoerce'.
   alg hdl sig' ctx = RecordC $ do
-    --mapping <- ask @(Map Value Value)
     case sig' of
-      L something -> do
-        let key = unsafeCoerce something :: e n a
-        res <- lift $ send @e @sig key
-        --lift $ send @e something
-        --res' <- alg (runRecordC . hdl) (R (inj something)) ctx
-        let ok = record key res
+      L eff -> do
+        let eff' = unsafeCoerce eff :: e any a
+        res <- lift $ send eff'
+
+        let values = record eff' res
+        modify (uncurry M.insert values)
+
         pure (res <$ ctx)
       R other -> alg (runRecordC . hdl) (R other) ctx
-
---data Foo (m :: Type -> Type) k where
---Foo :: String -> Bool -> Foo m Int
---Bar :: Int -> Foo m String
---Baz :: Foo m ()
-
---instance Recordable (Foo m) where
---record r a = case r of
---Foo s b -> (toJSON ("foo" :: String, s, b), toJSON a)
---Bar i -> (toJSON ("bar" :: String, i), toJSON a)
---Baz -> (toJSON ("baz" :: String), toJSON a)
