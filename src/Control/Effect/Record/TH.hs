@@ -40,7 +40,7 @@ recordableClause con = do
 toJsonTuple :: Con -> [Name] -> Q Exp
 toJsonTuple con nms = tupE ([e|constructor :: String|] : map varE nms)
   where
-    constructor = show $ conNm con
+    constructor = nameBase $ conNm con
 
 conNm :: Con -> Name
 conNm (NormalC nm _) = nm
