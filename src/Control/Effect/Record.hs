@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -16,7 +17,7 @@ module Control.Effect.Record
 where
 
 import Control.Algebra
-import Control.Carrier.State.Strict
+import Control.Carrier.AtomicState
 import Control.Effect.Sum
 import Control.Monad.Trans
 import Data.Aeson
@@ -32,28 +33,29 @@ import qualified Data.Text.Lazy.Encoding as LEncoding
 import Path
 import System.Exit
 import Unsafe.Coerce
+import Control.Effect.Lift
 
 class Recordable (r :: Type -> Type) where
   record :: r a -> a -> (Value, Value)
 
-runRecord :: RecordC e sig m a -> m (Map Value Value, a)
-runRecord = runState M.empty . runRecordC
+runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Map Value Value, a)
+runRecord = runAtomicState M.empty . runRecordC
 
 newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
-  { runRecordC :: StateC (Map Value Value) m a
+  { runRecordC :: AtomicStateC (Map Value Value) m a
   }
-  deriving (Functor, Applicative, Monad, MonadTrans)
+  deriving (Functor, Applicative, Monad, MonadIO)
 
 -- | We can handle an arbitrary effect 'e' -- @Algebra (e :+: sig) (RecordC e sig m)@
 -- ..but we require a few things:
--- 1. 'e' must also appear somewhere else in the effect stack -- @Member e sig, Algebra sig m@
+-- 1. 'e' must also appear somewhere else in the effect stack -- @Member e sig@
 -- 2. 'e' is Recordable -- @Recordable (e m)@
 --
 -- There's a third claim we make, not reflected in the types: in the
 -- instantiated effect type 'e m a', 'm' must be a phantom type variable. This
 -- is reflected in our use of 'unsafeCoerce', and is required for us to 'send'
 -- the effect further down the handler stack
-instance (Member e sig, Algebra sig m, Recordable (e m)) => Algebra (e :+: sig) (RecordC e sig m) where
+instance (Member e sig, Has (Lift IO) sig m, Recordable (e m)) => Algebra (e :+: sig) (RecordC e sig m) where
   -- The type signature is here to bring 'n' into scope for 'unsafeCoerce'.
   alg hdl sig' ctx = RecordC $ do
     case sig' of

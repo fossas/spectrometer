@@ -117,11 +117,13 @@ library
     App.Util
     App.Version
     App.Version.TH
+    Control.Carrier.AtomicState
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
+    Control.Effect.AtomicState
     Control.Effect.Diagnostics
     Control.Effect.Finally
     Control.Effect.Output

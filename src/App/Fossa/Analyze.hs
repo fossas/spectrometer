@@ -139,14 +139,14 @@ runDependencyAnalysis ::
   -- | Analysis base directory
   BaseDir ->
   [BuildTargetFilter] ->
-  DiscoveredProject (ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))) ->
+  DiscoveredProject (Diag.DiagnosticsC m) ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project = do
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- sendIO . Diag.runDiagnosticsIO . runExecIO . runReadFSIO $ projectDependencyGraph project targets
+      graphResult <- Diag.runDiagnosticsIO $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
 applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject n -> Maybe (Set BuildTarget)
