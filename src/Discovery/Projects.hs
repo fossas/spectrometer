@@ -21,11 +21,11 @@ import Types (DiscoveredProject)
 withDiscoveredProjects ::
   (Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
   -- | Discover functions
-  [Path Abs Dir -> Diag.DiagnosticsC m [DiscoveredProject]] ->
+  [Path Abs Dir -> Diag.DiagnosticsC m [DiscoveredProject n]] ->
   -- | whether to unpack archives
   Bool ->
   Path Abs Dir ->
-  (DiscoveredProject -> m ()) ->
+  (DiscoveredProject n -> m ()) ->
   m ()
 withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
   for_ discoverFuncs $ \discover -> forkTask $ do

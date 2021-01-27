@@ -57,10 +57,13 @@ discover ::
   ( Has (Lift IO) sig m,
     MonadIO m,
     Has Exec sig m,
-    Has Logger sig m
+    Has Logger sig m,
+    Has (Lift IO) sig' n,
+    Has Exec sig' n,
+    Has Diagnostics sig' n
   ) =>
   Path Abs Dir ->
-  m [DiscoveredProject]
+  m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 pathToText :: Path ar fd -> Text
@@ -142,12 +145,12 @@ parseSubproject line =
     ("", _) -> Nothing -- no match
     (_, rest) -> Just $ T.takeWhile (/= '\'') rest
 
-mkProject :: GradleProject -> DiscoveredProject
+mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => GradleProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "gradle",
       projectBuildTargets = S.map BuildTarget $ gradleProjects project,
-      projectDependencyGraph = runExecIO . getDeps project,
+      projectDependencyGraph = getDeps project,
       projectPath = gradleDir project,
       projectLicenses = pure []
     }

@@ -16,7 +16,7 @@ import Path
 import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [RebarProject]
@@ -30,12 +30,12 @@ newtype RebarProject = RebarProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: RebarProject -> DiscoveredProject
+mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => RebarProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "rebar3",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = rebarDir project,
       projectLicenses = pure []
     }

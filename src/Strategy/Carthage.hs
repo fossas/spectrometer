@@ -32,7 +32,7 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [CarthageProject]
@@ -54,12 +54,12 @@ data CarthageProject = CarthageProject
   , carthageLock :: Path Abs File
   } deriving (Eq, Ord, Show)
 
-mkProject :: CarthageProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => CarthageProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "carthage",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = carthageDir project,
       projectLicenses = pure []
     }

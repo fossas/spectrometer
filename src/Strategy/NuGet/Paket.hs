@@ -35,7 +35,7 @@ import Types
 
 type Parser = Parsec Void Text
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [PaketProject]
@@ -49,12 +49,12 @@ newtype PaketProject = PaketProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: PaketProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PaketProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "paket",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = parent $ paketLock project,
       projectLicenses = pure []
     }

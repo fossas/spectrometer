@@ -95,10 +95,15 @@ discoverFuncs ::
     Has ReadFS sig m,
     Has Exec sig m,
     Has Logger sig m,
-    Has Diag.Diagnostics sig m
+    Has Diag.Diagnostics sig m,
+
+    Has (Lift IO) sig' n,
+    Has ReadFS sig' n,
+    Has Diag.Diagnostics sig' n,
+    Has Exec sig' n
   ) =>
   -- | Discover functions
-  [Path Abs Dir -> m [DiscoveredProject]]
+  [Path Abs Dir -> m [DiscoveredProject n]]
 discoverFuncs =
   [ Bundler.discover,
     Cargo.discover,
@@ -134,17 +139,17 @@ runDependencyAnalysis ::
   -- | Analysis base directory
   BaseDir ->
   [BuildTargetFilter] ->
-  DiscoveredProject ->
+  DiscoveredProject (ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))) ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project = do
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- sendIO . Diag.runDiagnosticsIO $ projectDependencyGraph project targets
+      graphResult <- sendIO . Diag.runDiagnosticsIO . runExecIO . runReadFSIO $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
-applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject -> Maybe (Set BuildTarget)
+applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject n -> Maybe (Set BuildTarget)
 applyFiltersToProject basedir filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
     -- FIXME: this is required for --unpack-archives to continue to work.

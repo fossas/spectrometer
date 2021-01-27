@@ -17,7 +17,7 @@ import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [GomodulesProject]
@@ -31,12 +31,12 @@ data GomodulesProject = GomodulesProject
     gomodulesDir :: Path Abs Dir
   }
 
-mkProject :: GomodulesProject -> DiscoveredProject
+mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => GomodulesProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "gomod",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runExecIO . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = gomodulesDir project,
       projectLicenses = pure []
     }

@@ -26,7 +26,7 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [ComposerProject]
@@ -42,12 +42,12 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkContinue)
 
-mkProject :: ComposerProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ComposerProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "composer",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = composerDir project,
       projectLicenses = pure []
     }

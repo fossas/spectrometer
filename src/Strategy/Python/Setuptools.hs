@@ -19,7 +19,7 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [SetuptoolsProject]
@@ -61,12 +61,12 @@ data SetuptoolsProject = SetuptoolsProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: SetuptoolsProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SetuptoolsProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "setuptools",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = setuptoolsDir project,
       projectLicenses = pure []
     }

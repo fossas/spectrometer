@@ -32,7 +32,7 @@ import Types
 isPackageRefFile :: Path b File -> Bool
 isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [PackageReferenceProject]
@@ -46,12 +46,12 @@ newtype PackageReferenceProject = PackageReferenceProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: PackageReferenceProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PackageReferenceProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "packagereference",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = parent $ packageReferenceFile project,
       projectLicenses = pure []
     }

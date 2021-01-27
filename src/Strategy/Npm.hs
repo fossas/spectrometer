@@ -16,7 +16,7 @@ import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [NpmProject]
@@ -42,12 +42,12 @@ data NpmProject = NpmProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: NpmProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => NpmProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "npm",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = npmDir project,
       projectLicenses = pure []
     }

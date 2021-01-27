@@ -25,7 +25,7 @@ import Graphing (Graphing, unfold)
 import Path
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [ProjectAssetsJsonProject]
@@ -39,12 +39,12 @@ newtype ProjectAssetsJsonProject = ProjectAssetsJsonProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: ProjectAssetsJsonProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ProjectAssetsJsonProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "projectassetsjson",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = parent $ projectAssetsJsonFile project,
       projectLicenses = pure []
     }

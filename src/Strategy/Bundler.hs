@@ -18,7 +18,7 @@ import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [BundlerProject]
@@ -45,12 +45,12 @@ data BundlerProject = BundlerProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: BundlerProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => BundlerProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "bundler",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runExecIO . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = bundlerDir project,
       projectLicenses = pure []
     }

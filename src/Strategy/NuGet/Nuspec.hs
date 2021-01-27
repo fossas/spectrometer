@@ -31,7 +31,7 @@ import Parse.XML
 import Path
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [NuspecProject]
@@ -45,14 +45,14 @@ newtype NuspecProject = NuspecProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: NuspecProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => NuspecProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "nuspec",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = parent $ nuspecFile project,
-      projectLicenses = runReadFSIO $ analyzeLicenses (nuspecFile project)
+      projectLicenses = analyzeLicenses (nuspecFile project)
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m (Graphing Dependency)

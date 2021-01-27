@@ -51,7 +51,7 @@ leinDepsCmd =
       cmdAllowErr = Never
     }
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [LeiningenProject]
@@ -67,12 +67,12 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkContinue)
 
-mkProject :: LeiningenProject -> DiscoveredProject
+mkProject :: (Has Exec sig n, Has Diagnostics sig n) => LeiningenProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "leiningen",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runExecIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = leinDir project,
       projectLicenses = pure []
     }

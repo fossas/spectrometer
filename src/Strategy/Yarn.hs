@@ -12,7 +12,7 @@ import Types
 import Prelude
 import qualified Strategy.Node.YarnLock as YarnLock
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: MonadIO m => Path Abs Dir -> m [YarnProject]
@@ -28,12 +28,12 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkSkipSome ["node_modules"])
 
-mkProject :: YarnProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => YarnProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "yarn",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = yarnDir project,
       projectLicenses = pure []
     }
