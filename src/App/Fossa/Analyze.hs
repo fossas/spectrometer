@@ -9,25 +9,30 @@ module App.Fossa.Analyze
   , discoverFuncs
   ) where
 
+import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
-import App.Fossa.Analyze.Project (ProjectResult(..), mkResult)
+import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
-import App.Fossa.ProjectInference (inferProjectFromVCS, inferProjectDefault, mergeOverride, saveRevision)
+import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Types
 import qualified Control.Carrier.Diagnostics as Diag
-import Control.Carrier.Output.IO
 import Control.Carrier.Finally
+import Control.Carrier.Output.IO
 import Control.Carrier.TaskPool
 import Control.Concurrent
+import Control.Effect.Diagnostics ((<||>))
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Record
 import Control.Monad.IO.Class (MonadIO)
-import Data.Aeson ((.=))
+import Data.Aeson (encodeFile, object, (.=))
 import qualified Data.Aeson as Aeson
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (traverse_, for_)
+import Data.Foldable (for_, traverse_)
+import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import qualified Data.List.NonEmpty as NE
+import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -39,7 +44,7 @@ import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
-import Fossa.API.Types (ApiOpts(..))
+import Fossa.API.Types (ApiOpts (..))
 import Path
 import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
@@ -50,8 +55,8 @@ import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Composer as Composer
 import qualified Strategy.Glide as Glide
-import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Godep as Godep
+import qualified Strategy.Gomodules as Gomodules
 import qualified Strategy.Googlesource.RepoManifest as RepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Haskell.Cabal as Cabal
@@ -67,16 +72,13 @@ import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
 import qualified Strategy.NuGet.ProjectJson as ProjectJson
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.Setuptools as Setuptools
-import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.RPM as RPM
+import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.Scala as Scala
 import qualified Strategy.Yarn as Yarn
 import System.Exit (exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
-import Data.Functor (void)
-import App.Fossa.API.BuildLink (getFossaBuildUrl)
-import Control.Effect.Diagnostics ((<||>))
 
 data ScanDestination
   = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -85,9 +87,20 @@ data ScanDestination
 -- | UnpackArchives bool flag
 data UnpackArchives = UnpackArchives
 
-analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
-analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity . Diag.logWithExit_ $
-  analyze basedir destination project unpackArchives filters
+analyzeMain :: BaseDir -> Bool -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
+analyzeMain basedir debugMode logSeverity destination project unpackArchives filters =
+  withLogger logSeverity
+    . Diag.logWithExit_
+    . runReadFSIO
+    . runExecIO
+    $ if not debugMode
+      then analyze basedir destination project unpackArchives filters
+      else do
+        (execLogs, (readFSLogs, ())) <-
+          runRecord @Exec
+            . runRecord @ReadFS
+            $ analyze basedir destination project unpackArchives filters
+        sendIO $ encodeFile "fossa.debug.json" (object ["Exec" .= M.toList execLogs, "ReadFS" .= M.toList readFSLogs])
 
 discoverFuncs ::
   ( Has (Lift IO) sig m,
@@ -162,6 +175,8 @@ analyze ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   , MonadIO m
   )
   => BaseDir
@@ -175,8 +190,6 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
 
   (projectResults, ()) <-
     runOutput @ProjectResult
-      . runExecIO
-      . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
       $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)

@@ -44,7 +44,7 @@ runRecord = runAtomicState M.empty . runRecordC
 newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
   { runRecordC :: AtomicStateC (Map Value Value) m a
   }
-  deriving (Functor, Applicative, Monad, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
 -- | We can handle an arbitrary effect 'e' -- @Algebra (e :+: sig) (RecordC e sig m)@
 -- ..but we require a few things:
