@@ -12,7 +12,6 @@ module Strategy.NuGet.PackagesConfig
   ) where
 
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
@@ -25,10 +24,10 @@ import Parse.XML
 import Path
 import Types
 
-discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [PackagesConfigProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PackagesConfigProject]
 findProjects = walk' $ \_ _ files -> do
   case find (\f -> fileName f == "packages.config") files of
     Nothing -> pure ([], WalkContinue)

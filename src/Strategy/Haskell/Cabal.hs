@@ -18,7 +18,6 @@ where
 
 import Control.Effect.Diagnostics
 import Control.Monad (when)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
 import Data.Foldable (for_)
 import Data.List (isSuffixOf)
@@ -120,10 +119,10 @@ isCabalFile file = isDotCabal || isCabalDotProject
     isDotCabal = ".cabal" `isSuffixOf` name
     isCabalDotProject = "cabal.project" == name
 
-discover :: (MonadIO m, Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS sig' n, Has Exec sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [CabalProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CabalProject]
 findProjects = walk' $ \dir _ files -> do
   let project =
         CabalProject

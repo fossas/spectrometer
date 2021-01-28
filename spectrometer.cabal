@@ -43,9 +43,6 @@ common deps
     , hedn                         ^>=0.3.0.1
     , http-client                  ^>=0.7.1
     , http-types                   ^>=0.12.3
-    , kind-apply
-    , kind-generics
-    , kind-generics-th
     , lzma-conduit                 ^>=1.2.1
     , megaparsec                   ^>=8.0
     , modern-uri                   ^>=0.3.1
@@ -74,6 +71,8 @@ common deps
     , yarn-lock                    ^>=0.6.2
     , zip                          ^>=1.5.0
     , zlib                         ^>=0.6.2.1
+    , transformers
+    -- FIXME: remove transformers
 
 -- TODO: This fixes a bug in cpio-conduit that prevents it from compiling. Remove this once we fix or bump cpio-conduit
 library

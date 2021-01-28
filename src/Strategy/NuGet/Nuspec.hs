@@ -16,7 +16,6 @@ module Strategy.NuGet.Nuspec
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -31,10 +30,10 @@ import Parse.XML
 import Path
 import Types
 
-discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [NuspecProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NuspecProject]
 findProjects = walk' $ \_ _ files -> do
   case find (L.isSuffixOf ".nuspec" . fileName) files of
     Nothing -> pure ([], WalkContinue)

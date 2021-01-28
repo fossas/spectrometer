@@ -12,7 +12,6 @@ module Strategy.Haskell.Stack
 where
 
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
 import Data.Foldable (for_)
 import qualified Data.Map.Strict as M
@@ -26,6 +25,7 @@ import Path
 import Types
 import Prelude
 import Control.Monad (when)
+import Effect.ReadFS (ReadFS)
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (FromJSON, Eq, Ord, Show)
 
@@ -59,10 +59,10 @@ parseLocationType txt
   | txt `elem` ["project package", "archive"] = pure Local
   | otherwise = fail $ "Bad location type: " ++ T.unpack txt
 
-discover :: (MonadIO m, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [StackProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [StackProject]
 findProjects = walk' $ \dir _ files -> do
   let project =
         StackProject

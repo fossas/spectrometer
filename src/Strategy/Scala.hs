@@ -15,7 +15,6 @@ where
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift
-import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
@@ -37,7 +36,7 @@ discover ::
   ( Has Exec sig m,
     Has ReadFS sig m,
     Has Logger sig m,
-    MonadIO m,
+    Has Diagnostics sig m,
     Has (Lift IO) sig' n,
     Has Diagnostics sig' n,
     Has Exec sig' n,
@@ -50,7 +49,7 @@ discover dir = map (mkProject dir) <$> findProjects dir
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath
 
-findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)

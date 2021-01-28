@@ -28,7 +28,6 @@ import qualified Data.Text as T
 
 import Control.Applicative ((<|>), optional)
 import Control.Monad (unless)
-import Control.Monad.IO.Class (MonadIO)
 import DepTypes
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (pretty)
@@ -44,11 +43,11 @@ import Text.GitConfig.Parser (Section(..), parseConfig)
 import qualified Data.HashMap.Strict as HM
 import Text.Megaparsec (errorBundlePretty)
 
-discover :: (MonadIO m, Has ReadFS sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
-findProjects :: MonadIO m => Path Abs Dir -> m [RepoManifestProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RepoManifestProject]
 findProjects = walk' $ \_ _ files -> do
   case find (\f -> "manifest.xml" == fileName f) files of
     Nothing -> pure ([], WalkContinue)

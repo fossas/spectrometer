@@ -42,6 +42,10 @@ module Effect.ReadFS
     doesFileExist,
     doesDirExist,
 
+    -- * Listing a directory
+    listDir,
+    listDir',
+
     -- * Parsing file contents
     readContentsParser,
     readContentsJson,
@@ -88,6 +92,7 @@ data ReadFS (m :: Type -> Type) k where
   DoesDirExist :: Path x Dir -> ReadFS m Bool
   ResolveFile' :: Path Abs Dir -> Text -> ReadFS m (Either ReadFSErr (Path Abs File))
   ResolveDir' :: Path Abs Dir -> Text -> ReadFS m (Either ReadFSErr (Path Abs Dir))
+  ListDir :: Path Abs Dir -> ReadFS m (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
 
 data ReadFSErr
   = -- | A file couldn't be read. file, err
@@ -96,6 +101,8 @@ data ReadFSErr
     FileParseError FilePath Text
   | -- | An IOException was thrown when resolving a file/directory
     ResolveError FilePath FilePath Text
+  | -- | An IOException was thrown when listing a directory
+    ListDirError FilePath Text
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ReadFSErr
@@ -110,6 +117,7 @@ instance ToDiagnostic ReadFSErr where
     FileReadError path err -> "Error reading file " <> pretty path <> " : " <> pretty err
     FileParseError path err -> "Error parsing file " <> pretty path <> " : " <> pretty err
     ResolveError base rel err -> "Error resolving a relative file. base: " <> pretty base <> " . relative: " <> pretty rel <> " . error: " <> pretty err
+    ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> " : " <> pretty err
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteString)
@@ -150,6 +158,12 @@ doesFileExist path = send (DoesFileExist path)
 -- | Check whether a directory exists
 doesDirExist :: Has ReadFS sig m => Path b Dir -> m Bool
 doesDirExist path = send (DoesDirExist path)
+
+listDir' :: Has ReadFS sig m => Path Abs Dir -> m (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
+listDir' = send . ListDir
+
+listDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([Path Abs Dir], [Path Abs File])
+listDir dir = fromEither =<< listDir' dir
 
 type Parser = Parsec Void Text
 
@@ -213,6 +227,9 @@ instance Has (Lift IO) sig m => Algebra (ReadFS :+: sig) (ReadFSIOC m) where
       -- NB: these never throw
       L (DoesFileExist file) -> (<$ ctx) <$> sendIO (PIO.doesFileExist file)
       L (DoesDirExist dir) -> (<$ ctx) <$> sendIO (PIO.doesDirExist dir)
+      L (ListDir dir) -> do
+        res <- catchingIO (PIO.listDir dir) (ListDirError (toFilePath dir))
+        pure (res <$ ctx)
       R other -> alg (runReadFSIO . hdl) other ctx
     where
       catchingIO :: IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)

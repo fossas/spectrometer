@@ -16,7 +16,6 @@ module Strategy.Cargo
   where
 
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
 import Data.Foldable (for_, traverse_)
 import qualified Data.Map.Strict as M
@@ -28,6 +27,7 @@ import Effect.Grapher
 import Graphing (Graphing, stripRoot)
 import Path
 import Types
+import Effect.ReadFS (ReadFS)
 
 newtype CargoLabel =
   CargoDepKind DepEnvironment
@@ -119,10 +119,10 @@ instance FromJSON CargoMetadata where
                   <*> (obj .: "workspace_members" >>= traverse parsePkgId)
                   <*> obj .: "resolve"
 
-discover :: (MonadIO m, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [CargoProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CargoProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "Cargo.toml" files of
     Nothing -> pure ([], WalkContinue)

@@ -23,7 +23,6 @@ where
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import qualified Data.EDN as EDN
 import Data.EDN.Class.Parser (Parser)
 import Data.Foldable (traverse_)
@@ -42,6 +41,7 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Path
 import Types
+import Effect.ReadFS (ReadFS)
 
 leinDepsCmd :: Command
 leinDepsCmd =
@@ -51,10 +51,10 @@ leinDepsCmd =
       cmdAllowErr = Never
     }
 
-discover :: (MonadIO m, Has Exec sig n, Has Diagnostics sig n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [LeiningenProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [LeiningenProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "project.clj" files of
     Nothing -> pure ([], WalkContinue)
