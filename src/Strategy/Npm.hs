@@ -15,7 +15,7 @@ import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS sig' n, Has Exec sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NpmProject]

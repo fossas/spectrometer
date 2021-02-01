@@ -82,13 +82,13 @@ discoverFuncs ::
     Has (Lift IO) sig m,
     MonadIO m,
     Has ReadFS sig m,
-    Has ReadFS sig' n,
-    Has Exec sig' n,
-    Has Diag.Diagnostics sig' n,
-    Has (Lift IO) sig' n
+    Has ReadFS rsig run,
+    Has Exec rsig run,
+    Has Diag.Diagnostics rsig run,
+    Has (Lift IO) rsig run
   ) =>
   -- | Discover functions
-  [Path Abs Dir -> m [DiscoveredProject n]]
+  [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs = [Maven.discover, Nuspec.discover]
 
 data ProjectLicenseScan = ProjectLicenseScan

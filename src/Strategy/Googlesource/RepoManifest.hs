@@ -43,7 +43,7 @@ import Text.GitConfig.Parser (Section(..), parseConfig)
 import qualified Data.HashMap.Strict as HM
 import Text.Megaparsec (errorBundlePretty)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"

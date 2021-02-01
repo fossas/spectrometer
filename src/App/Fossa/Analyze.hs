@@ -110,13 +110,13 @@ discoverFuncs ::
     Has Logger sig m,
     Has Diag.Diagnostics sig m,
 
-    Has (Lift IO) sig' n,
-    Has ReadFS sig' n,
-    Has Diag.Diagnostics sig' n,
-    Has Exec sig' n
+    Has (Lift IO) rsig run,
+    Has ReadFS rsig run,
+    Has Diag.Diagnostics rsig run,
+    Has Exec rsig run
   ) =>
   -- | Discover functions
-  [Path Abs Dir -> m [DiscoveredProject n]]
+  [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
   [ Bundler.discover,
     Cargo.discover,

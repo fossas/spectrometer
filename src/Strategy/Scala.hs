@@ -37,13 +37,13 @@ discover ::
     Has ReadFS sig m,
     Has Logger sig m,
     Has Diagnostics sig m,
-    Has (Lift IO) sig' n,
-    Has Diagnostics sig' n,
-    Has Exec sig' n,
-    Has ReadFS sig' n
+    Has (Lift IO) rsig run,
+    Has Diagnostics rsig run,
+    Has Exec rsig run,
+    Has ReadFS rsig run
   ) =>
   Path Abs Dir ->
-  m [DiscoveredProject n]
+  m [DiscoveredProject run]
 discover dir = map (mkProject dir) <$> findProjects dir
 
 pathToText :: Path ar fd -> Text

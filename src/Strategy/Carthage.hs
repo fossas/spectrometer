@@ -31,7 +31,7 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS sig' n, Has Diagnostics sig' n) => Path Abs Dir -> m [DiscoveredProject n]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CarthageProject]
