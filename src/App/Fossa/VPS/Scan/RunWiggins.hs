@@ -2,7 +2,8 @@
 
 module App.Fossa.VPS.Scan.RunWiggins
   ( execWiggins
-  , generateWigginsOpts
+  , generateWigginsScanOpts
+  , generateWigginsAOSPNoticeOpts
   , WigginsOpts(..)
   , ScanType(..)
   )
@@ -32,12 +33,24 @@ data WigginsOpts = WigginsOpts
   , spectrometerArgs :: [Text]
   }
 
-generateWigginsOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
-generateWigginsOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
-  WigginsOpts scanDir (generateSpectrometerArgs logSeverity projectRevision scanType fileFilters apiOpts metadata)
+generateWigginsScanOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
+generateWigginsScanOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
+  WigginsOpts scanDir (generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata)
 
-generateSpectrometerArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
-generateSpectrometerArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
+generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> FilterExpressions -> Bool -> WigginsOpts
+generateWigginsAOSPNoticeOpts scanDir logSeverity fileFilters enableWrite =
+  WigginsOpts scanDir (generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite)
+
+generateSpectrometerAOSPNoticeArgs :: Severity -> FilterExpressions -> Bool -> [Text]
+generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite =
+  ["aosp-notice-files"]
+      ++ optBool "-write" enableWrite
+      ++ optBool "-debug" (logSeverity == SevDebug)
+      ++ optFilterExpressions fileFilters
+      ++ ["."]
+
+generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
+generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
     "analyze"
       : ["-endpoint", render apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
       ++ ["-name", projectName, "-revision", projectRevision]

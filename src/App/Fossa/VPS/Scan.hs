@@ -42,7 +42,7 @@ vpsScan ::
 vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata binaryPaths = withLogger logSeverity $ do
   projectRevision <- mergeOverride overrideProject <$> inferProject basedir
   let scanType = ScanType (fromFlag SkipIPRScan skipIprFlag) (fromFlag LicenseOnlyScan licenseOnlyScan)
-  let wigginsOpts = generateWigginsOpts basedir logSeverity projectRevision scanType fileFilters apiOpts metadata
+  let wigginsOpts = generateWigginsScanOpts basedir logSeverity projectRevision scanType fileFilters apiOpts metadata
 
   logDebug "Running VPS plugin scan"
   runExecIO $ runWiggins binaryPaths wigginsOpts
