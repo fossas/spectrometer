@@ -20,6 +20,7 @@ common lang
     -Wincomplete-record-updates -Wmissing-home-modules
     -Wmissing-export-lists -Wredundant-constraints
 
+-- TODO: base16-bytestring isn't a direct dep, but we need to add version bounds because cpio-conduit fails to compile with a newer version. Remove the dependency on base16-bytestring once we fix or bump cpio-conduit
 common deps
   build-depends:
     , aeson                        ^>=1.5.2.0
@@ -62,6 +63,7 @@ common deps
     , th-lift-instances            ^>=0.1.17
     , time                         >=1.9      && <1.11
     , tomland                      ^>=1.3.0.0
+    , transformers
     , typed-process                ^>=0.2.6
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
@@ -71,10 +73,7 @@ common deps
     , yarn-lock                    ^>=0.6.2
     , zip                          ^>=1.5.0
     , zlib                         ^>=0.6.2.1
-    , transformers
-    -- FIXME: remove transformers
 
--- TODO: This fixes a bug in cpio-conduit that prevents it from compiling. Remove this once we fix or bump cpio-conduit
 library
   import:          lang
   import:          deps
