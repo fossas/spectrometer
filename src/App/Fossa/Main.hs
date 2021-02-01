@@ -107,6 +107,10 @@ appMain = do
           unless vpsReportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
           baseDir <- validateDir vpsReportBaseDir
           VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
+        VPSAOSPNoticeCommand VPSAOSPNoticeOptions {..} -> do
+          baseDir <- validateDir vpsAOSPNoticeBaseDir
+          aospNoticeMain baseDir logSeverity vpsFileFilter vpsAOSPNoticeWriteEnabled
+
     --
     ContainerCommand ContainerOptions {..} -> do
       die "Fatal: Container scanning is not available yet" >> pure ()
