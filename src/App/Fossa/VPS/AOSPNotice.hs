@@ -13,7 +13,9 @@ import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..))
 import Data.Flag (Flag, fromFlag)
-import Effect.Logger ( Severity, logDebug, withLogger )
+import Effect.Logger ( Severity, withLogger, logInfo )
+import Data.Text (Text)
+import Data.Text.Prettyprint.Doc
 
 -- | WriteEnabled bool flag
 data WriteEnabled = WriteEnabled
@@ -36,9 +38,10 @@ aospNoticeGenerate ::
 aospNoticeGenerate (BaseDir basedir) logSeverity writeEnabled fileFilters binaryPaths = withLogger logSeverity $ do
   let wigginsOpts = generateWigginsAOSPNoticeOpts basedir logSeverity fileFilters (fromFlag WriteEnabled writeEnabled)
 
-  logDebug "Running VPS plugin: generating AOSP notice files"
-  runExecIO $ runWiggins binaryPaths wigginsOpts
+  logInfo "Running VPS plugin: generating AOSP notice files"
+  stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
+  logInfo $ pretty stdout
 
-runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
+runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 runWiggins binaryPaths opts = do
   execWiggins binaryPaths opts

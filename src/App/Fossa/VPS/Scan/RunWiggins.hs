@@ -13,7 +13,6 @@ import App.Fossa.VPS.Types
 import App.Fossa.EmbeddedBinary
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
-import Data.Functor (void)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Effect.Exec
@@ -22,6 +21,8 @@ import Effect.Logger
 import Fossa.API.Types
 import App.Types
 import Text.URI
+import qualified Data.ByteString.Lazy as BL
+import Data.Text.Encoding
 
 data ScanType = ScanType
   { scanSkipIpr :: Bool
@@ -78,8 +79,10 @@ optMaybeText :: Text -> Maybe Text -> [Text]
 optMaybeText _ Nothing = []
 optMaybeText flag (Just value) = [flag, value]
 
-execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
-execWiggins binaryPaths opts = void $ execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
+execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
+execWiggins binaryPaths opts = do
+  lazyStdout <- execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
+  pure (decodeUtf8 $ BL.toStrict lazyStdout)
 
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts{..} = do
