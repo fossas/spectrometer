@@ -15,13 +15,17 @@ module Control.Carrier.Diagnostics
 
     -- * Diagnostic results
     FailureBundle (..),
+    ResultBundle (..),
     renderFailureBundle,
     renderWarnings,
     renderSomeDiagnostic,
-    ResultBundle (..),
 
     -- * Helpers
+    logDiagnostic,
+    logDiagnostic_,
     runDiagnosticsIO,
+    logErrorBundle,
+    logResultWarnings,
     withResult,
 
     -- * Re-exports
@@ -41,6 +45,7 @@ import Data.Monoid (Endo (..))
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Effect.Logger
+import Data.Functor (($>))
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -74,6 +79,25 @@ renderFailureBundle FailureBundle {..} =
 
 renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
 renderWarnings = align . vsep . map renderSomeDiagnostic
+
+logResultWarnings :: Has Logger sig m => ResultBundle a -> m a
+logResultWarnings ResultBundle {..} = logWarn (renderWarnings resultWarnings) $> resultValue
+
+logErrorBundle :: Has Logger sig m => FailureBundle -> m ()
+logErrorBundle = logError . renderFailureBundle
+
+-- | Run a Diagnostic effect into a logger, using the default error/warning renderers.
+logDiagnostic :: Has Logger sig m => DiagnosticsC m a -> m (Maybe a)
+logDiagnostic diag = do
+  result <- runDiagnostics diag
+  case result of
+    Left failure -> logErrorBundle failure >> pure Nothing
+    Right success -> Just <$> logResultWarnings success
+
+-- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
+-- | Useful for setting up diagnostics from CLI entry points
+logDiagnostic_ :: Has Logger sig m => DiagnosticsC m () -> m ()
+logDiagnostic_ diag = runDiagnostics diag >>= either logErrorBundle logResultWarnings
 
 runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle (ResultBundle a))
 runDiagnostics = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
