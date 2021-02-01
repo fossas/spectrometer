@@ -92,7 +92,7 @@ data ScanDestination
 data UnpackArchives = UnpackArchives
 
 analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
-analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity . Diag.logDiagnostic_ $
+analyzeMain basedir logSeverity destination project unpackArchives filters = Diag.withDiagnosticLogger_ logSeverity $
   analyze basedir destination project unpackArchives filters
 
 discoverFuncs ::
