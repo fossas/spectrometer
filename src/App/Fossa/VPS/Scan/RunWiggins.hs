@@ -36,11 +36,11 @@ data WigginsOpts = WigginsOpts
 
 generateWigginsScanOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
 generateWigginsScanOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
-  WigginsOpts scanDir (generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata)
+  WigginsOpts scanDir $ generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata
 
 generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> FilterExpressions -> Bool -> WigginsOpts
 generateWigginsAOSPNoticeOpts scanDir logSeverity fileFilters enableWrite =
-  WigginsOpts scanDir (generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite)
+  WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite
 
 generateSpectrometerAOSPNoticeArgs :: Severity -> FilterExpressions -> Bool -> [Text]
 generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite =
@@ -80,9 +80,7 @@ optMaybeText _ Nothing = []
 optMaybeText flag (Just value) = [flag, value]
 
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
-execWiggins binaryPaths opts = do
-  lazyStdout <- execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
-  pure (decodeUtf8 $ BL.toStrict lazyStdout)
+execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
 
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts{..} = do
