@@ -38,15 +38,16 @@ import Control.Carrier.Error.Either
 import Control.Carrier.Reader
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics as X
-import Control.Effect.Lift (Lift)
+import Control.Effect.Lift (sendIO, Lift)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
 import Control.Monad.IO.Class (MonadIO)
+import Data.Functor (($>))
 import Data.Monoid (Endo (..))
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Effect.Logger
-import Data.Functor (($>))
+import System.Exit (exitFailure)
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -96,10 +97,11 @@ logDiagnostic diag = do
     Right success -> Just <$> logResultWarnings success
 
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
--- | Useful for setting up diagnostics from CLI entry points
-logDiagnostic_ :: Has Logger sig m => DiagnosticsC m () -> m ()
-logDiagnostic_ diag = runDiagnostics diag >>= either logErrorBundle logResultWarnings
-
+-- | Exits with non-zero if the result is a failure.
+-- | Useful for setting up diagnostics from CLI entry points.
+logDiagnostic_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
+logDiagnostic_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) pure
+  
 withDiagnosticLogger_ :: Has (Lift IO) sig m => Severity -> DiagnosticsC (LoggerC m) () -> m ()
 withDiagnosticLogger_ logSev = withLogger logSev . logDiagnostic_
 
