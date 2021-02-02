@@ -22,11 +22,10 @@ module Control.Carrier.Diagnostics
 
     -- * Helpers
     logDiagnostic,
-    logDiagnostic_,
-    runDiagnosticsIO,
     logErrorBundle,
     logResultWarnings,
-    withDiagnosticLogger_,
+    logWithExit_,
+    runDiagnosticsIO,
     withResult,
 
     -- * Re-exports
@@ -99,12 +98,9 @@ logDiagnostic diag = do
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
 -- | Exits with non-zero if the result is a failure.
 -- | Useful for setting up diagnostics from CLI entry points.
-logDiagnostic_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
-logDiagnostic_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) pure
+logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
+logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) pure
   
-withDiagnosticLogger_ :: Has (Lift IO) sig m => Severity -> DiagnosticsC (LoggerC m) () -> m ()
-withDiagnosticLogger_ logSev = withLogger logSev . logDiagnostic_
-
 runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle (ResultBundle a))
 runDiagnostics = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
   where
