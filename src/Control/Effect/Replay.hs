@@ -38,7 +38,11 @@ import qualified Data.Text.Lazy.Encoding as LEncoding
 import Path
 import System.Exit
 
+-- | A class of "replayable" effects -- i.e. an effect whose "result values"
+-- (the @a@ in @e m a@) can be deserialized from JSON values produced by
+-- 'recordValue' from 'Recordable'
 class Recordable r => Replayable (r :: Type -> Type) where
+  -- | Deserialize an effect data constructor's "return value" from JSON
   replay :: r a -> Value -> Maybe a
 
 newtype ReplayC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = ReplayC
@@ -46,6 +50,9 @@ newtype ReplayC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> 
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
+-- | Wrap an effect carrier, and replay its effects given the log produced by
+-- 'runRecord'. If a log entry isn't available for a given effect invocation, we
+-- pass the effect call down to the wrapped carrier
 runReplay :: Map Value Value -> ReplayC e sig m a -> m a
 runReplay mapping = runReader mapping . runReplayC
 
@@ -64,6 +71,9 @@ instance (Member e sig, Has (Lift IO) sig m, Replayable (e m)) => Algebra (e :+:
           Just result -> pure (result <$ ctx)
       R other -> alg (runReplayC . hdl) (R other) ctx
 
+-- | ReplayableValue is essentially @FromJSON@ with a different name. We use
+-- ReplayableValue to avoid orphan FromJSON instances for, e.g., ByteString and
+-- ExitCode
 class ReplayableValue a where
   fromRecordedValue :: Value -> Parser a
   default fromRecordedValue :: FromJSON a => Value -> Parser a

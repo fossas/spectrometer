@@ -35,13 +35,21 @@ import System.Exit
 import Unsafe.Coerce
 import Control.Effect.Lift
 
+-- | A class of "recordable" effects -- i.e. an effect whose data constructors
+-- and "result values" (the @a@ in @e m a@) can be serialized to JSON values
 class Recordable (r :: Type -> Type) where
+  -- | Serialize a data constructor to JSON
   recordKey :: r a -> Value
+  -- | Serialize an effect data constructor's "return value" to JSON
   recordValue :: r a -> a -> Value
 
+-- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
+--
+-- > runRecord @SomeEffect
 runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Map Value Value, a)
 runRecord = runAtomicState M.empty . runRecordC
 
+-- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
 newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
   { runRecordC :: AtomicStateC (Map Value Value) m a
   }
@@ -70,6 +78,9 @@ instance (Member e sig, Has (Lift IO) sig m, Recordable (e m)) => Algebra (e :+:
         pure (res <$ ctx)
       R other -> alg (runRecordC . hdl) (R other) ctx
 
+-- | RecordableValue is essentially @ToJSON@ with a different name. We use
+-- RecordableValue to avoid orphan ToJSON instances for, e.g., ByteString and
+-- ExitCode
 class RecordableValue a where
   toRecordedValue :: a -> Value
   default toRecordedValue :: ToJSON a => a -> Value

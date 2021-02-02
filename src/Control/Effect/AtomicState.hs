@@ -2,6 +2,8 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE NoStrictData #-}
 
+-- | An effect that provides an atomically-modifiable state value. Similar to
+-- @Control.Effect.State@
 module Control.Effect.AtomicState
   ( AtomicState (..),
     modify,

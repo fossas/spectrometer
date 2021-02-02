@@ -1,31 +1,32 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
-
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
+-- | A carrier for the AtomicState effect that utilizes an 'IORef' for atomic
+-- state updates
 module Control.Carrier.AtomicState
-  ( AtomicStateC (AtomicStateC)
-  , runAtomicState
-  , module X
+  ( AtomicStateC (AtomicStateC),
+    runAtomicState,
+    module X,
   )
 where
 
-import Control.Effect.AtomicState as X
-import Control.Carrier.Reader
-import Data.IORef
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans (MonadTrans)
 import Control.Algebra
 import Control.Carrier.Lift
+import Control.Carrier.Reader
+import Control.Effect.AtomicState as X
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans (MonadTrans)
+import Data.IORef
 
-newtype AtomicStateC s m a = AtomicStateC { runAtomicStateC :: ReaderC (IORef s) m a }
+newtype AtomicStateC s m a = AtomicStateC {runAtomicStateC :: ReaderC (IORef s) m a}
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
-runAtomicState :: Has (Lift IO) sig m => s -> AtomicStateC s m a -> m (s,a)
+runAtomicState :: Has (Lift IO) sig m => s -> AtomicStateC s m a -> m (s, a)
 runAtomicState s act = do
   ref <- sendIO $ newIORef s
   res <- runReader ref $ runAtomicStateC act

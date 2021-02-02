@@ -23,6 +23,8 @@ import Graphing
 import Path
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
+-- | A project found during project discovery, parameterized by the monad
+-- used to perform dependency analysis
 data DiscoveredProject m = DiscoveredProject
   { projectType :: Text,
     projectPath :: Path Abs Dir,
