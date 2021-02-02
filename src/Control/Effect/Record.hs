@@ -1,4 +1,3 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -7,17 +6,20 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Control.Effect.Record
   ( Recordable (..),
     RecordableValue (..),
     RecordC (..),
     runRecord,
+    Journal (..),
   )
 where
 
 import Control.Algebra
 import Control.Carrier.AtomicState
+import Control.Effect.Lift
 import Control.Effect.Sum
 import Control.Monad.Trans
 import Data.Aeson
@@ -33,21 +35,33 @@ import qualified Data.Text.Lazy.Encoding as LEncoding
 import Path
 import System.Exit
 import Unsafe.Coerce
-import Control.Effect.Lift
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
 -- and "result values" (the @a@ in @e m a@) can be serialized to JSON values
 class Recordable (r :: Type -> Type) where
   -- | Serialize a data constructor to JSON
   recordKey :: r a -> Value
+
   -- | Serialize an effect data constructor's "return value" to JSON
   recordValue :: r a -> a -> Value
+
+-- | A journal contains all of the effect invocations recorded by RecordC
+newtype Journal = Journal {unJournal :: Map Value Value}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Journal where
+  parseJSON = fmap (Journal . M.fromList) . parseJSON
+
+instance ToJSON Journal where
+  toJSON = toJSON . M.toList . unJournal
 
 -- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
 --
 -- > runRecord @SomeEffect
-runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Map Value Value, a)
-runRecord = runAtomicState M.empty . runRecordC
+runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Journal, a)
+runRecord act = do
+  (mapping, a) <- runAtomicState M.empty . runRecordC $ act
+  pure (Journal mapping, a)
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
 newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC

@@ -53,8 +53,8 @@ newtype ReplayC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> 
 -- | Wrap an effect carrier, and replay its effects given the log produced by
 -- 'runRecord'. If a log entry isn't available for a given effect invocation, we
 -- pass the effect call down to the wrapped carrier
-runReplay :: Map Value Value -> ReplayC e sig m a -> m a
-runReplay mapping = runReader mapping . runReplayC
+runReplay :: Journal -> ReplayC e sig m a -> m a
+runReplay (Journal mapping) = runReader mapping . runReplayC
 
 instance (Member e sig, Has (Lift IO) sig m, Replayable (e m)) => Algebra (e :+: sig) (ReplayC e sig m) where
   alg hdl sig' ctx = ReplayC $ do

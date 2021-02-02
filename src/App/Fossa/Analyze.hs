@@ -32,7 +32,6 @@ import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import qualified Data.List.NonEmpty as NE
-import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -100,7 +99,7 @@ analyzeMain basedir debugMode logSeverity destination project unpackArchives fil
           runRecord @Exec
             . runRecord @ReadFS
             $ analyze basedir destination project unpackArchives filters
-        sendIO $ encodeFile "fossa.debug.json" (object ["Exec" .= M.toList execLogs, "ReadFS" .= M.toList readFSLogs])
+        sendIO $ encodeFile "fossa.debug.json" (object ["Exec" .= execLogs, "ReadFS" .= readFSLogs])
 
 discoverFuncs ::
   ( Has (Lift IO) sig m,
