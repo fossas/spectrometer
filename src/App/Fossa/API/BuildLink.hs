@@ -19,10 +19,6 @@ import Network.HTTP.Types (urlEncode)
 import Srclib.Types (Locator (..))
 import qualified Text.URI as URI
 
--- If SAML is not used, neither is orgID (link is created from the locator)
-defaultOrg :: Organization
-defaultOrg = Organization 0 False
-
 fossaProjectUrlPath :: Locator -> ProjectRevision -> Text
 fossaProjectUrlPath Locator {..} ProjectRevision {..} = "/projects/" <> encodedProject <> buildSelector
   where
@@ -38,12 +34,10 @@ getFossaBuildUrl :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ProjectRevis
 getFossaBuildUrl revision apiopts locator = do
   maybeOrg <- recover $ getOrganization apiopts
 
-  let org = fromMaybe defaultOrg maybeOrg
-      baseURI = apiOptsUri apiopts
-      relUriPath =
-        if orgUsesSAML org
-          then samlUrlPath org locator revision
-          else fossaProjectUrlPath locator revision
+  let baseURI = apiOptsUri apiopts
+      relUriPath = case maybeOrg of
+        Just org | orgUsesSAML org -> samlUrlPath org locator revision
+        _ -> fossaProjectUrlPath locator revision
   pure (URI.render baseURI <> relUriPath)
 
 samlUrlPath :: Organization -> Locator -> ProjectRevision -> Text
