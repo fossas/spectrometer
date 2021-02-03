@@ -43,7 +43,7 @@ getFossaBuildUrl revision apiopts locator = do
 samlUrlPath :: Organization -> Locator -> ProjectRevision -> Text
 samlUrlPath Organization {organizationId} locator revision = "account/saml/" <> showT organizationId <> "?" <> opts
   where
-    opts = "next=/" <> urlEncode' redirectPath
+    opts = "next=%2F" <> urlEncode' redirectPath
     redirectPath = fossaProjectUrlPath locator revision
 
 urlEncode' :: Text -> Text
