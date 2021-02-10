@@ -79,7 +79,6 @@ newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> 
 -- is reflected in our use of 'unsafeCoerce', and is required for us to 'send'
 -- the effect further down the handler stack
 instance (Member e sig, Has (Lift IO) sig m, Recordable (e m)) => Algebra (e :+: sig) (RecordC e sig m) where
-  -- The type signature is here to bring 'n' into scope for 'unsafeCoerce'.
   alg hdl sig' ctx = RecordC $ do
     case sig' of
       L eff -> do

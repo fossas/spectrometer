@@ -222,12 +222,12 @@ instance Has (Lift IO) sig m => Algebra (ReadFS :+: sig) (ReadFSIOC m) where
       L (ResolveDir' dir path) -> do
         res <- catchingIO (PIO.resolveDir dir (T.unpack path)) (ResolveError (toFilePath dir) (T.unpack path))
         pure (res <$ ctx)
-      -- NB: these never throw
-      L (DoesFileExist file) -> (<$ ctx) <$> sendIO (PIO.doesFileExist file)
-      L (DoesDirExist dir) -> (<$ ctx) <$> sendIO (PIO.doesDirExist dir)
       L (ListDir dir) -> do
         res <- catchingIO (PIO.listDir dir) (ListDirError (toFilePath dir))
         pure (res <$ ctx)
+      -- NB: these never throw
+      L (DoesFileExist file) -> (<$ ctx) <$> sendIO (PIO.doesFileExist file)
+      L (DoesDirExist dir) -> (<$ ctx) <$> sendIO (PIO.doesDirExist dir)
       R other -> alg (runReadFSIO . hdl) other ctx
     where
       catchingIO :: IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
