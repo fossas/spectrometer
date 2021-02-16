@@ -48,7 +48,7 @@ windowsOsName = "mingw32"
 
 appMain :: IO ()
 appMain = do
-  CmdOptions {..} <- customExecParser (prefs (showHelpOnError <> subparserInline)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
+  CmdOptions {..} <- customExecParser (prefs (showHelpOnError <> subparserInline <> helpShowGlobals)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey
