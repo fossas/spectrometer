@@ -46,9 +46,16 @@ import Text.URI.QQ (uri)
 windowsOsName :: String
 windowsOsName = "mingw32"
 
+mainPrefs :: ParserPrefs
+mainPrefs = prefs $ mconcat 
+  [ helpShowGlobals,
+    showHelpOnError,
+    subparserInline 
+  ]
+
 appMain :: IO ()
 appMain = do
-  CmdOptions {..} <- customExecParser (prefs (showHelpOnError <> subparserInline <> helpShowGlobals)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
+  CmdOptions {..} <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey
