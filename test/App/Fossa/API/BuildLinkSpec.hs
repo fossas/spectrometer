@@ -10,19 +10,26 @@ import App.Types (ProjectRevision(ProjectRevision))
 import Data.Text (Text)
 import Fossa.API.Types
 import Text.URI.QQ
+import Effect.Logger (IgnoreLoggerC, ignoreLogger)
+import Control.Carrier.Diagnostics (DiagnosticsC, logDiagnostic)
+import Data.Functor.Identity (Identity(runIdentity))
+import Control.Monad (join)
 
 simpleSamlPath :: Text
-simpleSamlPath = "https://app.fossa.com/account/saml/1?next=%2Fprojects%2Ffetcher123%252Bproject123%2Frefs%2Fbranch%2Fmaster123%2Frevision123"
+simpleSamlPath = "https://app.fossa.com/account/saml/1?next=/projects/fetcher123%2bproject123/refs/branch/master123/revision123"
 
 -- | Note the differences here between '%2F' and '%252F'.  The percent sign is re-encoded so that it's properly handled on the next redirect.
 gitSamlPath :: Text
-gitSamlPath = "https://app.fossa.com/account/saml/103?next=%2Fprojects%2Ffetcher%2540123%252Fabc%252Bgit%2540github.com%252Fuser%252Frepo%2Frefs%2Fbranch%2Fweird--branch%2Frevision%2540123%252Fabc"
+gitSamlPath = "https://app.fossa.com/account/saml/103?next=/projects/fetcher@123%252fabc%2bgit@github.com%252fuser%252frepo/refs/branch/weird--branch/revision@123%252fabc"
 
 fullSamlURL :: Text
-fullSamlURL = "https://app.fossa.com/account/saml/33?next=%2Fprojects%2Fa%252Bb%2Frefs%2Fbranch%2Fmaster%2Fc"
+fullSamlURL = "https://app.fossa.com/account/saml/33?next=/projects/a%2bb/refs/branch/master/c"
 
 simpleStandardURL :: Text
-simpleStandardURL = "https://app.fossa.com/projects/haskell%2B89%2Fspectrometer/refs/branch/master/revision123"
+simpleStandardURL = "https://app.fossa.com/projects/haskell+89%2fspectrometer/refs/branch/master/revision123"
+
+stripDiag :: DiagnosticsC (IgnoreLoggerC Maybe) a -> Maybe a
+stripDiag = join . ignoreLogger . logDiagnostic
 
 spec :: Spec
 spec = do
@@ -32,26 +39,31 @@ spec = do
       let locator = Locator "fetcher123" "project123" $ Just "revision123"
           org = Just $ Organization 1 True
           revision = ProjectRevision "" "not this revision" $ Just "master123"
+          -- Loggers and Diagnostics modify monads, so we need a no-op monad
+          actual = runIdentity $ ignoreLogger $ logDiagnostic $ getBuildURLWithOrg org revision apiOpts locator 
 
-      getBuildURLWithOrg org revision apiOpts locator `shouldBe` simpleSamlPath
+      actual `shouldBe` Just simpleSamlPath
     
     it "should render git@ locators" $ do
       let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
           org = Just $ Organization 103 True
           revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
+          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator 
       
-      getBuildURLWithOrg org revision apiOpts locator `shouldBe` gitSamlPath
+      actual `shouldBe` Just gitSamlPath
     
     it "should render full url correctly" $ do
       let locator = Locator "a" "b" $ Just "c"
           org = Just $ Organization 33 True
           revision = ProjectRevision "" "not this revision" $ Just "master"
-      
-      getBuildURLWithOrg org revision apiOpts locator `shouldBe` fullSamlURL
+          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator 
+          
+      actual `shouldBe` Just fullSamlURL
   
   describe "Standard URL Builder" $ do
     it "should render simple links" $ do
       let locator = Locator "haskell" "89/spectrometer" $ Just "revision123"
           revision = ProjectRevision "" "not this revision" $ Just "master"
-      
-      getBuildURLWithOrg Nothing revision apiOpts locator `shouldBe` simpleStandardURL
+          actual = stripDiag $ getBuildURLWithOrg Nothing revision apiOpts locator 
+
+      actual `shouldBe` Just simpleStandardURL
