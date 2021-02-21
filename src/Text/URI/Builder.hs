@@ -37,7 +37,7 @@ convertPaths (path : paths) (TrailingSlash slash) = do
 renderPath :: Has Diagnostics sig m => [PathComponent] -> TrailingSlash -> m Text
 renderPath paths slash = render <$> setPath paths slash uri
   where
-    uri = emptyURI { uriAuthority = Left True }
+    uri = emptyURI {uriAuthority = Left True}
 
 data Query
   = Flag Text

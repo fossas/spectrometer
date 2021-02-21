@@ -2,18 +2,18 @@
 
 module App.Fossa.API.BuildLinkSpec (spec) where
 
-import Test.Hspec
 import App.Fossa.API.BuildLink
-import Srclib.Types (Locator(Locator))
-import App.Fossa.FossaAPIV1 (Organization(Organization))
-import App.Types (ProjectRevision(ProjectRevision))
-import Data.Text (Text)
-import Fossa.API.Types
-import Text.URI.QQ
-import Effect.Logger (IgnoreLoggerC, ignoreLogger)
+import App.Fossa.FossaAPIV1 (Organization (Organization))
+import App.Types (ProjectRevision (ProjectRevision))
 import Control.Carrier.Diagnostics (DiagnosticsC, logDiagnostic)
-import Data.Functor.Identity (Identity(runIdentity))
 import Control.Monad (join)
+import Data.Functor.Identity (Identity (runIdentity))
+import Data.Text (Text)
+import Effect.Logger (IgnoreLoggerC, ignoreLogger)
+import Fossa.API.Types
+import Srclib.Types (Locator (Locator))
+import Test.Hspec
+import Text.URI.QQ
 
 simpleSamlPath :: Text
 simpleSamlPath = "https://app.fossa.com/account/saml/1?next=/projects/fetcher123%2bproject123/refs/branch/master123/revision123"
@@ -40,30 +40,30 @@ spec = do
           org = Just $ Organization 1 True
           revision = ProjectRevision "" "not this revision" $ Just "master123"
           -- Loggers and Diagnostics modify monads, so we need a no-op monad
-          actual = runIdentity $ ignoreLogger $ logDiagnostic $ getBuildURLWithOrg org revision apiOpts locator 
+          actual = runIdentity $ ignoreLogger $ logDiagnostic $ getBuildURLWithOrg org revision apiOpts locator
 
       actual `shouldBe` Just simpleSamlPath
-    
+
     it "should render git@ locators" $ do
       let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
           org = Just $ Organization 103 True
           revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
-          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator 
-      
+          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
+
       actual `shouldBe` Just gitSamlPath
-    
+
     it "should render full url correctly" $ do
       let locator = Locator "a" "b" $ Just "c"
           org = Just $ Organization 33 True
           revision = ProjectRevision "" "not this revision" $ Just "master"
-          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator 
-          
+          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
+
       actual `shouldBe` Just fullSamlURL
-  
+
   describe "Standard URL Builder" $ do
     it "should render simple links" $ do
       let locator = Locator "haskell" "89/spectrometer" $ Just "revision123"
           revision = ProjectRevision "" "not this revision" $ Just "master"
-          actual = stripDiag $ getBuildURLWithOrg Nothing revision apiOpts locator 
+          actual = stripDiag $ getBuildURLWithOrg Nothing revision apiOpts locator
 
       actual `shouldBe` Just simpleStandardURL
