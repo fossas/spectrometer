@@ -254,6 +254,8 @@ metadataOpts =
     <*> optional (strOption (long "link" <> help "a link to attach to the current build"))
     <*> optional (strOption (long "team" <> help "this repository's team inside your organization"))
     <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
+    <*> optional (strOption (long "release-group" <> help "the release group to assign to this project in FOSSA"))
+    <*> optional (strOption (long "release-group-version" <> help "the release group version to assign to this project in FOSSA"))
 
 reportOpts :: Parser ReportOptions
 reportOpts =

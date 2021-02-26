@@ -15,7 +15,7 @@
 4. [Common FOSSA Project Flags](#common-fossa-project-flags)
 5. [Frequently-Asked Questions](#frequently-asked-questions)
     - [`fossa analyze`: Why wasn't my project found?](#fossa-analyze-why-wasnt-my-project-found)
-    - [When are you adding support for (some buildtool/language)](#when-are-you-adding-support-for-some-buildtoollanguage)
+    - [When are you adding support for (some buildtool/language)?](#when-are-you-adding-support-for-some-buildtoollanguage)
 
 ## Quick Start
 
@@ -129,15 +129,17 @@ For supported command-line flags, use `fossa analyze --help`
 
 In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supported by all commands, the analyze command supports the following FOSSA-project-related flags:
 
-| Name | Description |
-| ---- | ----------- |
-| `--title 'some title'` | Set the title of the FOSSA project |
-| `--branch 'some branch'` | Override the detected FOSSA project branch |
-| `--project-url 'https://example.com'` | Add a URL to the FOSSA project |
-| `--jira-project-key 'some-key'` | Add a Jira project key to the FOSSA project |
-| `--link 'https://example.com'` | Attach a link to the current FOSSA build |
-| `--team 'some team'` | Specify a team within your FOSSA organization |
-| `--policy 'some policy'` | Assign a specific FOSSA policy to this project |
+| Name                                             | Description                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `--title 'some title'`                           | Set the title of the FOSSA project                                                    |
+| `--branch 'some branch'`                         | Override the detected FOSSA project branch                                            |
+| `--project-url 'https://example.com'`            | Add a URL to the FOSSA project                                                        |
+| `--jira-project-key 'some-key'`                  | Add a Jira project key to the FOSSA project                                           |
+| `--link 'https://example.com'`                   | Attach a link to the current FOSSA build                                              |
+| `--team 'some team'`                             | Specify a team within your FOSSA organization                                         |
+| `--policy 'some policy'`                         | Assign a specific FOSSA policy to this project                                        |
+| `--release-group 'some policy'`                  | Assign a FOSSA release group to this project (release-group-version is also required) |
+| `--release-group-version 'corresponding policy'` | Specify a version of the previously specified release group to this project           |
 
 ### Printing results without uploading to FOSSA
 
@@ -238,12 +240,12 @@ fossa report attribtion --json
 
 All `fossa` commands support the following FOSSA-project-related flags:
 
-| Name | Description |
-| ---- | ----------- |
-| `--project 'some project'` | Override the detected project name |
-| `--revision 'some revision'` | Override the detected project revision |
-| `--fossa-api-key 'my-api-key'` | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key |
-| `--endpoint 'https://example.com'` | Override the FOSSA API server base URL |
+| Name                               | Description                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `--project 'some project'`         | Override the detected project name                                                          |
+| `--revision 'some revision'`       | Override the detected project revision                                                      |
+| `--fossa-api-key 'my-api-key'`     | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key |
+| `--endpoint 'https://example.com'` | Override the FOSSA API server base URL                                                      |
 
 ## Frequently-Asked Questions
 

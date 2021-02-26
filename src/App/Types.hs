@@ -30,6 +30,8 @@ data ProjectMetadata = ProjectMetadata
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
   , projectPolicy :: Maybe Text
+  , projectReleaseGroup :: Maybe Text
+  , projectReleaseGroupVersion :: Maybe Text
   } deriving (Eq, Ord, Show)
 
 data ProjectRevision = ProjectRevision
