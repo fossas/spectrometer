@@ -98,7 +98,6 @@ appMain = do
       listTargetsMain baseDir
     --
     VPSCommand VPSOptions {..} -> do
-      dieOnWindows "Vendored Package Scanning (VPS)"
       apikey <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl apikey
       case vpsCommand of
