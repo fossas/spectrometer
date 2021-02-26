@@ -28,7 +28,7 @@ import App.Version (fullVersionDescription)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
-import Data.Flag (Flag, flagOpt)
+import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Foldable (for_)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -102,6 +102,7 @@ appMain = do
       let apiOpts = ApiOpts optBaseUrl apikey
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
+          when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
           baseDir <- validateDir vpsAnalyzeBaseDir
           scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
