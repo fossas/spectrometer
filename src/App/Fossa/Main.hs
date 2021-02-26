@@ -105,15 +105,19 @@ appMain = do
           baseDir <- validateDir vpsAnalyzeBaseDir
           scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
+          dieOnWindows "Vendored Package Scanning (VPS)"
           ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
         VPSTestCommand VPSTestOptions {..} -> do
+          dieOnWindows "Vendored Package Scanning (VPS)"
           baseDir <- validateDir vpsTestBaseDir
           VPSTest.testMain baseDir apiOpts logSeverity vpsTestTimeout vpsTestOutputType override
         VPSReportCommand VPSReportOptions {..} -> do
+          dieOnWindows "Vendored Package Scanning (VPS)"
           unless vpsReportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
           baseDir <- validateDir vpsReportBaseDir
           VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
         VPSAOSPNoticeCommand VPSAOSPNoticeOptions {..} -> do
+          dieOnWindows "Vendored Package Scanning (VPS)"
           baseDir <- validateDir vpsAOSPNoticeBaseDir
           aospNoticeMain baseDir logSeverity vpsFileFilter vpsAOSPNoticeWriteEnabled
 
