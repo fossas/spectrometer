@@ -85,7 +85,7 @@ jobs:
       if: ${{ contains(matrix.os, 'windows') }}
       run: |
         mkdir vendor
-        touch vendor/wiggins
+        mv vendor-wiggins/wiggins-windows vendor/wiggins
         touch vendor/syft
         touch vendor/cliv1
 
