@@ -40,6 +40,29 @@ esac
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
+WIGGINS_TAG="2021-03-01-4a5ab0c"
+echo "Downloading wiggins binary"
+echo "Using wiggins release: $WIGGINS_TAG"
+WIGGINS_RELEASE_JSON=vendor/wiggins-release.json
+curl -sSL \
+    -H "Authorization: token $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github.v3.raw" \
+    api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
+
+WIGGINS_TAG=$(jq -cr ".name" $WIGGINS_RELEASE_JSON)
+FILTER=".name == \"wiggins-$ASSET_POSTFIX\""
+jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $WIGGINS_RELEASE_JSON | while read ASSET; do
+  URL="$(echo $ASSET | jq -c -r '.url')"
+  NAME="$(echo $ASSET | jq -c -r '.name')"
+  OUTPUT=vendor/${NAME%"-$ASSET_POSTFIX"}
+
+  echo "Downloading '$NAME' to '$OUTPUT'"
+  curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
+done
+rm $WIGGINS_RELEASE_JSON
+echo "Wiggins download successful"
+echo
+
 echo "Downloading forked syft binary"
 SYFT_RELEASE_JSON=vendor/syft-release.json
 curl -sSL \
