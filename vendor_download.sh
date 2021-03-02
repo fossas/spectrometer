@@ -40,9 +40,6 @@ esac
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-echo "Moving Wiggins binary"
-cp ./vendor-wiggins/wiggins-$ASSET_POSTFIX ./vendor/wiggins
-
 echo "Downloading forked syft binary"
 SYFT_RELEASE_JSON=vendor/syft-release.json
 curl -sSL \
