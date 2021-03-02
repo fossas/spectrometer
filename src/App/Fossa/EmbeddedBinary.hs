@@ -24,7 +24,6 @@ import Data.FileEmbed.Extra
 import Path
 import Path.IO
 import Prelude hiding (writeFile)
-import qualified System.Info as SysInfo
 
 data PackagedBinary
   = Syft
@@ -110,7 +109,7 @@ writeExecutable path content = do
 extractedPath :: PackagedBinary -> Path Rel File
 extractedPath bin = case bin of
   Syft -> $(mkRelFile "syft")
-  Wiggins -> $(mkRelFile $ if SysInfo.os == "mingw32" then "wiggins.exe" else "wiggins")
+  Wiggins -> $(mkRelFile "wiggins")
   CLIv1 -> $(mkRelFile "cliv1")
 
 extractDir :: MonadIO m => m (Path Abs Dir)
