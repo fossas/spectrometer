@@ -12,10 +12,12 @@ import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), OverrideProject)
 import Effect.Logger
-import Data.Text (Text)
+import Data.Text (Text, isSuffixOf)
 import App.Fossa.ProjectInference
 import Fossa.API.Types (ApiOpts(..))
-import Path (Path, Abs, Dir)
+import Path (Path, Abs, Dir, toFilePath)
+import qualified Data.Text as T
+import Path.IO (listDirRecurRel)
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> ApiOpts -> IO ()
 aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId apiOpts = withLogger logSeverity $ do
@@ -35,7 +37,10 @@ aospNoticeGenerate ::
   ) => Path Abs Dir -> Severity -> OverrideProject -> NinjaScanID -> ApiOpts -> BinaryPaths -> m ()
 aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId apiOpts binaryPaths = do
   projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-  let wigginsOpts = generateWigginsAOSPNoticeOpts basedir logSeverity apiOpts projectRevision ninjaScanId
+
+  (_, files) <- sendIO $ listDirRecurRel basedir
+  let ninjaInputFiles = NinjaInputFiles $ filter (".ninja" `isSuffixOf`) $ map (T.pack . toFilePath) files
+  let wigginsOpts = generateWigginsAOSPNoticeOpts basedir logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles
 
   logInfo "Running VPS plugin: generating AOSP notice files"
   stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
