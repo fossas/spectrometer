@@ -38,17 +38,19 @@ generateWigginsScanOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanTy
 generateWigginsScanOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
   WigginsOpts scanDir $ generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata
 
-generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> FilterExpressions -> Bool -> WigginsOpts
-generateWigginsAOSPNoticeOpts scanDir logSeverity fileFilters enableWrite =
-  WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite
+generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> WigginsOpts
+generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaScanId =
+  WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity apiOpts projectRevision ninjaScanId
 
-generateSpectrometerAOSPNoticeArgs :: Severity -> FilterExpressions -> Bool -> [Text]
-generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite =
+generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> [Text]
+generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} ninjaScanId =
   ["aosp-notice-files"]
-      ++ optBool "-write" enableWrite
       ++ optBool "-debug" (logSeverity == SevDebug)
-      ++ optFilterExpressions fileFilters
+      ++ ["-endpoint", render apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
+      ++ ["-scan-id", unNinjaScanID ninjaScanId]
+      ++ ["-name", projectName]
       ++ ["."]
+      ++ ["./out/**/*.ninja"]
 
 generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
 generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
