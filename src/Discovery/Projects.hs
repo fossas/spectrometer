@@ -9,6 +9,7 @@ import Control.Effect.Lift
 import Control.Effect.TaskPool
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans (lift)
 import Data.Foldable (for_, traverse_)
 import qualified Discovery.Archive as Archive
 import Effect.Logger
@@ -34,9 +35,5 @@ withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
     Diag.withResult SevError projectsResult (traverse_ (forkTask . f))
 
   when unpackArchives $ do
-    res <- Diag.runDiagnosticsIO $ Archive.discover (\dir -> liftFoo $ withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
+    res <- Diag.runDiagnosticsIO $ Archive.discover (\dir -> lift $ withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
     Diag.withResult SevError res (const (pure ()))
-
-
-liftFoo :: m a -> Diag.DiagnosticsC m a
-liftFoo = undefined
