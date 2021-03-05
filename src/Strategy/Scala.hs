@@ -14,7 +14,6 @@ where
 
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Diagnostics
-import Control.Effect.Lift
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
@@ -38,10 +37,7 @@ discover ::
     Has ReadFS sig m,
     Has Logger sig m,
     Has Diagnostics sig m,
-    Has (Lift IO) rsig run,
-    Has Diagnostics rsig run,
-    Has Exec rsig run,
-    Has ReadFS rsig run
+    Applicative run
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
