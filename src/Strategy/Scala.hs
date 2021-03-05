@@ -26,8 +26,9 @@ import Effect.Exec
 import Effect.Logger hiding (group)
 import Effect.ReadFS
 import Path
-import Strategy.Maven (mkProject)
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
+import qualified Strategy.Maven.Pom as Pom
+import qualified Strategy.Maven.Pom.Closure as PomClosure
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..))
 import Strategy.Maven.Pom.Resolver (GlobalClosure (..), buildGlobalClosure)
 import Types
@@ -45,6 +46,19 @@ discover ::
   Path Abs Dir ->
   m [DiscoveredProject run]
 discover dir = map (mkProject dir) <$> findProjects dir
+
+mkProject ::
+  Applicative n =>
+  -- | basedir; required for licenses
+  Path Abs Dir -> MavenProjectClosure -> DiscoveredProject n
+mkProject basedir closure =
+  DiscoveredProject
+    { projectType = "scala",
+      projectPath = parent $ PomClosure.closurePath closure,
+      projectBuildTargets = mempty,
+      projectDependencyGraph = \_ -> pure (Pom.analyze' closure),
+      projectLicenses = pure $ Pom.getLicenses basedir closure
+    }
 
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath
