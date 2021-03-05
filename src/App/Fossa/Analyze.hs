@@ -48,33 +48,7 @@ import Path
 import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (parseLocator)
-import qualified Strategy.Bundler as Bundler
-import qualified Strategy.Cargo as Cargo
-import qualified Strategy.Carthage as Carthage
-import qualified Strategy.Cocoapods as Cocoapods
-import qualified Strategy.Composer as Composer
-import qualified Strategy.Glide as Glide
-import qualified Strategy.Godep as Godep
-import qualified Strategy.Gomodules as Gomodules
-import qualified Strategy.Googlesource.RepoManifest as RepoManifest
-import qualified Strategy.Gradle as Gradle
-import qualified Strategy.Haskell.Cabal as Cabal
-import qualified Strategy.Haskell.Stack as Stack
-import qualified Strategy.Leiningen as Leiningen
-import qualified Strategy.Maven as Maven
-import qualified Strategy.Npm as Npm
-import qualified Strategy.NuGet.Nuspec as Nuspec
-import qualified Strategy.NuGet.PackageReference as PackageReference
-import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
-import qualified Strategy.NuGet.Paket as Paket
-import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
-import qualified Strategy.NuGet.ProjectJson as ProjectJson
-import qualified Strategy.Python.Pipenv as Pipenv
-import qualified Strategy.Python.Setuptools as Setuptools
-import qualified Strategy.RPM as RPM
-import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.Scala as Scala
-import qualified Strategy.Yarn as Yarn
 import System.Exit (exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
@@ -103,21 +77,17 @@ analyzeMain basedir debugMode logSeverity destination project unpackArchives fil
 
 discoverFuncs ::
   ( Has (Lift IO) sig m,
-    MonadIO m,
     Has ReadFS sig m,
     Has Exec sig m,
     Has Logger sig m,
     Has Diag.Diagnostics sig m,
 
-    Has (Lift IO) rsig run,
-    Has ReadFS rsig run,
-    Has Diag.Diagnostics rsig run,
-    Has Exec rsig run
+    Has (Lift IO) rsig run
   ) =>
   -- | Discover functions
   [Path Abs Dir -> m [DiscoveredProject run]]
-discoverFuncs =
-  [ Bundler.discover,
+discoverFuncs = [ Scala.discover ]
+{-  [ Bundler.discover,
     Cargo.discover,
     Carthage.discover,
     Cocoapods.discover,
@@ -144,7 +114,7 @@ discoverFuncs =
     ProjectJson.discover,
     Glide.discover,
     Pipenv.discover
-  ]
+  ]-}
 
 runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>

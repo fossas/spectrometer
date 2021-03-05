@@ -131,7 +131,7 @@ genPoms projectDir = do
                     )
                     deps
               ]
-          globalClosure' = globalClosure {globalGraph = globalGraph globalClosure}
+          globalClosure' = globalClosure {globalGraph = AM.overlay pomEdges (globalGraph globalClosure)}
           projects = buildProjectClosures projectDir globalClosure'
 
       pure projects
