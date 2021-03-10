@@ -14,7 +14,6 @@ where
 
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Diagnostics
-import Control.Effect.Lift
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
@@ -26,8 +25,9 @@ import Effect.Exec
 import Effect.Logger hiding (group)
 import Effect.ReadFS
 import Path
-import Strategy.Maven (mkProject)
+import qualified Strategy.Maven.Pom as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
+import qualified Strategy.Maven.Pom.Closure as PomClosure
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..))
 import Strategy.Maven.Pom.Resolver (GlobalClosure (..), buildGlobalClosure)
 import Types
@@ -37,14 +37,27 @@ discover ::
     Has ReadFS sig m,
     Has Logger sig m,
     Has Diagnostics sig m,
-    Has (Lift IO) rsig run,
-    Has Diagnostics rsig run,
-    Has Exec rsig run,
-    Has ReadFS rsig run
+    Applicative run
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
 discover dir = map (mkProject dir) <$> findProjects dir
+
+mkProject ::
+  Applicative n =>
+  -- | basedir; required for licenses
+  Path Abs Dir ->
+  MavenProjectClosure ->
+  DiscoveredProject n
+mkProject basedir closure =
+  DiscoveredProject
+    { projectType = "scala",
+      projectPath = parent $ PomClosure.closurePath closure,
+      projectBuildTargets = mempty,
+      -- only do static analysis of generated pom files
+      projectDependencyGraph = \_ -> pure (Pom.analyze' closure),
+      projectLicenses = pure $ Pom.getLicenses basedir closure
+    }
 
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath
