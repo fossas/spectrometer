@@ -23,7 +23,8 @@ import Effect.Exec
   )
 import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
-import Language.Haskell.TH (TExpQ, reportWarning, runIO)
+import Language.Haskell.TH (TExpQ)
+import Language.Haskell.TH.Syntax (reportWarning, runIO)
 import Path (Dir, Rel, mkRelDir)
 
 gitTagPointCommand :: Text -> Command
