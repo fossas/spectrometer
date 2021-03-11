@@ -9,6 +9,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Debugging information
+        run: |
+          ghc --version
+          cabal --version
+
       - name: Update cabal cache for spectrometer run
         run: |
           cabal update

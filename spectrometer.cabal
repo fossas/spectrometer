@@ -4,9 +4,11 @@ version:            0.1.0.0
 license:            MPL-2.0
 build-type:         Simple
 extra-source-files:
-  scripts/*.jar
-  scripts/*.gradle
-  vendor/*
+  scripts/depgraph-maven-plugin-3.3.0.jar
+  scripts/jsondeps.gradle
+  vendor/cliv1
+  vendor/syft
+  vendor/wiggins
 
 common lang
   build-depends:      base >=4.12 && <4.15
