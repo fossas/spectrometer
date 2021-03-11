@@ -33,13 +33,13 @@ genDependency =
     <*> Gen.maybe arbitraryText
     <*> Gen.maybe Gen.bool
     <*> Gen.maybe arbitraryText
-    <*> Gen.list defaultRange arbitraryText
+    <*> Gen.list defaultRange (Gen.maybe arbitraryText)
     <*> Gen.maybe arbitraryText
     <*> Gen.maybe (Gen.list defaultRange genLicense)
     <*> Gen.list defaultRange genLicense
     <*> Gen.maybe arbitraryText
     <*> Gen.list defaultRange arbitraryText
-    <*> Gen.maybe (Gen.list defaultRange arbitraryText)
+    <*> Gen.maybe (Gen.list defaultRange (Gen.maybe arbitraryText))
     <*> Gen.maybe arbitraryText
     <*> arbitraryText
 

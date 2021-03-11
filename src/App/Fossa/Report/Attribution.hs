@@ -39,13 +39,13 @@ data Dependency
         depVersion :: Maybe Text,
         depIsGolang :: Maybe Bool,
         depHash :: Maybe Text,
-        depAuthors :: [Text],
+        depAuthors :: [Maybe Text],
         depDescription :: Maybe Text,
         depLicenses :: Maybe [License],
         depOtherLicenses :: [License],
         depProjectUrl :: Maybe Text,
         depDependencyPaths :: [Text],
-        depNotes :: Maybe [Text],
+        depNotes :: Maybe [Maybe Text],
         depDownloadUrl :: Maybe Text,
         depTitle :: Text
       }
