@@ -11,8 +11,9 @@ jobs:
 
       - name: Debugging information
         run: |
-          ghc --version
-          cabal --version
+          ghc --version || echo "no ghc"
+          cabal --version || echo "no cabal"
+          ghcup --version || echo "no ghcup"
 
       - name: Update cabal cache for spectrometer run
         run: |
