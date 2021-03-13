@@ -17,13 +17,15 @@ module App.Fossa.Container
     runSyft,
     toContainerScan,
     extractRevision,
+    parseSyftOutput,
+    parseSyftOutputMain,
   )
 where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withSyftBinary)
 import App.Types (ProjectRevision (..), OverrideProject (..))
-import Control.Effect.Diagnostics hiding (fromMaybe)
-import Control.Effect.Lift (Lift)
+import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class
 import Data.Aeson
 import qualified Data.Map.Lazy as LMap
@@ -32,8 +34,13 @@ import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Text (Text, pack)
 import Data.Text.Extra (breakOnAndRemove)
 import Effect.Exec (AllowErr (Never), Command (..), execJson, runExecIO)
+import Effect.Logger
+import Effect.ReadFS (ReadFS, readContentsJson, ReadFSIOC (runReadFSIO), resolveFile) 
 import Options.Applicative (Parser, argument, help, metavar, str)
-import Path
+import Path ( toFilePath, reldir, Dir, Rel )
+import Path.IO (getCurrentDir)
+import qualified Data.ByteString.Lazy as BL
+import Data.Aeson.Types (parseEither)
 
 newtype ImageText = ImageText {unImageText :: Text} deriving (Show, Eq, Ord)
 
@@ -206,3 +213,23 @@ syftCommand bin (ImageText image) =
       cmdArgs = ["-o", "json", image],
       cmdAllowErr = Never
     }
+
+parseSyftOutputMain :: Severity -> FilePath -> IO ()
+parseSyftOutputMain logseverity path = withLogger logseverity . logWithExit_ . runReadFSIO $ parseSyftOutput path
+
+parseSyftOutput :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => FilePath -> m ()
+parseSyftOutput filepath = do
+  curdir <- sendIO getCurrentDir
+  logDebug "Resolving file"
+  path <- resolveFile curdir $ pack filepath
+  logDebug "Reading JSON file"
+  rawvalue <- readContentsJson @Value path
+  logDebug "Parsing JSON contents"
+  response <- fromEitherShow $ parseEither (parseJSON @SyftResponse) rawvalue
+  logDebug "Converting to FOSSA payload"
+  payload <- toContainerScan response
+  logInfo "Payload is valid!"
+
+  sendIO . BL.putStr $ encode payload
+
+  pure ()

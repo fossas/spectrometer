@@ -7,7 +7,7 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
-import App.Fossa.Container (imageTextArg, ImageText (..))
+import App.Fossa.Container (imageTextArg, ImageText (..), parseSyftOutputMain)
 import qualified App.Fossa.Container.Analyze as ContainerAnalyze
 import qualified App.Fossa.Container.Test as ContainerTest
 import App.Fossa.Compatibility (argumentParser, Argument, compatibilityMain)
@@ -135,6 +135,7 @@ appMain = do
           apikey <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl apikey
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
+        ContainerParseFile path -> parseSyftOutputMain logSeverity path
     --
     CompatibilityCommand args -> do
       compatibilityMain args
@@ -367,7 +368,7 @@ vpsCommands =
     )
 
 containerOpts :: Parser ContainerOptions
-containerOpts = ContainerOptions <$> containerCommands
+containerOpts = ContainerOptions <$> (containerCommands <|> hiddenContainerCommands)
 
 containerCommands :: Parser ContainerCommand
 containerCommands =
@@ -384,6 +385,17 @@ containerCommands =
           )
     )
 
+hiddenContainerCommands :: Parser ContainerCommand
+hiddenContainerCommands =
+  hsubparser 
+    ( internal 
+        <> command
+          "parse-file"
+          ( info (ContainerParseFile <$> containerParseFileOptions) $
+              progDesc "Debug syft output parsing"
+          )
+    ) 
+
 containerAnalyzeOpts :: Parser ContainerAnalyzeOptions
 containerAnalyzeOpts =
   ContainerAnalyzeOptions
@@ -397,6 +409,9 @@ containerTestOpts =
     <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
     <*> flag ContainerTest.TestOutputPretty ContainerTest.TestOutputJson (long "json" <> help "Output issues as json")
     <*> imageTextArg
+
+containerParseFileOptions :: Parser FilePath
+containerParseFileOptions = argument str (metavar "FILE" <> help "File to parse")
 
 compatibilityOpts :: Parser [Argument]
 compatibilityOpts =
@@ -488,6 +503,7 @@ newtype ContainerOptions = ContainerOptions
 data ContainerCommand
   = ContainerAnalyze ContainerAnalyzeOptions
   | ContainerTest ContainerTestOptions
+  | ContainerParseFile FilePath
 
 data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   { containerAnalyzeOutput :: Bool,
