@@ -19,6 +19,7 @@ module App.Fossa.Container
     extractRevision,
     parseSyftOutput,
     parseSyftOutputMain,
+    dumpSyftScanMain,
   )
 where
 
@@ -33,7 +34,7 @@ import Data.Map.Strict (Map)
 import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Text (Text, pack)
 import Data.Text.Extra (breakOnAndRemove)
-import Effect.Exec (AllowErr (Never), Command (..), execJson, runExecIO)
+import Effect.Exec (AllowErr (Never), Command (..), execJson, runExecIO, Exec, execThrow)
 import Effect.Logger
 import Effect.ReadFS (ReadFS, readContentsJson, ReadFSIOC (runReadFSIO), resolveFile) 
 import Options.Applicative (Parser, argument, help, metavar, str)
@@ -233,3 +234,21 @@ parseSyftOutput filepath = do
   sendIO . BL.putStr $ encode payload
 
   pure ()
+
+dumpSyftScanMain :: Severity -> Maybe FilePath -> ImageText -> IO ()
+dumpSyftScanMain logseverity path image = withLogger logseverity . logWithExit_ . runExecIO $ dumpSyftScan path image
+
+dumpSyftScan :: 
+  ( Has Diagnostics sig m,
+    Has (Lift IO) sig m,
+    Has Exec sig m,
+    MonadIO m
+  ) =>
+  Maybe FilePath ->
+  ImageText ->
+  m ()
+dumpSyftScan path image = withSyftBinary $ \syft -> do
+  syftOutput <- execThrow [reldir|.|] $ syftCommand syft image
+  let writer :: BL.ByteString -> IO ()
+      writer = maybe BL.putStr BL.writeFile path
+  sendIO $ writer syftOutput

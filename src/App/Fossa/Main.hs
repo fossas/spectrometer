@@ -7,7 +7,7 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
-import App.Fossa.Container (imageTextArg, ImageText (..), parseSyftOutputMain)
+import App.Fossa.Container (imageTextArg, ImageText (..), parseSyftOutputMain, dumpSyftScanMain)
 import qualified App.Fossa.Container.Analyze as ContainerAnalyze
 import qualified App.Fossa.Container.Test as ContainerTest
 import App.Fossa.Compatibility (argumentParser, Argument, compatibilityMain)
@@ -136,6 +136,7 @@ appMain = do
           let apiOpts = ApiOpts optBaseUrl apikey
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
         ContainerParseFile path -> parseSyftOutputMain logSeverity path
+        ContainerDumpScan ContainerDumpScanOptions {..} -> dumpSyftScanMain logSeverity dumpScanOutputFile dumpScanImage
     --
     CompatibilityCommand args -> do
       compatibilityMain args
@@ -394,6 +395,11 @@ hiddenContainerCommands =
           ( info (ContainerParseFile <$> containerParseFileOptions) $
               progDesc "Debug syft output parsing"
           )
+        <> command
+          "dump-scan"
+          ( info (ContainerDumpScan <$> containerDumpScanOptions) $
+              progDesc "Capture syft output for debugging"
+          )
     ) 
 
 containerAnalyzeOpts :: Parser ContainerAnalyzeOptions
@@ -412,6 +418,12 @@ containerTestOpts =
 
 containerParseFileOptions :: Parser FilePath
 containerParseFileOptions = argument str (metavar "FILE" <> help "File to parse")
+
+containerDumpScanOptions :: Parser ContainerDumpScanOptions
+containerDumpScanOptions =
+  ContainerDumpScanOptions
+    <$> option auto (short 'o' <> long "output-file" <> help "File to write the scan data (omit for stdout)")
+    <*> imageTextArg 
 
 compatibilityOpts :: Parser [Argument]
 compatibilityOpts =
@@ -504,6 +516,7 @@ data ContainerCommand
   = ContainerAnalyze ContainerAnalyzeOptions
   | ContainerTest ContainerTestOptions
   | ContainerParseFile FilePath
+  | ContainerDumpScan ContainerDumpScanOptions
 
 data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   { containerAnalyzeOutput :: Bool,
@@ -515,4 +528,9 @@ data ContainerTestOptions = ContainerTestOptions
   { containerTestTimeout :: Int,
     containerTestOutputType:: ContainerTest.TestOutputType,
     containerTestImage :: ImageText
+  }
+
+data ContainerDumpScanOptions = ContainerDumpScanOptions
+  { dumpScanOutputFile :: Maybe FilePath,
+    dumpScanImage :: ImageText
   }
