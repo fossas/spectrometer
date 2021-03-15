@@ -60,9 +60,15 @@ data SyftResponse
 
 instance FromJSON SyftResponse where
   parseJSON = withObject "SyftResponse" $ \obj ->
-    SyftResponse <$> obj .: "artifacts"
+    SyftResponse <$> (filter artifactTypeIsOk <$> obj .: "artifacts")
       <*> obj .: "source"
       <*> obj .: "distro"
+
+artifactTypeIsOk :: ResponseArtifact -> Bool
+artifactTypeIsOk art = artifactType art `elem` acceptedArtifactTypes
+
+acceptedArtifactTypes :: [Text]
+acceptedArtifactTypes = ["deb", "rpm", "apk"]
 
 data ResponseArtifact
   = ResponseArtifact
