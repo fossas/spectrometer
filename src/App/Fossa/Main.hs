@@ -422,7 +422,7 @@ containerParseFileOptions = argument str (metavar "FILE" <> help "File to parse"
 containerDumpScanOptions :: Parser ContainerDumpScanOptions
 containerDumpScanOptions =
   ContainerDumpScanOptions
-    <$> option auto (short 'o' <> long "output-file" <> help "File to write the scan data (omit for stdout)")
+    <$> optional (strOption (short 'o' <> long "output-file" <> help "File to write the scan data (omit for stdout)"))
     <*> imageTextArg 
 
 compatibilityOpts :: Parser [Argument]
