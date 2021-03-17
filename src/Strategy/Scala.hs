@@ -79,6 +79,8 @@ makePomCmd :: Command
 makePomCmd =
   Command
     { cmdName = "sbt",
+      -- --no-colors to disable ANSI escape codes
+      -- --batch to disable interactivity. normally, if an `sbt` command fails, it'll drop into repl mode: --batch will disable the repl.
       cmdArgs = ["--no-colors", "--batch", "makePom"],
       cmdAllowErr = Never
     }
