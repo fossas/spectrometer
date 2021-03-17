@@ -79,7 +79,7 @@ makePomCmd :: Command
 makePomCmd =
   Command
     { cmdName = "sbt",
-      cmdArgs = ["makePom", "-no-colors"],
+      cmdArgs = ["--no-colors", "--batch", "makePom"],
       cmdAllowErr = Never
     }
 
