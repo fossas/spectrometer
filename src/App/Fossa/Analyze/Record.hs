@@ -12,6 +12,8 @@ import App.Version (fullVersionDescription)
 import Control.Effect.Record
 import Data.Aeson
 import Data.Text (Text)
+import Effect.Exec (Exec)
+import Effect.ReadFS (ReadFS)
 import System.Directory (getCurrentDirectory)
 import System.Environment (getArgs)
 
@@ -24,8 +26,8 @@ data AnalyzeJournal = AnalyzeJournal
   deriving (Eq, Ord, Show)
 
 data AnalyzeEffects = AnalyzeEffects
-  { effectsReadFS :: Journal,
-    effectsExec :: Journal
+  { effectsReadFS :: Journal ReadFS,
+    effectsExec :: Journal Exec
   }
   deriving (Eq, Ord, Show)
 
@@ -57,7 +59,7 @@ instance ToJSON AnalyzeEffects where
         "Exec" .= effectsExec
       ]
 
-saveReplayLog :: Journal -> Journal -> FilePath -> IO ()
+saveReplayLog :: Journal ReadFS -> Journal Exec -> FilePath -> IO ()
 saveReplayLog readFSJournal execJournal path = do
   args <- getArgs
   workdir <- getCurrentDirectory
