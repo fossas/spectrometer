@@ -6,7 +6,7 @@ module App.Fossa.Main
   )
 where
 
-import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
+import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), RecordMode (..), analyzeMain)
 import App.Fossa.Container (imageTextArg, ImageText (..), parseSyftOutputMain, dumpSyftScanMain)
 import qualified App.Fossa.Container.Analyze as ContainerAnalyze
 import qualified App.Fossa.Container.Test as ContainerTest
@@ -68,14 +68,13 @@ appMain = do
 
   case optCommand of
     AnalyzeCommand AnalyzeOptions {..} -> do
-      baseDir <- validateDir analyzeBaseDir
       let analyzeOverride = override {overrideBranch = analyzeBranch}
       if analyzeOutput
-        then analyzeMain baseDir optDebug logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
+        then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
-          analyzeMain baseDir optDebug logSeverity (UploadScan apiOpts analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
+          analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
     --
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
@@ -251,7 +250,14 @@ analyzeOpts =
     <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
+    <*> analyzeReplayOpt
     <*> baseDirArg
+
+analyzeReplayOpt :: Parser RecordMode
+analyzeReplayOpt =
+      flag' RecordModeRecord (long "record" <> hidden)
+  <|> (RecordModeReplay <$> strOption (long "replay" <> hidden))
+  <|> pure RecordModeNone
 
 filterOpt :: Parser BuildTargetFilter
 filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
@@ -476,6 +482,7 @@ data AnalyzeOptions = AnalyzeOptions
     analyzeBranch :: Maybe Text,
     analyzeMetadata :: ProjectMetadata,
     analyzeBuildTargetFilters :: [BuildTargetFilter],
+    analyzeRecordMode :: RecordMode,
     analyzeBaseDir :: FilePath
   }
 
