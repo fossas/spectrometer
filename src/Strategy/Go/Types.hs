@@ -57,7 +57,14 @@ golangPackageToDependency pkg = foldr applyLabel start
   applyLabel (GolangLabelVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
   applyLabel (GolangLabelLocation loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
 
--- replace "v0.0.0-20191212000000-abcdef+incompatible" with "abcdef"
+-- Replaces "v0.0.0-20191212000000-abcdef+incompatible" with "abcdef".
+--
+-- This parses "pseudo-versions" of Go modules into the commit hash of the
+-- vendored module. See also:
+--
+-- - What are pseudo-versions? https://golang.org/ref/mod#pseudo-versions
+-- - Why do we need pseudo-versions? https://golang.org/ref/mod#glos-pseudo-version
+-- - How does Go resolve import paths into download URLs? https://golang.org/cmd/go/#hdr-Remote_import_paths
 fixVersion :: Text -> Text
 fixVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
 
