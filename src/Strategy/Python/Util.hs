@@ -114,6 +114,7 @@ requirementParser = specification
   where
   oneOfS = asum . map string
   isSpace c = c == ' ' || c == '\t'
+  oneOfSpecial = oneOf ['-', '_', '.', '*', '+', '!']
 
   whitespace = takeWhileP (Just "whitespace") isSpace :: Parser Text
   whitespace1 = label "whitespace1" $ takeWhile1P (Just "whitespace1") isSpace :: Parser Text
@@ -131,7 +132,7 @@ requirementParser = specification
     <|> OpLt         <$ string "<"
     <|> OpGt         <$ string ">"
 
-  version = label "version" $ whitespace *> some (letterOrDigit <|> oneOf ['-', '_', '.', '*', '+', '!'])
+  version = label "version" $ whitespace *> some (letterOrDigit <|> oneOfSpecial)
   version_one = label "version_one" $ Version <$> version_cmp <*> (T.pack <$> version) <* whitespace
   version_many = label "version_many" $ version_one `sepBy1` (whitespace *> char ',')
   versionspec = label "versionspec" $ between (char '(') (char ')') version_many <|> version_many
@@ -185,7 +186,7 @@ requirementParser = specification
                   special <- many (oneOf ['-', '_', '.'])
                   lod     <- letterOrDigit
                   pure (special ++ [lod])
-  identifier = label "identifier" $ (:) <$> letterOrDigit <*> (concat <$> many identifier_end)
+  identifier = label "identifier" $ (:) <$> (letterOrDigit <|> oneOfSpecial) <*> (concat <$> many identifier_end)
   name = label "name" $ T.pack <$> identifier
   extras_list :: Parser [Text]
   extras_list = label "extras_list" $
