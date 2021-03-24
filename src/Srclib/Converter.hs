@@ -108,3 +108,4 @@ depTypeToFetcher = \case
   RPMType -> "rpm"
   ComposerType -> "comp"
   HackageType -> "hackage"
+  CondaType -> "conda"

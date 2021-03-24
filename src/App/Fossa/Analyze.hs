@@ -53,6 +53,7 @@ import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Composer as Composer
+import qualified Strategy.Conda as Conda
 import qualified Strategy.Glide as Glide
 import qualified Strategy.Godep as Godep
 import qualified Strategy.Gomodules as Gomodules
@@ -143,7 +144,8 @@ discoverFuncs =
     ProjectAssetsJson.discover,
     ProjectJson.discover,
     Glide.discover,
-    Pipenv.discover
+    Pipenv.discover,
+    Conda.discover
   ]
 
 runDependencyAnalysis ::
