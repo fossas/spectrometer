@@ -10,9 +10,9 @@ module App.Fossa.VPS.Scan.RunWiggins
 where
 
 import App.Fossa.VPS.Types
-    ( FilterExpressions(FilterExpressions),
+    ( FilterExpressions (FilterExpressions),
       NinjaFilePaths (unNinjaFilePaths),
-      NinjaScanID(unNinjaScanID),
+      NinjaScanID (unNinjaScanID),
       encodeFilterExpressions )
 import App.Fossa.EmbeddedBinary
 import Control.Carrier.Error.Either

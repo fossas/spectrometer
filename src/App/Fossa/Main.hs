@@ -20,7 +20,7 @@ import qualified App.Fossa.VPS.Report as VPSReport
 import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
 import qualified App.Fossa.VPS.Test as VPSTest
-import App.Fossa.VPS.Types (FilterExpressions (..), NinjaScanID (..),NinjaFilePaths (NinjaFilePaths))
+import App.Fossa.VPS.Types (FilterExpressions (..), NinjaScanID (..), NinjaFilePaths (..))
 import App.OptionExtensions
 import App.Types
 import App.Util (validateDir, validateFile)

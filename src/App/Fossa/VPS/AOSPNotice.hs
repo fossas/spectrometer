@@ -17,7 +17,7 @@ import App.Fossa.ProjectInference
 import Fossa.API.Types (ApiOpts(..))
 import Path (Path, Abs, Dir)
 
-aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths  -> ApiOpts -> IO ()
+aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()
 aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withLogger logSeverity $ do
   result <- runDiagnostics $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
   case result of
@@ -32,7 +32,7 @@ aospNoticeGenerate ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
-  ) => Path Abs Dir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths  -> ApiOpts -> BinaryPaths -> m ()
+  ) => Path Abs Dir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> BinaryPaths -> m ()
 aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts binaryPaths = do
   projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
 
