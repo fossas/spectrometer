@@ -16,7 +16,6 @@ import Data.Text (Text)
 import App.Fossa.ProjectInference
 import Fossa.API.Types (ApiOpts(..))
 import Path (Path, Abs, Dir)
-import qualified Data.Text as T
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths  -> ApiOpts -> IO ()
 aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withLogger logSeverity $ do
@@ -37,8 +36,7 @@ aospNoticeGenerate ::
 aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts binaryPaths = do
   projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
 
-  let ninjaInputFiles = NinjaInputFiles $ T.pack . show <$> unNinjaFilePaths ninjaFilePaths
-  let wigginsOpts = generateWigginsAOSPNoticeOpts basedir logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles
+  let wigginsOpts = generateWigginsAOSPNoticeOpts basedir logSeverity apiOpts projectRevision ninjaScanId ninjaFilePaths
 
   logInfo "Running VPS plugin: generating AOSP notice files"
   stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
