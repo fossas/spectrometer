@@ -23,7 +23,7 @@ import Fossa.API.Types
 import App.Types
 import Text.URI
 import qualified Data.ByteString.Lazy as BL
-import Data.Text.Encoding
+import Data.Text.Encoding ( decodeUtf8 )
 
 newtype NinjaInputFiles = NinjaInputFiles { unNinjaInputFiles :: [Text] }
 
