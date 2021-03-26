@@ -54,7 +54,7 @@ generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} n
       ++ ["-scan-id", unNinjaScanID ninjaScanId]
       ++ ["-name", projectName]
       ++ ["."]
-      ++ (T.pack . show <$> unNinjaFilePaths ninjaInputFiles)
+      ++ (T.pack . toFilePath <$> unNinjaFilePaths ninjaInputFiles)
 
 generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
 generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
