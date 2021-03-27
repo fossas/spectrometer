@@ -19,6 +19,8 @@ import Data.Functor (void)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
+import qualified Data.SemVer as SemVer
+import Data.SemVer.Internal (Identifier (..), Version (..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
@@ -31,37 +33,48 @@ import Path (Abs, File, Path, parent)
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
   ( GolangGrapher,
+    GolangLabel (..),
     graphingGolang,
     mkGolangPackage,
-    mkGolangVersion,
   )
 import Text.Megaparsec
   ( MonadParsec (eof, takeWhile1P, try),
     Parsec,
     between,
     chunk,
+    count,
     many,
     oneOf,
     optional,
+    parseMaybe,
     some,
     (<|>),
   )
-import Text.Megaparsec.Char (alphaNumChar, char, space1)
+import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 
+-- See https://golang.org/ref/mod#go-mod-file-grammar
+
+-- TODO: handle retract statements
 data Statement
   = -- | package, version
-    RequireStatement Text Text
+    RequireStatement PackageName PackageVersion
   | -- | old, new, newVersion
-    ReplaceStatement Text Text Text
+    ReplaceStatement PackageName PackageName PackageVersion
   | -- | old, dir (local "submodule" dependency -- dir can be a resolvable string (e.g., "../foo") or an actual directory (e.g., "/foo" or "foo/"))
-    LocalReplaceStatement Text Text
+    LocalReplaceStatement PackageName Text
   | -- | package, version
-    ExcludeStatement Text Text
+    ExcludeStatement PackageName PackageVersion
   | GoVersionStatement Text
   deriving (Eq, Ord, Show)
 
 type PackageName = Text
+
+data PackageVersion
+  = NonCanonical Text -- Something like "master"
+  | Pseudo Text
+  | Semantic Version
+  deriving (Eq, Ord, Show)
 
 data Gomod = Gomod
   { modName :: PackageName,
@@ -74,7 +87,7 @@ data Gomod = Gomod
 
 data Require = Require
   { reqPackage :: PackageName,
-    reqVersion :: Text
+    reqVersion :: PackageVersion
   }
   deriving (Eq, Ord, Show)
 
@@ -102,7 +115,7 @@ gomodParser = do
     -- top-level go version statement
     -- e.g., go 1.12
     goVersionStatement :: Parser Statement
-    goVersionStatement = GoVersionStatement <$ lexeme (chunk "go") <*> semver
+    goVersionStatement = GoVersionStatement <$ lexeme (chunk "go") <*> goVersion
 
     -- top-level require statements
     -- e.g.:
@@ -115,7 +128,7 @@ gomodParser = do
     requireStatements = block "require" singleRequire
 
     -- parse the body of a single require (without the leading "require" lexeme)
-    singleRequire = RequireStatement <$> packageName <*> semver
+    singleRequire = RequireStatement <$> packageName <*> version
 
     -- top-level replace statements
     -- e.g.:
@@ -129,10 +142,10 @@ gomodParser = do
 
     -- parse the body of a single replace (without the leading "replace" lexeme)
     singleReplace :: Parser Statement
-    singleReplace = ReplaceStatement <$> packageName <* optional semver <* lexeme (chunk "=>") <*> packageName <*> semver
+    singleReplace = ReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> packageName <*> version
 
     singleLocalReplace :: Parser Statement
-    singleLocalReplace = LocalReplaceStatement <$> packageName <* optional semver <* lexeme (chunk "=>") <*> anyToken
+    singleLocalReplace = LocalReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> anyToken
 
     -- top-level exclude statements
     -- e.g.:
@@ -146,7 +159,7 @@ gomodParser = do
 
     -- parse the body of a single exclude (without the leading "exclude" lexeme)
     singleExclude :: Parser Statement
-    singleExclude = ExcludeStatement <$> packageName <*> semver
+    singleExclude = ExcludeStatement <$> packageName <*> version
 
     -- helper combinator to parse things like:
     --
@@ -164,14 +177,40 @@ gomodParser = do
       parens (many (parseSingle <* scn)) <|> (singleton <$> parseSingle)
 
     -- package name, e.g., golang.org/x/text
-    packageName :: Parser Text
+    packageName :: Parser PackageName
     packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
 
-    -- semver, e.g.:
+    version :: Parser PackageVersion
+    version = parseSemOrPseudo <|> parseNonCanonical
+      where
+        semVerText = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+', '_', '/']))
+
+        parsePseudoPreRelease = parseMaybe parser
+          where
+            parser :: Parser PackageVersion
+            parser = do
+              _ <- count 14 numberChar --  "yyyymmddhhmmss-abcdefabcdef"
+              _ <- char '-'
+              commitHash <- T.pack <$> count 14 alphaNumChar
+              return $ Pseudo commitHash
+
+        parseSemOrPseudo = do
+          _ <- char 'v'
+          raw <- semVerText
+          return $ case SemVer.fromText raw of
+            Right semver -> case reverse $ _versionRelease semver of
+              [IText preReleaseId] -> fromMaybe (Semantic semver) $ parsePseudoPreRelease preReleaseId
+              (IText preReleaseId) : (INum 0) : _ -> fromMaybe (Semantic semver) $ parsePseudoPreRelease preReleaseId
+              _ -> Semantic semver
+            Left _ -> NonCanonical raw
+
+        parseNonCanonical = NonCanonical <$> semVerText
+
+    -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef
     --   v1.2.3
-    semver :: Parser Text
-    semver = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+']))
+    goVersion :: Parser Text
+    goVersion = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+']))
 
     -- singleton list. semantically more meaningful than 'pure'
     singleton :: a -> [a]
@@ -237,4 +276,8 @@ buildGraph = traverse_ go . resolve
       let pkg = mkGolangPackage reqPackage
 
       direct pkg
-      label pkg (mkGolangVersion reqVersion)
+      label pkg $
+        GolangLabelVersion $ case reqVersion of
+          NonCanonical n -> n
+          Pseudo commitHash -> commitHash
+          Semantic semver -> "v" <> SemVer.toText semver
