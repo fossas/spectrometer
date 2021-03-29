@@ -153,7 +153,7 @@ dieOnWindows op = when (SysInfo.os == windowsOsName) $ die $ "Operation is not s
 
 
 parseCommaSeparatedFileArg :: Text -> IO [Path Abs File]
-parseCommaSeparatedFileArg arg = sequence (validateFile . T.unpack <$> T.splitOn arg ",")
+parseCommaSeparatedFileArg arg = sequence (validateFile . T.unpack <$> T.splitOn "," arg)
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
