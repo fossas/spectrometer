@@ -66,6 +66,10 @@ golangPackageToDependency pkg = foldr applyLabel start
 -- - Why do we need pseudo-versions? https://golang.org/ref/mod#glos-pseudo-version
 -- - How does Go resolve import paths into download URLs? https://golang.org/cmd/go/#hdr-Remote_import_paths
 --
+-- FIXME: This doesn't actually work right. For example, it won't handle
+-- versions with pre-releases that are NOT pseudo-versions. That's why we have
+-- a proper pseudo-version parser in the `go.mod` analyzer.
+--
 -- TODO: In `go.mod`, we handle this in the parser. Do we need to handle this in
 -- other Go parsers as well?
 fixVersion :: Text -> Text
