@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 -- | This module parses go.mod files, used by Go Modules. Go modules were
 -- introduced in Go 1.11, and are now on by default in Go 1.16.
@@ -239,24 +238,30 @@ gomodParser = do
 
           -- Once we have the version text, we then try to parse the version
           -- text as a semver using SemVer.fromText.
-          return $ case SemVer.fromText raw of
+          pure $ case SemVer.fromText raw of
             Right semver -> case reverse $ _versionRelease semver of
               -- See https://golang.org/ref/mod#pseudo-versions for the forms
-              -- of pseudo-versions.
+              -- of pseudo-versions, reproduced below:
+              --
+              -- - Form 1 (no tagged version): vX.0.0-yyyymmddhhmmss-abcdefabcdef
+              -- - Form 2 (pre-release version): vX.Y.Z-pre.0.yyyymmddhhmmss-abcdefabcdef
+              -- - Form 3 (tagged version): vX.Y.(Z+1)-0.yyyymmddhhmmss-abcdefabcdef
               --
               -- Pseudo-versions always have a trailing "pseudo" pre-release
-              -- identifier. If there are other pre-release identifiers, then
-              -- there is a leading pre-release identifier of 0.
+              -- identifier, so we reverse the pre-release identifier list to
+              -- match on the end of the list. If the original tagged version
+              -- has a pre-release identifier, then the pseudo-version will
+              -- separate the original identifier and the "pseudo" identifier
+              -- with a numeric identifier section equal to 0.
               --
-              -- When a semantic version matches a possible pseudo-version form,
+              -- If a semantic version matches a possible pseudo-version form,
               -- we then check whether the pre-release identifiers are formatted
               -- as if the version is a pseudo-version. If the parse fails, then
               -- we treat this version as a normal semantic version.
               [IText preReleaseId] -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
               (IText preReleaseId) : (INum 0) : _ -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
-
-              -- If the semantic version has no pre-release identifiers, it
-              -- cannot possibly be a pseudo-version.
+              -- If the semantic version's pre-release identifiers are not of a
+              -- pseudo-version form, it cannot possibly be a pseudo-version.
               _ -> Semantic semver
             Left _ -> NonCanonical raw
 
@@ -272,12 +277,7 @@ gomodParser = do
         parsePseudoPreRelease = parse parser ""
           where
             parser :: Parser PackageVersion
-            parser = do
-              _ <- count 14 numberChar
-              _ <- char '-'
-              commitHash <- T.pack <$> count 12 alphaNumChar
-              _ <- eof
-              return $ Pseudo commitHash
+            parser = Pseudo <$ count 14 numberChar <* char '-' <*> (T.pack <$> count 12 alphaNumChar) <* eof
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef
