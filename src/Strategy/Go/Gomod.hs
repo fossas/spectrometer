@@ -7,6 +7,8 @@ module Strategy.Go.Gomod
     Gomod (..),
     Statement (..),
     Require (..),
+    PackageName,
+    PackageVersion (..),
     gomodParser,
   )
 where
@@ -46,7 +48,7 @@ import Text.Megaparsec
     many,
     oneOf,
     optional,
-    parseMaybe,
+    parse,
     some,
     (<|>),
   )
@@ -185,22 +187,26 @@ gomodParser = do
       where
         semVerText = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+', '_', '/']))
 
-        parsePseudoPreRelease = parseMaybe parser
+        parsePseudoPreRelease = parse parser ""
           where
             parser :: Parser PackageVersion
             parser = do
               _ <- count 14 numberChar --  "yyyymmddhhmmss-abcdefabcdef"
               _ <- char '-'
-              commitHash <- T.pack <$> count 14 alphaNumChar
+              commitHash <- T.pack <$> count 12 alphaNumChar
+              _ <- eof
               return $ Pseudo commitHash
+
+        mapLeft _ (Right r) = r
+        mapLeft f (Left l) = f l
 
         parseSemOrPseudo = do
           _ <- char 'v'
           raw <- semVerText
           return $ case SemVer.fromText raw of
             Right semver -> case reverse $ _versionRelease semver of
-              [IText preReleaseId] -> fromMaybe (Semantic semver) $ parsePseudoPreRelease preReleaseId
-              (IText preReleaseId) : (INum 0) : _ -> fromMaybe (Semantic semver) $ parsePseudoPreRelease preReleaseId
+              [IText preReleaseId] -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
+              (IText preReleaseId) : (INum 0) : _ -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
               _ -> Semantic semver
             Left _ -> NonCanonical raw
 
@@ -280,4 +286,4 @@ buildGraph = traverse_ go . resolve
         GolangLabelVersion $ case reqVersion of
           NonCanonical n -> n
           Pseudo commitHash -> commitHash
-          Semantic semver -> "v" <> SemVer.toText semver
+          Semantic semver -> "v" <> SemVer.toText semver {_versionMeta = []}

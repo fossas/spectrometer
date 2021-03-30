@@ -28,15 +28,15 @@ require (
 	github.com/aws/aws-sdk-go v1.35.3
 	github.com/boltdb/bolt v1.3.1
 	github.com/container-storage-interface/spec v1.4.0
-	github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee
+	github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee // GOOD EXAMPLE: FORM 1
 	github.com/containernetworking/cni v0.7.2-0.20190612152420-dc953e2fd91f
-	github.com/containernetworking/plugins v0.7.3-0.20190501191748-2d6d46d308b2
+	github.com/containernetworking/plugins v0.7.3-0.20190501191748-2d6d46d308b2 // GOOD EXAMPLE: FORM 3
 	github.com/coreos/go-iptables v0.4.3-0.20190724151750-969b135e941d
 	github.com/coreos/go-semver v0.3.0
 	github.com/cyphar/filepath-securejoin v0.2.3-0.20190205144030-7efe413b52e1 // indirect
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956
 	github.com/docker/distribution v2.7.1+incompatible
-	github.com/docker/docker v17.12.0-ce-rc1.0.20200330121334-7f8b4b621b5d+incompatible
+	github.com/docker/docker v17.12.0-ce-rc1.0.20200330121334-7f8b4b621b5d+incompatible // GOOD EXAMPLE: FORM 2
 	github.com/docker/docker-credential-helpers v0.6.2-0.20180719074751-73e5f5dbfea3 // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20200612180813-9e99af28df21
@@ -103,7 +103,7 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oklog/run v1.0.1-0.20180308005104-6934b124db28 // indirect
 	github.com/onsi/gomega v1.9.0 // indirect
-	github.com/opencontainers/runc v1.0.0-rc92
+	github.com/opencontainers/runc v1.0.0-rc92 // GOOD EXAMPLE: NAIVELY WRONG
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.4.0
@@ -137,7 +137,7 @@ require (
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/square/go-jose.v2 v2.4.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
-	gopkg.in/tomb.v2 v2.0.0-20140626144623-14b3d72120e8
+	gopkg.in/tomb.v2 v2.0.0-20140626144623-14b3d72120e8 // GOOD EXAMPLE: FORM 1 WITH DIFFERENT MAJOR
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	gotest.tools/v3 v3.0.2 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
