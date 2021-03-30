@@ -1,6 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+-- | This module parses go.mod files, used by Go Modules. Go modules were
+-- introduced in Go 1.11, and are now on by default in Go 1.16.
+--
+-- For documentation, see https://golang.org/ref/mod.
 module Strategy.Go.Gomod
   ( analyze',
     buildGraph,
@@ -55,8 +59,8 @@ import Text.Megaparsec
 import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 
--- See https://golang.org/ref/mod#go-mod-file-grammar
-
+-- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
+--
 -- TODO: handle retract statements
 data Statement
   = -- | package, version
@@ -72,6 +76,19 @@ data Statement
 
 type PackageName = Text
 
+-- See https://golang.org/ref/mod#go-mod-file-ident. Reproduced below:
+--
+-- > Versions in go.mod files may be canonical or non-canonical.
+-- >
+-- > A canonical version starts with the letter v, followed by a semantic
+-- > version following the Semantic Versioning 2.0.0 specification. See Versions
+-- > for more information.
+--
+-- Regarding pseudo-versions, see https://golang.org/ref/mod#pseudo-versions.
+--
+-- > A pseudo-version is a specially formatted pre-release version that encodes
+-- > information about a specific revision in a version control repository. For
+-- > example, v0.0.0-20191109021931-daa7c04131f5 is a pseudo-version.
 data PackageVersion
   = NonCanonical Text -- Something like "master"
   | Pseudo Text
@@ -146,6 +163,8 @@ gomodParser = do
     singleReplace :: Parser Statement
     singleReplace = ReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> packageName <*> version
 
+    -- We parse "local" replaces differently from normal replaces because we
+    -- don't want to upload local file paths as a version to the backend.
     singleLocalReplace :: Parser Statement
     singleLocalReplace = LocalReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> anyToken
 
@@ -182,35 +201,83 @@ gomodParser = do
     packageName :: Parser PackageName
     packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
 
+    -- Version parses version strings and distinguishes between non-canonical
+    -- versions, semantic versions, and pseudo-versions.
+    --
+    -- We first attempt to parse the version as semantic. On success, we
+    -- determine whether the semantic version is a pseudo-version (which
+    -- requires special formatting for the backend).
+    --
+    -- On failure, we treat the version string as a non-canonical version as
+    -- long as it's composed of legal characters.
+    --
+    -- For how Go modules use versions, see https://golang.org/ref/mod#versions.
+    -- For the semantic version spec, see https://semver.org/.
     version :: Parser PackageVersion
     version = parseSemOrPseudo <|> parseNonCanonical
       where
+        -- Helpers.
         semVerText = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+', '_', '/']))
-
-        parsePseudoPreRelease = parse parser ""
-          where
-            parser :: Parser PackageVersion
-            parser = do
-              _ <- count 14 numberChar --  "yyyymmddhhmmss-abcdefabcdef"
-              _ <- char '-'
-              commitHash <- T.pack <$> count 12 alphaNumChar
-              _ <- eof
-              return $ Pseudo commitHash
 
         mapLeft _ (Right r) = r
         mapLeft f (Left l) = f l
 
+        -- Non-canonical versions can be made of any valid string of characters.
+        parseNonCanonical = NonCanonical <$> semVerText
+
+        -- Pseudo-versions are also valid semantic versions. We first determine
+        -- whether a version is properly semantic, and then determine whether it
+        -- could also be a pseudo-version.
         parseSemOrPseudo = do
+          -- Go modules adds a leading "v". See
+          -- https://golang.org/ref/mod#versions.
+          --
+          -- > Each version starts with the letter v, followed by a semantic
+          -- > version.
           _ <- char 'v'
           raw <- semVerText
+
+          -- Once we have the version text, we then try to parse the version
+          -- text as a semver using SemVer.fromText.
           return $ case SemVer.fromText raw of
             Right semver -> case reverse $ _versionRelease semver of
+              -- See https://golang.org/ref/mod#pseudo-versions for the forms
+              -- of pseudo-versions.
+              --
+              -- Pseudo-versions always have a trailing "pseudo" pre-release
+              -- identifier. If there are other pre-release identifiers, then
+              -- there is a leading pre-release identifier of 0.
+              --
+              -- When a semantic version matches a possible pseudo-version form,
+              -- we then check whether the pre-release identifiers are formatted
+              -- as if the version is a pseudo-version. If the parse fails, then
+              -- we treat this version as a normal semantic version.
               [IText preReleaseId] -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
               (IText preReleaseId) : (INum 0) : _ -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
+
+              -- If the semantic version has no pre-release identifiers, it
+              -- cannot possibly be a pseudo-version.
               _ -> Semantic semver
             Left _ -> NonCanonical raw
 
-        parseNonCanonical = NonCanonical <$> semVerText
+        -- Here, we run a sub-parser to determine whether the "pseudo"
+        -- pre-release identifier is correctly formatted. This is always of the
+        -- form "yyyymmddhhmmss-abcdefabcdef" - a timestamp, and then a commit
+        -- hash.
+        --
+        -- For the backend's sake, we want to upload the commit hash (which
+        -- identifies the version of the dependency).
+        --
+        -- See https://golang.org/ref/mod#pseudo-versions for more details.
+        parsePseudoPreRelease = parse parser ""
+          where
+            parser :: Parser PackageVersion
+            parser = do
+              _ <- count 14 numberChar
+              _ <- char '-'
+              commitHash <- T.pack <$> count 12 alphaNumChar
+              _ <- eof
+              return $ Pseudo commitHash
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef
@@ -282,6 +349,17 @@ buildGraph = traverse_ go . resolve
       let pkg = mkGolangPackage reqPackage
 
       direct pkg
+
+      -- When labelling the dependency version, we use:
+      --
+      -- 1. The commit hash for pseudo-versions. TODO: we should augment the
+      --    backend to accept full pseudo-versions.
+      -- 2. The full semantic version without build metadata identifiers for
+      --    semantic versions. This is specifically intended to strip the
+      --    "+incompatible" metadata tag that the Go tooling uses. See
+      --    https://golang.org/ref/mod#incompatible-versions for details.
+      -- 3. The raw version text for non-canonical versions. Nothing else we can
+      --    do here.
       label pkg $
         GolangLabelVersion $ case reqVersion of
           NonCanonical n -> n
