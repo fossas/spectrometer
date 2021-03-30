@@ -70,8 +70,8 @@ golangPackageToDependency pkg = foldr applyLabel start
 -- versions with pre-releases that are NOT pseudo-versions. That's why we have
 -- a proper pseudo-version parser in the `go.mod` analyzer.
 --
--- TODO: In `go.mod`, we handle this in the parser. Do we need to handle this in
--- other Go parsers as well?
+-- TODO: In `go.mod`, we handle this in the parser. Do we even need to handle
+-- this format in other Go analyzers? Can we just remove this code?
 fixVersion :: Text -> Text
 fixVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
 
