@@ -36,3 +36,25 @@ dependencies. Package imports are recursively traversed, ignoring `Standard`
 - in a gomodules project, packages can contain a `Module` field that contains a
 pinned `Version`. The version will otherwise be unspecified
 - `go list` includes vendored packages in both gomodules and non-gomodules projects.
+
+----
+
+TODO:
+
+Documenting
+
+- Concepts for Go
+  - Packages (compilation unit) vs modules (download unit)
+  - Import paths
+  - History of legacy package managers
+- How do we pick strategies?
+  - How do you tell which strategy was picked?
+- What are the strategies? How do we debug them?
+  - go list
+    - what command gets run? how do we parse?
+  - go mod parsing
+    - TODO: go.mod transitive closure
+    - semantics of go.mod file
+      - go.mod does not contain all transitive deps, need to compute transitive closure
+    - semantics of go.sum file
+      - go.sum contains extra deps
