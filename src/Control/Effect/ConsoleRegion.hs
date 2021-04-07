@@ -1,5 +1,6 @@
 module Control.Effect.ConsoleRegion
-  ( withConsoleRegion,
+  ( displayConsoleRegions,
+    withConsoleRegion,
     setConsoleRegion,
     appendConsoleRegion,
     closeConsoleRegion,
@@ -16,7 +17,12 @@ import System.Console.Concurrent qualified as C
 import System.Console.Regions as X (ConsoleRegion, RegionContent, RegionLayout (..), ToRegionContent (..))
 import System.Console.Regions qualified as R
 
--- | See @"System.Console.Regions".'R.withConsoleRegion'@. This also proactively calls 'R.displayConsoleRegions'
+-- | See @"System.Console.Regions".'R.displayConsoleregions'@.
+displayConsoleRegions :: Has (Lift IO) sig m => m a -> m a
+displayConsoleRegions act = liftWith @IO $ \hdl ctx ->
+  R.displayConsoleRegions (hdl (act <$ ctx))
+
+-- | See @"System.Console.Regions".'R.withConsoleRegion'@.
 withConsoleRegion :: Has (Lift IO) sig m => R.RegionLayout -> (R.ConsoleRegion -> m a) -> m a
 withConsoleRegion layout act = liftWith @IO $ \hdl ctx ->
   R.displayConsoleRegions . R.withConsoleRegion layout $ \region -> hdl (act region <$ ctx)

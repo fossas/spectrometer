@@ -21,6 +21,7 @@ import Control.Carrier.Finally
 import Control.Carrier.Output.IO
 import Control.Carrier.TaskPool
 import Control.Concurrent
+import Control.Effect.ConsoleRegion
 import Control.Effect.Diagnostics ((<||>))
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
@@ -48,6 +49,7 @@ import Effect.ReadFS
 import Fossa.API.Types (ApiOpts (..))
 import Path
 import Path.IO (makeRelative)
+import qualified Path.IO as P
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (parseLocator)
 import qualified Strategy.Bundler as Bundler
@@ -80,7 +82,6 @@ import qualified Strategy.Yarn as Yarn
 import System.Exit (die, exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
-import qualified Path.IO as P
 
 data ScanDestination
   = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -209,12 +210,12 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
-    runOutput @ProjectResult
-      . runFinally
-      . withTaskPool capabilities updateProgress
-      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+    withConsoleRegion Linear $ \region ->
+      runOutput @ProjectResult
+        . runFinally
+        . withTaskPool capabilities (updateProgress region)
+        $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
-  logSticky ""
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   case checkForEmptyUpload projectResults filteredProjects of
@@ -327,9 +328,9 @@ buildProject project = Aeson.object
   , "graph" .= graphingToGraph (projectResultGraph project)
   ]
 
-updateProgress :: Has Logger sig m => Progress -> m ()
-updateProgress Progress{..} =
-  logSticky ( "[ "
+updateProgress :: Has (Lift IO) sig m => ConsoleRegion -> Progress -> m ()
+updateProgress region Progress{..} =
+  setConsoleRegion region . renderStrict . layoutPretty defaultLayoutOptions $ ( "[ "
             <> annotate (color Cyan) (pretty pQueued)
             <> " Waiting / "
             <> annotate (color Yellow) (pretty pRunning)

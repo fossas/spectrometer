@@ -95,7 +95,7 @@ logError = log SevError
 newtype LogQueue = LogQueue (TMQueue LogMsg)
 
 withLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
-withLogger sev f = withLogQueue sev $ \qu -> runLogger qu f
+withLogger sev f = displayConsoleRegions . withLogQueue sev $ \qu -> runLogger qu f
 
 withLogQueue :: Has (Lift IO) sig m => Severity -> (LogQueue -> m a) -> m a
 withLogQueue minSeverity f = do
