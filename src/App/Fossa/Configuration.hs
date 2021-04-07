@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Configuration
-( mergeMetadata
+( mergeFileCmdMetadata
 , readConfigFile
 , ConfigFile (..)
 , ConfigProject (..)
@@ -10,7 +10,7 @@ module App.Fossa.Configuration
 )
 where
 
-import Data.Aeson
+import Data.Aeson ( FromJSON(parseJSON), (.:), (.:?), withObject )
 import Data.Text (Text)
 import App.Types
 import Path
@@ -64,12 +64,12 @@ instance FromJSON ConfigRevision where
     ConfigRevision <$> obj .:? "commit"
                    <*> obj .:? "branch"
 
-fossaYml :: Path Rel File
-fossaYml = $(mkRelFile ".fossa.yml")
+defaultFile :: Path Rel File
+defaultFile = $(mkRelFile ".fossa.yml")
 
 readConfigFile :: IO ConfigFile
 readConfigFile = do
-      file <- Diag.runDiagnosticsIO $ runReadFSIO $ readContentsYaml @ConfigFile fossaYml
+      file <- Diag.runDiagnosticsIO $ runReadFSIO $ readContentsYaml @ConfigFile defaultFile
       case file of
         Left _ -> pure $ ConfigFile { version = -1
                                     , server = Nothing
@@ -79,8 +79,8 @@ readConfigFile = do
                                     }
         Right a -> pure $ Diag.resultValue a 
 
-mergeMetadata :: ConfigFile -> ProjectMetadata -> ProjectMetadata
-mergeMetadata file meta =
+mergeFileCmdMetadata :: ConfigFile -> ProjectMetadata -> ProjectMetadata
+mergeFileCmdMetadata file meta =
   ProjectMetadata
     { projectTitle = projectTitle meta <|> (project file >>= name)
     , projectUrl = projectUrl meta <|> (project file >>= url)

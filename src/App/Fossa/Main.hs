@@ -55,8 +55,8 @@ mainPrefs = prefs $ mconcat
     subparserInline
   ]
 
-mergeConfig :: ConfigFile -> CmdOptions -> CmdOptions
-mergeConfig file cmd =
+mergeFileCmdConfig :: ConfigFile -> CmdOptions -> CmdOptions
+mergeFileCmdConfig file cmd =
   CmdOptions
     { optDebug = optDebug cmd
     , optBaseUrl = optBaseUrl cmd <|> (server file >>= mkURI)
@@ -71,7 +71,7 @@ appMain = do
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   fileConfig <- readConfigFile
 
-  let CmdOptions {..} = mergeConfig fileConfig cmdConfig
+  let CmdOptions {..} = mergeFileCmdConfig fileConfig cmdConfig
 
   let logSeverity = bool SevInfo SevDebug optDebug
 
@@ -93,7 +93,7 @@ appMain = do
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
-          let metadata = mergeMetadata fileConfig analyzeMetadata
+          let metadata = mergeFileCmdMetadata fileConfig analyzeMetadata
           analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts metadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
     --
     TestCommand TestOptions {..} -> do
@@ -123,7 +123,7 @@ appMain = do
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
           baseDir <- validateDir vpsAnalyzeBaseDir
-          let metadata = mergeMetadata fileConfig vpsAnalyzeMeta
+          let metadata = mergeFileCmdMetadata fileConfig vpsAnalyzeMeta
           scanMain baseDir apiOpts metadata logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
           _ <- die "This command is no longer supported"
@@ -151,7 +151,7 @@ appMain = do
             else do
               apikey <- requireKey maybeApiKey
               let apiOpts = ApiOpts optBaseUrl apikey
-              let metadata = mergeMetadata fileConfig containerMetadata
+              let metadata = mergeFileCmdMetadata fileConfig containerMetadata
               ContainerAnalyze.analyzeMain (UploadScan apiOpts metadata) logSeverity override containerAnalyzeImage
         ContainerTest ContainerTestOptions {..} -> do
           apikey <- requireKey maybeApiKey
