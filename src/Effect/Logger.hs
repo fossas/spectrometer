@@ -33,18 +33,16 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TMQueue (TMQueue, closeTMQueue, newTMQueueIO, readTMQueue, writeTMQueue)
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
+import Control.Effect.ConsoleRegion
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Bool (bool)
 import Data.Functor (void)
 import Data.Kind (Type)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import System.Console.Concurrent
-import System.Console.Regions
 import System.IO (BufferMode (NoBuffering), hIsTerminalDevice, hSetBuffering, stderr, stdout)
 import Prelude hiding (log)
 
@@ -127,17 +125,20 @@ rawLogger minSeverity queue = go
       case maybeMsg of
         Nothing -> pure ()
         Just (LogNormal sev logLine) -> do
-          when (sev >= minSeverity) $ printIt (unAnnotate logLine <> line)
+          let rendered = renderIt . unAnnotate $ logLine <> line
+          when (sev >= minSeverity) $ errorConcurrent rendered
           go
         Just (LogSticky logLine) -> do
-          printIt (unAnnotate logLine <> line)
+          let rendered = renderIt . unAnnotate $ logLine <> line
+          errorConcurrent rendered
           go
         Just (LogStdout logLine) -> do
-          TIO.putStrLn (renderIt (unAnnotate logLine))
+          let rendered = renderIt . unAnnotate $ logLine <> line
+          outputConcurrent rendered
           go
 
 termLogger' :: Severity -> TMQueue LogMsg -> IO ()
-termLogger' minSeverity queue = displayConsoleRegions $ withConsoleRegion Linear go
+termLogger' minSeverity queue = withConsoleRegion Linear go
   where
     go region = do
       maybeMsg <- atomically $ readTMQueue queue
@@ -178,9 +179,6 @@ instance Algebra sig m => Algebra (Logger :+: sig) (IgnoreLoggerC m) where
   alg hdl sig ctx = IgnoreLoggerC $ case sig of
     L (Log _) -> pure ctx
     R other -> alg (runIgnoreLoggerC . hdl) other ctx
-
-printIt :: Doc AnsiStyle -> IO ()
-printIt = renderIO stderr . layoutPretty defaultLayoutOptions
 
 renderIt :: Doc AnsiStyle -> Text
 renderIt = renderStrict . layoutPretty defaultLayoutOptions
