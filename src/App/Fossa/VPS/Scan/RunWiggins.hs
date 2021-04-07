@@ -50,17 +50,19 @@ generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> 
 generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} ninjaScanId ninjaInputFiles =
   ["aosp-notice-files"]
       ++ optBool "-debug" (logSeverity == SevDebug)
-      ++ ["-endpoint", render apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
+      ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
       ++ ["-scan-id", unNinjaScanID ninjaScanId]
       ++ ["-name", projectName]
       ++ ["."]
       ++ (T.pack . toFilePath <$> unNinjaFilePaths ninjaInputFiles)
+      ++ optMaybeText "-endpoint" (render <$> apiOptsUri)
 
 generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
 generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
     "analyze"
-      : ["-endpoint", render apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
+      : ["-fossa-api-key", unApiKey apiOptsApiKey]
       ++ ["-name", projectName, "-revision", projectRevision]
+      ++ optMaybeText "-endpoint" (render <$> apiOptsUri)
       ++ optMaybeText "-jira-project-key" projectJiraKey
       ++ optMaybeText "-link" projectLink
       ++ optMaybeText "-policy" projectPolicy
