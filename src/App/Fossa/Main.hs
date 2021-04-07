@@ -41,9 +41,9 @@ import System.Environment (lookupEnv)
 import System.Exit (die)
 import qualified System.Info as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
+import Text.URI (URI, mkURI)
 import Text.URI.QQ (uri)
 import Path
-import Text.URI (URI, mkURI)
 
 windowsOsName :: String
 windowsOsName = "mingw32"
