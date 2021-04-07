@@ -3,30 +3,27 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.Logger
-  ( Logger(..)
-  , LogMsg(..)
-  , LogQueue
-  , Severity(..)
-
-  , LoggerC(..)
-  , IgnoreLoggerC(..)
-  , withLogger
-  , withLogQueue
-  , runLogger
-  , ignoreLogger
-
-  , log
-  , logSticky
-
-  , logTrace
-  , logDebug
-  , logInfo
-  , logWarn
-  , logError
-  , logStdout
-
-  , module X
-  ) where
+  ( Logger (..),
+    LogMsg (..),
+    LogQueue,
+    Severity (..),
+    LoggerC (..),
+    IgnoreLoggerC (..),
+    withLogger,
+    withLogQueue,
+    runLogger,
+    ignoreLogger,
+    log,
+    logSticky,
+    logTrace,
+    logDebug,
+    logInfo,
+    logWarn,
+    logError,
+    logStdout,
+    module X,
+  )
+where
 
 import Control.Algebra as X
 import Control.Applicative (Alternative)
@@ -46,8 +43,10 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
+import System.Console.Concurrent
+import System.Console.Regions
+import System.IO (BufferMode (NoBuffering), hIsTerminalDevice, hSetBuffering, stderr, stdout)
 import Prelude hiding (log)
-import System.IO (hIsTerminalDevice, hSetBuffering, BufferMode(NoBuffering), stdout, stderr)
 
 data Logger (m :: Type -> Type) k where
   Log :: LogMsg -> Logger m ()
@@ -56,7 +55,7 @@ data LogMsg
   = LogNormal Severity (Doc AnsiStyle)
   | LogSticky (Doc AnsiStyle)
   | LogStdout (Doc AnsiStyle)
-  deriving Show
+  deriving (Show)
 
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
@@ -72,8 +71,8 @@ logSticky logLine = send (Log (LogSticky logLine))
 logStdout :: Has Logger sig m => Doc AnsiStyle -> m ()
 logStdout logLine = send (Log (LogStdout logLine))
 
-data Severity =
-    SevTrace
+data Severity
+  = SevTrace
   | SevDebug
   | SevInfo
   | SevWarn
@@ -103,7 +102,7 @@ withLogger sev f = withLogQueue sev $ \qu -> runLogger qu f
 withLogQueue :: Has (Lift IO) sig m => Severity -> (LogQueue -> m a) -> m a
 withLogQueue minSeverity f = do
   isTerminal <- sendIO $ hIsTerminalDevice stderr
-  let logger = bool rawLogger termLogger isTerminal
+  let logger = bool rawLogger termLogger' isTerminal
   queue <- sendIO (hSetBuffering stdout NoBuffering *> hSetBuffering stderr NoBuffering *> newTMQueueIO @LogMsg)
 
   let mkLogger = sendIO $ async $ logger minSeverity queue
@@ -112,9 +111,10 @@ withLogQueue minSeverity f = do
         atomically $ closeTMQueue queue
         void (wait tid)
 
-  bracket mkLogger
-          flushLogger
-          (\_ -> f (LogQueue queue))
+  bracket
+    mkLogger
+    flushLogger
+    (\_ -> f (LogQueue queue))
 
 runLogger :: LogQueue -> LoggerC m a -> m a
 runLogger (LogQueue queue) = runReader queue . runLoggerC
@@ -122,49 +122,42 @@ runLogger (LogQueue queue) = runReader queue . runLoggerC
 rawLogger :: Severity -> TMQueue LogMsg -> IO ()
 rawLogger minSeverity queue = go
   where
-  go = do
-    maybeMsg <- atomically $ readTMQueue queue
-    case maybeMsg of
-      Nothing -> pure ()
-      Just (LogNormal sev logLine) -> do
-        when (sev >= minSeverity) $ printIt (unAnnotate logLine <> line)
-        go
-      Just (LogSticky logLine) -> do
-        printIt (unAnnotate logLine <> line)
-        go
-      Just (LogStdout logLine) -> do
-        TIO.putStrLn (renderIt logLine)
-        go
+    go = do
+      maybeMsg <- atomically $ readTMQueue queue
+      case maybeMsg of
+        Nothing -> pure ()
+        Just (LogNormal sev logLine) -> do
+          when (sev >= minSeverity) $ printIt (unAnnotate logLine <> line)
+          go
+        Just (LogSticky logLine) -> do
+          printIt (unAnnotate logLine <> line)
+          go
+        Just (LogStdout logLine) -> do
+          TIO.putStrLn (renderIt (unAnnotate logLine))
+          go
 
-termLogger :: Severity -> TMQueue LogMsg -> IO ()
-termLogger minSeverity queue = go ""
+termLogger' :: Severity -> TMQueue LogMsg -> IO ()
+termLogger' minSeverity queue = displayConsoleRegions $ withConsoleRegion Linear go
   where
-  go sticky = do
-    maybeMsg <- atomically $ readTMQueue queue
-    case maybeMsg of
-      Nothing -> pure ()
-      Just msg -> do
-        let stickyLen   = T.length sticky
-            clearSticky = TIO.hPutStr stderr (T.replicate stickyLen "\b" <> T.replicate stickyLen " " <> T.replicate stickyLen "\b")
-        case msg of
-          LogNormal sev logLine -> do
-            when (sev >= minSeverity) $ do
-              clearSticky
-              printIt $ logLine <> line
-              TIO.hPutStr stderr sticky
-            go sticky
-          LogSticky logLine -> do
-            clearSticky
-            let rendered = renderIt logLine
-            TIO.hPutStr stderr rendered
-            go rendered
-          LogStdout logLine -> do
-            clearSticky
-            TIO.hPutStr stdout $ renderIt $ logLine <> line
-            TIO.hPutStr stderr sticky
-            go sticky
+    go region = do
+      maybeMsg <- atomically $ readTMQueue queue
+      case maybeMsg of
+        Nothing -> pure ()
+        Just msg -> do
+          case msg of
+            LogNormal sev logLine -> do
+              when (sev >= minSeverity) $ do
+                errorConcurrent $ renderIt $ logLine <> line
+              go region
+            LogSticky logLine -> do
+              let rendered = renderIt logLine
+              setConsoleRegion region rendered
+              go region
+            LogStdout logLine -> do
+              outputConcurrent . renderIt $ logLine <> line
+              go region
 
-newtype LoggerC m a = LoggerC { runLoggerC :: ReaderC (TMQueue LogMsg) m a }
+newtype LoggerC m a = LoggerC {runLoggerC :: ReaderC (TMQueue LogMsg) m a}
   deriving (Functor, Applicative, Alternative, Monad, MonadIO)
 
 instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (LoggerC m) where
@@ -175,7 +168,7 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (Logge
       pure ctx
     R other -> alg (runLoggerC . hdl) (R other) ctx
 
-newtype IgnoreLoggerC m a = IgnoreLoggerC { runIgnoreLoggerC :: m a }
+newtype IgnoreLoggerC m a = IgnoreLoggerC {runIgnoreLoggerC :: m a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
 ignoreLogger :: IgnoreLoggerC m a -> m a
