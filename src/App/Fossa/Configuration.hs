@@ -19,26 +19,26 @@ import Effect.ReadFS
 import Options.Applicative
 
 data ConfigFile = ConfigFile
-  { version :: Int
-  , server :: Maybe Text
-  , apiKey :: Maybe Text
-  , project :: Maybe ConfigProject
-  , revision :: Maybe ConfigRevision
+  { configVersion :: Int
+  , configServer :: Maybe Text
+  , configApiKey :: Maybe Text
+  , configProject :: Maybe ConfigProject
+  , configRevision :: Maybe ConfigRevision
   } deriving (Eq, Ord, Show)
 
 data ConfigProject = ConfigProject
-  { projID :: Maybe Text
-  , name :: Maybe Text
-  , link :: Maybe Text
-  , team :: Maybe Text
-  , jiraKey :: Maybe Text
-  , url :: Maybe Text
-  , policy :: Maybe Text
+  { configProjID :: Maybe Text
+  , configName :: Maybe Text
+  , configLink :: Maybe Text
+  , configTeam :: Maybe Text
+  , configJiraKey :: Maybe Text
+  , configUrl :: Maybe Text
+  , configPolicy :: Maybe Text
   } deriving (Eq, Ord, Show)
 
 data ConfigRevision = ConfigRevision
-  { commit :: Maybe Text
-  , branch :: Maybe Text
+  { configCommit :: Maybe Text
+  , configBranch :: Maybe Text
   } deriving (Eq, Ord, Show)
 
 instance FromJSON ConfigFile where
@@ -74,17 +74,17 @@ readConfigFile = do
         then pure Nothing 
         else do 
           file <- readContentsYaml @ConfigFile defaultFile
-          if version file < 3 
+          if configVersion file < 3 
             then pure Nothing 
             else pure $ Just file
 
 mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
 mergeFileCmdMetadata meta file =
   ProjectMetadata
-    { projectTitle = projectTitle meta <|> (project file >>= name)
-    , projectUrl = projectUrl meta <|> (project file >>= url)
-    , projectJiraKey = projectJiraKey meta <|> (project file >>= jiraKey)
-    , projectLink = projectLink meta <|> (project file >>= link)
-    , projectTeam = projectTeam meta <|> (project file >>= team)
-    , projectPolicy = projectPolicy meta <|> (project file >>= policy)
+    { projectTitle = projectTitle meta <|> (configProject file >>= configName)
+    , projectUrl = projectUrl meta <|> (configProject file >>= configUrl)
+    , projectJiraKey = projectJiraKey meta <|> (configProject file >>= configJiraKey)
+    , projectLink = projectLink meta <|> (configProject file >>= configLink)
+    , projectTeam = projectTeam meta <|> (configProject file >>= configTeam)
+    , projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
     }

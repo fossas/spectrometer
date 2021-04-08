@@ -60,10 +60,10 @@ mergeFileCmdConfig :: CmdOptions -> ConfigFile -> CmdOptions
 mergeFileCmdConfig cmd file =
   CmdOptions
     { optDebug = optDebug cmd
-    , optBaseUrl = optBaseUrl cmd <|> (server file >>= mkURI)
-    , optProjectName = optProjectName cmd <|> (project file >>= projID)
-    , optProjectRevision = optProjectRevision cmd <|> (revision file >>= commit)
-    , optAPIKey = optAPIKey cmd <|> apiKey file
+    , optBaseUrl = optBaseUrl cmd <|> (configServer file >>= mkURI)
+    , optProjectName = optProjectName cmd <|> (configProject file >>= configProjID)
+    , optProjectRevision = optProjectRevision cmd <|> (configRevision file >>= configCommit)
+    , optAPIKey = optAPIKey cmd <|> configApiKey file
     , optCommand = optCommand cmd
     }
 
@@ -91,7 +91,7 @@ appMain = do
     AnalyzeCommand AnalyzeOptions {..} -> do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
-      let analyzeOverride = override {overrideBranch = analyzeBranch <|> ((fileConfig >>= revision) >>= branch)}
+      let analyzeOverride = override {overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
       if analyzeOutput
         then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
         else do
