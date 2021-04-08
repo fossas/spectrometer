@@ -2,7 +2,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Types
   ( DiscoveredProject(..)
@@ -58,7 +57,7 @@ instance ToJSON License where
       [ "type"   .=  textType licenseType
       , "value"  .=  licenseValue
       ]
-      
+
       where
         textType :: LicenseType -> Text
         textType = \case
