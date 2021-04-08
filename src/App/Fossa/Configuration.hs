@@ -72,8 +72,11 @@ readConfigFile = do
       exists <- doesFileExist defaultFile
       if not exists 
         then pure Nothing 
-        else (do file <- readContentsYaml @ConfigFile defaultFile
-                 pure $ Just file)
+        else do 
+          file <- readContentsYaml @ConfigFile defaultFile
+          if version file < 3 
+            then pure Nothing 
+            else pure $ Just file
 
 mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
 mergeFileCmdMetadata meta file =
