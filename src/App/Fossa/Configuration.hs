@@ -67,20 +67,16 @@ instance FromJSON ConfigRevision where
 defaultFile :: Path Rel File
 defaultFile = $(mkRelFile ".fossa.yml")
 
-readConfigFile :: IO ConfigFile
+readConfigFile :: (Has ReadFS sig m, Has Diag.Diagnostics sig m) => m (Maybe ConfigFile)
 readConfigFile = do
-      file <- Diag.runDiagnosticsIO $ runReadFSIO $ readContentsYaml @ConfigFile defaultFile
-      case file of
-        Left _ -> pure $ ConfigFile { version = -1
-                                    , server = Nothing
-                                    , apiKey = Nothing
-                                    , project = Nothing
-                                    , revision = Nothing
-                                    }
-        Right a -> pure $ Diag.resultValue a 
+      exists <- doesFileExist defaultFile
+      if not exists 
+        then pure Nothing 
+        else (do file <- readContentsYaml @ConfigFile defaultFile
+                 pure $ Just file)
 
-mergeFileCmdMetadata :: ConfigFile -> ProjectMetadata -> ProjectMetadata
-mergeFileCmdMetadata file meta =
+mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
+mergeFileCmdMetadata meta file =
   ProjectMetadata
     { projectTitle = projectTitle meta <|> (project file >>= name)
     , projectUrl = projectUrl meta <|> (project file >>= url)
@@ -88,5 +84,4 @@ mergeFileCmdMetadata file meta =
     , projectLink = projectLink meta <|> (project file >>= link)
     , projectTeam = projectTeam meta <|> (project file >>= team)
     , projectPolicy = projectPolicy meta <|> (project file >>= policy)
-    } 
-    
+    }

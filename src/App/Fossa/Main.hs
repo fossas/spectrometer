@@ -26,6 +26,7 @@ import App.OptionExtensions
 import App.Types
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
+import qualified Control.Carrier.Diagnostics as Diag
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
@@ -35,6 +36,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Discovery.Filters (BuildTargetFilter (..), filterParser)
 import Effect.Logger
+import Effect.ReadFS
 import Fossa.API.Types (ApiKey(..), ApiOpts(..))
 import Options.Applicative
 import System.Environment (lookupEnv)
@@ -42,7 +44,6 @@ import System.Exit (die)
 import qualified System.Info as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
-import Text.URI.QQ (uri)
 import Path
 
 windowsOsName :: String
@@ -55,8 +56,8 @@ mainPrefs = prefs $ mconcat
     subparserInline
   ]
 
-mergeFileCmdConfig :: ConfigFile -> CmdOptions -> CmdOptions
-mergeFileCmdConfig file cmd =
+mergeFileCmdConfig :: CmdOptions -> ConfigFile -> CmdOptions
+mergeFileCmdConfig cmd file =
   CmdOptions
     { optDebug = optDebug cmd
     , optBaseUrl = optBaseUrl cmd <|> (server file >>= mkURI)
@@ -69,9 +70,12 @@ mergeFileCmdConfig file cmd =
 appMain :: IO ()
 appMain = do
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
-  fileConfig <- readConfigFile
+  configRead <- Diag.runDiagnosticsIO $ runReadFSIO readConfigFile
+  fileConfig <- case configRead of
+    Left err -> die $ show $ Diag.renderFailureBundle err
+    Right a -> pure $ Diag.resultValue a
 
-  let CmdOptions {..} = mergeFileCmdConfig fileConfig cmdConfig
+  let CmdOptions {..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
 
   let logSeverity = bool SevInfo SevDebug optDebug
 
@@ -87,13 +91,13 @@ appMain = do
     AnalyzeCommand AnalyzeOptions {..} -> do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
-      let analyzeOverride = override {overrideBranch = analyzeBranch <|> (revision fileConfig >>= branch)}
+      let analyzeOverride = override {overrideBranch = analyzeBranch <|> ((fileConfig >>= revision) >>= branch)}
       if analyzeOutput
         then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
-          let metadata = mergeFileCmdMetadata fileConfig analyzeMetadata
+          let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
           analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts metadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
     --
     TestCommand TestOptions {..} -> do
@@ -123,7 +127,7 @@ appMain = do
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
           baseDir <- validateDir vpsAnalyzeBaseDir
-          let metadata = mergeFileCmdMetadata fileConfig vpsAnalyzeMeta
+          let metadata = maybe vpsAnalyzeMeta (mergeFileCmdMetadata vpsAnalyzeMeta) fileConfig
           scanMain baseDir apiOpts metadata logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
           _ <- die "This command is no longer supported"
@@ -151,7 +155,7 @@ appMain = do
             else do
               apikey <- requireKey maybeApiKey
               let apiOpts = ApiOpts optBaseUrl apikey
-              let metadata = mergeFileCmdMetadata fileConfig containerMetadata
+              let metadata = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) fileConfig
               ContainerAnalyze.analyzeMain (UploadScan apiOpts metadata) logSeverity override containerAnalyzeImage
         ContainerTest ContainerTestOptions {..} -> do
           apikey <- requireKey maybeApiKey
