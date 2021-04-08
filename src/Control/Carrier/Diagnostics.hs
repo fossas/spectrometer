@@ -67,9 +67,6 @@ data ResultBundle a = ResultBundle
     resultValue :: a
   }
 
-instance (Show a) => Show (ResultBundle a) where
-  show = show . resultValue
-
 renderFailureBundle :: FailureBundle -> Doc AnsiStyle
 renderFailureBundle FailureBundle {..} =
   vsep
