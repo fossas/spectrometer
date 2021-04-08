@@ -37,10 +37,10 @@ jobs:
     - uses: actions/checkout@v2
 
     # Install tools used in `vendor_download.sh`.
-    - name: Install alpine binary dependencies
+    - name: Install Ubuntu binary dependencies
       if: ${{ contains(matrix.os, 'ubuntu') }}
       run: |
-        apt-get install xz-dev bzip2-dev bzip2-static upx curl jq
+        sudo apt-get install upx curl jq
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
