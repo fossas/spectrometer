@@ -31,7 +31,7 @@ common lang
     FlexibleContexts
     FlexibleInstances
     GADTSyntax
-    GeneralisedNewtypeDeriving
+    GeneralizedNewtypeDeriving
     HexFloatLiterals
     ImportQualifiedPost
     InstanceSigs

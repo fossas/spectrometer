@@ -1,6 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Node.NpmLock
   ( analyze'
