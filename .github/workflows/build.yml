@@ -20,19 +20,19 @@ jobs:
         include:
           - os: ubuntu-latest
             os-name: Linux
-            container: quay.io/fossa/haskell-static-alpine:ghc-8.10
+            container: fossa/haskell-static-alpine:ghc-8.10.4
             project-file: cabal.project.ci.linux
-            ghc: '8.10.3'
+            ghc: '8.10.4'
 
           - os: macos-latest
             os-name: macOS
             project-file: cabal.project.ci.macos
-            ghc: '8.10.3'
+            ghc: '8.10.4'
 
           - os: windows-latest
             os-name: Windows
             project-file: cabal.project.ci.windows
-            ghc: '8.10.3'
+            ghc: '8.10.4'
 
     steps:
     - uses: actions/checkout@v2
