@@ -28,10 +28,14 @@ import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class
 import Data.Aeson
+import Data.Aeson.Types (parseEither)
+import qualified Data.ByteString.Lazy as BL
+import Data.Functor.Extra ((<$$>))
 import qualified Data.Map.Lazy as LMap
 import Data.Map.Strict (Map)
 import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Text (Text, pack)
+import qualified Data.Text.Lazy.Encoding as TE
 import Data.Text.Extra (breakOnAndRemove)
 import Effect.Exec (AllowErr (Never), Command (..), execJson, runExecIO, Exec, execThrow)
 import Effect.Logger
@@ -39,10 +43,6 @@ import Effect.ReadFS (ReadFS, readContentsJson, ReadFSIOC (runReadFSIO), resolve
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Path ( toFilePath, reldir, Dir, Rel )
 import Path.IO (getCurrentDir)
-import qualified Data.ByteString.Lazy as BL
-import Data.Aeson.Types (parseEither)
-import qualified Data.Text.Lazy.Encoding as TE
-import Data.Functor.Extra ((<$$>))
 
 newtype ImageText = ImageText {unImageText :: Text} deriving (Show, Eq, Ord)
 
