@@ -181,10 +181,10 @@ extractRevision OverrideProject {..} ContainerScan {..} = ProjectRevision name r
 
 toContainerScan :: Has Diagnostics sig m => SyftResponse -> m ContainerScan
 toContainerScan SyftResponse {..} = do
-  newArts <- traverse convertArtifact responseArtifacts
+  newArts <- context "error while validating system artifacts" $ traverse convertArtifact responseArtifacts
   let image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro)
       target = sourceTarget responseSource
-  tag <- extractTag $ targetTags target
+  tag <- context "error while extracting image tags" . extractTag $ targetTags target
   pure . ContainerScan image tag $ targetDigest target
 
 convertArtifact :: Has Diagnostics sig m => ResponseArtifact -> m ContainerArtifact
