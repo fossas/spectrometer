@@ -10,12 +10,12 @@ import Data.FileEmbed (embedFile)
 
 embedFileIfExists :: FilePath -> Q Exp
 embedFileIfExists inputPath = do
-  case (parseRelFile inputPath) of
-    (Just path) -> do
+  case parseRelFile inputPath of
+    Just path -> do
       exists <- doesFileExist path
-      case exists of
-        True -> embedFile inputPath
-        False -> do
+      if exists
+        then embedFile inputPath
+        else do
           reportWarning $ "File " <> inputPath <> " not found"
           pure (LitE $ StringL "")
     Nothing -> fail "No filepath provided"
