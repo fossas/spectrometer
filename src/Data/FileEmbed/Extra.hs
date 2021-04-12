@@ -1,12 +1,13 @@
 module Data.FileEmbed.Extra
-  ( embedFileIfExists
-  ) where
+  ( embedFileIfExists,
+  )
+where
 
-import Prelude
+import Data.FileEmbed (embedFile)
+import Language.Haskell.TH
 import Path
 import Path.IO
-import Language.Haskell.TH
-import Data.FileEmbed (embedFile)
+import Prelude
 
 embedFileIfExists :: FilePath -> Q Exp
 embedFileIfExists inputPath = do
