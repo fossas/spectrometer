@@ -76,6 +76,7 @@ data ResponseArtifact
       { artifactName :: Text,
         artifactVersion :: Text,
         artifactType :: Text,
+        artifactLocations :: [Map Text Value],
         artifactPkgUrl :: Text,
         artifactMetadataType :: Text,
         artifactMetadata :: Maybe (Map Text Value)
@@ -86,6 +87,7 @@ instance FromJSON ResponseArtifact where
     ResponseArtifact <$> obj .: "name"
       <*> obj .: "version"
       <*> obj .: "type"
+      <*> obj .: "locations"
       <*> obj .: "purl"
       <*> obj .: "metadataType"
       -- We delete "files" as early as possible, which reduces
@@ -156,6 +158,7 @@ data ContainerArtifact
       { conArtifactName :: Text,
         conArtifactVersion :: Text,
         conArtifactType :: Text,
+        conArtifactLocations :: [Map Text Value],
         conArtifactPkgUrl :: Text,
         conArtifactMetadataType :: Text,
         conArtifactMetadata :: Map Text Value
@@ -167,6 +170,7 @@ instance ToJSON ContainerArtifact where
       [ "name" .= conArtifactName,
         "fullVersion" .= conArtifactVersion,
         "type" .= conArtifactType,
+        "locations" .= conArtifactLocations,
         "purl" .= conArtifactPkgUrl,
         "metadataType" .= conArtifactMetadataType,
         "metadata" .= LMap.delete "files" conArtifactMetadata
@@ -195,6 +199,7 @@ convertArtifact ResponseArtifact {..} = do
     { conArtifactName = artifactName,
       conArtifactVersion = artifactVersion,
       conArtifactType = artifactType,
+      conArtifactLocations = artifactLocations,
       conArtifactPkgUrl = artifactPkgUrl,
       conArtifactMetadataType = artifactMetadataType,
       conArtifactMetadata = validMetadata
