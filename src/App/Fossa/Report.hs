@@ -4,12 +4,13 @@ module App.Fossa.Report
   ) where
 
 import App.Fossa.API.BuildWait
-import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
 import App.Types
+import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
@@ -49,26 +50,26 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runDiagnostics . runReadFSIO $ do
+    result <- runDiagnostics . runReadFSIO . Sticky.withStickyRegion $ \region -> do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-      logSticky "[ Waiting for build completion... ]"
+      Sticky.setSticky' region "[ Waiting for build completion... ]"
 
-      waitForBuild apiOpts revision
+      waitForBuild region apiOpts revision
 
-      logSticky "[ Waiting for issue scan completion... ]"
-      _ <- waitForIssues apiOpts revision
-      logSticky ""
+      Sticky.setSticky' region "[ Waiting for issue scan completion... ]"
 
-      logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
+      _ <- waitForIssues region apiOpts revision
+
+      Sticky.setSticky' region $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
+
       jsonValue <- case reportType of
         AttributionReport ->
           Fossa.getAttribution apiOpts revision
-      logSticky ""
 
       logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
 

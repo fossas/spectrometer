@@ -5,17 +5,17 @@ module App.Fossa.VPS.Test
 where
 
 import App.Fossa.API.BuildWait
-import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
-import qualified App.Fossa.VPS.Scan.Core as VPSCore
-import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
+import App.Fossa.VPS.Scan.Core qualified as VPSCore
+import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
+import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
-import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts, Issues (..))
@@ -38,28 +38,28 @@ testMain ::
   OverrideProject ->
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  _ <- timeout timeoutSeconds . withLogger logSeverity . runExecIO $ do
-    result <- runDiagnostics . runReadFSIO $ do
+  _ <- timeout timeoutSeconds . withLogger logSeverity $ do
+    result <- runDiagnostics . runReadFSIO . Sticky.withStickyRegion $ \region -> do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-      logSticky "[ Getting latest scan ID ]"
+      Sticky.setSticky region "[ Getting latest scan ID ]"
 
       Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
       let locator = VPSCore.createLocator (projectName revision) orgId
 
       scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
 
-      logSticky "[ Waiting for component scan... ]"
+      Sticky.setSticky region "[ Waiting for component scan... ]"
 
-      waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
+      waitForSherlockScan region apiOpts locator (ScotlandYard.responseScanId scan)
 
-      logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues apiOpts revision
-      logSticky ""
+      Sticky.setSticky region "[ Waiting for issue scan completion... ]"
+      issues <- waitForIssues region apiOpts revision
+      Sticky.setSticky region ""
 
       case issuesCount issues of
         0 -> logInfo "Test passed! 0 issues found"

@@ -7,9 +7,12 @@ where
 
 import App.Fossa.Analyze (discoverFuncs)
 import App.Types (BaseDir (..))
+import Console.Sticky qualified as Sticky
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
+import Control.Effect.Lift
 import Data.Foldable (for_)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
@@ -18,39 +21,44 @@ import Effect.ReadFS
 import Path (toFilePath)
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..))
-import qualified Control.Carrier.Diagnostics as Diag
 
 type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))
 
 listTargetsMain :: BaseDir -> IO ()
-listTargetsMain (BaseDir basedir) = do
+listTargetsMain (BaseDir basedir) = Sticky.withStickyRegion $ \region -> do
   capabilities <- getNumCapabilities
 
-  withLogger SevInfo . runFinally . withTaskPool capabilities updateProgress . runReadFSIO . runExecIO $ do
-    withDiscoveredProjects discoverFuncs False basedir $ \(project :: DiscoveredProject DummyM) -> do
-      let maybeRel = makeRelative basedir (projectPath project)
+  withLogger SevInfo
+    . runFinally
+    . withTaskPool capabilities (updateProgress region)
+    . runReadFSIO
+    . runExecIO
+    $ do
+      withDiscoveredProjects discoverFuncs False basedir $ \(project :: DiscoveredProject DummyM) -> do
+        let maybeRel = makeRelative basedir (projectPath project)
 
-      case maybeRel of
-        Nothing -> pure ()
-        Just rel -> do
-          logInfo $
-            "Found project: "
-              <> pretty (projectType project)
-              <> "@"
-              <> pretty (toFilePath rel)
-
-          for_ (projectBuildTargets project) $ \target -> do
+        case maybeRel of
+          Nothing -> pure ()
+          Just rel -> do
             logInfo $
-              "Found target: "
+              "Found project: "
                 <> pretty (projectType project)
                 <> "@"
                 <> pretty (toFilePath rel)
-                <> ":"
-                <> pretty (unBuildTarget target)
 
-updateProgress :: Has Logger sig m => Progress -> m ()
-updateProgress Progress {..} =
-  logSticky
+            for_ (projectBuildTargets project) $ \target -> do
+              logInfo $
+                "Found target: "
+                  <> pretty (projectType project)
+                  <> "@"
+                  <> pretty (toFilePath rel)
+                  <> ":"
+                  <> pretty (unBuildTarget target)
+
+updateProgress :: (Has (Lift IO) sig m, Has Logger sig m) => Sticky.StickyRegion -> Progress -> m ()
+updateProgress region Progress {..} =
+  Sticky.setSticky'
+    region
     ( "[ "
         <> annotate (color Cyan) (pretty pQueued)
         <> " Waiting / "

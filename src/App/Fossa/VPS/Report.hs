@@ -21,6 +21,7 @@ import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
 import qualified App.Fossa.VPS.Scan.Core as VPSCore
 import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
+import qualified Console.Sticky as Sticky
 
 data ReportType =
     AttributionReport
@@ -51,29 +52,27 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runDiagnostics . runReadFSIO $ do
+    result <- runDiagnostics . runReadFSIO . Sticky.withStickyRegion $ \region -> do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
-      logSticky "[ Getting latest scan ID ]"
+      Sticky.setSticky region "[ Getting latest scan ID ]"
 
       Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
       let locator = VPSCore.createLocator (projectName revision) orgId
 
       scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
 
-      logSticky "[ Waiting for component scan... ]"
+      Sticky.setSticky region "[ Waiting for component scan... ]"
 
-      waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
+      waitForSherlockScan region apiOpts locator (ScotlandYard.responseScanId scan)
 
-      logSticky "[ Waiting for issue scan completion... ]"
-      _ <- waitForIssues apiOpts revision
-      logSticky ""
+      Sticky.setSticky region "[ Waiting for issue scan completion... ]"
+      _ <- waitForIssues region apiOpts revision
 
-      logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
+      Sticky.setSticky' region $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
       jsonValue <- case reportType of
         AttributionReport ->
           Fossa.getAttributionRaw apiOpts revision
-      logSticky ""
 
       logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
 

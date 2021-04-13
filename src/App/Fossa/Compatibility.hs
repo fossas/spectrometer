@@ -9,17 +9,17 @@ module App.Fossa.Compatibility
 where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withCLIv1Binary)
+import Console.Sticky qualified as Sticky
 import Control.Effect.Lift (sendIO)
-import Data.Text (Text, pack)
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Foldable (traverse_)
-import Effect.Exec (CmdFailure(cmdFailureStdout), AllowErr (Never), Command (..), exec, runExecIO, cmdFailureStderr)
-import Path
-import qualified Data.ByteString.Lazy.Char8 as BL
-import Options.Applicative (Parser, argument, help, metavar, str)
-import System.Exit (exitFailure, exitSuccess)
+import Data.Text (Text, pack)
 import Data.Text.Lazy.Encoding
-import Effect.Logger (Pretty(pretty), logInfo, logSticky, Severity(SevInfo), withLogger)
-
+import Effect.Exec (AllowErr (Never), CmdFailure (cmdFailureStdout), Command (..), cmdFailureStderr, exec, runExecIO)
+import Effect.Logger (Pretty (pretty), Severity (SevInfo), logInfo, withLogger)
+import Options.Applicative (Parser, argument, help, metavar, str)
+import Path
+import System.Exit (exitFailure, exitSuccess)
 type Argument = Text
 
 argumentParser :: Parser Argument
@@ -29,9 +29,9 @@ compatibilityMain ::
   [Argument] ->
   IO ()
 compatibilityMain args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
-  logSticky "[ Waiting for fossa analyze completion ]"
-  cmd <- exec [reldir|.|] $ v1Command v1Bin $ args
-  logSticky ""
+  cmd <- Sticky.withStickyRegion $ \region -> do
+    Sticky.setSticky region "[ Waiting for fossa analyze completion ]"
+    exec [reldir|.|] $ v1Command v1Bin $ args
 
   case cmd of
     Left err -> do

@@ -6,15 +6,16 @@ module App.Fossa.Test
 import App.Fossa.API.BuildWait
 import App.Fossa.ProjectInference
 import App.Types
+import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Effect.ReadFS
-import Fossa.API.Types (ApiOpts, Issues(..))
+import Fossa.API.Types (ApiOpts, Issues (..))
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
 
@@ -32,20 +33,20 @@ testMain
   -> IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runDiagnostics . runReadFSIO $ do
+    result <- runDiagnostics . runReadFSIO . Sticky.withStickyRegion $ \region -> do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-      logSticky "[ Waiting for build completion... ]"
+      Sticky.setSticky region "[ Waiting for build completion... ]"
 
-      waitForBuild apiOpts revision
+      waitForBuild region apiOpts revision
 
-      logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues apiOpts revision
-      logSticky ""
+      Sticky.setSticky region "[ Waiting for issue scan completion... ]"
+      issues <- waitForIssues region apiOpts revision
+      Sticky.setSticky region ""
       logInfo ""
 
       case issuesCount issues of

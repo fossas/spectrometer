@@ -10,21 +10,21 @@ module App.Fossa.VPS.Scan.ScotlandYard
   )
 where
 
-import Control.Carrier.TaskPool
-import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Control.Monad.IO.Class
-import Control.Effect.Lift
-import App.Fossa.VPS.Types
-import Data.Foldable (traverse_)
-import qualified Data.ByteString.Lazy as BS
-import Effect.Logger
-import GHC.Conc.Sync (getNumCapabilities)
 import App.Fossa.VPS.Scan.Core
+import App.Fossa.VPS.Types
+import Console.Sticky qualified as Sticky
+import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.TaskPool
+import Control.Effect.Lift
+import Control.Monad.IO.Class
 import Data.Aeson
+import Data.ByteString.Lazy qualified as BS
+import Data.Foldable (traverse_)
 import Data.Text (Text)
-import Network.HTTP.Req
+import Effect.Logger
 import Fossa.API.Types (ApiOpts, useApiOpts)
-
+import GHC.Conc.Sync (getNumCapabilities)
+import Network.HTTP.Req
 
 data ScotlandYardNinjaOpts = ScotlandYardNinjaOpts
   { syNinjaProjectId :: Locator
@@ -102,7 +102,7 @@ uploadBuildGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text ->  Url '
 uploadBuildGraphCompleteEndpoint baseurl projectId scanId buildGraphId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs" /: buildGraphId /: "rules" /: "complete"
 
 -- create the build graph in SY, upload it in chunks of ~ 1 MB and then complete it.
-uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
+uploadBuildGraph :: (Has (Lift IO) sig m, Has Logger sig m, Has Diagnostics sig m) => ApiOpts -> ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
 uploadBuildGraph apiOpts syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
       locator = unLocator syNinjaProjectId
@@ -117,7 +117,8 @@ uploadBuildGraph apiOpts syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ d
   let chunkUrl = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
       chunkedTargets = chunkedBySize targets (1024 * 1024)
   capabilities <- liftIO getNumCapabilities
-  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedTargets
+  _ <- Sticky.withStickyRegion $ \region ->
+         withTaskPool capabilities (updateProgress region) $ traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedTargets
 
   -- mark the build graph as complete
   _ <- req PUT (uploadBuildGraphCompleteEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)) (ReqBodyJson $ object []) ignoreResponse authenticatedHttpOptions
@@ -136,9 +137,9 @@ uploadBuildGraphChunk url httpOptions targets = do
   _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse httpOptions
   pure ()
 
-updateProgress :: Has Logger sig m => Progress -> m ()
-updateProgress Progress{..} =
-  logSticky ( "[ "
+updateProgress :: (Has (Lift IO) sig m, Has Logger sig m) => Sticky.StickyRegion -> Progress -> m ()
+updateProgress region Progress{..} =
+  Sticky.setSticky' region ( "[ "
             <> annotate (color Cyan) (pretty pQueued)
             <> " Waiting / "
             <> annotate (color Yellow) (pretty pRunning)

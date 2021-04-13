@@ -9,13 +9,14 @@ where
 import App.Fossa.API.BuildWait
 import App.Fossa.Container
 import App.Types (OverrideProject (..), ProjectRevision (..))
+import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift
 import Control.Monad.IO.Class (MonadIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
+import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts (..), Issues (..))
 import System.Exit (exitFailure, exitSuccess)
@@ -55,8 +56,8 @@ testInner ::
   OverrideProject ->
   ImageText ->
   m ()
-testInner apiOpts outputType override image = do
-  logDebug "Running embedded syft binary"
+testInner apiOpts outputType override image = Sticky.withStickyRegion $ \region -> do
+  Sticky.setSticky region "Running embedded syft binary"
 
   containerScan <- runSyft image >>= toContainerScan
   let revision = extractRevision override containerScan
@@ -64,12 +65,12 @@ testInner apiOpts outputType override image = do
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
 
-  logSticky "[ Waiting for build completion ]"
-  waitForBuild apiOpts revision
+  Sticky.setSticky region "[ Waiting for build completion ]"
+  waitForBuild region apiOpts revision
 
-  logSticky "[ Waiting for issue scan completion ]"
-  issues <- waitForIssues apiOpts revision
-  logSticky ""
+  Sticky.setSticky region "[ Waiting for issue scan completion ]"
+  issues <- waitForIssues region apiOpts revision
+  Sticky.setSticky region ""
 
   case issuesCount issues of
     0 -> logInfo "Test passed! 0 issues found"

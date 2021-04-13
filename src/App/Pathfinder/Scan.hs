@@ -5,34 +5,35 @@ module App.Pathfinder.Scan
   ( scanMain
   ) where
 
+import Console.Sticky qualified as Sticky
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
 import Control.Carrier.TaskPool
 import Control.Concurrent
-import qualified Control.Carrier.Diagnostics as Diag
 import Control.Effect.Exception as Exc
 import Control.Effect.Lift (sendIO)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bool (bool)
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Function ((&))
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Projects (withDiscoveredProjects)
+import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Path
-import qualified Path.IO as PIO
-import qualified Strategy.Maven as Maven
-import qualified Strategy.NuGet.Nuspec as Nuspec
+import Path.IO qualified as PIO
+import Strategy.Maven qualified as Maven
+import Strategy.NuGet.Nuspec qualified as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
 import Types
-import Effect.Exec
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
 scanMain basedir debug = do
@@ -63,17 +64,14 @@ scan basedir = runFinally $ do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
-    runOutput @ProjectLicenseScan
-      . runReadFSIO
-      . runFinally
-      . withTaskPool capabilities updateProgress
-      $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
-
-  logSticky "[ Combining Analyses ]"
+    Sticky.withStickyRegion $ \region ->
+      runOutput @ProjectLicenseScan
+        . runReadFSIO
+        . runFinally
+        . withTaskPool capabilities (updateProgress region)
+        $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
 
   sendIO (BL.putStr (encode projectResults))
-
-  logSticky ""
 
 
 discoverFuncs ::
@@ -122,13 +120,16 @@ mkLicenseScan project licenses =
       discoveredLicenses = licenses
     }
 
-updateProgress :: Has Logger sig m => Progress -> m ()
-updateProgress Progress{..} =
-  logSticky ( "[ "
-            <> annotate (color Cyan) (pretty pQueued)
-            <> " Waiting / "
-            <> annotate (color Yellow) (pretty pRunning)
-            <> " Running / "
-            <> annotate (color Green) (pretty pCompleted)
-            <> " Completed"
-            <> " ]" )
+updateProgress :: (Has (Lift IO) sig m, Has Logger sig m) => Sticky.StickyRegion -> Progress -> m ()
+updateProgress region Progress {..} =
+  Sticky.setSticky'
+    region
+    ( "[ "
+        <> annotate (color Cyan) (pretty pQueued)
+        <> " Waiting / "
+        <> annotate (color Yellow) (pretty pRunning)
+        <> " Running / "
+        <> annotate (color Green) (pretty pCompleted)
+        <> " Completed"
+        <> " ]"
+    )
