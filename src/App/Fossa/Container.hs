@@ -76,7 +76,7 @@ data ResponseArtifact
       { artifactName :: Text,
         artifactVersion :: Text,
         artifactType :: Text,
-        artifactLocations :: [ResponseLocation],
+        artifactLocations :: [ContainerLocation],
         artifactPkgUrl :: Text,
         artifactMetadataType :: Text,
         artifactMetadata :: Maybe (Map Text Value)
@@ -173,26 +173,19 @@ instance ToJSON ContainerImage where
 
 -- Define Layer types to capture layers in which a dep is found
 -- omitting "path" from the object to reduce noise
-newtype ResponseLocation
-  = ResponseLocation {
-    layerId :: Text
-  } deriving (Eq, Show, Ord)
-
-instance FromJSON ResponseLocation where
-  parseJSON = withObject "ResponseLocation" $ \obj ->
-    ResponseLocation <$> obj .: "layerID"
 
 newtype ContainerLocation
   = ContainerLocation {
     conLayerId :: Text
   } deriving (Eq, Show, Ord)
 
+instance FromJSON ContainerLocation where
+  parseJSON = withObject "ContainerLocation" $ \obj ->
+    ContainerLocation <$> obj .: "layerID"
+
 instance ToJSON ContainerLocation where
   toJSON ContainerLocation {..} =
     object [ "layerId" .= conLayerId ]
-
-toContainerLocation :: ResponseLocation -> ContainerLocation
-toContainerLocation = ContainerLocation . layerId
 
 data ContainerArtifact
   = ContainerArtifact
@@ -240,7 +233,7 @@ convertArtifact ResponseArtifact {..} = do
     { conArtifactName = artifactName,
       conArtifactVersion = artifactVersion,
       conArtifactType = artifactType,
-      conArtifactLocations = map toContainerLocation artifactLocations,
+      conArtifactLocations = artifactLocations,
       conArtifactPkgUrl = artifactPkgUrl,
       conArtifactMetadataType = artifactMetadataType,
       conArtifactMetadata = validMetadata
