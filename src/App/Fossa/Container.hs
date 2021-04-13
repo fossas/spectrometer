@@ -119,13 +119,29 @@ instance FromJSON ResponseDistro where
 data SourceTarget
   = SourceTarget
       { targetDigest :: Text,
+        targetLayers :: [LayerTarget],
         targetTags :: [Text]
       }
 
 instance FromJSON SourceTarget where
   parseJSON = withObject "SourceTarget" $ \obj ->
     SourceTarget <$> obj .: "digest"
+      <*> obj .: "layers"
       <*> obj .: "tags"
+
+newtype LayerTarget
+  = LayerTarget {
+    layerTargetDigest :: Text
+  } deriving (Eq, Show, Ord)
+
+instance FromJSON LayerTarget where
+  parseJSON = withObject "LayerTarget" $ \obj ->
+    LayerTarget <$> obj :. "digest"
+
+instance ToJSON LayerTarget where
+  toJSON LayerTarget {..} =
+    object ["digest" .= targetLayerDigest ]
+
 
 -- | The reorganized output of syft into a slightly different format
 data ContainerScan
@@ -142,7 +158,8 @@ data ContainerImage
   = ContainerImage
       { imageArtifacts :: [ContainerArtifact],
         imageOs :: Text,
-        imageOsRelease :: Text
+        imageOsRelease :: Text,
+        imageLayers :: [LayerTarget]
       }
 
 instance ToJSON ContainerImage where
