@@ -16,12 +16,12 @@ import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContribu
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Types
 import App.Util (validateDir)
-import qualified Control.Carrier.Diagnostics as Diag
+import Console.Sticky qualified as Sticky
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
 import Control.Carrier.TaskPool
 import Control.Concurrent
-import Control.Effect.ConsoleRegion
 import Control.Effect.Diagnostics ((<||>))
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
@@ -29,12 +29,12 @@ import Control.Effect.Record
 import Control.Effect.Replay (runReplay)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -49,36 +49,36 @@ import Effect.ReadFS
 import Fossa.API.Types (ApiOpts (..))
 import Path
 import Path.IO (makeRelative)
-import qualified Path.IO as P
-import qualified Srclib.Converter as Srclib
+import Path.IO qualified as P
+import Srclib.Converter qualified as Srclib
 import Srclib.Types (parseLocator)
-import qualified Strategy.Bundler as Bundler
-import qualified Strategy.Cargo as Cargo
-import qualified Strategy.Carthage as Carthage
-import qualified Strategy.Cocoapods as Cocoapods
-import qualified Strategy.Composer as Composer
-import qualified Strategy.Glide as Glide
-import qualified Strategy.Godep as Godep
-import qualified Strategy.Gomodules as Gomodules
-import qualified Strategy.Googlesource.RepoManifest as RepoManifest
-import qualified Strategy.Gradle as Gradle
-import qualified Strategy.Haskell.Cabal as Cabal
-import qualified Strategy.Haskell.Stack as Stack
-import qualified Strategy.Leiningen as Leiningen
-import qualified Strategy.Maven as Maven
-import qualified Strategy.Npm as Npm
-import qualified Strategy.NuGet.Nuspec as Nuspec
-import qualified Strategy.NuGet.PackageReference as PackageReference
-import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
-import qualified Strategy.NuGet.Paket as Paket
-import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
-import qualified Strategy.NuGet.ProjectJson as ProjectJson
-import qualified Strategy.Python.Pipenv as Pipenv
-import qualified Strategy.Python.Setuptools as Setuptools
-import qualified Strategy.RPM as RPM
-import qualified Strategy.Rebar3 as Rebar3
-import qualified Strategy.Scala as Scala
-import qualified Strategy.Yarn as Yarn
+import Strategy.Bundler qualified as Bundler
+import Strategy.Cargo qualified as Cargo
+import Strategy.Carthage qualified as Carthage
+import Strategy.Cocoapods qualified as Cocoapods
+import Strategy.Composer qualified as Composer
+import Strategy.Glide qualified as Glide
+import Strategy.Godep qualified as Godep
+import Strategy.Gomodules qualified as Gomodules
+import Strategy.Googlesource.RepoManifest qualified as RepoManifest
+import Strategy.Gradle qualified as Gradle
+import Strategy.Haskell.Cabal qualified as Cabal
+import Strategy.Haskell.Stack qualified as Stack
+import Strategy.Leiningen qualified as Leiningen
+import Strategy.Maven qualified as Maven
+import Strategy.Npm qualified as Npm
+import Strategy.NuGet.Nuspec qualified as Nuspec
+import Strategy.NuGet.PackageReference qualified as PackageReference
+import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
+import Strategy.NuGet.Paket qualified as Paket
+import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
+import Strategy.NuGet.ProjectJson qualified as ProjectJson
+import Strategy.Python.Pipenv qualified as Pipenv
+import Strategy.Python.Setuptools qualified as Setuptools
+import Strategy.RPM qualified as RPM
+import Strategy.Rebar3 qualified as Rebar3
+import Strategy.Scala qualified as Scala
+import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
@@ -210,7 +210,7 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
-    withConsoleRegion Linear $ \region ->
+    Sticky.withStickyRegion $ \region ->
       runOutput @ProjectResult
         . runFinally
         . withTaskPool capabilities (updateProgress region)
@@ -328,13 +328,16 @@ buildProject project = Aeson.object
   , "graph" .= graphingToGraph (projectResultGraph project)
   ]
 
-updateProgress :: Has (Lift IO) sig m => ConsoleRegion -> Progress -> m ()
-updateProgress region Progress{..} =
-  setConsoleRegion region . renderStrict . layoutPretty defaultLayoutOptions $ ( "[ "
-            <> annotate (color Cyan) (pretty pQueued)
-            <> " Waiting / "
-            <> annotate (color Yellow) (pretty pRunning)
-            <> " Running / "
-            <> annotate (color Green) (pretty pCompleted)
-            <> " Completed"
-            <> " ]" )
+updateProgress :: (Has (Lift IO) sig m, Has Logger sig m) => Sticky.StickyRegion -> Progress -> m ()
+updateProgress region Progress {..} =
+  Sticky.setSticky'
+    region
+    ( "[ "
+        <> annotate (color Cyan) (pretty pQueued)
+        <> " Waiting / "
+        <> annotate (color Yellow) (pretty pRunning)
+        <> " Running / "
+        <> annotate (color Green) (pretty pCompleted)
+        <> " Completed"
+        <> " ]"
+    )

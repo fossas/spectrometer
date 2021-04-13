@@ -64,6 +64,7 @@ common deps
   build-depends:
     , aeson                        ^>=1.5.2.0
     , algebraic-graphs             ^>=0.5
+    , ansi-terminal                ^>=0.11
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.13.2.3
     , base16-bytestring            ^>=0.1.1.7
@@ -158,6 +159,7 @@ library
     App.Util
     App.Version
     App.Version.TH
+    Console.Sticky
     Control.Carrier.AtomicState
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
