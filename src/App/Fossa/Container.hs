@@ -129,6 +129,8 @@ instance FromJSON SourceTarget where
       <*> obj .: "layers"
       <*> obj .: "tags"
 
+-- Capture container layers from target
+-- The digest will correspond to location -> layerId
 newtype LayerTarget
   = LayerTarget {
     layerTargetDigest :: Text
@@ -171,9 +173,8 @@ instance ToJSON ContainerImage where
         "artifacts" .= imageArtifacts
       ]
 
--- Define Layer types to capture layers in which a dep is found
+-- Define Layer/Location type to capture layers in which a dep is found
 -- omitting "path" from the object to reduce noise
-
 newtype ContainerLocation
   = ContainerLocation {
     conLayerId :: Text
