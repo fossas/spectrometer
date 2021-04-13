@@ -136,11 +136,11 @@ newtype LayerTarget
 
 instance FromJSON LayerTarget where
   parseJSON = withObject "LayerTarget" $ \obj ->
-    LayerTarget <$> obj :. "digest"
+    LayerTarget <$> obj .: "digest"
 
 instance ToJSON LayerTarget where
   toJSON LayerTarget {..} =
-    object ["digest" .= targetLayerDigest ]
+    object ["digest" .= layerTargetDigest ]
 
 
 -- | The reorganized output of syft into a slightly different format
@@ -167,6 +167,7 @@ instance ToJSON ContainerImage where
     object
       [ "os" .= imageOs,
         "osRelease" .= imageOsRelease,
+        "layers" .= imageLayers,
         "artifacts" .= imageArtifacts
       ]
 
@@ -226,7 +227,7 @@ extractRevision OverrideProject {..} ContainerScan {..} = ProjectRevision name r
 toContainerScan :: Has Diagnostics sig m => SyftResponse -> m ContainerScan
 toContainerScan SyftResponse {..} = do
   newArts <- context "error while validating system artifacts" $ traverse convertArtifact responseArtifacts
-  let image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro)
+  let image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro) (targetLayers $ sourceTarget responseSource)
       target = sourceTarget responseSource
   tag <- context "error while extracting image tags" . extractTag $ targetTags target
   pure . ContainerScan image tag $ targetDigest target
