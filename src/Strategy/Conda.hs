@@ -29,7 +29,7 @@ findProjects = walk' $ \dir _ files -> do
                 condaDir = dir,
                 condaEnvironmentYml = envYml
               }
-      pure([project], WalkContinue)
+      pure([project], WalkSkipAll) -- Once we find an environment.yml file, skip the rest of the walk
 
 data CondaProject =
     CondaProject
@@ -40,7 +40,7 @@ data CondaProject =
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CondaProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "conda", -- is this correct?
+    { projectType = "conda",
       projectBuildTargets = mempty,
       projectDependencyGraph = const $ getDeps project, -- what does const do here?
       projectPath = condaDir project,
