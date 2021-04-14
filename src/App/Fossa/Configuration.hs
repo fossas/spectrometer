@@ -3,7 +3,7 @@
 
 module App.Fossa.Configuration
 ( mergeFileCmdMetadata
-, readConfigFile
+, readConfigFileIO
 , ConfigFile (..)
 , ConfigProject (..)
 , ConfigRevision (..)
@@ -16,6 +16,7 @@ import App.Types
 import Path
 import qualified Control.Carrier.Diagnostics as Diag
 import Effect.ReadFS
+import System.Exit (die)
 import Options.Applicative
 
 data ConfigFile = ConfigFile
@@ -77,6 +78,13 @@ readConfigFile = do
           if configVersion file < 3 
             then pure Nothing 
             else pure $ Just file
+
+readConfigFileIO :: IO (Maybe ConfigFile)
+readConfigFileIO = do
+    config <- Diag.runDiagnosticsIO $ runReadFSIO readConfigFile
+    case config of
+      Left err -> die $ show $ Diag.renderFailureBundle err
+      Right a -> pure $ Diag.resultValue a
 
 mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
 mergeFileCmdMetadata meta file =

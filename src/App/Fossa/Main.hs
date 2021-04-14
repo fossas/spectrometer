@@ -26,7 +26,6 @@ import App.OptionExtensions
 import App.Types
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
-import qualified Control.Carrier.Diagnostics as Diag
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
@@ -36,7 +35,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Discovery.Filters (BuildTargetFilter (..), filterParser)
 import Effect.Logger
-import Effect.ReadFS
 import Fossa.API.Types (ApiKey(..), ApiOpts(..))
 import Options.Applicative
 import System.Environment (lookupEnv)
@@ -70,10 +68,7 @@ mergeFileCmdConfig cmd file =
 appMain :: IO ()
 appMain = do
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
-  configRead <- Diag.runDiagnosticsIO $ runReadFSIO readConfigFile
-  fileConfig <- case configRead of
-    Left err -> die $ show $ Diag.renderFailureBundle err
-    Right a -> pure $ Diag.resultValue a
+  fileConfig <- readConfigFileIO
 
   let CmdOptions {..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
 
