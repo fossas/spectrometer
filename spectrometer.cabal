@@ -245,6 +245,7 @@ test-suite unit-tests
     App.Fossa.API.BuildLinkSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.Configuration.ConfigurationSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec

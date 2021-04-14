@@ -4,6 +4,7 @@
 module App.Fossa.Configuration
 ( mergeFileCmdMetadata
 , readConfigFileIO
+, readConfigFile
 , ConfigFile (..)
 , ConfigProject (..)
 , ConfigRevision (..)
@@ -56,7 +57,7 @@ instance FromJSON ConfigProject where
                   <*> obj .:? "name"
                   <*> obj .:? "link"
                   <*> obj .:? "team"
-                  <*> obj .:? "jirakey"
+                  <*> obj .:? "jiraProjectKey"
                   <*> obj .:? "url"
                   <*> obj .:? "policy"
 
@@ -68,20 +69,20 @@ instance FromJSON ConfigRevision where
 defaultFile :: Path Rel File
 defaultFile = $(mkRelFile ".fossa.yml")
 
-readConfigFile :: (Has ReadFS sig m, Has Diag.Diagnostics sig m) => m (Maybe ConfigFile)
-readConfigFile = do
-      exists <- doesFileExist defaultFile
+readConfigFile :: (Has ReadFS sig m, Has Diag.Diagnostics sig m) => Path Rel File -> m (Maybe ConfigFile)
+readConfigFile file = do
+      exists <- doesFileExist file
       if not exists 
         then pure Nothing 
         else do 
-          file <- readContentsYaml @ConfigFile defaultFile
-          if configVersion file < 3 
-            then pure Nothing 
-            else pure $ Just file
+        readConfig <- readContentsYaml @ConfigFile file
+        if configVersion readConfig < 3 
+          then pure Nothing 
+          else pure $ Just readConfig
 
 readConfigFileIO :: IO (Maybe ConfigFile)
 readConfigFileIO = do
-    config <- Diag.runDiagnosticsIO $ runReadFSIO readConfigFile
+    config <- Diag.runDiagnosticsIO $ runReadFSIO $ readConfigFile defaultFile
     case config of
       Left err -> die $ show $ Diag.renderFailureBundle err
       Right a -> pure $ Diag.resultValue a
