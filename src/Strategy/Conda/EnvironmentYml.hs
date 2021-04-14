@@ -29,7 +29,7 @@ buildGraph envYmlFile = Graphing.fromList (map toDependency allDeps)
        {
         dependencyType = CondaType,
         dependencyName = depName,
-        dependencyVersion = CEq <$> depVersion, -- todo - make this real
+        dependencyVersion = CEq <$> depVersion, -- todo - properly handle version constraints
         dependencyLocations = [],
         dependencyEnvironments = [],
         dependencyTags = M.empty
