@@ -257,6 +257,8 @@ runSyft ::
 runSyft image = runExecIO . withSyftBinary $ \syftBin -> do
   execJson @SyftResponse [reldir|.|] $ syftCommand syftBin image
 
+-- Scope to all layers, to prevent odd "squashing" that syft does
+-- Output to produce machine readable json that we can ingest
 syftCommand :: BinaryPaths -> ImageText -> Command
 syftCommand bin (ImageText image) =
   Command
