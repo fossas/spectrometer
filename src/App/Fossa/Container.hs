@@ -31,6 +31,7 @@ import Data.Aeson
 import Data.Aeson.Types (parseEither)
 import qualified Data.ByteString.Lazy as BL
 import Data.Functor.Extra ((<$$>))
+import Data.List (nub)
 import qualified Data.Map.Lazy as LMap
 import Data.Map.Strict (Map)
 import Data.Maybe (listToMaybe, fromMaybe)
@@ -205,7 +206,7 @@ instance ToJSON ContainerArtifact where
       [ "name" .= conArtifactName,
         "fullVersion" .= conArtifactVersion,
         "type" .= conArtifactType,
-        "locations" .= conArtifactLocations,
+        "locations" .= nub conArtifactLocations,
         "purl" .= conArtifactPkgUrl,
         "metadataType" .= conArtifactMetadataType,
         "metadata" .= LMap.delete "files" conArtifactMetadata
