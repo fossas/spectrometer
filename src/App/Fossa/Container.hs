@@ -260,7 +260,7 @@ syftCommand :: BinaryPaths -> ImageText -> Command
 syftCommand bin (ImageText image) =
   Command
     { cmdName = pack . toFilePath $ toExecutablePath bin,
-      cmdArgs = ["-o", "json", image],
+      cmdArgs = ["--scope", "all-layers", "-o", "json", image],
       cmdAllowErr = Never
     }
 
