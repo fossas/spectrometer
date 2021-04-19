@@ -1,6 +1,6 @@
 # v2.5.12
 
-Update VPS plugin to 2021-04-19-9162a26
+Update VPS plugin to 2021-04-19-9162a26 (#231)
 
 # v2.5.11
 
