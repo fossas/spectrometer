@@ -131,7 +131,7 @@ normalizeImportsToModules packages = map normalizeSingle packages
   packageNameToModule :: M.Map Text Text
   packageNameToModule =
     M.fromList
-      [ (packageImportPath package, modPath mod)
+      [ (packageImportPath package, modPath gomod)
       | package <- packages
-      , Just mod <- [packageModule package]
+      , Just gomod <- [packageModule package]
       ]
