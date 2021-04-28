@@ -26,6 +26,28 @@ spec_packageToModule =
       expectDeps [fooDep, barDep, bazDep] graph
       expectEdges [(fooDep, barDep), (barDep, bazDep)] graph
 
+    it "should be a no-op for non-module packages" $ do
+      normalizeImportsToModules nonModulePackages `shouldBe` nonModulePackages
+
+nonModulePackages :: [Package]
+nonModulePackages =
+  [ Package
+      { packageImportPath = "github.com/example/foo"
+      , packageModule = Nothing
+      , packageImports =
+          Just
+            [ "github.com/example/nonmodule/foo"
+            ]
+      , packageSystem = Nothing
+      }
+  , Package
+      { packageImportPath = "github.com/example/nonmodule/foo"
+      , packageModule = Nothing
+      , packageImports = Nothing
+      , packageSystem = Nothing
+      }
+  ]
+
 testPackages :: [Package]
 testPackages =
   [ Package
