@@ -1,3 +1,6 @@
+# Unreleased
+- Support for manually specified dependencies through `fossa-deps.yaml` ([#236](https://github.com/fossas/spectrometer/pull/236))
+
 # v2.5.14
 
 - Golang: map package imports to modules ([#234](https://github.com/fossas/spectrometer/pull/234))
