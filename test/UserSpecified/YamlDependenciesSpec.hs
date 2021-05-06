@@ -42,12 +42,12 @@ spec = do
   unsupportedTypeFile <- runIO (BS.readFile "test/UserSpecified/testdata/invalid-deps.yaml")
 
   describe "yaml user specified dependencies" $ do
-    it "works end to end"
+    it "works end to end" $
       case decodeEither' testFile of
         Right res -> buildGraph res `shouldBe` expected
         Left err -> expectationFailure $ "failed to parse: " <> show err
 
-    it "fails with unsupported deps"
+    it "fails with unsupported deps" $
       case decodeEither' @UserDependencies unsupportedTypeFile of
         Right res -> expectationFailure $ "Expected a failure to parse due to unsupported dependency, but got: " <> show res
         Left _ -> pure ()
