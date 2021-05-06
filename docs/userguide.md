@@ -1,21 +1,39 @@
 
 # Spectrometer User Guide
 
-1. [Quick Start](#quick-start)
-2. [Supported Languages](#supported-languages)
-3. Commands
-    - [`fossa analyze`](#fossa-analyze)
-        - [Specifying FOSSA project details](#specifying-fossa-project-details)
-        - [Printing results without uploading to FOSSA](#printing-results-without-uploading-to-fossa)
-        - [Running in a specific directory](#running-in-a-specific-directory)
-        - [Scanning archive contents](#scanning-archive-contents)
-    - [`fossa test`](#fossa-test)
-        - [Specifying a timeout](#specifying-a-timeout)
-        - [Print issues as json](#print-issues-as-json)
-4. [Common FOSSA Project Flags](#common-fossa-project-flags)
-5. [Frequently-Asked Questions](#frequently-asked-questions)
+- [Spectrometer User Guide](#spectrometer-user-guide)
+  - [Quick Start](#quick-start)
+  - [Supported Languages](#supported-languages)
+    - [clojure](#clojure)
+    - [erlang](#erlang)
+    - [golang](#golang)
+    - [haskell](#haskell)
+    - [java](#java)
+    - [javascript/typescript](#javascripttypescript)
+    - [.NET](#net)
+    - [objective-c](#objective-c)
+    - [python](#python)
+    - [ruby](#ruby)
+    - [rust](#rust)
+    - [scala](#scala)
+    - [swift](#swift)
+  - [`fossa analyze`](#fossa-analyze)
+    - [Specifying FOSSA project details](#specifying-fossa-project-details)
+    - [Printing results without uploading to FOSSA](#printing-results-without-uploading-to-fossa)
+    - [Running in a specific directory](#running-in-a-specific-directory)
+    - [Scanning archive contents](#scanning-archive-contents)
+    - [Manually specifying dependencies](#manually-specifying-dependencies)
+  - [`fossa test`](#fossa-test)
+    - [Specifying a timeout](#specifying-a-timeout)
+    - [Print issues as JSON](#print-issues-as-json)
+  - [`fossa report`](#fossa-report)
+    - [Report types](#report-types)
+    - [Specifying a timeout](#specifying-a-timeout-1)
+    - [Print report as JSON](#print-report-as-json)
+  - [Common FOSSA Project Flags](#common-fossa-project-flags)
+  - [Frequently-Asked Questions](#frequently-asked-questions)
     - [`fossa analyze`: Why wasn't my project found?](#fossa-analyze-why-wasnt-my-project-found)
-    - [When are you adding support for (some buildtool/language)](#when-are-you-adding-support-for-some-buildtoollanguage)
+    - [When are you adding support for (some buildtool/language)?](#when-are-you-adding-support-for-some-buildtoollanguage)
 
 ## Quick Start
 
@@ -168,6 +186,40 @@ We support the following archive formats:
 - `.tar.gz`
 - `.jar`
 - `.rpm`
+
+### Manually specifying dependencies
+
+FOSSA offers a way to manually upload dependencies provided we support the dependency type. Manually specifying dependencies is very helpful in the event your package manager is unsupported or you are using a custom and nonstandard dependency management solution.
+
+The FOSSA CLI will automatically read `fossa-deps.yaml` in the root directory when `fossa analyze` is run and parse dependencies from it.
+
+> Note: You can use a script to reconstruct this file before `fossa analyze` is run, which would allow you to create your own custom strategy.
+
+```yaml
+dependencies:
+- type: gem
+  package: iron
+- type: pip
+  package: Django
+  version: 2.1.7
+```
+The `package` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
+
+Supported dependency types:
+- `cargo` - Rust dependencies that a typically found at [crates.io](https://crates.io/).
+- `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
+- `composer` - Dependencies specified by the PHP package manager [Composer](https://getcomposer.org/), which are located on [Packagist](https://packagist.org/).
+- `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
+- `git` - Github projects (which appear as dependencies in many package managers). Specified as the full github repository `https://github.com/fossas/spectrometer`.
+- `go` - Golang specific dependency. Many golang dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom golang URLs.
+- `hackage` - Haskell dependencies found at [Hackage](https://hackage.haskell.org/).
+- `hex` - Erlang and Elixir dependencies that are found at [Hex.pm](https://hex.pm/).
+- `maven` - Maven dependencies that can be found at many different sources. Specified as `package: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
+- `npm` - Javascript dependencies found at [npmjs.com](https://www.npmjs.com/).
+- `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
+- `python` - Python dependencies found at [Pypi.org](https://pypi.org/).
+- `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
+- `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar$`. The `version` field will be ignored for `url` type dependencies.
 
 ## `fossa test`
 
