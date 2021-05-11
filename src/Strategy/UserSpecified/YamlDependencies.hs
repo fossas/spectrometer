@@ -22,11 +22,11 @@ import qualified Graphing
 import Path
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
 -- Only search for fossa-deps.yaml in the root directory. We can extend this to subdirectories in the future.
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [UserDependenciesYamlProject]
+findProjects :: (Has ReadFS sig m) => Path Abs Dir -> m [UserDependenciesYamlProject]
 findProjects dir = do
   let file = dir </> $(mkRelFile "fossa-deps.yml")
   exists <- doesFileExist file
