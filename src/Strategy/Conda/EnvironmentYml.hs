@@ -15,6 +15,8 @@ import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Graphing (Graphing, fromList)
 import Data.Aeson
 import Data.Text (Text)
+import Data.Maybe (fromMaybe)
+import Data.List.Extra ((!?))
 import Path
 import Types
 
@@ -40,8 +42,7 @@ analyze' ::
  , Has Diagnostics sig m
  )
   => Path Abs File -> m (Graphing Dependency)
-analyze' envYml = do
-  buildGraph <$> readContentsYaml @EnvironmentYmlFile envYml
+analyze' envYml = buildGraph <$> readContentsYaml @EnvironmentYmlFile envYml
 
 
 -- an example Text: "biopython=1.78=py38haf1e3a3_0"
@@ -52,6 +53,7 @@ getCondaDepFromText rcd =
   CondaDep
   { depName = name
   , depVersion = version
+  -- Note these aren't currently being used
   , depBuild = build
   , depFullVersion = fullVersion
   }
@@ -59,17 +61,13 @@ getCondaDepFromText rcd =
   where
     depSplit = T.split (== '=') rcd
 
-    name = head depSplit
+    name = fromMaybe rcd (depSplit !? 0)
     version = depSplit !? 1 -- TODO: this may contain constraints that we need to parse
     build = depSplit !? 2
     fullVersion = getFullVersion version build
 
-    -- TODO: move to reusable file
-    (!?) :: [a] -> Int -> Maybe a
-    xs !? ix
-      | length xs <= ix = Nothing
-      | otherwise = Just (xs !! ix)
-
+    -- if we have a version AND a build, we combine them to form a full version
+    -- i.e. Just "1.2.3" Just "build" => Just "1.2.3=build"
     getFullVersion :: Maybe Text -> Maybe Text -> Maybe Text
     getFullVersion a b = do
       aVal <- a

@@ -74,14 +74,11 @@ spec :: T.Spec
 spec = do
   condaEnvFile <- runIO (BS.readFile "test/Conda/testdata/environment.yml")
   T.describe "buildGraph" $
-    T.it "can parse EnvironmentYmlFile" $ do
-      let graph = buildGraph envFile
-      expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
+    T.it "can parse EnvironmentYmlFile" $
+      expectDeps [dependencyOne, dependencyTwo, dependencyThree] $ buildGraph envFile
   T.describe "buildGraph with real environment.yml" $
     T.it "can parse environment.yml" $ do
       case decodeEither' condaEnvFile of
         Left err -> expectationFailure $ "Failed to parse: " ++ prettyPrintParseException err
-        Right deps -> do
-          let res = buildGraph deps
-          res `shouldBe` expectedGraph
+        Right deps -> buildGraph deps `shouldBe` expectedGraph
     

@@ -1,7 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-
 module Conda.CondaListSpec
   ( spec
   )
@@ -48,9 +44,5 @@ spec = do
   describe "build graph from conda list output" $
     it "can build graph" $
       case eitherDecodeStrict condaOutputFile of
-        Right deps -> do
-          let res = buildGraph deps
-          res `shouldBe` expected
+        Right deps -> buildGraph deps `shouldBe` expected
         Left err -> expectationFailure $ "Failed to parse: " ++ err
-      
-      

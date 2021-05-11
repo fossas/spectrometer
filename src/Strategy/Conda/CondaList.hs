@@ -33,7 +33,7 @@ buildGraph deps = Graphing.fromList (map toDependency deps)
       {
         dependencyType = CondaType,
         dependencyName = listName,
-        dependencyVersion = CEq <$> listVersion, -- todo - make this real
+        dependencyVersion = CEq <$> listVersion,
         dependencyLocations = [],
         dependencyEnvironments = [],
         dependencyTags = M.empty

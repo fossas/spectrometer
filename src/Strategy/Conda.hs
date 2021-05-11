@@ -1,6 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeApplications #-}
-
 module Strategy.Conda (
   discover,
 ) where
@@ -37,7 +34,7 @@ data CondaProject =
         condaEnvironmentYml :: Path Abs File
       } deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CondaProject -> DiscoveredProject n
+mkProject :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CondaProject -> DiscoveredProject m
 mkProject project =
   DiscoveredProject
     { projectType = "conda",
