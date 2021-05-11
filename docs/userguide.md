@@ -176,7 +176,7 @@ FOSSA offers a way to manually upload dependencies provided we support the depen
 
 The FOSSA CLI will automatically read `fossa-deps.yaml` in the root directory when `fossa analyze` is run and parse dependencies from it.
 
-> Note: You can use a script to reconstruct this file before `fossa analyze` is run, which would allow you to create your own custom strategy.
+> Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
 
 ```yaml
 dependencies:
@@ -202,7 +202,7 @@ Supported dependency types:
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
 - `python` - Python dependencies found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
-- `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar$`. The `version` field will be ignored for `url` type dependencies.
+- `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar`. The `version` field will be ignored for `url` type dependencies.
 
 ## `fossa test`
 

@@ -28,11 +28,11 @@ discover dir = map mkProject <$> findProjects dir
 
 -- Only search for fossa-deps.yaml in the root directory. We can extend this to subdirectories in the future.
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [UserDependenciesYamlProject]
-findProjects = walk' $ \dir _ files -> do
-  _ <- traceM $ show files
-  case findFileNamed "fossa-deps.yaml" files of
-    Nothing -> pure ([], WalkStop)
-    Just file -> pure ([UserDependenciesYamlProject file dir], WalkStop)
+findProjects dir = do
+  exists <- doesFileExist $(mkRelFile "fossa-deps.yml")
+  if exists
+    then pure [UserDependenciesYamlProject file dir]
+    else pure []
 
 data UserDependenciesYamlProject = UserDependenciesYamlProject
   { dependenciesFile :: Path Abs File,
