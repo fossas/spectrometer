@@ -1,3 +1,64 @@
+# Unreleased
+- Support for manually specified dependencies through `fossa-deps.yaml` ([#236](https://github.com/fossas/spectrometer/pull/236))
+
+# v2.5.15
+
+- Requirements.txt: fix hang when parsing unsupported fields ([#235](https://github.com/fossas/spectrometer/pull/235))
+
+# v2.5.14
+
+- Golang: map package imports to modules ([#234](https://github.com/fossas/spectrometer/pull/234))
+
+# v2.5.13
+
+Update VPS plugin to 2021-04-27-312bbe8 ([#233](https://github.com/fossas/spectrometer/pull/233))
+
+* Improve performance of scanning projects
+* Reduce memory pressure when scanning large projects
+
+# v2.5.12
+
+Update VPS plugin to 2021-04-19-9162a26 ([#231](https://github.com/fossas/spectrometer/pull/231))
+
+# v2.5.11
+
+* Update container scanning version ([#230](https://github.com/fossas/spectrometer/pull/230))
+* Change container scanning layer scope ([#228](https://github.com/fossas/spectrometer/pull/228))
+* Initial configuration file ([#220](https://github.com/fossas/spectrometer/pull/220))
+* Glide.lock: Parse versions as Text ([#221](https://github.com/fossas/spectrometer/pull/221))
+* Add container layers and artifact locations ([#225](https://github.com/fossas/spectrometer/pull/225))
+* Tiny hlint/ormolu fixes ([#224](https://github.com/fossas/spectrometer/pull/224))
+
+# v2.5.10
+
+* Freeze dependencies to allow reproducible builds ([#222](https://github.com/fossas/spectrometer/pull/222))
+* Add documentation for replay logging ([#212](https://github.com/fossas/spectrometer/pull/212))
+* Only activate replay/record mode using --replay/--record (previously it was turned on in --debug mode) ([#212](https://github.com/fossas/spectrometer/pull/212))
+* Fixed a bug where container scanning failed when ignored artifacts aren't in the right shape ([#223](https://github.com/fossas/spectrometer/pull/223))
+
+# v2.5.9
+
+- Update the VPS scanning plugin:
+  - Resolve issues reading IPR files with null byte content.
+  - Workaround recursive variable declarations when parsing Android.mk files.
+
+# v2.5.8
+
+- Support makefiles in `fossa vps aosp-notice-file` ([#216](https://github.com/fossas/spectrometer/pull/216))
+- Require paths to ninja files as arguments in `fossa vps aosp-notice-file` ([#217](https://github.com/fossas/spectrometer/pull/217))
+
+# v2.5.7
+
+- Print project URL after `fossa vps analyze` ([#215](https://github.com/fossas/spectrometer/pull/215))
+
+# v2.5.6
+
+- Fixes an issue that could cause gradle project analysis to hang forever ([#211](https://github.com/fossas/spectrometer/pull/211))
+
+# v2.5.5
+
+- Fixes an issue where Composer lockfiles could cause a crash when parsing ([#207](https://github.com/fossas/spectrometer/pull/207))
+
 # v2.5.4
 - Fix an issue that could prevent scala analysis from terminating ([#206](https://github.com/fossas/spectrometer/pull/187))
 

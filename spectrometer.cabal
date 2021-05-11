@@ -14,8 +14,44 @@ common lang
   build-depends:      base >=4.12 && <4.15
   default-language:   Haskell2010
   default-extensions:
+    BangPatterns
+    BinaryLiterals
+    ConstrainedClassMethods
+    ConstraintKinds
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveLift
+    DeriveTraversable
+    EmptyCase
+    EmptyDataDeriving
+    ExistentialQuantification
+    ExplicitForAll
+    FlexibleContexts
+    FlexibleInstances
+    GADTSyntax
+    GeneralizedNewtypeDeriving
+    HexFloatLiterals
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    MultiParamTypeClasses
+    NamedFieldPuns
+    NamedWildCards
+    NumericUnderscores
     OverloadedStrings
+    PolyKinds
+    PostfixOperators
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    StandaloneKindSignatures
     StrictData
+    TupleSections
+    TypeApplications
+    TypeOperators
+    TypeSynonymInstances
 
   ghc-options:
     -Wall -Wincomplete-uni-patterns -Wcompat
@@ -23,6 +59,7 @@ common lang
     -Wmissing-export-lists -Wredundant-constraints
 
 -- TODO: base16-bytestring isn't a direct dep, but we need to add version bounds because cpio-conduit fails to compile with a newer version. Remove the dependency on base16-bytestring once we fix or bump cpio-conduit
+-- TODO: Switch `semver` back to `versions` once https://github.com/fosskers/versions/issues/47 is fixed? This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
 common deps
   build-depends:
     , aeson                        ^>=1.5.2.0
@@ -36,6 +73,7 @@ common deps
     , conduit-extra                ^>=1.3.5
     , containers                   ^>=0.6.0
     , cpio-conduit                 ^>=0.7.0
+    , directory                    ^>=1.3.6.1
     , exceptions                   ^>=0.10.4
     , file-embed                   ^>=0.0.11
     , filepath                     ^>=1.4.2.1
@@ -56,6 +94,7 @@ common deps
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , req                          >=3.4      && <3.6
+    , semver                       ^>=0.4.0.1
     , split                        ^>=0.2.3.4
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
@@ -87,9 +126,11 @@ library
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
+    App.Fossa.Analyze.Record
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
     App.Fossa.Compatibility
+    App.Fossa.Configuration
     App.Fossa.Container
     App.Fossa.Container.Analyze
     App.Fossa.Container.Test
@@ -136,6 +177,7 @@ library
     Control.Exception.Extra
     Data.FileEmbed.Extra
     Data.Flag
+    Data.Functor.Extra
     Data.Text.Extra
     DepTypes
     Discovery.Archive
@@ -208,6 +250,7 @@ library
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Strategy.Yarn
+    Strategy.UserSpecified.YamlDependencies
     Text.URI.Builder
     Types
     VCS.Git
@@ -240,6 +283,7 @@ test-suite unit-tests
     App.Fossa.API.BuildLinkSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.Configuration.ConfigurationSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
@@ -259,6 +303,7 @@ test-suite unit-tests
     Go.GomodSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
+    Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
     GraphingSpec
@@ -283,6 +328,7 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
+    UserSpecified.YamlDependenciesSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:

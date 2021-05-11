@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Srclib.Converter
@@ -106,6 +105,7 @@ depTypeToFetcher = \case
   CarthageType -> "cart"
   CargoType -> "cargo"
   RPMType -> "rpm"
+  URLType -> "url"
   ComposerType -> "comp"
   HackageType -> "hackage"
   CondaType -> "conda"
