@@ -44,6 +44,10 @@ mkProject project =
       projectLicenses = pure []
     }
 
+-- Prefer analyzeCondaList over analyzeEnvironmentYml, results shoudln't be combined, it's either/or.
+-- There might be a dep with a version spec in an environment.yml file: i.e. conda+foo$1.2.*, and perhaps
+-- the same dep resolved to a known version in the users virtual environment: i.e. conda+foo$1.2.4 (we get that form conda list).
+-- If we combined the results then we would include both of those deps in the result, which is not correct behavior.
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m (Graphing Dependency)
 getDeps project = analyzeCondaList project <||> analyzeEnvironmentYml project
 
