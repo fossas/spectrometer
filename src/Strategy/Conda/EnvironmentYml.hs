@@ -75,9 +75,6 @@ getCondaDepFromText rcd =
             Just x -> "=" <> x
             Nothing -> ""
       pure (aVal <> bVal)
-
-
--- TODO: do something with channels?
 data EnvironmentYmlFile =
     EnvironmentYmlFile
     { name :: Text
