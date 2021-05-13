@@ -15,7 +15,6 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Effect.Exec
 import Effect.ReadFS
 import Graphing (Graphing, fromList)
 import Path
