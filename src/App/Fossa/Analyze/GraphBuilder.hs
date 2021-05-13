@@ -4,19 +4,19 @@
 
 -- | Legacy/deprecated GraphBuilder interface. Kept for compatibility with old code
 module App.Fossa.Analyze.GraphBuilder
-  ( GraphBuilder(..)
-  , addNode
-  , addEdge
-  , addDirect
-  , runGraphBuilder
-  , evalGraphBuilder
+  ( GraphBuilder (..),
+    addNode,
+    addEdge,
+    addDirect,
+    runGraphBuilder,
+    evalGraphBuilder,
   )
-  where
+where
 
+import App.Fossa.Analyze.Graph qualified as G
 import Control.Algebra
 import Control.Carrier.State.Strict
 import Control.Monad.IO.Class (MonadIO)
-import qualified App.Fossa.Analyze.Graph as G
 import Data.Kind (Type)
 import DepTypes
 
@@ -43,8 +43,8 @@ runGraphBuilder start = runState start . runGraphBuilderC
 evalGraphBuilder :: Functor m => G.Graph -> GraphBuilderC m a -> m G.Graph
 evalGraphBuilder start = execState start . runGraphBuilderC
 
-newtype GraphBuilderC m a = GraphBuilderC { runGraphBuilderC :: StateC G.Graph m a }
- deriving (Functor, Applicative, Monad, MonadIO)
+newtype GraphBuilderC m a = GraphBuilderC {runGraphBuilderC :: StateC G.Graph m a}
+  deriving (Functor, Applicative, Monad, MonadIO)
 
 instance Algebra sig m => Algebra (GraphBuilder :+: sig) (GraphBuilderC m) where
   alg hdl sig ctx = GraphBuilderC $ case sig of

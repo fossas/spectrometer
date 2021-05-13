@@ -18,9 +18,9 @@ import Data.Foldable (find)
 import Data.Functor (void)
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Effect.ReadFS
 import Path
 

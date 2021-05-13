@@ -2,6 +2,7 @@
 
 module Strategy.Haskell.Stack
   ( discover,
+
     -- * Testing
     buildGraph,
     PackageName (..),
@@ -11,20 +12,20 @@ module Strategy.Haskell.Stack
 where
 
 import Control.Effect.Diagnostics
+import Control.Monad (when)
 import Data.Aeson.Types
 import Data.Foldable (for_)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
-import qualified Graphing as G
+import Effect.ReadFS (ReadFS)
+import Graphing qualified as G
 import Path
 import Types
 import Prelude
-import Control.Monad (when)
-import Effect.ReadFS (ReadFS)
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (FromJSON, Eq, Ord, Show)
 
@@ -87,7 +88,8 @@ getDeps = analyze . stackDir
 
 data StackProject = StackProject
   { stackDir :: Path Abs Dir
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 stackJSONDepsCmd :: Command
 stackJSONDepsCmd =

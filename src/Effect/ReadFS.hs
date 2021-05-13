@@ -50,15 +50,15 @@ import Control.Effect.Record
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay
 import Control.Effect.Replay.TH (deriveReplayable)
-import qualified Control.Exception as E
+import Control.Exception qualified as E
 import Control.Monad ((<=<))
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
+import Data.ByteString qualified as BS
 import Data.Kind (Type)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Void (Void)
@@ -66,10 +66,10 @@ import Data.Yaml (decodeEither', prettyPrintParseException)
 import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path
-import qualified Path.IO as PIO
+import Path.IO qualified as PIO
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
-import qualified Toml
+import Toml qualified
 
 data ReadFS (m :: Type -> Type) k where
   ReadContentsBS' :: Path x File -> ReadFS m (Either ReadFSErr ByteString)
@@ -92,9 +92,13 @@ data ReadFSErr
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ReadFSErr
+
 instance RecordableValue ReadFSErr
+
 instance FromJSON ReadFSErr
+
 instance ReplayableValue ReadFSErr
+
 $(deriveRecordable ''ReadFS)
 $(deriveReplayable ''ReadFS)
 

@@ -15,17 +15,17 @@ where
 import Control.Carrier.Diagnostics
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Discovery.Walk
 import Effect.Exec
 import Effect.Logger hiding (group)
 import Effect.ReadFS
 import Path
-import qualified Strategy.Maven.Pom as Pom
+import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
-import qualified Strategy.Maven.Pom.Closure as PomClosure
+import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Types
 

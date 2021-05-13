@@ -12,7 +12,7 @@ module App.Fossa.EmbeddedBinary
     withSyftBinary,
     withCLIv1Binary,
     allBins,
-    PackagedBinary (..)
+    PackagedBinary (..),
   )
 where
 
@@ -34,11 +34,10 @@ data PackagedBinary
 allBins :: [PackagedBinary]
 allBins = enumFromTo minBound maxBound
 
-data BinaryPaths
-  = BinaryPaths
-      { binaryPathContainer :: Path Abs Dir,
-        binaryFilePath :: Path Rel File
-      }
+data BinaryPaths = BinaryPaths
+  { binaryPathContainer :: Path Abs Dir,
+    binaryFilePath :: Path Rel File
+  }
 
 toExecutablePath :: BinaryPaths -> Path Abs File
 toExecutablePath BinaryPaths {..} = binaryPathContainer </> binaryFilePath
@@ -67,7 +66,6 @@ withCLIv1Binary ::
   m c
 withCLIv1Binary = withEmbeddedBinary CLIv1
 
-
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m,
     MonadIO m
@@ -92,7 +90,8 @@ extractEmbeddedBinary bin = do
 
 dumpEmbeddedBinary :: Has (Lift IO) sig m => Path Abs Dir -> PackagedBinary -> m ()
 dumpEmbeddedBinary dir bin = writeBinary path bin
-  where path = dir </> extractedPath bin
+  where
+    path = dir </> extractedPath bin
 
 writeBinary :: (Has (Lift IO) sig m) => Path Abs File -> PackagedBinary -> m ()
 writeBinary dest bin = sendIO . writeExecutable dest $ case bin of

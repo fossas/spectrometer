@@ -1,23 +1,23 @@
 module App.Fossa.VPS.Scan
   ( scanMain,
     SkipIPRScan (..),
-    LicenseOnlyScan (..)
-  ) where
-
-import Control.Effect.Lift (Lift)
-import Control.Carrier.Diagnostics
-import Effect.Exec
-import System.Exit (exitFailure)
+    LicenseOnlyScan (..),
+  )
+where
 
 import App.Fossa.EmbeddedBinary
+import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), OverrideProject (..), ProjectMetadata (..))
+import Control.Carrier.Diagnostics
+import Control.Effect.Lift (Lift)
 import Data.Flag (Flag, fromFlag)
-import Effect.Logger
-import Fossa.API.Types (ApiOpts(..))
-import App.Fossa.ProjectInference
 import Data.Text
+import Effect.Exec
+import Effect.Logger
+import Fossa.API.Types (ApiOpts (..))
+import System.Exit (exitFailure)
 
 -- | SkipIPRScan bool flag
 data SkipIPRScan = SkipIPRScan
@@ -25,7 +25,7 @@ data SkipIPRScan = SkipIPRScan
 -- | LicenseOnlyScan bool flag
 data LicenseOnlyScan = LicenseOnlyScan
 
-scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag SkipIPRScan -> Flag LicenseOnlyScan ->  IO ()
+scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag SkipIPRScan -> Flag LicenseOnlyScan -> IO ()
 scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters skipIprFlag licenseOnlyScan = do
   result <- runDiagnostics $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
   case result of
@@ -37,9 +37,19 @@ scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters skipIp
 ----- main logic
 
 vpsScan ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  ) => BaseDir -> Severity -> OverrideProject -> Flag SkipIPRScan -> Flag LicenseOnlyScan -> FilterExpressions -> ApiOpts -> ProjectMetadata -> BinaryPaths -> m ()
+  ( Has Diagnostics sig m,
+    Has (Lift IO) sig m
+  ) =>
+  BaseDir ->
+  Severity ->
+  OverrideProject ->
+  Flag SkipIPRScan ->
+  Flag LicenseOnlyScan ->
+  FilterExpressions ->
+  ApiOpts ->
+  ProjectMetadata ->
+  BinaryPaths ->
+  m ()
 vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata binaryPaths = withLogger logSeverity $ do
   projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision projectRevision
@@ -51,6 +61,6 @@ vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlySca
   stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
   logInfo $ pretty stdout
 
-runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
+runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 runWiggins binaryPaths opts = do
   execWiggins binaryPaths opts

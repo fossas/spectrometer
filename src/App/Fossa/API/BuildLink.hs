@@ -1,5 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.API.BuildLink
   ( getBuildURLWithOrg,
@@ -17,7 +17,7 @@ import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Fossa.API.Types (ApiOpts (..))
 import Srclib.Types (Locator (..))
-import qualified Text.URI as URI
+import Text.URI qualified as URI
 import Text.URI.Builder
 import Text.URI.QQ (uri)
 

@@ -3,9 +3,9 @@ module Composer.ComposerLockSpec
   )
 where
 
-import qualified Data.ByteString as BS
-import qualified Data.Map.Strict as M
 import Data.Aeson
+import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as M
 import DepTypes
 import GraphUtil
 import Strategy.Composer

@@ -7,14 +7,14 @@ module Strategy.Bundler
 where
 
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
-import qualified Control.Effect.Diagnostics as Diag
+import Control.Effect.Diagnostics qualified as Diag
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import Graphing
 import Path
-import qualified Strategy.Ruby.BundleShow as BundleShow
-import qualified Strategy.Ruby.GemfileLock as GemfileLock
+import Strategy.Ruby.BundleShow qualified as BundleShow
+import Strategy.Ruby.GemfileLock qualified as GemfileLock
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]

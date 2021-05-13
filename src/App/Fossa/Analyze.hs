@@ -1,12 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze
-  ( analyzeMain
-  , ScanDestination(..)
-  , UnpackArchives(..)
-  , discoverFuncs
-  , RecordMode(..)
-  ) where
+  ( analyzeMain,
+    ScanDestination (..),
+    UnpackArchives (..),
+    discoverFuncs,
+    RecordMode (..),
+  )
+where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -16,7 +17,7 @@ import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContribu
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Types
 import App.Util (validateDir)
-import qualified Control.Carrier.Diagnostics as Diag
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
 import Control.Carrier.TaskPool
@@ -28,12 +29,12 @@ import Control.Effect.Record
 import Control.Effect.Replay (runReplay)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -48,53 +49,57 @@ import Effect.ReadFS
 import Fossa.API.Types (ApiOpts (..))
 import Path
 import Path.IO (makeRelative)
-import qualified Srclib.Converter as Srclib
+import Path.IO qualified as P
+import Srclib.Converter qualified as Srclib
 import Srclib.Types (parseLocator)
-import qualified Strategy.Bundler as Bundler
-import qualified Strategy.Cargo as Cargo
-import qualified Strategy.Carthage as Carthage
-import qualified Strategy.Cocoapods as Cocoapods
-import qualified Strategy.Composer as Composer
-import qualified Strategy.Glide as Glide
-import qualified Strategy.Godep as Godep
-import qualified Strategy.Gomodules as Gomodules
-import qualified Strategy.Googlesource.RepoManifest as RepoManifest
-import qualified Strategy.Gradle as Gradle
-import qualified Strategy.Haskell.Cabal as Cabal
-import qualified Strategy.Haskell.Stack as Stack
-import qualified Strategy.Leiningen as Leiningen
-import qualified Strategy.Maven as Maven
-import qualified Strategy.Npm as Npm
-import qualified Strategy.NuGet.Nuspec as Nuspec
-import qualified Strategy.NuGet.PackageReference as PackageReference
-import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
-import qualified Strategy.NuGet.Paket as Paket
-import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
-import qualified Strategy.NuGet.ProjectJson as ProjectJson
-import qualified Strategy.Python.Pipenv as Pipenv
-import qualified Strategy.Python.Setuptools as Setuptools
-import qualified Strategy.RPM as RPM
-import qualified Strategy.Rebar3 as Rebar3
-import qualified Strategy.Scala as Scala
-import qualified Strategy.UserSpecified.YamlDependencies as UserYaml
-import qualified Strategy.Yarn as Yarn
+import Strategy.Bundler qualified as Bundler
+import Strategy.Cargo qualified as Cargo
+import Strategy.Carthage qualified as Carthage
+import Strategy.Cocoapods qualified as Cocoapods
+import Strategy.Composer qualified as Composer
+import Strategy.Glide qualified as Glide
+import Strategy.Godep qualified as Godep
+import Strategy.Gomodules qualified as Gomodules
+import Strategy.Googlesource.RepoManifest qualified as RepoManifest
+import Strategy.Gradle qualified as Gradle
+import Strategy.Haskell.Cabal qualified as Cabal
+import Strategy.Haskell.Stack qualified as Stack
+import Strategy.Leiningen qualified as Leiningen
+import Strategy.Maven qualified as Maven
+import Strategy.Npm qualified as Npm
+import Strategy.NuGet.Nuspec qualified as Nuspec
+import Strategy.NuGet.PackageReference qualified as PackageReference
+import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
+import Strategy.NuGet.Paket qualified as Paket
+import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
+import Strategy.NuGet.ProjectJson qualified as ProjectJson
+import Strategy.Python.Pipenv qualified as Pipenv
+import Strategy.Python.Setuptools qualified as Setuptools
+import Strategy.RPM qualified as RPM
+import Strategy.Rebar3 qualified as Rebar3
+import Strategy.Scala qualified as Scala
+import Strategy.UserSpecified.YamlDependencies qualified as UserYaml
+import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
-import qualified Path.IO as P
 
 data ScanDestination
-  = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
+  = -- | upload to fossa with provided api key and base url
+    UploadScan ApiOpts ProjectMetadata
   | OutputStdout
 
 -- | UnpackArchives bool flag
 data UnpackArchives = UnpackArchives
 
 -- | "Replay logging" modes
-data RecordMode =
-    RecordModeRecord -- ^ record effect invocations
-  | RecordModeReplay FilePath -- ^ replay effect invocations from a file
-  | RecordModeNone -- ^ don't record or replay
+data RecordMode
+  = -- | record effect invocations
+    RecordModeRecord
+  | -- | replay effect invocations from a file
+    RecordModeReplay FilePath
+  | -- | don't record or replay
+    RecordModeNone
 
 analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
 analyzeMain workdir recordMode logSeverity destination project unpackArchives filters =
@@ -130,7 +135,6 @@ discoverFuncs ::
     Has Exec sig m,
     Has Logger sig m,
     Has Diag.Diagnostics sig m,
-
     Has (Lift IO) rsig run,
     Has ReadFS rsig run,
     Has Diag.Diagnostics rsig run,
@@ -185,7 +189,7 @@ runDependencyAnalysis (BaseDir basedir) filters project = do
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
 applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject n -> Maybe (Set BuildTarget)
-applyFiltersToProject basedir filters DiscoveredProject{..} =
+applyFiltersToProject basedir filters DiscoveredProject {..} =
   case makeRelative basedir projectPath of
     -- FIXME: this is required for --unpack-archives to continue to work.
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
@@ -194,19 +198,19 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     Just rel -> applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
-  ( Has (Lift IO) sig m
-  , Has Logger sig m
-  , Has Diag.Diagnostics sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  , MonadIO m
-  )
-  => BaseDir
-  -> ScanDestination
-  -> OverrideProject
-  -> Flag UnpackArchives
-  -> [BuildTargetFilter]
-  -> m ()
+  ( Has (Lift IO) sig m,
+    Has Logger sig m,
+    Has Diag.Diagnostics sig m,
+    Has Exec sig m,
+    Has ReadFS sig m,
+    MonadIO m
+  ) =>
+  BaseDir ->
+  ScanDestination ->
+  OverrideProject ->
+  Flag UnpackArchives ->
+  [BuildTargetFilter] ->
+  m ()
 analyze (BaseDir basedir) destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
@@ -239,14 +243,15 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
 
         uploadResult <- uploadAnalysis apiOpts revision metadata someProjects
         buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult
-        logInfo $ vsep
-          [ "============================================================"
-          , ""
-          , "    View FOSSA Report:"
-          , "    " <> pretty buildUrl
-          , ""
-          , "============================================================"
-          ]
+        logInfo $
+          vsep
+            [ "============================================================",
+              "",
+              "    View FOSSA Report:",
+              "    " <> pretty buildUrl,
+              "",
+              "============================================================"
+            ]
         traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
         -- Warn on contributor errors, never fail
         void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
@@ -264,12 +269,12 @@ checkForEmptyUpload xs ys
   | xlen == 0 && ylen == 0 = NoneDiscovered
   | xlen == 0 || ylen == 0 = FilteredAll filterCount
   -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
-  | otherwise              = FoundSome $ NE.fromList filtered
+  | otherwise = FoundSome $ NE.fromList filtered
   where
     xlen = length xs
     ylen = length ys
     filterCount = abs $ xlen - ylen
-    -- | Return the smaller list, since filtering cannot add projects
+
     filtered = if xlen > ylen then ys else xs
 
 -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
@@ -283,24 +288,27 @@ filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAb
     dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
 
 isProductionPath :: FilePath -> Bool
-isProductionPath path = not $ any (`isInfixOf` path)
-  [ "doc/"
-  , "docs/"
-  , "test/"
-  , "example/"
-  , "examples/"
-  , "vendor/"
-  , "node_modules/"
-  , ".srclib-cache/"
-  , "spec/"
-  , "Godeps/"
-  , ".git/"
-  , "bower_components/"
-  , "third_party/"
-  , "third-party/"
-  , "Carthage/"
-  , "Checkouts/"
-  ]
+isProductionPath path =
+  not $
+    any
+      (`isInfixOf` path)
+      [ "doc/",
+        "docs/",
+        "test/",
+        "example/",
+        "examples/",
+        "vendor/",
+        "node_modules/",
+        ".srclib-cache/",
+        "spec/",
+        "Godeps/",
+        ".git/",
+        "bower_components/",
+        "third_party/",
+        "third-party/",
+        "Carthage/",
+        "Checkouts/"
+      ]
 
 tryUploadContributors ::
   ( Has Diag.Diagnostics sig m,
@@ -317,25 +325,29 @@ tryUploadContributors baseDir apiOpts locator = do
   uploadContributors apiOpts locator contributors
 
 buildResult :: [ProjectResult] -> Aeson.Value
-buildResult projects = Aeson.object
-  [ "projects" .= map buildProject projects
-  , "sourceUnits" .= map Srclib.toSourceUnit projects
-  ]
+buildResult projects =
+  Aeson.object
+    [ "projects" .= map buildProject projects,
+      "sourceUnits" .= map Srclib.toSourceUnit projects
+    ]
 
 buildProject :: ProjectResult -> Aeson.Value
-buildProject project = Aeson.object
-  [ "path" .= projectResultPath project
-  , "type" .= projectResultType project
-  , "graph" .= graphingToGraph (projectResultGraph project)
-  ]
+buildProject project =
+  Aeson.object
+    [ "path" .= projectResultPath project,
+      "type" .= projectResultType project,
+      "graph" .= graphingToGraph (projectResultGraph project)
+    ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()
-updateProgress Progress{..} =
-  logSticky ( "[ "
-            <> annotate (color Cyan) (pretty pQueued)
-            <> " Waiting / "
-            <> annotate (color Yellow) (pretty pRunning)
-            <> " Running / "
-            <> annotate (color Green) (pretty pCompleted)
-            <> " Completed"
-            <> " ]" )
+updateProgress Progress {..} =
+  logSticky
+    ( "[ "
+        <> annotate (color Cyan) (pretty pQueued)
+        <> " Waiting / "
+        <> annotate (color Yellow) (pretty pRunning)
+        <> " Running / "
+        <> annotate (color Green) (pretty pCompleted)
+        <> " Completed"
+        <> " ]"
+    )

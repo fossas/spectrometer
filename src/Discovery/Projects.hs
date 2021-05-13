@@ -3,14 +3,14 @@ module Discovery.Projects
   )
 where
 
-import qualified Control.Carrier.Diagnostics as Diag
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Finally
 import Control.Effect.Lift
 import Control.Effect.TaskPool
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (for_, traverse_)
-import qualified Discovery.Archive as Archive
+import Discovery.Archive qualified as Archive
 import Effect.Logger
 import Effect.ReadFS (ReadFS)
 import Path
@@ -36,7 +36,6 @@ withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
   when unpackArchives $ do
     res <- Diag.runDiagnosticsIO $ Archive.discover (\dir -> liftFoo $ withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
     Diag.withResult SevError res (const (pure ()))
-
 
 liftFoo :: m a -> Diag.DiagnosticsC m a
 liftFoo = undefined

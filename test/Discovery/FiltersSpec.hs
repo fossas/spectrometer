@@ -5,7 +5,7 @@ module Discovery.FiltersSpec
   )
 where
 
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Discovery.Filters
 import Path
 import Test.Hspec

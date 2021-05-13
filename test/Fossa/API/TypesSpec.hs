@@ -1,10 +1,10 @@
 module Fossa.API.TypesSpec (spec) where
 
-import Fossa.API.Types (Issue (..), IssueRule (..), IssueType (..), Issues (..))
 import Data.Aeson (FromJSON, ToJSON, fromJSON, toJSON)
 import Data.Text (Text)
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
+import Fossa.API.Types (Issue (..), IssueRule (..), IssueType (..), Issues (..))
+import Hedgehog.Gen qualified as Gen
+import Hedgehog.Range qualified as Range
 import Test.Hspec
 import Test.Hspec.Hedgehog
 import Prelude
@@ -12,9 +12,10 @@ import Prelude
 spec :: Spec
 spec = do
   describe "Issues ToJSON/FromJSON instances" $ do
-    it "are roundtrippable" $ hedgehog $ do
-      issues <- forAll genIssues
-      roundtripJson issues
+    it "are roundtrippable" $
+      hedgehog $ do
+        issues <- forAll genIssues
+        roundtripJson issues
 
 genIssues :: Gen Issues
 genIssues =

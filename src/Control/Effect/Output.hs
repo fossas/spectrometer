@@ -1,10 +1,11 @@
 {-# LANGUAGE GADTs #-}
 
 module Control.Effect.Output
-  ( Output(..)
-  , output
-  , module X
-  ) where
+  ( Output (..),
+    output,
+    module X,
+  )
+where
 
 import Control.Algebra as X
 import Data.Kind (Type)

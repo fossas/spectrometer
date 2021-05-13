@@ -15,16 +15,16 @@ where
 import Control.Effect.Diagnostics
 import Control.Monad (when)
 import Data.List (isSuffixOf)
-import qualified Data.Map.Strict as M
-import Data.Maybe (mapMaybe, catMaybes)
+import Data.Map.Strict qualified as M
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Text.Extra (splitOnceOn)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
-import qualified Graphing as G
+import Graphing qualified as G
 import Path
 import Types
 
@@ -32,11 +32,10 @@ newtype SpecFileLabel
   = RequiresType DepEnvironment
   deriving (Eq, Ord, Show)
 
-data RPMDependency
-  = RPMDependency
-      { rpmDepName :: Text,
-        rpmConstraint :: Maybe VerConstraint
-      }
+data RPMDependency = RPMDependency
+  { rpmDepName :: Text,
+    rpmConstraint :: Maybe VerConstraint
+  }
   deriving (Eq, Ord, Show)
 
 data RequiresType
@@ -44,11 +43,10 @@ data RequiresType
   | RuntimeRequires RPMDependency
   deriving (Eq, Ord, Show)
 
-data Dependencies
-  = Dependencies
-      { depBuildRequires :: [RPMDependency],
-        depRuntimeRequires :: [RPMDependency]
-      }
+data Dependencies = Dependencies
+  { depBuildRequires :: [RPMDependency],
+    depRuntimeRequires :: [RPMDependency]
+  }
   deriving (Eq, Ord, Show)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
@@ -63,8 +61,8 @@ findProjects = walk' $ \dir _ files -> do
     _ -> pure ([RpmProject dir specs], WalkContinue)
 
 data RpmProject = RpmProject
-  { rpmDir :: Path Abs Dir
-  , rpmFiles :: [Path Abs File]
+  { rpmDir :: Path Abs Dir,
+    rpmFiles :: [Path Abs File]
   }
   deriving (Eq, Ord, Show)
 
@@ -100,14 +98,14 @@ analyzeSingle file = do
 
 toDependency :: RPMDependency -> Dependency
 toDependency pkg =
-    Dependency
-      { dependencyType = RPMType,
-        dependencyName = rpmDepName pkg,
-        dependencyVersion = rpmConstraint pkg,
-        dependencyLocations = [],
-        dependencyEnvironments = [],
-        dependencyTags = M.empty
-      }
+  Dependency
+    { dependencyType = RPMType,
+      dependencyName = rpmDepName pkg,
+      dependencyVersion = rpmConstraint pkg,
+      dependencyLocations = [],
+      dependencyEnvironments = [],
+      dependencyTags = M.empty
+    }
 
 buildGraph :: Dependencies -> Graphing Dependency
 buildGraph Dependencies {..} = G.gmap toDependency $ G.fromList depRuntimeRequires

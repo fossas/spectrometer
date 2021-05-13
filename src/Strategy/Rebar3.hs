@@ -12,7 +12,7 @@ import Effect.Exec
 import Effect.ReadFS
 import Graphing
 import Path
-import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
+import Strategy.Erlang.Rebar3Tree qualified as Rebar3Tree
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]

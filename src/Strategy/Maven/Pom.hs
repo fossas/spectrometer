@@ -5,30 +5,31 @@ module Strategy.Maven.Pom
   )
 where
 
-import qualified Algebra.Graph.AdjacencyMap as AM
+import Algebra.Graph.AdjacencyMap qualified as AM
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove)
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Path
-import qualified Path.IO as Path
+import Path.IO qualified as Path
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
 
 data MavenStrategyOpts = MavenStrategyOpts
-  { strategyPath  :: Path Rel File
-  , strategyGraph :: Graphing Dependency
-  } deriving (Eq, Ord, Show)
+  { strategyPath :: Path Rel File,
+    strategyGraph :: Graphing Dependency
+  }
+  deriving (Eq, Ord, Show)
 
 analyze' :: MavenProjectClosure -> Graphing Dependency
 analyze' = buildProjectGraph
@@ -41,7 +42,7 @@ getLicenses basedir closure = do
     Just relpath ->
       let path = toFilePath relpath
           validated = mapMaybe validateLicense (pomLicenses pom)
-        in pure (LicenseResult path validated)
+       in pure (LicenseResult path validated)
   where
     -- we prefer URLs over SPDX because name isn't guaranteed to be an SPDX expression
     validateLicense :: PomLicense -> Maybe License
@@ -149,23 +150,26 @@ interpolateProperties pom = interpolate (pomProperties pom <> computeBuiltinProp
 
 -- | Compute the most-commonly-used builtin properties for package resolution
 computeBuiltinProperties :: Pom -> Map Text Text
-computeBuiltinProperties pom = M.fromList
-  [ ("project.groupId", coordGroup (pomCoord pom))
-  , ("project.artifactId", coordArtifact (pomCoord pom))
-  , ("project.version", coordVersion (pomCoord pom))
-  ]
+computeBuiltinProperties pom =
+  M.fromList
+    [ ("project.groupId", coordGroup (pomCoord pom)),
+      ("project.artifactId", coordArtifact (pomCoord pom)),
+      ("project.version", coordVersion (pomCoord pom))
+    ]
 
 interpolate :: Map Text Text -> Text -> Text
 interpolate properties text =
   case splitMavenProperty text of
     Nothing -> text
-    Just (before, property, after) -> interpolate properties $
+    Just (before, property, after) ->
+      interpolate properties $
         before <> fromMaybe ("PROPERTY NOT FOUND: " <> property) (M.lookup property properties) <> after
 
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property
 splitMavenProperty :: Text -> Maybe (Text, Text, Text)
 splitMavenProperty text
-  | Just (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
-  , Just (property, afterEnd) <- breakOnAndRemove "}" afterBegin = Just (beforeBegin, property, afterEnd)
+  | Just (beforeBegin, afterBegin) <- breakOnAndRemove "${" text,
+    Just (property, afterEnd) <- breakOnAndRemove "}" afterBegin =
+    Just (beforeBegin, property, afterEnd)
   | otherwise = Nothing

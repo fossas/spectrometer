@@ -22,12 +22,12 @@ import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
-import qualified Data.SemVer as SemVer
+import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Identifier (..), Version (..))
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Void (Void)
 import DepTypes (Dependency)
 import Effect.Exec (Exec)
@@ -56,7 +56,7 @@ import Text.Megaparsec
     (<|>),
   )
 import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char.Lexer qualified as L
 
 -- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
 --

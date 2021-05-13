@@ -7,10 +7,10 @@ module App.Fossa.Configuration.ConfigurationSpec
 where
 
 import App.Fossa.Configuration
-import qualified Control.Carrier.Diagnostics as Diag
+import Control.Carrier.Diagnostics qualified as Diag
 import Effect.ReadFS
 import Path
-import qualified Test.Hspec as T
+import Test.Hspec qualified as T
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =

@@ -12,58 +12,52 @@ module App.Fossa.Report.Attribution
 where
 
 import Data.Aeson
-import Data.Text (Text)
 import Data.Map.Strict (Map)
 import Data.Maybe (catMaybes)
+import Data.Text (Text)
 
-newtype LicenseName
-  = LicenseName {rawName :: Text}
+newtype LicenseName = LicenseName {rawName :: Text}
   deriving (Eq, Ord, Show, FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 
-newtype LicenseContents
-  = LicenseContents {rawContents :: Text}
+newtype LicenseContents = LicenseContents {rawContents :: Text}
   deriving (Eq, Ord, Show, FromJSON, ToJSON)
 
-data Attribution
-  = Attribution
-      { attribProject :: Project,
-        attribDirectDeps :: [Dependency],
-        attribDeepDeps :: [Dependency],
-        attribLicenses :: Map LicenseName LicenseContents
-      }
+data Attribution = Attribution
+  { attribProject :: Project,
+    attribDirectDeps :: [Dependency],
+    attribDeepDeps :: [Dependency],
+    attribLicenses :: Map LicenseName LicenseContents
+  }
   deriving (Eq, Show, Ord)
 
-data Dependency
-  = Dependency
-      { depPackage :: Text,
-        depSource :: Text,
-        depVersion :: Maybe Text,
-        depIsGolang :: Maybe Bool,
-        depHash :: Maybe Text,
-        depAuthors :: [Text],
-        depDescription :: Maybe Text,
-        depLicenses :: Maybe [License],
-        depOtherLicenses :: [License],
-        depProjectUrl :: Maybe Text,
-        depDependencyPaths :: [Text],
-        depNotes :: [Text],
-        depDownloadUrl :: Maybe Text,
-        depTitle :: Text
-      }
+data Dependency = Dependency
+  { depPackage :: Text,
+    depSource :: Text,
+    depVersion :: Maybe Text,
+    depIsGolang :: Maybe Bool,
+    depHash :: Maybe Text,
+    depAuthors :: [Text],
+    depDescription :: Maybe Text,
+    depLicenses :: Maybe [License],
+    depOtherLicenses :: [License],
+    depProjectUrl :: Maybe Text,
+    depDependencyPaths :: [Text],
+    depNotes :: [Text],
+    depDownloadUrl :: Maybe Text,
+    depTitle :: Text
+  }
   deriving (Eq, Show, Ord)
 
-data License
-  = License
-      { licenseName :: LicenseName,
-        licenseAttribution :: Maybe LicenseContents
-      }
+data License = License
+  { licenseName :: LicenseName,
+    licenseAttribution :: Maybe LicenseContents
+  }
   deriving (Eq, Show, Ord)
 
-data Project
-  = Project
-      { projectName :: Text,
-        projectRevision :: Text
-      }
+data Project = Project
+  { projectName :: Text,
+    projectRevision :: Text
+  }
   deriving (Eq, Show, Ord)
 
 instance FromJSON Attribution where

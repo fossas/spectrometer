@@ -8,14 +8,14 @@ where
 
 import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics)
-import qualified Control.Effect.Diagnostics as Diag
+import Control.Effect.Diagnostics qualified as Diag
 import Data.List (isInfixOf, isSuffixOf)
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import qualified Strategy.Python.ReqTxt as ReqTxt
-import qualified Strategy.Python.SetupPy as SetupPy
+import Strategy.Python.ReqTxt qualified as ReqTxt
+import Strategy.Python.SetupPy qualified as SetupPy
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]

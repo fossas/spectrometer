@@ -12,10 +12,10 @@ import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift
 import Control.Monad.IO.Class (MonadIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
+import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts (..), Issues (..))
 import System.Exit (exitFailure, exitSuccess)
@@ -37,13 +37,15 @@ testMain ::
   ImageText ->
   IO ()
 testMain apiOpts logSeverity timeoutSeconds outputType override image = do
-  void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runDiagnostics $ testInner apiOpts outputType override image
-    case result of
-      Left err -> do
-        logError $ renderFailureBundle err
-        sendIO exitFailure
-      Right (ResultBundle _ _) -> sendIO exitSuccess
+  void $
+    timeout timeoutSeconds $
+      withLogger logSeverity $ do
+        result <- runDiagnostics $ testInner apiOpts outputType override image
+        case result of
+          Left err -> do
+            logError $ renderFailureBundle err
+            sendIO exitFailure
+          Right (ResultBundle _ _) -> sendIO exitSuccess
 
   hPutStrLn stderr "Timed out while wait for issues"
   exitFailure

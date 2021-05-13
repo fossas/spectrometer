@@ -1,15 +1,16 @@
 module App.Fossa.Report
-  ( reportMain
-  , ReportType (..)
-  ) where
+  ( reportMain,
+    ReportType (..),
+  )
+where
 
 import App.Fossa.API.BuildWait
-import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
 import App.Types
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
@@ -20,21 +21,22 @@ import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
 
-data ReportType =
-    AttributionReport
+data ReportType
+  = AttributionReport
 
 reportName :: ReportType -> Text
 reportName r = case r of
   AttributionReport -> "attribution"
 
 reportMain ::
-  BaseDir
-  -> ApiOpts
-  -> Severity
-  -> Int -- ^ timeout (seconds)
-  -> ReportType
-  -> OverrideProject
-  -> IO ()
+  BaseDir ->
+  ApiOpts ->
+  Severity ->
+  -- | timeout (seconds)
+  Int ->
+  ReportType ->
+  OverrideProject ->
+  IO ()
 reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType override = do
   -- TODO: refactor this code duplicate from `fossa test`
   {-
@@ -48,35 +50,37 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runDiagnostics . runReadFSIO $ do
-      revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
+  void $
+    timeout timeoutSeconds $
+      withLogger logSeverity $ do
+        result <- runDiagnostics . runReadFSIO $ do
+          revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
-      logInfo ""
-      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+          logInfo ""
+          logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+          logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-      logSticky "[ Waiting for build completion... ]"
+          logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild apiOpts revision
+          waitForBuild apiOpts revision
 
-      logSticky "[ Waiting for issue scan completion... ]"
-      _ <- waitForIssues apiOpts revision
-      logSticky ""
+          logSticky "[ Waiting for issue scan completion... ]"
+          _ <- waitForIssues apiOpts revision
+          logSticky ""
 
-      logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
-      jsonValue <- case reportType of
-        AttributionReport ->
-          Fossa.getAttribution apiOpts revision
-      logSticky ""
+          logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
+          jsonValue <- case reportType of
+            AttributionReport ->
+              Fossa.getAttribution apiOpts revision
+          logSticky ""
 
-      logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
+          logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
 
-    case result of
-      Left err -> do
-        logError $ renderFailureBundle err
-        sendIO exitFailure
-      Right _ -> sendIO exitSuccess
+        case result of
+          Left err -> do
+            logError $ renderFailureBundle err
+            sendIO exitFailure
+          Right _ -> sendIO exitSuccess
 
   hPutStrLn stderr "Timed out while waiting for build/issues scan"
   exitFailure

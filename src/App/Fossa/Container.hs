@@ -23,26 +23,26 @@ module App.Fossa.Container
 where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withSyftBinary)
-import App.Types (ProjectRevision (..), OverrideProject (..))
+import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Aeson.Types (parseEither)
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Functor.Extra ((<$$>))
 import Data.List (nub)
-import qualified Data.Map.Lazy as LMap
+import Data.Map.Lazy qualified as LMap
 import Data.Map.Strict (Map)
-import Data.Maybe (listToMaybe, fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text, pack)
-import qualified Data.Text.Lazy.Encoding as TE
 import Data.Text.Extra (breakOnAndRemove)
-import Effect.Exec (AllowErr (Never), Command (..), execJson, runExecIO, Exec, execThrow)
+import Data.Text.Lazy.Encoding qualified as TE
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson, execThrow, runExecIO)
 import Effect.Logger
-import Effect.ReadFS (ReadFS, readContentsJson, ReadFSIOC (runReadFSIO), resolveFile)
+import Effect.ReadFS (ReadFS, ReadFSIOC (runReadFSIO), readContentsJson, resolveFile)
 import Options.Applicative (Parser, argument, help, metavar, str)
-import Path ( toFilePath, reldir, Dir, Rel )
+import Path (Dir, Rel, reldir, toFilePath)
 import Path.IO (getCurrentDir)
 
 newtype ImageText = ImageText {unImageText :: Text} deriving (Show, Eq, Ord)
@@ -53,12 +53,11 @@ imageTextArg = ImageText . pack <$> argument str (metavar "IMAGE" <> help "The i
 newtype Locator = Locator {unLocator :: Text} deriving (Eq, Ord, Show)
 
 -- | The output of the syft binary
-data SyftResponse
-  = SyftResponse
-      { responseArtifacts :: [ResponseArtifact],
-        responseSource :: ResponseSource,
-        responseDistro :: ResponseDistro
-      }
+data SyftResponse = SyftResponse
+  { responseArtifacts :: [ResponseArtifact],
+    responseSource :: ResponseSource,
+    responseDistro :: ResponseDistro
+  }
 
 instance FromJSON SyftResponse where
   parseJSON = withObject "SyftResponse" $ \obj ->
@@ -72,16 +71,15 @@ artifactTypeIsOk art = artifactType art `elem` acceptedArtifactTypes
 acceptedArtifactTypes :: [Text]
 acceptedArtifactTypes = ["deb", "rpm", "apk"]
 
-data ResponseArtifact
-  = ResponseArtifact
-      { artifactName :: Text,
-        artifactVersion :: Text,
-        artifactType :: Text,
-        artifactLocations :: [ContainerLocation],
-        artifactPkgUrl :: Text,
-        artifactMetadataType :: Text,
-        artifactMetadata :: Maybe (Map Text Value)
-      }
+data ResponseArtifact = ResponseArtifact
+  { artifactName :: Text,
+    artifactVersion :: Text,
+    artifactType :: Text,
+    artifactLocations :: [ContainerLocation],
+    artifactPkgUrl :: Text,
+    artifactMetadataType :: Text,
+    artifactMetadata :: Maybe (Map Text Value)
+  }
 
 instance FromJSON ResponseArtifact where
   parseJSON = withObject "ResponseArtifact" $ \obj ->
@@ -98,31 +96,28 @@ instance FromJSON ResponseArtifact where
       -- as well.
       <*> (LMap.delete "files" <$$> obj .:? "metadata")
 
-newtype ResponseSource
-  = ResponseSource
-      {sourceTarget :: SourceTarget}
+newtype ResponseSource = ResponseSource
+  {sourceTarget :: SourceTarget}
 
 instance FromJSON ResponseSource where
   parseJSON = withObject "ResponseSource" $ \obj ->
     ResponseSource <$> obj .: "target"
 
-data ResponseDistro
-  = ResponseDistro
-      { distroName :: Text,
-        distroVersion :: Text
-      }
+data ResponseDistro = ResponseDistro
+  { distroName :: Text,
+    distroVersion :: Text
+  }
 
 instance FromJSON ResponseDistro where
   parseJSON = withObject "ResponseDistro" $ \obj ->
     ResponseDistro <$> obj .: "name"
       <*> obj .: "version"
 
-data SourceTarget
-  = SourceTarget
-      { targetDigest :: Text,
-        targetLayers :: [LayerTarget],
-        targetTags :: [Text]
-      }
+data SourceTarget = SourceTarget
+  { targetDigest :: Text,
+    targetLayers :: [LayerTarget],
+    targetTags :: [Text]
+  }
 
 instance FromJSON SourceTarget where
   parseJSON = withObject "SourceTarget" $ \obj ->
@@ -132,10 +127,10 @@ instance FromJSON SourceTarget where
 
 -- Capture container layers from target
 -- The digest will correspond to location -> layerId
-newtype LayerTarget
-  = LayerTarget {
-    layerTargetDigest :: Text
-  } deriving (Eq, Show, Ord)
+newtype LayerTarget = LayerTarget
+  { layerTargetDigest :: Text
+  }
+  deriving (Eq, Show, Ord)
 
 instance FromJSON LayerTarget where
   parseJSON = withObject "LayerTarget" $ \obj ->
@@ -143,27 +138,24 @@ instance FromJSON LayerTarget where
 
 instance ToJSON LayerTarget where
   toJSON LayerTarget {..} =
-    object ["digest" .= layerTargetDigest ]
-
+    object ["digest" .= layerTargetDigest]
 
 -- | The reorganized output of syft into a slightly different format
-data ContainerScan
-  = ContainerScan
-      { imageData :: ContainerImage,
-        imageTag :: Text,
-        imageDigest :: Text
-      }
+data ContainerScan = ContainerScan
+  { imageData :: ContainerImage,
+    imageTag :: Text,
+    imageDigest :: Text
+  }
 
 instance ToJSON ContainerScan where
   toJSON scan = object ["image" .= imageData scan]
 
-data ContainerImage
-  = ContainerImage
-      { imageArtifacts :: [ContainerArtifact],
-        imageOs :: Text,
-        imageOsRelease :: Text,
-        imageLayers :: [LayerTarget]
-      }
+data ContainerImage = ContainerImage
+  { imageArtifacts :: [ContainerArtifact],
+    imageOs :: Text,
+    imageOsRelease :: Text,
+    imageLayers :: [LayerTarget]
+  }
 
 instance ToJSON ContainerImage where
   toJSON ContainerImage {..} =
@@ -176,10 +168,10 @@ instance ToJSON ContainerImage where
 
 -- Define Layer/Location type to capture layers in which a dep is found
 -- omitting "path" from the object to reduce noise
-newtype ContainerLocation
-  = ContainerLocation {
-    conLayerId :: Text
-  } deriving (Eq, Show, Ord)
+newtype ContainerLocation = ContainerLocation
+  { conLayerId :: Text
+  }
+  deriving (Eq, Show, Ord)
 
 instance FromJSON ContainerLocation where
   parseJSON = withObject "ContainerLocation" $ \obj ->
@@ -187,18 +179,17 @@ instance FromJSON ContainerLocation where
 
 instance ToJSON ContainerLocation where
   toJSON ContainerLocation {..} =
-    object [ "layerId" .= conLayerId ]
+    object ["layerId" .= conLayerId]
 
-data ContainerArtifact
-  = ContainerArtifact
-      { conArtifactName :: Text,
-        conArtifactVersion :: Text,
-        conArtifactType :: Text,
-        conArtifactLocations :: [ContainerLocation],
-        conArtifactPkgUrl :: Text,
-        conArtifactMetadataType :: Text,
-        conArtifactMetadata :: Map Text Value
-      }
+data ContainerArtifact = ContainerArtifact
+  { conArtifactName :: Text,
+    conArtifactVersion :: Text,
+    conArtifactType :: Text,
+    conArtifactLocations :: [ContainerLocation],
+    conArtifactPkgUrl :: Text,
+    conArtifactMetadataType :: Text,
+    conArtifactMetadata :: Map Text Value
+  }
 
 instance ToJSON ContainerArtifact where
   toJSON ContainerArtifact {..} =
@@ -218,7 +209,6 @@ extractRevision OverrideProject {..} ContainerScan {..} = ProjectRevision name r
     name = fromMaybe imageTag overrideName
     revision = fromMaybe imageDigest overrideRevision
 
-
 toContainerScan :: Has Diagnostics sig m => SyftResponse -> m ContainerScan
 toContainerScan SyftResponse {..} = do
   newArts <- context "error while validating system artifacts" $ traverse convertArtifact responseArtifacts
@@ -231,15 +221,16 @@ convertArtifact :: Has Diagnostics sig m => ResponseArtifact -> m ContainerArtif
 convertArtifact ResponseArtifact {..} = do
   let errMsg = "No metadata for system package with name: " <> artifactName
   validMetadata <- fromMaybeText errMsg artifactMetadata
-  pure ContainerArtifact
-    { conArtifactName = artifactName,
-      conArtifactVersion = artifactVersion,
-      conArtifactType = artifactType,
-      conArtifactLocations = artifactLocations,
-      conArtifactPkgUrl = artifactPkgUrl,
-      conArtifactMetadataType = artifactMetadataType,
-      conArtifactMetadata = validMetadata
-    }
+  pure
+    ContainerArtifact
+      { conArtifactName = artifactName,
+        conArtifactVersion = artifactVersion,
+        conArtifactType = artifactType,
+        conArtifactLocations = artifactLocations,
+        conArtifactPkgUrl = artifactPkgUrl,
+        conArtifactMetadataType = artifactMetadataType,
+        conArtifactMetadata = validMetadata
+      }
 
 extractTag :: Has Diagnostics sig m => [Text] -> m Text
 extractTag tags = do

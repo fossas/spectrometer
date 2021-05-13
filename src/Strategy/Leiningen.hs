@@ -23,25 +23,25 @@ where
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
-import qualified Data.EDN as EDN
+import Data.EDN qualified as EDN
 import Data.EDN.Class.Parser (Parser)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Set (Set)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
+import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path
 import Types
-import Effect.ReadFS (ReadFS)
 
 leinDepsCmd :: Command
 leinDepsCmd =
@@ -81,9 +81,10 @@ getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m (Gra
 getDeps = analyze . leinProjectClj
 
 data LeiningenProject = LeiningenProject
-  { leinDir :: Path Abs Dir
-  , leinProjectClj :: Path Abs File
-  } deriving (Eq, Ord, Show)
+  { leinDir :: Path Abs Dir,
+    leinProjectClj :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = do

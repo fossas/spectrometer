@@ -20,13 +20,14 @@ import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (unless)
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (find)
-import qualified Data.HashMap.Strict as HM
-import Data.Maybe (mapMaybe, fromMaybe)
+import Data.HashMap.Strict qualified as HM
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
+import Data.Text qualified as T
+import Data.Text.IO qualified as TIO
+import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Effect.Exec
@@ -34,10 +35,9 @@ import Effect.Logger
 import Effect.ReadFS
 import Path
 import Path.IO (getTempDir)
-import qualified System.FilePath.Posix as FP
+import System.FilePath.Posix qualified as FP
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
-import qualified Data.Text.IO as TIO
 
 revisionFileName :: Path Rel File
 revisionFileName = $(mkRelFile ".fossa.revision")
@@ -58,7 +58,7 @@ inferProjectCached :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics si
 inferProjectCached dir = do
   project <- inferProjectDefault dir
   rev <- readCachedRevision
-  pure project { inferredRevision = rev }
+  pure project {inferredRevision = rev}
 
 -- | Infer a default project name from the directory, and a default
 -- revision from the current time. Writes `.fossa.revision` to the system
@@ -70,19 +70,18 @@ inferProjectDefault dir = sendIO $ do
 
   pure (InferredProject (T.pack name) (T.pack (show time)) Nothing)
 
-
 svnCommand :: Command
-svnCommand = Command
-  { cmdName = "svn"
-  , cmdArgs = ["info"]
-  , cmdAllowErr = Never
-  }
+svnCommand =
+  Command
+    { cmdName = "svn",
+      cmdArgs = ["info"],
+      cmdAllowErr = Never
+    }
 
 inferSVN :: (Has Exec sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
 inferSVN dir = do
   output <- execThrow dir svnCommand
   let props = toProps output
-
 
   let maybeProject = do
         root <- lookup "Repository Root" props
@@ -95,24 +94,24 @@ inferSVN dir = do
         -- we need to trim off: the caret, the root (as relative to the url), and one of "/branches/" or "/"
         let trimmedRelative =
               dropPrefix "branches/"
-              . dropPrefix "/"
-              . dropPrefix rootRelativeToUrl
-              . dropPrefix "^" $ relUrl
+                . dropPrefix "/"
+                . dropPrefix rootRelativeToUrl
+                . dropPrefix "^"
+                $ relUrl
 
         pure . InferredProject root revision $ if T.null trimmedRelative then Nothing else Just trimmedRelative
 
   case maybeProject of
     Nothing -> fatal (CommandParseError svnCommand "Invalid output (missing Repository Root or Revision)")
     Just project -> pure project
-
-    where
-      toProps :: BL.ByteString -> [(Text, Text)]
-      toProps bs = mapMaybe toProp (T.lines (TL.toStrict (decodeUtf8 bs)))
-      toProp :: Text -> Maybe (Text, Text)
-      toProp propLine =
-        case T.splitOn ": " propLine of
-          [key, val] -> Just (key, val)
-          _ -> Nothing
+  where
+    toProps :: BL.ByteString -> [(Text, Text)]
+    toProps bs = mapMaybe toProp (T.lines (TL.toStrict (decodeUtf8 bs)))
+    toProp :: Text -> Maybe (Text, Text)
+    toProp propLine =
+      case T.splitOn ": " propLine of
+        [key, val] -> Just (key, val)
+        _ -> Nothing
 
 saveRevision :: Has (Lift IO) sig m => ProjectRevision -> m ()
 saveRevision project = do
@@ -142,9 +141,11 @@ findGitDir dir = do
         else pure Nothing
 
 inferGit ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  ) => Path Abs Dir -> m InferredProject
+  ( Has ReadFS sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m InferredProject
 inferGit dir = do
   foundGitDir <- findGitDir dir
 
@@ -156,10 +157,11 @@ inferGit dir = do
       pure (InferredProject name revision branch)
 
 parseGitProjectName ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs Dir -> m Text
+  ( Has ReadFS sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m Text
 parseGitProjectName dir = do
   let relConfig = [relfile|config|]
 
@@ -185,10 +187,11 @@ parseGitProjectName dir = do
     isOrigin _ = False
 
 parseGitProjectRevision ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs Dir -> m (Maybe Text, Text) -- branch, revision
+  ( Has ReadFS sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m (Maybe Text, Text) -- branch, revision
 parseGitProjectRevision dir = do
   let relHead = [relfile|HEAD|]
 

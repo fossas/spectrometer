@@ -9,7 +9,7 @@ where
 
 import App.Version.TH (getCurrentTag)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Version (showVersion)
 import GitHash (GitInfo, giBranch, giDirty, giHash, tGitInfoCwd)
 import System.Info (compilerName, compilerVersion)

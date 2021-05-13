@@ -7,6 +7,7 @@ where
 
 import App.Fossa.Analyze (discoverFuncs)
 import App.Types (BaseDir (..))
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
@@ -18,7 +19,6 @@ import Effect.ReadFS
 import Path (toFilePath)
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..))
-import qualified Control.Carrier.Diagnostics as Diag
 
 type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))
 

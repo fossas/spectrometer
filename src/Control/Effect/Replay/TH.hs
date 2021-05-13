@@ -6,10 +6,10 @@ module Control.Effect.Replay.TH
 where
 
 import Control.Effect.Replay
-import Language.Haskell.TH
 import Control.Monad (replicateM)
 import Data.Aeson
 import Data.Aeson.Types (parse)
+import Language.Haskell.TH
 
 deriveReplayable :: Name -> Q [Dec]
 deriveReplayable tyName = do

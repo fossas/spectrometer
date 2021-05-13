@@ -1,7 +1,7 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -34,12 +34,12 @@ import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bifunctor (first)
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Kind (Type)
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty, viaShow)
 import Data.Void (Void)
@@ -62,6 +62,7 @@ data Command = Command
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON Command
+
 instance RecordableValue Command
 
 data CmdFailure = CmdFailure
@@ -75,24 +76,27 @@ data CmdFailure = CmdFailure
   deriving (Eq, Ord, Show)
 
 instance ToJSON CmdFailure where
-  toJSON CmdFailure{..} = object
-    [ "cmdFailureName" .= cmdFailureName
-    , "cmdFailureArgs" .= cmdFailureArgs
-    , "cmdFailureDir" .= cmdFailureDir
-    , "cmdFailureExit" .= toRecordedValue cmdFailureExit
-    , "cmdFailureStdout" .= toRecordedValue cmdFailureStdout
-    , "cmdFailureStderr" .= toRecordedValue cmdFailureStderr
-    ]
+  toJSON CmdFailure {..} =
+    object
+      [ "cmdFailureName" .= cmdFailureName,
+        "cmdFailureArgs" .= cmdFailureArgs,
+        "cmdFailureDir" .= cmdFailureDir,
+        "cmdFailureExit" .= toRecordedValue cmdFailureExit,
+        "cmdFailureStdout" .= toRecordedValue cmdFailureStdout,
+        "cmdFailureStderr" .= toRecordedValue cmdFailureStderr
+      ]
+
 instance RecordableValue CmdFailure
 
 instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure <$> obj .: "cmdFailureName"
-               <*> obj .: "cmdFailureArgs"
-               <*> obj .: "cmdFailureDir"
-               <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
-               <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
-               <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
+      <*> obj .: "cmdFailureArgs"
+      <*> obj .: "cmdFailureDir"
+      <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
+      <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
+      <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
+
 instance ReplayableValue CmdFailure
 
 data AllowErr
@@ -105,6 +109,7 @@ data AllowErr
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON AllowErr
+
 instance RecordableValue AllowErr
 
 type Stdout = BL.ByteString

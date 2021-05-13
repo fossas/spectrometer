@@ -2,25 +2,25 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Srclib.Converter
-  ( toSourceUnit
-  ) where
+  ( toSourceUnit,
+  )
+where
 
-import Prelude
-
-import qualified Algebra.Graph.AdjacencyMap as AM
+import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Fossa.Analyze.Project
 import Control.Applicative ((<|>))
+import Data.Set qualified as Set
 import Data.Text (Text)
-import qualified Data.Text as Text
-import qualified Data.Set as Set
+import Data.Text qualified as Text
 import DepTypes
 import Graphing (Graphing)
-import qualified Graphing
+import Graphing qualified
 import Path (toFilePath)
 import Srclib.Types
+import Prelude
 
 toSourceUnit :: ProjectResult -> SourceUnit
-toSourceUnit ProjectResult{..} =
+toSourceUnit ProjectResult {..} =
   SourceUnit
     { sourceUnitName = renderedPath,
       sourceUnitType = projectResultType,
@@ -52,13 +52,14 @@ toSourceUnit ProjectResult{..} =
     imports = Set.toList $ Graphing.graphingDirect locatorGraph
 
 mkSourceUnitDependency :: AM.AdjacencyMap Locator -> Locator -> SourceUnitDependency
-mkSourceUnitDependency gr locator = SourceUnitDependency
-  { sourceDepLocator = locator
-  , sourceDepImports = Set.toList $ AM.postSet locator gr
-  }
+mkSourceUnitDependency gr locator =
+  SourceUnitDependency
+    { sourceDepLocator = locator,
+      sourceDepImports = Set.toList $ AM.postSet locator gr
+    }
 
 shouldPublishDep :: Dependency -> Bool
-shouldPublishDep Dependency{dependencyEnvironments} =
+shouldPublishDep Dependency {dependencyEnvironments} =
   null dependencyEnvironments || EnvProduction `elem` dependencyEnvironments || any isOtherEnv dependencyEnvironments
 
 isOtherEnv :: DepEnvironment -> Bool
@@ -67,14 +68,15 @@ isOtherEnv _ = False
 
 -- core can't handle subprojects
 isSupportedType :: Dependency -> Bool
-isSupportedType Dependency{dependencyType} = dependencyType /= SubprojectType && dependencyType /= GooglesourceType
+isSupportedType Dependency {dependencyType} = dependencyType /= SubprojectType && dependencyType /= GooglesourceType
 
 toLocator :: Dependency -> Locator
-toLocator dep = Locator
-  { locatorFetcher = depTypeToFetcher (dependencyType dep)
-  , locatorProject = dependencyName dep
-  , locatorRevision = verConstraintToRevision =<< dependencyVersion dep
-  }
+toLocator dep =
+  Locator
+    { locatorFetcher = depTypeToFetcher (dependencyType dep),
+      locatorProject = dependencyName dep,
+      locatorRevision = verConstraintToRevision =<< dependencyVersion dep
+    }
 
 verConstraintToRevision :: VerConstraint -> Maybe Text
 verConstraintToRevision = \case

@@ -2,34 +2,33 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.VPS.Scan.ScotlandYard
-  ( uploadBuildGraph
-  , getScan
-  , getLatestScan
-  , ScanResponse (..)
-  , ScotlandYardNinjaOpts (..)
+  ( uploadBuildGraph,
+    getScan,
+    getLatestScan,
+    ScanResponse (..),
+    ScotlandYardNinjaOpts (..),
   )
 where
 
-import Control.Carrier.TaskPool
-import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Control.Monad.IO.Class
-import Control.Effect.Lift
-import App.Fossa.VPS.Types
-import Data.Foldable (traverse_)
-import qualified Data.ByteString.Lazy as BS
-import Effect.Logger
-import GHC.Conc.Sync (getNumCapabilities)
 import App.Fossa.VPS.Scan.Core
+import App.Fossa.VPS.Types
+import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.TaskPool
+import Control.Effect.Lift
+import Control.Monad.IO.Class
 import Data.Aeson
+import Data.ByteString.Lazy qualified as BS
+import Data.Foldable (traverse_)
 import Data.Text (Text)
-import Network.HTTP.Req
+import Effect.Logger
 import Fossa.API.Types (ApiOpts, useApiOpts)
-
+import GHC.Conc.Sync (getNumCapabilities)
+import Network.HTTP.Req
 
 data ScotlandYardNinjaOpts = ScotlandYardNinjaOpts
-  { syNinjaProjectId :: Locator
-  , syNinjaOrganizationId :: Int
-  , syNinjaOpts :: NinjaGraphOpts
+  { syNinjaProjectId :: Locator,
+    syNinjaOrganizationId :: Int,
+    syNinjaOpts :: NinjaGraphOpts
   }
 
 -- Prefix for Core's reverse proxy to SY
@@ -44,11 +43,12 @@ getLatestScanEndpoint baseurl (Locator projectId) = coreProxyPrefix baseurl /: "
 
 data CreateScanResponse = CreateScanResponse
   { createScanResponseId :: Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 data ScanResponse = ScanResponse
-  { responseScanId :: Text
-  , responseScanStatus :: Maybe Text
+  { responseScanId :: Text,
+    responseScanStatus :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -75,17 +75,19 @@ instance FromJSON CreateBuildGraphResponse where
 getLatestScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> Text -> m ScanResponse
 getLatestScan apiOpts locator revisionId = runHTTP $ do
   (baseUrl, baseOptions) <- useApiOpts apiOpts
-  let opts = baseOptions
-        <> header "Content-Type" "application/json"
-        <> "revisionID" =: revisionId
+  let opts =
+        baseOptions
+          <> header "Content-Type" "application/json"
+          <> "revisionID" =: revisionId
   resp <- req GET (getLatestScanEndpoint baseUrl locator) NoReqBody jsonResponse opts
   pure (responseBody resp)
 
 getScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> Text -> m ScanResponse
 getScan apiOpts locator scanId = runHTTP $ do
   (baseUrl, baseOptions) <- useApiOpts apiOpts
-  let opts = baseOptions
-        <> header "Content-Type" "application/json"
+  let opts =
+        baseOptions
+          <> header "Content-Type" "application/json"
   resp <- req GET (getScanEndpoint baseUrl locator scanId) NoReqBody jsonResponse opts
   pure (responseBody resp)
 
@@ -94,17 +96,17 @@ createBuildGraphEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 createBuildGraphEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs"
 
 -- /projects/{projectID}/scans/{scanID}/build-graphs/{buildGraphID}/rules
-uploadBuildGraphChunkEndpoint :: Url 'Https -> Text -> Text -> Text ->  Url 'Https
+uploadBuildGraphChunkEndpoint :: Url 'Https -> Text -> Text -> Text -> Url 'Https
 uploadBuildGraphChunkEndpoint baseurl projectId scanId buildGraphId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs" /: buildGraphId /: "rules"
 
 -- /projects/{projectID}/scans/{scanID}/build-graphs/{buildGraphID}/rules/complete
-uploadBuildGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text ->  Url 'Https
+uploadBuildGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text -> Url 'Https
 uploadBuildGraphCompleteEndpoint baseurl projectId scanId buildGraphId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs" /: buildGraphId /: "rules" /: "complete"
 
 -- create the build graph in SY, upload it in chunks of ~ 1 MB and then complete it.
 uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
 uploadBuildGraph apiOpts syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
-  let NinjaGraphOpts{..} = syNinjaOpts
+  let NinjaGraphOpts {..} = syNinjaOpts
       locator = unLocator syNinjaProjectId
   (baseUrl, baseOptions) <- useApiOpts apiOpts
   let authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json"
@@ -125,7 +127,7 @@ uploadBuildGraph apiOpts syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ d
 
 createBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> Url 'Https -> Option 'Https -> m CreateBuildGraphResponse
 createBuildGraph ScotlandYardNinjaOpts {..} url httpOptions = runHTTP $ do
-  let NinjaGraphOpts{..} = syNinjaOpts
+  let NinjaGraphOpts {..} = syNinjaOpts
   let body = object ["display_name" .= buildName]
   resp <- req POST url (ReqBodyJson body) jsonResponse httpOptions
   pure (responseBody resp)
@@ -137,30 +139,31 @@ uploadBuildGraphChunk url httpOptions targets = do
   pure ()
 
 updateProgress :: Has Logger sig m => Progress -> m ()
-updateProgress Progress{..} =
-  logSticky ( "[ "
-            <> annotate (color Cyan) (pretty pQueued)
-            <> " Waiting / "
-            <> annotate (color Yellow) (pretty pRunning)
-            <> " Running / "
-            <> annotate (color Green) (pretty pCompleted)
-            <> " Completed"
-            <> " ]" )
+updateProgress Progress {..} =
+  logSticky
+    ( "[ "
+        <> annotate (color Cyan) (pretty pQueued)
+        <> " Waiting / "
+        <> annotate (color Yellow) (pretty pRunning)
+        <> " Running / "
+        <> annotate (color Green) (pretty pCompleted)
+        <> " Completed"
+        <> " ]"
+    )
 
 -- chunk a list of Values by their size, trying to keep each chunk of values
 -- under maxByteSize. This is not guaranteed if one of the elements in the list is
 -- greater than maxByteSize.
 chunkedBySize :: (ToJSON a) => [a] -> Int -> [[a]]
 chunkedBySize d maxByteSize =
-    chunked
+  chunked
   where
     (_, chunked) = foldr (addToList maxByteSize) (0, [[]]) d
     addToList :: (ToJSON a) => Int -> a -> (Int, [[a]]) -> (Int, [[a]])
-    addToList maxLength ele (currentLength, (first:rest)) =
-      if (currentLength + newLength) > maxLength then
-        (newLength, [ele]:first:rest)
-      else
-        (newLength + currentLength, (ele:first):rest)
+    addToList maxLength ele (currentLength, (first : rest)) =
+      if (currentLength + newLength) > maxLength
+        then (newLength, [ele] : first : rest)
+        else (newLength + currentLength, (ele : first) : rest)
       where
         newLength = fromIntegral $ BS.length $ encode ele
     addToList _ ele (n, []) = (n, [[ele]])

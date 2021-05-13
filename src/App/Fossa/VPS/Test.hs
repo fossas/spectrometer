@@ -5,14 +5,14 @@ module App.Fossa.VPS.Test
 where
 
 import App.Fossa.API.BuildWait
-import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
-import qualified App.Fossa.VPS.Scan.Core as VPSCore
-import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
+import App.Fossa.VPS.Scan.Core qualified as VPSCore
+import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Exec
@@ -67,10 +67,9 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
           logError $ "Test failed. Number of issues found: " <> pretty n
           if null (issuesIssues issues)
             then logError "Check the webapp for more details, or use a full-access API key (currently using a push-only API key)"
-            else
-              case outputType of
-                TestOutputPretty -> pure ()
-                TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+            else case outputType of
+              TestOutputPretty -> pure ()
+              TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
           sendIO exitFailure
 
     case result of

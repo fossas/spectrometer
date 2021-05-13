@@ -12,9 +12,9 @@ import Effect.Exec
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import qualified Strategy.Maven.PluginStrategy as Plugin
-import qualified Strategy.Maven.Pom as Pom
-import qualified Strategy.Maven.Pom.Closure as PomClosure
+import Strategy.Maven.PluginStrategy qualified as Plugin
+import Strategy.Maven.Pom qualified as Pom
+import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Types
 
 discover ::
@@ -34,7 +34,9 @@ discover dir = map (mkProject dir) <$> PomClosure.findProjects dir
 mkProject ::
   (Has ReadFS sig n, Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) =>
   -- | basedir; required for licenses
-  Path Abs Dir -> PomClosure.MavenProjectClosure -> DiscoveredProject n
+  Path Abs Dir ->
+  PomClosure.MavenProjectClosure ->
+  DiscoveredProject n
 mkProject basedir closure =
   DiscoveredProject
     { projectType = "maven",

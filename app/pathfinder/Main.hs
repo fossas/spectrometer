@@ -1,8 +1,7 @@
 module Main (main) where
 
-import Prelude
-
 import App.Pathfinder.Main (appMain)
+import Prelude
 
 main :: IO ()
 main = appMain

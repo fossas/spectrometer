@@ -3,10 +3,10 @@ module App.Fossa.Container.Analyze
   )
 where
 
-import App.Fossa.Analyze (ScanDestination (..))
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
-import App.Fossa.Container (ImageText (..), runSyft, toContainerScan, extractRevision)
-import App.Fossa.FossaAPIV1 (UploadResponse(uploadError, uploadLocator), uploadContainerScan)
+import App.Fossa.Analyze (ScanDestination (..))
+import App.Fossa.Container (ImageText (..), extractRevision, runSyft, toContainerScan)
+import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift)

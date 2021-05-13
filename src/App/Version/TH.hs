@@ -7,11 +7,11 @@ where
 
 import Control.Carrier.Diagnostics (resultValue, runDiagnostics)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
-import qualified Data.ByteString.Lazy as BSL
+import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Data.Versions (errorBundlePretty, semver)
 import Effect.Exec
   ( AllowErr (Always),

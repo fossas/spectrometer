@@ -8,13 +8,13 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
-import qualified Control.Effect.Diagnostics as Diag
+import Control.Effect.Diagnostics qualified as Diag
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing
 import Path
-import qualified Strategy.Cocoapods.Podfile as Podfile
-import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
+import Strategy.Cocoapods.Podfile qualified as Podfile
+import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]

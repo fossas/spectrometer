@@ -6,8 +6,8 @@ module UserSpecified.YamlDependenciesSpec
 where
 
 import Control.Algebra
-import qualified Data.ByteString as BS
-import qualified Data.Map.Strict as M
+import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as M
 import Data.Yaml
 import DepTypes
 import Effect.Grapher

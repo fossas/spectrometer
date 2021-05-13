@@ -9,8 +9,8 @@ where
 
 import Data.ByteString (ByteString)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 
 splitOnceOn :: Text -> Text -> (Text, Text)
 splitOnceOn needle haystack = (first, strippedRemaining)
@@ -37,8 +37,9 @@ splitOnceOnEnd needle haystack = (strippedInitial, end)
 -- Nothing
 breakOnAndRemove :: Text -> Text -> Maybe (Text, Text)
 breakOnAndRemove needle haystack
-  | (before,after) <- T.breakOn needle haystack
-  , T.isPrefixOf needle after = Just (before, T.drop (T.length needle) after)
+  | (before, after) <- T.breakOn needle haystack,
+    T.isPrefixOf needle after =
+    Just (before, T.drop (T.length needle) after)
   | otherwise = Nothing
 
 underBS :: (ByteString -> ByteString) -> Text -> Text

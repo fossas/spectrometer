@@ -1,6 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-
 module App.Fossa.Compatibility
   ( compatibilityMain,
     argumentParser,
@@ -10,15 +9,15 @@ where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withCLIv1Binary)
 import Control.Effect.Lift (sendIO)
-import Data.Text (Text, pack)
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Foldable (traverse_)
-import Effect.Exec (CmdFailure(cmdFailureStdout), AllowErr (Never), Command (..), exec, runExecIO, cmdFailureStderr)
-import Path
-import qualified Data.ByteString.Lazy.Char8 as BL
-import Options.Applicative (Parser, argument, help, metavar, str)
-import System.Exit (exitFailure, exitSuccess)
+import Data.Text (Text, pack)
 import Data.Text.Lazy.Encoding
-import Effect.Logger (Pretty(pretty), logInfo, logSticky, Severity(SevInfo), withLogger)
+import Effect.Exec (AllowErr (Never), CmdFailure (cmdFailureStdout), Command (..), cmdFailureStderr, exec, runExecIO)
+import Effect.Logger (Pretty (pretty), Severity (SevInfo), logInfo, logSticky, withLogger)
+import Options.Applicative (Parser, argument, help, metavar, str)
+import Path
+import System.Exit (exitFailure, exitSuccess)
 
 type Argument = Text
 
@@ -35,7 +34,7 @@ compatibilityMain args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1B
 
   case cmd of
     Left err -> do
-      traverse_ (\accessor -> logInfo . pretty . decodeUtf8 $ accessor err)  [cmdFailureStderr, cmdFailureStdout]
+      traverse_ (\accessor -> logInfo . pretty . decodeUtf8 $ accessor err) [cmdFailureStderr, cmdFailureStdout]
       sendIO exitFailure
     Right out -> sendIO (BL.putStr out >> exitSuccess)
 

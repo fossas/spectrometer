@@ -12,11 +12,11 @@ module App.Fossa.Configuration
 where
 
 import App.Types
-import qualified Control.Carrier.Diagnostics as Diag
+import Control.Applicative (Alternative ((<|>)))
+import Control.Carrier.Diagnostics qualified as Diag
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?))
 import Data.Text (Text)
 import Effect.ReadFS
-import Control.Applicative ( Alternative ((<|>)) )
 import Path
 import System.Exit (die)
 

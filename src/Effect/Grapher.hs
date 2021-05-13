@@ -24,7 +24,7 @@ module Effect.Grapher
     MappedGrapherC,
     mapping,
     withMapping,
-    MappingError(..),
+    MappingError (..),
 
     -- * Re-exports
     module X,
@@ -32,19 +32,19 @@ module Effect.Grapher
 where
 
 import Control.Algebra as X
-import Control.Carrier.Diagnostics (ToDiagnostic(..))
+import Control.Carrier.Diagnostics (ToDiagnostic (..))
 import Control.Carrier.State.Strict
 import Control.Monad.IO.Class (MonadIO)
 import Data.Kind (Type)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
+import Graphing qualified as G
 import Prettyprinter (pretty)
-import qualified Graphing as G
 
 data Grapher ty (m :: Type -> Type) k where
   Direct :: ty -> Grapher ty m ()
@@ -167,7 +167,6 @@ unlabel f labels = G.gmap (\ty -> f ty (findLabels ty))
 -- third primitive, 'mapping'.
 --
 -- > mapping :: Has CabalGrapher sig m => UnitId -> CabalPackage -> m ()
-
 type MappedGrapher ty val = State (Map ty val) :+: Grapher ty
 
 type MappedGrapherC ty val m a = StateC (Map ty val) (GrapherC ty m) a
@@ -191,7 +190,9 @@ withMapping f act = do
   pure result
 
 -- | Errors that may occur when using 'withMapping'
-newtype MappingError = MissingKey Text -- ^ A key did not have an associated value
+newtype MappingError
+  = -- | A key did not have an associated value
+    MissingKey Text
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic MappingError where

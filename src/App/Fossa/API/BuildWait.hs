@@ -6,13 +6,13 @@ module App.Fossa.API.BuildWait
   )
 where
 
-import qualified App.Fossa.FossaAPIV1 as Fossa
-import qualified App.Fossa.VPS.Scan.Core as VPSCore
-import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
+import App.Fossa.FossaAPIV1 qualified as Fossa
+import App.Fossa.VPS.Scan.Core qualified as VPSCore
+import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Async as Async
+import Control.Concurrent.Async qualified as Async
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Functor (($>))
 import Data.Text (Text)

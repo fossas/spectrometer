@@ -3,9 +3,9 @@ module Clojure.ClojureSpec
   )
 where
 
-import qualified Data.EDN as EDN
-import qualified Data.Map.Strict as M
-import qualified Data.Text.IO as TIO
+import Data.EDN qualified as EDN
+import Data.Map.Strict qualified as M
+import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
 import Strategy.Leiningen

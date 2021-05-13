@@ -21,34 +21,35 @@ import Data.Aeson.Types
 import Data.Foldable (for_)
 import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
-import qualified Graphing as G
+import Graphing qualified as G
 import Path
 import Types
 
 newtype BuildPlan = BuildPlan {installPlans :: [InstallPlan]} deriving (Eq, Ord, Show)
+
 newtype Component = Component {componentDeps :: Set PlanId} deriving (Eq, Ord, Show)
+
 newtype PlanId = PlanId {unPlanId :: Text} deriving (FromJSON, Eq, Ord, Show)
 
-data InstallPlan
-  = InstallPlan
-      { planType :: PlanType,
-        planId :: PlanId,
-        planName :: Text,
-        planVersion :: Text,
-        planDepends :: Set PlanId,
-        planStyle :: Maybe PlanStyle,
-        planComponents :: Set PlanId
-      }
+data InstallPlan = InstallPlan
+  { planType :: PlanType,
+    planId :: PlanId,
+    planName :: Text,
+    planVersion :: Text,
+    planDepends :: Set PlanId,
+    planStyle :: Maybe PlanStyle,
+    planComponents :: Set PlanId
+  }
   deriving (Eq, Ord, Show)
 
 data PlanStyle
@@ -147,7 +148,8 @@ getDeps = analyze . cabalDir
 
 data CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
 doGraph plan = do

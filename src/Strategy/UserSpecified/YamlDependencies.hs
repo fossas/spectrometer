@@ -13,12 +13,12 @@ where
 import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.Aeson.Types (Parser)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Text (Text, unpack)
 import DepTypes
 import Effect.ReadFS
 import Graphing (Graphing)
-import qualified Graphing
+import Graphing qualified
 import Path
 import Types
 

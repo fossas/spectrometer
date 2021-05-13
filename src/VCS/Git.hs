@@ -5,14 +5,14 @@ module VCS.Git
 where
 
 import App.Fossa.FossaAPIV1 (Contributors (..))
-import qualified Control.Carrier.Diagnostics as Diag
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString.Lazy (toStrict)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Data.Text.Extra (splitOnceOn)
 import Data.Time
 import Data.Time.Format.ISO8601 (iso8601Show)

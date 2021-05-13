@@ -19,9 +19,9 @@ deriveRecordable tyName = do
         (pure [])
         (appT [t|Recordable|] (appT (conT tyName) (varT (mkName "m"))))
         -- recordKey :: ...
-        [ recordKeyMethod tyCons
-        -- recordValue :: ...
-        , recordValueMethod tyCons
+        [ recordKeyMethod tyCons,
+          -- recordValue :: ...
+          recordValueMethod tyCons
         ]
     ]
 

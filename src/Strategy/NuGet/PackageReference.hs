@@ -1,28 +1,28 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.NuGet.PackageReference
-  ( discover
-  , findProjects
-  , getDeps
-  , mkProject
-  , buildGraph
-
-  , PackageReference(..)
-  , ItemGroup(..)
-  , Package(..)
-  ) where
+  ( discover,
+    findProjects,
+    getDeps,
+    mkProject,
+    buildGraph,
+    PackageReference (..),
+    ItemGroup (..),
+    Package (..),
+  )
+where
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
-import qualified Data.List as L
-import qualified Data.Map.Strict as M
+import Data.List qualified as L
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
-import qualified Graphing
+import Graphing qualified
 import Parse.XML
 import Path
 import Types
@@ -62,16 +62,19 @@ analyze' file = buildGraph <$> readContentsXML @PackageReference file
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 newtype ItemGroup = ItemGroup
   { dependencies :: [Package]
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 data Package = Package
-  { depID      :: Text
-  , depVersion :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  { depID :: Text,
+    depVersion :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromXML PackageReference where
   parseElement el = PackageReference <$> children "ItemGroup" el
@@ -82,17 +85,18 @@ instance FromXML ItemGroup where
 instance FromXML Package where
   parseElement el =
     Package <$> attr "Include" el
-            <*> optional (child "Version" el)
+      <*> optional (child "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency
 buildGraph project = Graphing.fromList (map toDependency direct)
-    where
+  where
     direct = concatMap dependencies (groups project)
-    toDependency Package{..} =
-      Dependency { dependencyType = NuGetType
-               , dependencyName = depID
-               , dependencyVersion =  fmap CEq depVersion
-               , dependencyLocations = []
-               , dependencyEnvironments = []
-               , dependencyTags = M.empty
-               }
+    toDependency Package {..} =
+      Dependency
+        { dependencyType = NuGetType,
+          dependencyName = depID,
+          dependencyVersion = fmap CEq depVersion,
+          dependencyLocations = [],
+          dependencyEnvironments = [],
+          dependencyTags = M.empty
+        }

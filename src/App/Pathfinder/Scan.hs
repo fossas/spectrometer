@@ -2,37 +2,38 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Pathfinder.Scan
-  ( scanMain
-  ) where
+  ( scanMain,
+  )
+where
 
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
 import Control.Carrier.TaskPool
 import Control.Concurrent
-import qualified Control.Carrier.Diagnostics as Diag
 import Control.Effect.Exception as Exc
 import Control.Effect.Lift (sendIO)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bool (bool)
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Function ((&))
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Projects (withDiscoveredProjects)
+import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Path
-import qualified Path.IO as PIO
-import qualified Strategy.Maven as Maven
-import qualified Strategy.NuGet.Nuspec as Nuspec
+import Path.IO qualified as PIO
+import Strategy.Maven qualified as Maven
+import Strategy.NuGet.Nuspec qualified as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
 import Types
-import Effect.Exec
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
 scanMain basedir debug = do
@@ -53,11 +54,12 @@ runLicenseAnalysis project = do
   Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
 
 scan ::
-  ( Has (Lift IO) sig m
-  , Has Logger sig m
-  , MonadIO m
-  )
-  => Path Abs Dir -> m ()
+  ( Has (Lift IO) sig m,
+    Has Logger sig m,
+    MonadIO m
+  ) =>
+  Path Abs Dir ->
+  m ()
 scan basedir = runFinally $ do
   sendIO $ PIO.setCurrentDir basedir
   capabilities <- sendIO getNumCapabilities
@@ -75,7 +77,6 @@ scan basedir = runFinally $ do
 
   logSticky ""
 
-
 discoverFuncs ::
   ( Has Diag.Diagnostics sig m,
     Has (Lift IO) sig m,
@@ -91,27 +92,31 @@ discoverFuncs ::
 discoverFuncs = [Maven.discover, Nuspec.discover]
 
 data ProjectLicenseScan = ProjectLicenseScan
-  { licenseStrategyType :: Text
-  , licenseStrategyName :: Text
-  , discoveredLicenses  :: [LicenseResult]
-  } deriving (Eq, Ord, Show)
+  { licenseStrategyType :: Text,
+    licenseStrategyName :: Text,
+    discoveredLicenses :: [LicenseResult]
+  }
+  deriving (Eq, Ord, Show)
 
 instance ToJSON ProjectLicenseScan where
-  toJSON ProjectLicenseScan{..} = object
-    [ "type"    .= licenseStrategyType
-    , "name"    .= licenseStrategyName
-    , "files"   .= discoveredLicenses
-    ]
+  toJSON ProjectLicenseScan {..} =
+    object
+      [ "type" .= licenseStrategyType,
+        "name" .= licenseStrategyName,
+        "files" .= discoveredLicenses
+      ]
 
 data CompletedLicenseScan = CompletedLicenseScan
-  { completedLicenseName     :: Text
-  , completedLicenses        :: [LicenseResult]
-  } deriving (Eq, Ord, Show)
+  { completedLicenseName :: Text,
+    completedLicenses :: [LicenseResult]
+  }
+  deriving (Eq, Ord, Show)
 
 instance ToJSON CompletedLicenseScan where
-    toJSON CompletedLicenseScan{..} = object
-      [ "name"            .=  completedLicenseName
-      , "licenseResults"  .=  completedLicenses
+  toJSON CompletedLicenseScan {..} =
+    object
+      [ "name" .= completedLicenseName,
+        "licenseResults" .= completedLicenses
       ]
 
 mkLicenseScan :: DiscoveredProject n -> [LicenseResult] -> ProjectLicenseScan
@@ -123,12 +128,14 @@ mkLicenseScan project licenses =
     }
 
 updateProgress :: Has Logger sig m => Progress -> m ()
-updateProgress Progress{..} =
-  logSticky ( "[ "
-            <> annotate (color Cyan) (pretty pQueued)
-            <> " Waiting / "
-            <> annotate (color Yellow) (pretty pRunning)
-            <> " Running / "
-            <> annotate (color Green) (pretty pCompleted)
-            <> " Completed"
-            <> " ]" )
+updateProgress Progress {..} =
+  logSticky
+    ( "[ "
+        <> annotate (color Cyan) (pretty pQueued)
+        <> " Waiting / "
+        <> annotate (color Yellow) (pretty pRunning)
+        <> " Running / "
+        <> annotate (color Green) (pretty pCompleted)
+        <> " Completed"
+        <> " ]"
+    )

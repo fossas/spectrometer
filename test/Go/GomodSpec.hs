@@ -2,11 +2,11 @@ module Go.GomodSpec (spec) where
 
 import Control.Algebra (run)
 import Data.Function ((&))
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.SemVer (version)
 import Data.SemVer.Internal (Identifier (..))
 import Data.Text (Text)
-import qualified Data.Text.IO as TIO
+import Data.Text.IO qualified as TIO
 import DepTypes (DepType (GoType), Dependency (..), VerConstraint (CEq))
 import Effect.Grapher (direct, evalGrapher)
 import Graphing (Graphing (..))
@@ -53,7 +53,6 @@ trivialGraph = run . evalGrapher $ do
   direct $ dep "github.com/pkg/one" "v1.0.0"
   direct $ dep "github.com/pkg/overridden" "overridden"
   direct $ dep "github.com/pkg/three/v3" "v3.0.0"
-
 
 localReplaceGomod :: Gomod
 localReplaceGomod =

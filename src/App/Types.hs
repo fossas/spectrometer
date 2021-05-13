@@ -19,19 +19,21 @@ data OverrideProject = OverrideProject
   }
 
 data ProjectMetadata = ProjectMetadata
-  { projectTitle :: Maybe Text
-  , projectUrl :: Maybe Text
-  , projectJiraKey :: Maybe Text
-  , projectLink :: Maybe Text
-  , projectTeam :: Maybe Text
-  , projectPolicy :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  { projectTitle :: Maybe Text,
+    projectUrl :: Maybe Text,
+    projectJiraKey :: Maybe Text,
+    projectLink :: Maybe Text,
+    projectTeam :: Maybe Text,
+    projectPolicy :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
 
 data ProjectRevision = ProjectRevision
-  { projectName :: Text
-  , projectRevision :: Text
-  , projectBranch :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  { projectName :: Text,
+    projectRevision :: Text,
+    projectBranch :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
 
 data NinjaGraphCLIOptions = NinjaGraphCLIOptions
   { ninjaBaseDir :: FilePath,

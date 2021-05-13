@@ -1,45 +1,48 @@
 module Ruby.BundleShowSpec
-  ( spec
-  ) where
+  ( spec,
+  )
+where
 
-import qualified Data.Map.Strict as M
-import qualified Data.Text.IO as TIO
-import Text.Megaparsec
-
+import Data.Map.Strict qualified as M
+import Data.Text.IO qualified as TIO
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Ruby.BundleShow
-
 import Test.Hspec
+import Text.Megaparsec
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
-  direct $ Dependency { dependencyType = GemType
-                      , dependencyName = "pkgOne"
-                      , dependencyVersion = Just (CEq "1.0.0")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
-  direct $ Dependency { dependencyType = GemType
-                      , dependencyName = "pkgTwo"
-                      , dependencyVersion = Just (CEq "2.0.0")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
+  direct $
+    Dependency
+      { dependencyType = GemType,
+        dependencyName = "pkgOne",
+        dependencyVersion = Just (CEq "1.0.0"),
+        dependencyLocations = [],
+        dependencyEnvironments = [],
+        dependencyTags = M.empty
+      }
+  direct $
+    Dependency
+      { dependencyType = GemType,
+        dependencyName = "pkgTwo",
+        dependencyVersion = Just (CEq "2.0.0"),
+        dependencyLocations = [],
+        dependencyEnvironments = [],
+        dependencyTags = M.empty
+      }
 
 bundleShowOutput :: [BundleShowDep]
 bundleShowOutput =
   [ BundleShowDep
-    { depName = "pkgOne"
-    , depVersion = "1.0.0"
-    }
-  , BundleShowDep
-    { depName = "pkgTwo"
-    , depVersion = "2.0.0"
-    }
+      { depName = "pkgOne",
+        depVersion = "1.0.0"
+      },
+    BundleShowDep
+      { depName = "pkgTwo",
+        depVersion = "2.0.0"
+      }
   ]
 
 spec :: Spec

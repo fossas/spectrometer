@@ -7,13 +7,13 @@ module Strategy.Composer
 where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
-import Data.Set (Set)
 import Data.Aeson.Types
 import Data.Foldable (traverse_)
-import Data.Text (Text)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
@@ -52,9 +52,10 @@ getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m (Gr
 getDeps project = buildGraph <$> readContentsJson @ComposerLock (composerLock project)
 
 data ComposerProject = ComposerProject
-  { composerDir :: Path Abs Dir
-  , composerLock :: Path Abs File
-  } deriving (Eq, Ord, Show)
+  { composerDir :: Path Abs Dir,
+    composerLock :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
 
 data ComposerLock = ComposerLock
   { lockPackages :: [CompDep],
@@ -110,15 +111,16 @@ buildGraph lock = run . withLabeling toDependency $ do
     addEdge pkg name _ = edge pkg (CompPkg name)
 
     toDependency :: CompPkg -> Set CompLabel -> Dependency
-    toDependency pkg = foldr addLabel $
-      Dependency
-        { dependencyType = ComposerType,
-          dependencyName = pkgName pkg,
-          dependencyVersion = Nothing,
-          dependencyLocations = [],
-          dependencyEnvironments = [],
-          dependencyTags = M.empty
-        }
+    toDependency pkg =
+      foldr addLabel $
+        Dependency
+          { dependencyType = ComposerType,
+            dependencyName = pkgName pkg,
+            dependencyVersion = Nothing,
+            dependencyLocations = [],
+            dependencyEnvironments = [],
+            dependencyTags = M.empty
+          }
 
     addLabel :: CompLabel -> Dependency -> Dependency
     addLabel (DepVersion ver) dep = dep {dependencyVersion = Just (CEq ver)}

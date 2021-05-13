@@ -12,8 +12,8 @@ import Effect.Exec
 import Effect.ReadFS
 import Graphing
 import Path
-import qualified Strategy.Go.GoList as GoList
-import qualified Strategy.Go.Gomod as Gomod
+import Strategy.Go.GoList qualified as GoList
+import Strategy.Go.Gomod qualified as Gomod
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]

@@ -1,14 +1,15 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Carthage.CarthageSpec
-  ( spec
-  ) where
+  ( spec,
+  )
+where
 
 import Control.Carrier.Diagnostics
 import Data.Function ((&))
 import Effect.ReadFS
 import GraphUtil
-import qualified Graphing as G
+import Graphing qualified as G
 import Path
 import Path.IO (makeAbsolute)
 import Strategy.Carthage
@@ -22,9 +23,10 @@ testProjectComplex = $(mkRelFile "test/Carthage/testdata/testproject/Cartfile.re
 
 spec :: Spec
 spec = do
-  let runIt f = analyze f
-        & runReadFSIO
-        & runDiagnostics
+  let runIt f =
+        analyze f
+          & runReadFSIO
+          & runDiagnostics
 
   emptyResult <- runIO $ runIt =<< makeAbsolute testProjectEmpty
   complexResult <- runIO $ runIt =<< makeAbsolute testProjectComplex
@@ -41,19 +43,23 @@ spec = do
         Right result -> do
           let graph = resultValue result
           expectDirect [nimble713, swinject, ocmock] graph
-          expectDeps [ nimble713
-                     , nimble703
-                     , swinject
-                     , ocmock
-                     , quick
-                     , cwlPreconditionTesting
-                     , cwlCatchException
-                     ] graph
-          expectEdges [ (nimble713, cwlPreconditionTesting)
-                      , (nimble713, cwlCatchException)
-                      , (swinject, nimble703)
-                      , (swinject, quick)
-                      ] graph
+          expectDeps
+            [ nimble713,
+              nimble703,
+              swinject,
+              ocmock,
+              quick,
+              cwlPreconditionTesting,
+              cwlCatchException
+            ]
+            graph
+          expectEdges
+            [ (nimble713, cwlPreconditionTesting),
+              (nimble713, cwlCatchException),
+              (swinject, nimble703),
+              (swinject, quick)
+            ]
+            graph
 
 nimble713 :: ResolvedEntry
 nimble713 = ResolvedEntry GithubType "Quick/Nimble" "v7.1.3"

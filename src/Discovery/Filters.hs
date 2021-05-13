@@ -6,13 +6,13 @@ module Discovery.Filters
   )
 where
 
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Semigroup (sconcat)
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Void (Void)
 import Path
 import Text.Megaparsec

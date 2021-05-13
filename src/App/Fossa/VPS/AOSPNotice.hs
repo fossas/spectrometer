@@ -1,21 +1,21 @@
 module App.Fossa.VPS.AOSPNotice
   ( aospNoticeMain,
-  ) where
-
-import Control.Effect.Lift (sendIO, Lift)
-import Control.Carrier.Diagnostics
-import Effect.Exec
-import System.Exit (exitFailure)
+  )
+where
 
 import App.Fossa.EmbeddedBinary
+import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), OverrideProject)
-import Effect.Logger
+import Control.Carrier.Diagnostics
+import Control.Effect.Lift (Lift, sendIO)
 import Data.Text (Text)
-import App.Fossa.ProjectInference
-import Fossa.API.Types (ApiOpts(..))
-import Path (Path, Abs, Dir)
+import Effect.Exec
+import Effect.Logger
+import Fossa.API.Types (ApiOpts (..))
+import Path (Abs, Dir, Path)
+import System.Exit (exitFailure)
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()
 aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withLogger logSeverity $ do
@@ -29,10 +29,18 @@ aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFi
 ----- main logic
 
 aospNoticeGenerate ::
-  ( Has Diagnostics sig m
-  , Has Logger sig m
-  , Has (Lift IO) sig m
-  ) => Path Abs Dir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> BinaryPaths -> m ()
+  ( Has Diagnostics sig m,
+    Has Logger sig m,
+    Has (Lift IO) sig m
+  ) =>
+  Path Abs Dir ->
+  Severity ->
+  OverrideProject ->
+  NinjaScanID ->
+  NinjaFilePaths ->
+  ApiOpts ->
+  BinaryPaths ->
+  m ()
 aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts binaryPaths = do
   projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
 
@@ -42,6 +50,6 @@ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePath
   stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
   logInfo $ pretty stdout
 
-runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
+runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 runWiggins binaryPaths opts = do
   execWiggins binaryPaths opts

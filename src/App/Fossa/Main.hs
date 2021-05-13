@@ -6,22 +6,22 @@ module App.Fossa.Main
   )
 where
 
-import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), RecordMode (..), analyzeMain)
-import App.Fossa.Container (imageTextArg, ImageText (..), parseSyftOutputMain, dumpSyftScanMain)
-import qualified App.Fossa.Container.Analyze as ContainerAnalyze
-import qualified App.Fossa.Container.Test as ContainerTest
-import App.Fossa.Compatibility (argumentParser, Argument, compatibilityMain)
-import qualified App.Fossa.EmbeddedBinary as Embed
-import App.Fossa.ListTargets (listTargetsMain)
+import App.Fossa.Analyze (RecordMode (..), ScanDestination (..), UnpackArchives (..), analyzeMain)
+import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration
-import qualified App.Fossa.Report as Report
-import qualified App.Fossa.Test as Test
-import App.Fossa.VPS.NinjaGraph
-import qualified App.Fossa.VPS.Report as VPSReport
-import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
+import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, parseSyftOutputMain)
+import App.Fossa.Container.Analyze qualified as ContainerAnalyze
+import App.Fossa.Container.Test qualified as ContainerTest
+import App.Fossa.EmbeddedBinary qualified as Embed
+import App.Fossa.ListTargets (listTargetsMain)
+import App.Fossa.Report qualified as Report
+import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
-import qualified App.Fossa.VPS.Test as VPSTest
-import App.Fossa.VPS.Types (FilterExpressions (..), NinjaScanID (..), NinjaFilePaths (..))
+import App.Fossa.VPS.NinjaGraph
+import App.Fossa.VPS.Report qualified as VPSReport
+import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
+import App.Fossa.VPS.Test qualified as VPSTest
+import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
 import App.OptionExtensions
 import App.Types
 import App.Util (validateDir, validateFile)
@@ -33,37 +33,39 @@ import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Discovery.Filters (BuildTargetFilter (..), filterParser)
 import Effect.Logger
-import Fossa.API.Types (ApiKey(..), ApiOpts(..))
+import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Options.Applicative
+import Path
 import System.Environment (lookupEnv)
 import System.Exit (die)
-import qualified System.Info as SysInfo
+import System.Info qualified as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
-import Path
 
 windowsOsName :: String
 windowsOsName = "mingw32"
 
 mainPrefs :: ParserPrefs
-mainPrefs = prefs $ mconcat
-  [ helpShowGlobals,
-    showHelpOnError,
-    subparserInline
-  ]
+mainPrefs =
+  prefs $
+    mconcat
+      [ helpShowGlobals,
+        showHelpOnError,
+        subparserInline
+      ]
 
 mergeFileCmdConfig :: CmdOptions -> ConfigFile -> CmdOptions
 mergeFileCmdConfig cmd file =
   CmdOptions
-    { optDebug = optDebug cmd
-    , optBaseUrl = optBaseUrl cmd <|> (configServer file >>= mkURI)
-    , optProjectName = optProjectName cmd <|> (configProject file >>= configProjID)
-    , optProjectRevision = optProjectRevision cmd <|> (configRevision file >>= configCommit)
-    , optAPIKey = optAPIKey cmd <|> configApiKey file
-    , optCommand = optCommand cmd
+    { optDebug = optDebug cmd,
+      optBaseUrl = optBaseUrl cmd <|> (configServer file >>= mkURI),
+      optProjectName = optProjectName cmd <|> (configProject file >>= configProjID),
+      optProjectRevision = optProjectRevision cmd <|> (configRevision file >>= configCommit),
+      optAPIKey = optAPIKey cmd <|> configApiKey file,
+      optCommand = optCommand cmd
     }
 
 appMain :: IO ()
@@ -167,10 +169,8 @@ appMain = do
       basedir <- validateDir dir
       for_ Embed.allBins $ Embed.dumpEmbeddedBinary $ unBaseDir basedir
 
-
 dieOnWindows :: String -> IO ()
 dieOnWindows op = when (SysInfo.os == windowsOsName) $ die $ "Operation is not supported on Windows: " <> op
-
 
 parseCommaSeparatedFileArg :: Text -> IO [Path Abs File]
 parseCommaSeparatedFileArg arg = sequence (validateFile . T.unpack <$> T.splitOn "," arg)
@@ -277,9 +277,9 @@ analyzeOpts =
 
 analyzeReplayOpt :: Parser RecordMode
 analyzeReplayOpt =
-      flag' RecordModeRecord (long "record" <> hidden)
-  <|> (RecordModeReplay <$> strOption (long "replay" <> hidden))
-  <|> pure RecordModeNone
+  flag' RecordModeRecord (long "record" <> hidden)
+    <|> (RecordModeReplay <$> strOption (long "replay" <> hidden))
+    <|> pure RecordModeNone
 
 filterOpt :: Parser BuildTargetFilter
 filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
@@ -456,7 +456,7 @@ containerDumpScanOptions =
 
 compatibilityOpts :: Parser [Argument]
 compatibilityOpts =
-    many argumentParser
+  many argumentParser
 
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
@@ -541,7 +541,7 @@ data VPSTestOptions = VPSTestOptions
   }
 
 newtype ContainerOptions = ContainerOptions
-  { containerCommand :: ContainerCommand }
+  {containerCommand :: ContainerCommand}
 
 data ContainerCommand
   = ContainerAnalyze ContainerAnalyzeOptions
@@ -557,7 +557,7 @@ data ContainerAnalyzeOptions = ContainerAnalyzeOptions
 
 data ContainerTestOptions = ContainerTestOptions
   { containerTestTimeout :: Int,
-    containerTestOutputType:: ContainerTest.TestOutputType,
+    containerTestOutputType :: ContainerTest.TestOutputType,
     containerTestImage :: ImageText
   }
 

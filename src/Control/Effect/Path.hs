@@ -6,7 +6,7 @@ where
 
 import Control.Effect.Lift
 import Path
-import qualified Path.IO as PIO
+import Path.IO qualified as PIO
 import Prelude
 
 withSystemTempDir ::

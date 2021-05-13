@@ -3,36 +3,37 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module App.Fossa.VPS.Types
-( FilterExpressions(..)
-, DepsTarget(..)
-, DepsDependency(..)
-, runHTTP
-, encodeFilterExpressions
-, HTTP(..)
-, HTTPRequestFailed(..)
-, VPSOpts (..)
-, NinjaGraphOpts (..)
-, NinjaScanID (..)
-, NinjaFilePaths (..)
-) where
+  ( FilterExpressions (..),
+    DepsTarget (..),
+    DepsDependency (..),
+    runHTTP,
+    encodeFilterExpressions,
+    HTTP (..),
+    HTTPRequestFailed (..),
+    VPSOpts (..),
+    NinjaGraphOpts (..),
+    NinjaScanID (..),
+    NinjaFilePaths (..),
+  )
+where
 
-import Control.Monad.IO.Class (MonadIO(..))
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
-import Data.Text (Text)
+import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
+import Data.ByteString.Lazy qualified as BSL
+import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Prettyprint.Doc (viaShow)
 import Fossa.API.Types (ApiOpts)
 import Network.HTTP.Req
-import Data.Text.Prettyprint.Doc (viaShow)
-import qualified Data.ByteString.Lazy as BSL
-import Data.Text.Encoding (decodeUtf8)
 import Path
 
-newtype NinjaScanID = NinjaScanID { unNinjaScanID :: Text }
+newtype NinjaScanID = NinjaScanID {unNinjaScanID :: Text}
 
-newtype NinjaFilePaths = NinjaFilePaths { unNinjaFilePaths :: [Path Abs File] }
+newtype NinjaFilePaths = NinjaFilePaths {unNinjaFilePaths :: [Path Abs File]}
 
-newtype FilterExpressions = FilterExpressions { unFilterExpressions :: [Text] }
+newtype FilterExpressions = FilterExpressions {unFilterExpressions :: [Text]}
 
 encodeFilterExpressions :: FilterExpressions -> Text
 encodeFilterExpressions filters = decodeUtf8 $ BSL.toStrict $ encode (unFilterExpressions filters)
@@ -46,48 +47,53 @@ instance ToJSON FilterExpressions where
 -- FIXME: replace these with non-CLI types
 -- VPSOpts in particular is used as a God type, and is very unwieldy in the merged CLI form.
 data VPSOpts = VPSOpts
-  { vpsProjectName :: Text
-  , userProvidedRevision :: Maybe Text  -- FIXME: Since we can now infer a revision, we should rename this field.
-  , skipIprScan :: Bool
-  , fileFilter :: FilterExpressions
+  { vpsProjectName :: Text,
+    userProvidedRevision :: Maybe Text, -- FIXME: Since we can now infer a revision, we should rename this field.
+    skipIprScan :: Bool,
+    fileFilter :: FilterExpressions
   }
+
 -- end FIXME
 
 data DepsTarget = DepsTarget
-  { targetPath :: Text
-  , targetDependencies :: [DepsDependency]
-  , targetInputs :: [DepsDependency]
-  , targetComponentName :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  { targetPath :: Text,
+    targetDependencies :: [DepsDependency],
+    targetInputs :: [DepsDependency],
+    targetComponentName :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
 
 instance ToJSON DepsTarget where
-  toJSON DepsTarget{..} = object
-    [ "path" .= targetPath
-    , "dependencies" .= targetDependencies
-    , "inputs" .= targetInputs
-    , "componentName" .=  targetComponentName
-    ]
+  toJSON DepsTarget {..} =
+    object
+      [ "path" .= targetPath,
+        "dependencies" .= targetDependencies,
+        "inputs" .= targetInputs,
+        "componentName" .= targetComponentName
+      ]
 
 data DepsDependency = DepsDependency
-  { dependencyPath :: Text
-  , dependencyComponentName :: Maybe Text
-  , hasDependencies :: Bool
-  } deriving (Eq, Ord, Show)
+  { dependencyPath :: Text,
+    dependencyComponentName :: Maybe Text,
+    hasDependencies :: Bool
+  }
+  deriving (Eq, Ord, Show)
 
 instance ToJSON DepsDependency where
-  toJSON DepsDependency{..} = object
-    [ "path" .= dependencyPath
-    , "componentName" .= dependencyComponentName
-    , "hasDependencies" .= hasDependencies
-    ]
+  toJSON DepsDependency {..} =
+    object
+      [ "path" .= dependencyPath,
+        "componentName" .= dependencyComponentName,
+        "hasDependencies" .= hasDependencies
+      ]
 
 data NinjaGraphOpts = NinjaGraphOpts
-  { ninjaFossaOpts :: ApiOpts
-  , ninjaGraphNinjaPath :: Maybe FilePath
-  , lunchTarget :: Maybe Text
-  , scanId :: Text
-  , ninjaProjectName :: Text
-  , buildName :: Text
+  { ninjaFossaOpts :: ApiOpts,
+    ninjaGraphNinjaPath :: Maybe FilePath,
+    lunchTarget :: Maybe Text,
+    scanId :: Text,
+    ninjaProjectName :: Text,
+    buildName :: Text
   }
 
 newtype HTTP m a = HTTP {unHTTP :: m a}

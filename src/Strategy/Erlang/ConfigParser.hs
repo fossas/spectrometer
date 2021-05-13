@@ -22,19 +22,20 @@ module Strategy.Erlang.ConfigParser
 where
 
 import Data.Aeson.Types (ToJSON (toJSON))
-import qualified Data.Char as C
-import Data.Functor ( ($>) )
+import Data.Char qualified as C
+import Data.Functor (($>))
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Void
 import GHC.Generics (Generic)
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = Parsec Void Text
 
 newtype AtomText = AtomText {unAtomText :: Text} deriving (Eq, Ord, Show, ToJSON)
+
 newtype ConfigValues = ConfigValues {unConfigValues :: [ErlValue]} deriving (Eq, Ord, Show)
 
 data ErlValue
@@ -54,7 +55,6 @@ instance ToJSON ErlValue where
     ErlFloat a -> toJSON a
     ErlArray a -> toJSON a
     ErlTuple a -> toJSON a
-
 
 alphaNumSeq :: [Char]
 alphaNumSeq = ['0' .. '9'] <> ['A' .. 'Z']
@@ -106,8 +106,7 @@ alphaNumToInt :: Char -> Int
 alphaNumToInt c =
   if C.isDigit c
     then C.digitToInt c
-    else
-      -- Get ascii code offset from 'A' (65), but start at 10 (A is 10 in hex)
+    else -- Get ascii code offset from 'A' (65), but start at 10 (A is 10 in hex)
       C.ord (C.toUpper c) - C.ord 'A' + 10
 
 {-  Erlang-specific: $char

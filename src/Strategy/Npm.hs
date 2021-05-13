@@ -1,18 +1,18 @@
 module Strategy.Npm
-  ( discover
+  ( discover,
   )
 where
 
-import Control.Effect.Diagnostics ((<||>), Diagnostics)
-import qualified Control.Effect.Diagnostics as Diag
+import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Effect.Diagnostics qualified as Diag
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import Graphing
 import Path
-import qualified Strategy.Node.NpmList as NpmList
-import qualified Strategy.Node.NpmLock as NpmLock
-import qualified Strategy.Node.PackageJson as PackageJson
+import Strategy.Node.NpmList qualified as NpmList
+import Strategy.Node.NpmLock qualified as NpmLock
+import Strategy.Node.PackageJson qualified as PackageJson
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]

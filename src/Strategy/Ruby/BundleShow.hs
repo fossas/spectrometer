@@ -1,32 +1,32 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Ruby.BundleShow
-  ( analyze'
-
-  , BundleShowDep(..)
-  , buildGraph
-  , bundleShowParser
+  ( analyze',
+    BundleShowDep (..),
+    buildGraph,
+    bundleShowParser,
   )
-  where
+where
 
 import Control.Effect.Diagnostics
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes
 import Effect.Exec
 import Graphing (Graphing)
-import qualified Graphing
+import Graphing qualified
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
 bundleShowCmd :: Command
-bundleShowCmd = Command
-  { cmdName = "bundle"
-  , cmdArgs = ["show"]
-  , cmdAllowErr = Never
-  }
+bundleShowCmd =
+  Command
+    { cmdName = "bundle",
+      cmdArgs = ["show"],
+      cmdAllowErr = Never
+    }
 
 analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
 analyze' dir = buildGraph <$> execParser bundleShowParser dir bundleShowCmd
@@ -34,50 +34,52 @@ analyze' dir = buildGraph <$> execParser bundleShowParser dir bundleShowCmd
 buildGraph :: [BundleShowDep] -> Graphing Dependency
 buildGraph = Graphing.fromList . map toDependency
   where
-  toDependency BundleShowDep{..} =
-    Dependency { dependencyType = GemType
-               , dependencyName = depName
-               , dependencyVersion = Just (CEq depVersion)
-               , dependencyLocations = []
-               , dependencyEnvironments = []
-               , dependencyTags = M.empty
-               }
+    toDependency BundleShowDep {..} =
+      Dependency
+        { dependencyType = GemType,
+          dependencyName = depName,
+          dependencyVersion = Just (CEq depVersion),
+          dependencyLocations = [],
+          dependencyEnvironments = [],
+          dependencyTags = M.empty
+        }
 
 data BundleShowDep = BundleShowDep
-  { depName    :: Text
-  , depVersion :: Text
-  } deriving (Eq, Ord, Show)
+  { depName :: Text,
+    depVersion :: Text
+  }
+  deriving (Eq, Ord, Show)
 
 type Parser = Parsec Void Text
 
 bundleShowParser :: Parser [BundleShowDep]
 bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof
   where
-  isEndLine :: Char -> Bool
-  isEndLine '\n' = True
-  isEndLine '\r' = True
-  isEndLine _    = False
+    isEndLine :: Char -> Bool
+    isEndLine '\n' = True
+    isEndLine '\r' = True
+    isEndLine _ = False
 
-  -- ignore content until the end of the line
-  ignored :: Parser ()
-  ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
+    -- ignore content until the end of the line
+    ignored :: Parser ()
+    ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
 
-  ignoredLine :: Parser [BundleShowDep]
-  ignoredLine = do
-    ignored
-    pure []
+    ignoredLine :: Parser [BundleShowDep]
+    ignoredLine = do
+      ignored
+      pure []
 
-  findDep :: Parser Text
-  findDep = takeWhileP (Just "dep") (/= ' ')
+    findDep :: Parser Text
+    findDep = takeWhileP (Just "dep") (/= ' ')
 
-  findVersion :: Parser Text
-  findVersion = takeWhileP (Just "version") (/= ')')
+    findVersion :: Parser Text
+    findVersion = takeWhileP (Just "version") (/= ')')
 
-  line :: Parser [BundleShowDep]
-  line = do
-    _ <- chunk "  * "
-    dep <- findDep
-    _ <- chunk " ("
-    version <- findVersion
-    _ <- char ')'
-    pure [BundleShowDep dep version]
+    line :: Parser [BundleShowDep]
+    line = do
+      _ <- chunk "  * "
+      dep <- findDep
+      _ <- chunk " ("
+      version <- findVersion
+      _ <- char ')'
+      pure [BundleShowDep dep version]

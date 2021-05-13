@@ -1,15 +1,16 @@
 module Strategy.Yarn
-  ( discover
-  ) where
+  ( discover,
+  )
+where
 
 import Control.Effect.Diagnostics
 import Discovery.Walk
 import Effect.ReadFS
-import qualified Graphing as G
+import Graphing qualified as G
 import Path
+import Strategy.Node.YarnLock qualified as YarnLock
 import Types
 import Prelude
-import qualified Strategy.Node.YarnLock as YarnLock
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
@@ -21,9 +22,9 @@ findProjects = walk' $ \dir _ files -> do
     Just lock -> do
       let project =
             YarnProject
-            { yarnDir = dir
-            , yarnLock = lock
-            }
+              { yarnDir = dir,
+                yarnLock = lock
+              }
 
       pure ([project], WalkSkipSome ["node_modules"])
 
@@ -41,6 +42,7 @@ getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Grap
 getDeps = YarnLock.analyze' . yarnLock
 
 data YarnProject = YarnProject
-  { yarnDir :: Path Abs Dir
-  , yarnLock :: Path Abs File
-  } deriving (Eq, Ord, Show)
+  { yarnDir :: Path Abs Dir,
+    yarnLock :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)

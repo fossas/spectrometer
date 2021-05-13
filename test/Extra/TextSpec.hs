@@ -1,10 +1,11 @@
-module Extra.TextSpec (
-    spec
-) where
+module Extra.TextSpec
+  ( spec,
+  )
+where
 
-import qualified Test.Hspec as Test
-import Prelude
 import Data.Text.Extra
+import Test.Hspec qualified as Test
+import Prelude
 
 spec :: Test.Spec
 spec = do

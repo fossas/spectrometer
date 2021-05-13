@@ -1,10 +1,11 @@
 {-# LANGUAGE GADTs #-}
 
 module Control.Effect.TaskPool
-  ( TaskPool(..)
-  , forkTask
-  , module X
-  ) where
+  ( TaskPool (..),
+    forkTask,
+    module X,
+  )
+where
 
 import Control.Algebra as X
 
