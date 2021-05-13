@@ -24,6 +24,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Encoding (encodeUtf8)
+import Data.List.Extra((!?))
 import Network.HTTP.Req
 import Text.URI (URI, render)
 import qualified Unsafe.Coerce as Unsafe
@@ -184,12 +185,6 @@ renderedIssues issues = rendered
         name = fromMaybe (issueRevisionId issue) (locatorSplit !? 1)
         revision = fromMaybe "" (locatorSplit !? 2)
         license = fromMaybe "" (ruleLicenseId =<< issueRule issue)
-
-        (!?) :: [a] -> Int -> Maybe a
-        xs !? ix
-          | length xs <= ix = Nothing
-          | otherwise = Just (xs !! ix)
-
 
 -- | parse a URI for use as a base Url, along with some default options (auth, port, ...)
 useApiOpts :: Has Diagnostics sig m => ApiOpts -> m (Url 'Https, Option 'Https)

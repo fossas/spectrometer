@@ -1,63 +1,61 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Strategy.Conda.EnvironmentYml (
-  analyze',
-  buildGraph,
-  EnvironmentYmlFile(..)
-) where
+module Strategy.Conda.EnvironmentYml
+  ( analyze,
+    buildGraph,
+    EnvironmentYmlFile (..),
+  )
+where
 
+import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Data.Aeson
+import Data.List.Extra ((!?))
+import qualified Data.Map.Strict as M
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import qualified Data.Text as T
 import Effect.Exec
 import Effect.ReadFS
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Graphing (Graphing, fromList)
-import Data.Aeson
-import Data.Text (Text)
-import Data.Maybe (fromMaybe)
-import Data.List.Extra ((!?))
 import Path
 import Types
-
 
 buildGraph :: EnvironmentYmlFile -> Graphing Dependency
 buildGraph envYmlFile = Graphing.fromList (map toDependency allDeps)
   where
     allDeps = map getCondaDepFromText (dependencies envYmlFile)
     toDependency :: CondaDep -> Dependency
-    toDependency CondaDep{..} =
-       Dependency 
-       {
-        dependencyType = CondaType,
-        dependencyName = depName,
-        dependencyVersion = CEq <$> depVersion, -- todo - properly handle version constraints
-        dependencyLocations = [],
-        dependencyEnvironments = [],
-        dependencyTags = M.empty
-      }
+    toDependency CondaDep {..} =
+      Dependency
+        { dependencyType = CondaType,
+          dependencyName = depName,
+          dependencyVersion = CEq <$> depVersion, -- todo - properly handle version constraints
+          dependencyLocations = [],
+          dependencyEnvironments = [],
+          dependencyTags = M.empty
+        }
 
-analyze' :: 
- ( Has ReadFS sig m
- , Has Diagnostics sig m
- )
-  => Path Abs File -> m (Graphing Dependency)
-analyze' envYml = buildGraph <$> readContentsYaml @EnvironmentYmlFile envYml
+analyze ::
+  ( Has ReadFS sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs File ->
+  m (Graphing Dependency)
+analyze envYml = buildGraph <$> readContentsYaml @EnvironmentYmlFile envYml
 
-
--- an example Text: "biopython=1.78=py38haf1e3a3_0"
--- '=' is a delimeter for <name>=<version>=<build>
--- where <version> and <build> are optional
+-- | an example Text: "biopython=1.78=py38haf1e3a3_0"
+--   '=' is a delimeter for <name>=<version>=<build>
+--   where <version> and <build> are optional
 getCondaDepFromText :: Text -> CondaDep
 getCondaDepFromText rcd =
   CondaDep
-  { depName = name
-  , depVersion = version
-  -- Note these aren't currently being used
-  , depBuild = build
-  , depFullVersion = fullVersion
-  }
-  
+    { depName = name,
+      depVersion = version,
+      -- Note these aren't currently being used
+      depBuild = build,
+      depFullVersion = fullVersion
+    }
   where
     depSplit = T.split (== '=') rcd
 
@@ -67,7 +65,8 @@ getCondaDepFromText rcd =
     fullVersion = getFullVersion version build
 
     -- if we have a version AND a build, we combine them to form a full version
-    -- i.e. Just "1.2.3" Just "build" => Just "1.2.3=build"
+    -- >>> getFullVersion (Just "1.2.3") (Just "build")
+    -- Just "1.2.3=build"
     getFullVersion :: Maybe Text -> Maybe Text -> Maybe Text
     getFullVersion a b = do
       aVal <- a
@@ -75,20 +74,22 @@ getCondaDepFromText rcd =
             Just x -> "=" <> x
             Nothing -> ""
       pure (aVal <> bVal)
-data EnvironmentYmlFile =
-    EnvironmentYmlFile
-    { name :: Text
-    , dependencies :: [Text]
-    } deriving (Eq, Ord, Show)
+
+data EnvironmentYmlFile = EnvironmentYmlFile
+  { name :: Text,
+    dependencies :: [Text]
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON EnvironmentYmlFile where
   parseJSON = withObject "EnvironmentYmlFile" $ \obj ->
     EnvironmentYmlFile <$> obj .: "name"
-                       <*> obj .: "dependencies"
+      <*> obj .: "dependencies"
 
 data CondaDep = CondaDep
-  { depName :: Text
-  , depVersion :: Maybe Text  
-  , depBuild :: Maybe Text
-  , depFullVersion :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  { depName :: Text,
+    depVersion :: Maybe Text,
+    depBuild :: Maybe Text,
+    depFullVersion :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)

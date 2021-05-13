@@ -1,6 +1,6 @@
-module Data.List.Extra ( (!?) ) where
+module Data.List.Extra ((!?)) where
 
--- infix operator to access an array (similar to !!)
+-- | infix operator to access an array (similar to 'Data.List.!!')
 -- if the index doesn't exist, return Nothing, otherwise
 -- return Just (value)
 (!?) :: [a] -> Int -> Maybe a

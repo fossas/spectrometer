@@ -109,4 +109,3 @@ depTypeToFetcher = \case
   ComposerType -> "comp"
   HackageType -> "hackage"
   CondaType -> "conda"
-  
