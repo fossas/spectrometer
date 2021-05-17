@@ -13,7 +13,7 @@ import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Foldable (traverse_)
-import Data.Text.Lazy.Encoding (decodeUtf8)
+import Data.String.Conversion (decodeUtf8)
 import Effect.Logger
 import Srclib.Types (parseLocator)
 
@@ -38,7 +38,7 @@ analyze scanDestination override image = do
   logDebug "Running embedded syft binary"
   containerScan <- runSyft image >>= toContainerScan
   case scanDestination of
-    OutputStdout -> logStdout . pretty . decodeUtf8 $ encode containerScan
+    OutputStdout -> logStdout . decodeUtf8 $ encode containerScan
     UploadScan apiOpts projectMeta -> do
       let revision = extractRevision override containerScan
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")

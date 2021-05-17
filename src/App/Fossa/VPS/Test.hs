@@ -14,8 +14,8 @@ import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
+import Data.String.Conversion
 import Data.Text.IO (hPutStrLn)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts, Issues (..))
@@ -70,7 +70,7 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
             else
               case outputType of
                 TestOutputPretty -> pure ()
-                TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+                TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
           sendIO exitFailure
 
     case result of

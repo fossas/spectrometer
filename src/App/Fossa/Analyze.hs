@@ -37,8 +37,8 @@ import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Filters
@@ -225,7 +225,7 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
     FoundSome someProjects -> case destination of
-      OutputStdout -> logStdout . pretty . decodeUtf8 . Aeson.encode . buildResult $ NE.toList someProjects
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode . buildResult $ NE.toList someProjects
       UploadScan apiOpts metadata -> do
         revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
         saveRevision revision

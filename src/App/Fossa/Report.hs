@@ -12,9 +12,9 @@ import Control.Carrier.Diagnostics
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
@@ -71,7 +71,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
         AttributionReport ->
           Fossa.getAttribution apiOpts revision
 
-      logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
+      logStdout . decodeUtf8 $ Aeson.encode jsonValue
 
     case result of
       Left err -> do

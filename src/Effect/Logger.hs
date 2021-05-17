@@ -51,17 +51,16 @@ data Logger (m :: Type -> Type) k where
   Log :: LogMsg -> Logger m ()
 
 data LogMsg
-  = LogNormal Severity (Doc AnsiStyle)
-  | LogStdout (Doc AnsiStyle)
+  = LogMsg Severity (Doc AnsiStyle)
   deriving (Show)
 
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
-log severity logLine = send (Log (LogNormal severity logLine))
+log severity logLine = send (Log (LogMsg severity logLine))
 
 -- | Log a line to stdout. Usually, you want to use 'log', 'logInfo', ..., instead
-logStdout :: Has Logger sig m => Doc AnsiStyle -> m ()
-logStdout logLine = send (Log (LogStdout logLine))
+logStdout :: Has (Lift IO) sig m => Text -> m ()
+logStdout = sendIO . outputConcurrent
 
 data Severity
   = SevDebug
@@ -105,21 +104,16 @@ determineDefaultLogAction sev = do
 
 rawLoggerAction :: Has (Lift IO) sig m => Severity -> LogAction m
 rawLoggerAction minSeverity = LogAction $ \case
-  LogNormal sev logLine -> do
+  LogMsg sev logLine -> do
     let rendered = renderIt . unAnnotate $ logLine <> line
     when (sev >= minSeverity) $
       sendIO $ errorConcurrent rendered
-  LogStdout logLine -> do
-    let rendered = renderIt . unAnnotate $ logLine <> line
-    sendIO $ outputConcurrent rendered
 
 termLoggerAction :: Has (Lift IO) sig m => Severity -> LogAction m
 termLoggerAction minSeverity = LogAction $ \case
-  LogNormal sev logLine ->
+  LogMsg sev logLine ->
     when (sev >= minSeverity) $
       sendIO $ errorConcurrent $ renderIt $ logLine <> line
-  LogStdout logLine ->
-    sendIO $ outputConcurrent . renderIt $ logLine <> line
 
 newtype LoggerC m a = LoggerC {runLoggerC :: ReaderC (LogAction m) m a}
   deriving (Functor, Applicative, Alternative, Monad, MonadIO)

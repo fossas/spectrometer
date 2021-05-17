@@ -26,9 +26,9 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
+import Data.String.Conversion (decodeUtf8, encodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec

@@ -14,10 +14,10 @@ where
 
 import Control.Carrier.Diagnostics
 import Data.Maybe (mapMaybe)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Discovery.Walk
 import Effect.Exec
 import Effect.Logger hiding (group)

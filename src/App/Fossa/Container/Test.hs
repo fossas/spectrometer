@@ -15,8 +15,8 @@ import Control.Effect.Lift
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts (..), Issues (..))
 import System.Exit (exitFailure)
@@ -76,5 +76,5 @@ testInner apiOpts outputType override image = Sticky.withStickyRegion $ \region 
         else do
           case outputType of
             TestOutputPretty -> logError $ pretty issues
-            TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+            TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
           sendIO exitFailure

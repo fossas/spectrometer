@@ -4,24 +4,25 @@ module App.Fossa.VPS.Report
   ) where
 
 import App.Fossa.API.BuildWait
-import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
+import App.Fossa.VPS.Scan.Core qualified as VPSCore
+import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
+import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
+import Data.ByteString.Lazy qualified as BL
 import Data.Functor (void)
 import Data.Text (Text)
+import Data.Text.Encoding qualified as TE
 import Data.Text.IO (hPutStrLn)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
-import qualified App.Fossa.VPS.Scan.Core as VPSCore
-import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
-import qualified Console.Sticky as Sticky
 
 data ReportType =
     AttributionReport
@@ -74,7 +75,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
         AttributionReport ->
           Fossa.getAttributionRaw apiOpts revision
 
-      logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
+      logStdout . TE.decodeUtf8 . BL.toStrict $ Aeson.encode jsonValue
 
     case result of
       Left err -> do

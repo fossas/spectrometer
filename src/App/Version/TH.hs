@@ -11,7 +11,7 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.String.Conversion (decodeUtf8)
 import Data.Versions (errorBundlePretty, semver)
 import Effect.Exec
   ( AllowErr (Always),
@@ -50,7 +50,7 @@ getTags hash = do
   result <- exec $(mkRelDir ".") $ gitTagPointCommand hash
   bsl <- fromEitherShow result
 
-  pure . map T.strip . T.lines . TE.decodeUtf8 $ BSL.toStrict bsl
+  pure . map T.strip . T.lines . decodeUtf8 $ BSL.toStrict bsl
 
 {- We'd like to use this time to make sure we have tags when we build release
     versions.  However, 2 things make that difficult at the time of writing:

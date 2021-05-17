@@ -57,9 +57,9 @@ import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import Data.Kind (Type)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)

@@ -37,10 +37,9 @@ import Data.Bifunctor (first)
 import qualified Data.ByteString.Lazy as BL
 import Data.Kind (Type)
 import Data.String (fromString)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty, viaShow)
 import Data.Void (Void)
 import GHC.Generics (Generic)
@@ -143,7 +142,7 @@ type Parser = Parsec Void Text
 execParser :: (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path x Dir -> Command -> m a
 execParser parser dir cmd = do
   stdout <- execThrow dir cmd
-  case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
+  case runParser parser "" (decodeUtf8 stdout) of
     Left err -> fatal (CommandParseError cmd (T.pack (errorBundlePretty err)))
     Right a -> pure a
 

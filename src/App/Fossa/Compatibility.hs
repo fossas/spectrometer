@@ -12,9 +12,8 @@ import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withCLIv1Binary)
 import Console.Sticky qualified as Sticky
 import Control.Effect.Lift (sendIO)
 import Data.ByteString.Lazy.Char8 qualified as BL
-import Data.Foldable (traverse_)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text, pack)
-import Data.Text.Lazy.Encoding
 import Effect.Exec (AllowErr (Never), CmdFailure (cmdFailureStdout), Command (..), cmdFailureStderr, exec, runExecIO)
 import Effect.Logger (Pretty (pretty), Severity (SevInfo), logInfo, withDefaultLogger)
 import Options.Applicative (Parser, argument, help, metavar, str)
@@ -31,11 +30,12 @@ compatibilityMain ::
 compatibilityMain args = withDefaultLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
   cmd <- Sticky.withStickyRegion $ \region -> do
     Sticky.setSticky region "[ Waiting for fossa analyze completion ]"
-    exec [reldir|.|] $ v1Command v1Bin $ args
+    exec [reldir|.|] $ v1Command v1Bin args
 
   case cmd of
     Left err -> do
-      traverse_ (\accessor -> logInfo . pretty . decodeUtf8 $ accessor err)  [cmdFailureStderr, cmdFailureStdout]
+      logInfo . pretty @Text . decodeUtf8 $ cmdFailureStderr err
+      logInfo . pretty @Text . decodeUtf8 $ cmdFailureStdout err
       sendIO exitFailure
     Right out -> sendIO (BL.putStr out >> exitSuccess)
 

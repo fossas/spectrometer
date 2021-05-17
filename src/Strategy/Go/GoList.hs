@@ -11,9 +11,9 @@ import Control.Effect.Diagnostics
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
 import DepTypes
 import Effect.Exec
 import Effect.Grapher
