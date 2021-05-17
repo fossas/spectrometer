@@ -329,9 +329,7 @@ uploadContributors :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts ->
 uploadContributors apiOpts locator contributors = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts =
-        baseOpts
-          <> "locator" =: locator
+  let opts = baseOpts <> "locator" =: locator
 
   _ <- req POST (contributorsEndpoint baseUrl) (ReqBodyJson contributors) ignoreResponse opts
   pure ()
