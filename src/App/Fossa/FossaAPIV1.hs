@@ -123,16 +123,17 @@ containerUploadUrl baseurl = baseurl /: "api" /: "container" /: "upload"
 uploadContainerScan
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)
   => ApiOpts
+  -> ProjectRevision
   -> ProjectMetadata
   -> ContainerScan
   -> m UploadResponse
-uploadContainerScan apiOpts metadata scan = fossaReq $ do
+uploadContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  let locator = renderLocator $ Locator "custom" (imageTag scan) (Just $ imageDigest scan)
+  let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
       opts = "locator" =: locator
           <> "cliVersion" =: cliVersion
           <> "managedBuild" =: True
-          <> mkMetadataOpts metadata (imageTag scan)
+          <> mkMetadataOpts metadata projectName
   resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
   pure $ responseBody resp
 
