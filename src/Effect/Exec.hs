@@ -157,7 +157,7 @@ execJson dir cmd = do
 
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
 execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command -> m BL.ByteString
-execThrow dir cmd = do
+execThrow dir cmd = context ("Running command: " <> T.pack (show cmd)) $ do
   result <- exec dir cmd
   case result of
     Left failure -> fatal (CommandFailed failure)

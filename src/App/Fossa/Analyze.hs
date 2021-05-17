@@ -98,7 +98,7 @@ data RecordMode =
 
 analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
 analyzeMain workdir recordMode logSeverity destination project unpackArchives filters =
-  withLogger logSeverity
+  withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
     . runExecIO

@@ -19,7 +19,7 @@ import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts (..), Issues (..))
-import System.Exit (exitFailure, exitSuccess)
+import System.Exit (exitFailure)
 import System.IO (stderr)
 
 data TestOutputType
@@ -38,13 +38,8 @@ testMain ::
   ImageText ->
   IO ()
 testMain apiOpts logSeverity timeoutSeconds outputType override image = do
-  void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runDiagnostics $ testInner apiOpts outputType override image
-    case result of
-      Left err -> do
-        logError $ renderFailureBundle err
-        sendIO exitFailure
-      Right (ResultBundle _ _) -> sendIO exitSuccess
+  void $ timeout timeoutSeconds $ withDefaultLogger logSeverity $ do
+    logWithExit_ $ testInner apiOpts outputType override image
 
   hPutStrLn stderr "Timed out while wait for issues"
   exitFailure

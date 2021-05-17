@@ -1,20 +1,21 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.Logger
   ( Logger (..),
+    LogAction (..),
+    determineDefaultLogAction,
     LogMsg (..),
-    LogQueue,
     Severity (..),
     LoggerC (..),
     IgnoreLoggerC (..),
     withLogger,
-    withLogQueue,
+    withDefaultLogger,
     runLogger,
     ignoreLogger,
     log,
-    logTrace,
     logDebug,
     logInfo,
     logWarn,
@@ -27,23 +28,24 @@ where
 import Control.Algebra as X
 import Control.Applicative (Alternative)
 import Control.Carrier.Reader
-import Control.Concurrent.Async (async, wait)
-import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TMQueue (TMQueue, closeTMQueue, newTMQueueIO, readTMQueue, writeTMQueue)
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Effect.ConsoleRegion
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
-import Data.Bool (bool)
-import Data.Functor (void)
 import Data.Kind (Type)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import System.Console.Concurrent
-import System.IO (BufferMode (NoBuffering), hIsTerminalDevice, hSetBuffering, stderr, stdout)
+import System.IO (stdout)
 import Prelude hiding (log)
+import System.Console.ANSI (hSupportsANSI)
+import Control.Monad.Trans (lift)
+
+newtype LogAction m = LogAction
+  { unLogAction :: LogMsg -> m ()
+  }
 
 data Logger (m :: Type -> Type) k where
   Log :: LogMsg -> Logger m ()
@@ -62,15 +64,11 @@ logStdout :: Has Logger sig m => Doc AnsiStyle -> m ()
 logStdout logLine = send (Log (LogStdout logLine))
 
 data Severity
-  = SevTrace
-  | SevDebug
+  = SevDebug
   | SevInfo
   | SevWarn
   | SevError
   deriving (Eq, Ord, Show)
-
-logTrace :: Has Logger sig m => Doc AnsiStyle -> m ()
-logTrace = log SevTrace
 
 logDebug :: Has Logger sig m => Doc AnsiStyle -> m ()
 logDebug = log SevDebug
@@ -84,72 +82,53 @@ logWarn = log SevWarn
 logError :: Has Logger sig m => Doc AnsiStyle -> m ()
 logError = log SevError
 
-newtype LogQueue = LogQueue (TMQueue LogMsg)
+withLogger :: Has (Lift IO) sig m => LogAction m -> LoggerC m a -> m a
+withLogger act = displayConsoleRegions . runLogger act
 
-withLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
-withLogger sev f = displayConsoleRegions . withLogQueue sev $ \qu -> runLogger qu f
+withDefaultLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
+withDefaultLogger sev act = do
+  logAction <- determineDefaultLogAction sev
+  withLogger logAction act
 
-withLogQueue :: Has (Lift IO) sig m => Severity -> (LogQueue -> m a) -> m a
-withLogQueue minSeverity f = do
-  isTerminal <- sendIO $ hIsTerminalDevice stderr
-  let logger = bool rawLogger termLogger' isTerminal
-  queue <- sendIO (hSetBuffering stdout NoBuffering *> hSetBuffering stderr NoBuffering *> newTMQueueIO @LogMsg)
+runLogger :: LogAction m -> LoggerC m a -> m a
+runLogger act = runReader act . runLoggerC
 
-  let mkLogger = sendIO $ async $ logger minSeverity queue
+-- | Determine the default LogAction to use by checking whether the terminal
+-- supports ANSI rendering
+determineDefaultLogAction :: Has (Lift IO) sig m => Severity -> m (LogAction m)
+determineDefaultLogAction sev = do
+  -- TODO: should we check stderr or stdout here?
+  ansiSupported <- sendIO $ hSupportsANSI stdout
+  if ansiSupported
+    then pure (termLoggerAction sev)
+    else pure (rawLoggerAction sev)
 
-      flushLogger tid = sendIO $ do
-        atomically $ closeTMQueue queue
-        void (wait tid)
+rawLoggerAction :: Has (Lift IO) sig m => Severity -> LogAction m
+rawLoggerAction minSeverity = LogAction $ \case
+  LogNormal sev logLine -> do
+    let rendered = renderIt . unAnnotate $ logLine <> line
+    when (sev >= minSeverity) $
+      sendIO $ errorConcurrent rendered
+  LogStdout logLine -> do
+    let rendered = renderIt . unAnnotate $ logLine <> line
+    sendIO $ outputConcurrent rendered
 
-  bracket
-    mkLogger
-    flushLogger
-    (\_ -> f (LogQueue queue))
+termLoggerAction :: Has (Lift IO) sig m => Severity -> LogAction m
+termLoggerAction minSeverity = LogAction $ \case
+  LogNormal sev logLine ->
+    when (sev >= minSeverity) $
+      sendIO $ errorConcurrent $ renderIt $ logLine <> line
+  LogStdout logLine ->
+    sendIO $ outputConcurrent . renderIt $ logLine <> line
 
-runLogger :: LogQueue -> LoggerC m a -> m a
-runLogger (LogQueue queue) = runReader queue . runLoggerC
-
-rawLogger :: Severity -> TMQueue LogMsg -> IO ()
-rawLogger minSeverity queue = go
-  where
-    go = do
-      maybeMsg <- atomically $ readTMQueue queue
-      case maybeMsg of
-        Nothing -> pure ()
-        Just (LogNormal sev logLine) -> do
-          let rendered = renderIt . unAnnotate $ logLine <> line
-          when (sev >= minSeverity) $ errorConcurrent rendered
-          go
-        Just (LogStdout logLine) -> do
-          let rendered = renderIt . unAnnotate $ logLine <> line
-          outputConcurrent rendered
-          go
-
-termLogger' :: Severity -> TMQueue LogMsg -> IO ()
-termLogger' minSeverity queue = withConsoleRegion Linear go
-  where
-    go region = do
-      maybeMsg <- atomically $ readTMQueue queue
-      case maybeMsg of
-        Nothing -> pure ()
-        Just msg -> do
-          case msg of
-            LogNormal sev logLine -> do
-              when (sev >= minSeverity) $ do
-                errorConcurrent $ renderIt $ logLine <> line
-              go region
-            LogStdout logLine -> do
-              outputConcurrent . renderIt $ logLine <> line
-              go region
-
-newtype LoggerC m a = LoggerC {runLoggerC :: ReaderC (TMQueue LogMsg) m a}
+newtype LoggerC m a = LoggerC {runLoggerC :: ReaderC (LogAction m) m a}
   deriving (Functor, Applicative, Alternative, Monad, MonadIO)
 
 instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (LoggerC m) where
   alg hdl sig ctx = LoggerC $ case sig of
     L (Log msg) -> do
-      queue <- ask
-      sendIO $ atomically $ writeTMQueue queue msg
+      LogAction action <- ask @(LogAction m)
+      lift $ action msg
       pure ctx
     R other -> alg (runLoggerC . hdl) (R other) ctx
 

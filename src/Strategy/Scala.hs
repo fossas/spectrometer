@@ -65,15 +65,16 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
       projectsRes <-
-        runDiagnostics
+        recover'
           . context ("getting sbt projects rooted at " <> pathToText dir)
           $ genPoms dir
 
       case projectsRes of
         Left err -> do
-          logWarn $ renderFailureBundle err
+          -- TODO: add context to diagnostic
+          logWarn $ renderSomeDiagnostic err
           pure ([], WalkSkipAll)
-        Right projects -> pure (resultValue projects, WalkSkipAll)
+        Right projects -> pure (projects, WalkSkipAll)
 
 makePomCmd :: Command
 makePomCmd =

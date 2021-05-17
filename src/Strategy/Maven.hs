@@ -29,7 +29,7 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
-discover dir = map (mkProject dir) <$> PomClosure.findProjects dir
+discover dir = map (mkProject dir) <$> context "Maven: Discovering projects" (PomClosure.findProjects dir)
 
 mkProject ::
   (Has ReadFS sig n, Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) =>
@@ -52,4 +52,4 @@ getDeps ::
   ) =>
   PomClosure.MavenProjectClosure ->
   m (Graphing Dependency)
-getDeps closure = Plugin.analyze' (parent (PomClosure.closurePath closure)) <||> pure (Pom.analyze' closure)
+getDeps closure = context "Plugin analysis" (Plugin.analyze' (parent (PomClosure.closurePath closure))) <||> context "Static analysis" (pure (Pom.analyze' closure))

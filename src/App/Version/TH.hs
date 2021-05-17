@@ -5,7 +5,7 @@ module App.Version.TH
   )
 where
 
-import Control.Carrier.Diagnostics (resultValue, runDiagnostics)
+import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
 import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (fromMaybe)
@@ -42,7 +42,7 @@ getCurrentTag = do
 
   case result of
     Left err -> reportWarning (show err) >> [||Nothing||]
-    Right tags -> filterTags $ resultValue tags
+    Right tags -> filterTags tags
 
 getTags :: (Has Exec sig m, Has Diagnostics sig m) => Text -> m [Text]
 getTags hash = do

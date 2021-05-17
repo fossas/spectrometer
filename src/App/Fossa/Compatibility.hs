@@ -16,7 +16,7 @@ import Data.Foldable (traverse_)
 import Data.Text (Text, pack)
 import Data.Text.Lazy.Encoding
 import Effect.Exec (AllowErr (Never), CmdFailure (cmdFailureStdout), Command (..), cmdFailureStderr, exec, runExecIO)
-import Effect.Logger (Pretty (pretty), Severity (SevInfo), logInfo, withLogger)
+import Effect.Logger (Pretty (pretty), Severity (SevInfo), logInfo, withDefaultLogger)
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Path
 import System.Exit (exitFailure, exitSuccess)
@@ -28,7 +28,7 @@ argumentParser = pack <$> argument str (metavar "ARGS" <> help "arguments to fos
 compatibilityMain ::
   [Argument] ->
   IO ()
-compatibilityMain args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
+compatibilityMain args = withDefaultLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
   cmd <- Sticky.withStickyRegion $ \region -> do
     Sticky.setSticky region "[ Waiting for fossa analyze completion ]"
     exec [reldir|.|] $ v1Command v1Bin $ args

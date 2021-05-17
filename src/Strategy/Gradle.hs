@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Gradle
@@ -66,7 +65,9 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Gradle" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath
@@ -77,18 +78,19 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
 
-      projectsStdout <-
-        runDiagnostics $ context ("getting gradle projects rooted at " <> pathToText dir) $
+      projectsStdout <- recover' .
+        context ("getting gradle projects rooted at " <> pathToText dir) $
           execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew"))
             <||> execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew.bat"))
             <||> execThrow dir (gradleProjectsCmd "gradle")
 
       case projectsStdout of
         Left err -> do
-          logWarn $ renderFailureBundle err
+          -- FIXME: add more context to this error
+          logWarn $ renderSomeDiagnostic err
           pure ([], WalkContinue)
         Right result -> do
-          let subprojects = parseProjects $ resultValue result
+          let subprojects = parseProjects result
 
           let project =
                 GradleProject

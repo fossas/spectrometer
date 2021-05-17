@@ -43,7 +43,7 @@ scanMain basedir debug = do
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
   scan basedir
-    & withLogger (bool SevInfo SevDebug debug)
+    & withDefaultLogger (bool SevInfo SevDebug debug)
 
 runLicenseAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>

@@ -28,7 +28,7 @@ listTargetsMain :: BaseDir -> IO ()
 listTargetsMain (BaseDir basedir) = Sticky.withStickyRegion $ \region -> do
   capabilities <- getNumCapabilities
 
-  withLogger SevInfo
+  withDefaultLogger SevInfo
     . runFinally
     . withTaskPool capabilities (updateProgress region)
     . runReadFSIO

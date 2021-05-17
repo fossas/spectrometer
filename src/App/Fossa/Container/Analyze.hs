@@ -18,7 +18,7 @@ import Effect.Logger
 import Srclib.Types (parseLocator)
 
 analyzeMain :: ScanDestination -> Severity -> OverrideProject -> ImageText -> IO ()
-analyzeMain scanDestination logSeverity override image = withLogger logSeverity $ do
+analyzeMain scanDestination logSeverity override image = withDefaultLogger logSeverity $ do
   result <- runDiagnostics $ analyze scanDestination override image
   case result of
     Left err -> logError (renderFailureBundle err)
