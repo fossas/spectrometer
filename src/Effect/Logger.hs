@@ -79,7 +79,7 @@ logError :: Has Logger sig m => Doc AnsiStyle -> m ()
 logError = log SevError
 
 withLogger :: Has (Lift IO) sig m => LogCtx m -> LoggerC m a -> m a
-withLogger act = displayConsoleRegions . runLogger act
+withLogger ctx act = displayConsoleRegions (runLogger ctx act) <* sendIO flushConcurrentOutput
 
 withDefaultLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
 withDefaultLogger sev act = do
