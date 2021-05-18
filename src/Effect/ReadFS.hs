@@ -164,7 +164,7 @@ type Parser = Parsec Void Text
 
 -- | Read from a file, parsing its contents
 readContentsParser :: forall a sig m b. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path b File -> m a
-readContentsParser parser file = do
+readContentsParser parser file = context ("Parsing file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case runParser parser (toFilePath file) contents of
     Left err -> fatal (FileParseError (toFilePath file) (T.pack (errorBundlePretty err)))
@@ -172,14 +172,14 @@ readContentsParser parser file = do
 
 -- | Read JSON from a file
 readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsJson file = do
+readContentsJson file = context ("Parsing JSON file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
     Left err -> fatal (FileParseError (toFilePath file) (T.pack err))
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path b File -> m a
-readContentsToml codec file = do
+readContentsToml codec file = context ("Parsing TOML file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
     Left err -> fatal (FileParseError (toFilePath file) (Toml.prettyTomlDecodeErrors err))
@@ -187,7 +187,7 @@ readContentsToml codec file = do
 
 -- | Read YAML from a file
 readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsYaml file = do
+readContentsYaml file = context ("Parsing YAML file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
     Left err -> fatal (FileParseError (toFilePath file) (T.pack $ prettyPrintParseException err))
@@ -195,7 +195,7 @@ readContentsYaml file = do
 
 -- | Read XML from a file
 readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsXML file = do
+readContentsXML file = context ("Parsing XML file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
     Left err -> fatal (FileParseError (toFilePath file) (xmlErrorPretty err))

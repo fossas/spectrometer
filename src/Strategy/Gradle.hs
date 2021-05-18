@@ -79,7 +79,7 @@ findProjects = walk' $ \dir _ files -> do
     Just _ -> do
 
       projectsStdout <- errorBoundary .
-        context ("Listing gradle projects at " <> pathToText dir) $
+        context ("Listing gradle projects at '" <> pathToText dir <> "'") $
           execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew"))
             <||> execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew.bat"))
             <||> execThrow dir (gradleProjectsCmd "gradle")
@@ -159,23 +159,24 @@ mkProject project =
     }
 
 getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> Set BuildTarget -> m (Graphing Dependency)
-getDeps project targets = analyze' targets (gradleDir project)
+getDeps project targets = context "Gradle" $ analyze targets (gradleDir project)
 
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
 
-analyze' ::
+analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
   , Has Diagnostics sig m
   )
   => Set BuildTarget -> Path Abs Dir -> m (Graphing Dependency)
-analyze' targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
+analyze targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
-  sendIO (BS.writeFile initScriptFilepath initScript)
-  stdout <- execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath targets)
-              <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath targets)
-              <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath targets)
+  context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
+  stdout <- context "Running gradle script" $
+              execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath targets)
+                <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath targets)
+                <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath targets)
 
   let text = decodeUtf8 $ BL.toStrict stdout
       textLines :: [Text]
@@ -198,7 +199,7 @@ analyze' targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
       packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
       packagesToOutput = M.fromList packagePathsWithDecoded
 
-  pure (buildGraph packagesToOutput)
+  context "Building dependency graph" $ pure (buildGraph packagesToOutput)
 
 -- TODO: use LabeledGraphing to add labels for environments
 buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Graphing Dependency

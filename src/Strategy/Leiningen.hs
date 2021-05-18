@@ -52,7 +52,9 @@ leinDepsCmd =
     }
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Leiningen" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [LeiningenProject]
 findProjects = walk' $ \dir _ files -> do
@@ -78,7 +80,7 @@ mkProject project =
     }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m (Graphing Dependency)
-getDeps = analyze . leinProjectClj
+getDeps = context "Leiningen" . context "Dynamic analysis" . analyze . leinProjectClj
 
 data LeiningenProject = LeiningenProject
   { leinDir :: Path Abs Dir
@@ -93,7 +95,7 @@ analyze file = do
 
   case EDN.decodeText "lein deps :tree-data" stdout of
     Left err -> fatal (CommandParseError leinDepsCmd (T.pack err))
-    Right deps -> pure (buildGraph deps)
+    Right deps -> context "Building dependency graph" $ pure (buildGraph deps)
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode

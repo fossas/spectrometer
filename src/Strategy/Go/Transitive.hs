@@ -100,8 +100,8 @@ fillInTransitive ::
   , Has Diagnostics sig m
   )
   => Path x Dir -> m ()
-fillInTransitive dir = do
+fillInTransitive dir = context "Getting deep dependencies" $ do
   goListOutput <- execThrow dir goListCmd
   case decodeMany goListOutput of
     Left (path, err) -> fatal (CommandParseError goListCmd (T.pack (formatError path err)))
-    Right (packages :: [Package]) -> graphTransitive packages
+    Right (packages :: [Package]) -> context "Adding transitive dependencies" $ graphTransitive packages

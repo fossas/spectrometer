@@ -40,7 +40,7 @@ analyze' ::
   )
   => Path Abs Dir -> m (Graphing Dependency)
 analyze' dir = graphingGolang $ do
-  stdout <- execThrow dir golistCmd
+  stdout <- context "Getting direct dependencies" $ execThrow dir golistCmd
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
       requires = mapMaybe toRequire gomodLines
@@ -51,7 +51,7 @@ analyze' dir = graphingGolang $ do
           [package, version] -> Just (Require package version)
           _ -> Nothing
 
-  buildGraph requires
+  context "Adding direct dependencies" $ buildGraph requires
 
   _ <- recover (fillInTransitive dir)
   pure ()

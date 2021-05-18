@@ -162,6 +162,7 @@ library
     Console.Sticky
     Control.Carrier.AtomicState
     Control.Carrier.Diagnostics
+    Control.Carrier.Diagnostics.StickyContext
     Control.Carrier.Finally
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool

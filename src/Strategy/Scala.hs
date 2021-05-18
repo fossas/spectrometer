@@ -38,7 +38,9 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
-discover dir = map (mkProject dir) <$> findProjects dir
+discover dir = context "Scala" $ do
+  projects <- findProjects dir
+  pure (map (mkProject dir) projects)
 
 mkProject ::
   Applicative n =>
@@ -66,7 +68,7 @@ findProjects = walk' $ \dir _ files -> do
     Just _ -> do
       projectsRes <-
         errorBoundary
-          . context ("getting sbt projects rooted at " <> pathToText dir)
+          . context ("Listing sbt projects at " <> pathToText dir)
           $ genPoms dir
 
       case projectsRes of
@@ -87,7 +89,7 @@ makePomCmd =
 
 genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 genPoms projectDir = do
-  stdoutBL <- execThrow projectDir makePomCmd
+  stdoutBL <- context "Generating poms" $ execThrow projectDir makePomCmd
 
   -- stdout for "sbt makePom" looks something like:
   --

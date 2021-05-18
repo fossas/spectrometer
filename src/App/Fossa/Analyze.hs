@@ -82,6 +82,7 @@ import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
+import Control.Carrier.Diagnostics.StickyContext
 
 data ScanDestination
   = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -173,14 +174,14 @@ runDependencyAnalysis ::
   -- | Analysis base directory
   BaseDir ->
   [BuildTargetFilter] ->
-  DiscoveredProject (Diag.DiagnosticsC m) ->
+  DiscoveredProject (StickyDiagC (Diag.DiagnosticsC m)) ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project = do
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO $ projectDependencyGraph project targets
+      graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
 applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject n -> Maybe (Set BuildTarget)
