@@ -30,7 +30,7 @@ setSticky :: (Has (Lift IO) sig m, Has Logger sig m) => StickyRegion -> Text -> 
 setSticky region = setSticky' region . pretty
 
 setSticky' :: (Has (Lift IO) sig m, Has Logger sig m) => StickyRegion -> Doc AnsiStyle -> m ()
-setSticky' NonSticky = logInfo
+setSticky' NonSticky = logDebug
 setSticky' (Sticky region) = renderToConsoleRegion region
 
 renderToConsoleRegion :: Has (Lift IO) sig m => R.ConsoleRegion -> Doc AnsiStyle -> m ()
