@@ -5,9 +5,6 @@
 
 module Effect.Logger
   ( Logger (..),
-    LogAction (..),
-    determineDefaultLogAction,
-    LogMsg (..),
     Severity (..),
     LoggerC (..),
     IgnoreLoggerC (..),
@@ -38,25 +35,25 @@ import Data.Text (Text)
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import System.Console.Concurrent
-import System.IO (stdout)
+import System.IO (stderr)
 import Prelude hiding (log)
 import System.Console.ANSI (hSupportsANSI)
 import Control.Monad.Trans (lift)
 
-newtype LogAction m = LogAction
-  { unLogAction :: LogMsg -> m ()
+data LogCtx m = LogCtx
+  { logCtxSeverity :: Severity
+  , logCtxFormatter :: LogFormatter
+  , logCtxWrite :: Text -> m ()
   }
 
-data Logger (m :: Type -> Type) k where
-  Log :: LogMsg -> Logger m ()
+type LogFormatter = Severity -> Doc AnsiStyle -> Text
 
-data LogMsg
-  = LogMsg Severity (Doc AnsiStyle)
-  deriving (Show)
+data Logger (m :: Type -> Type) k where
+  Log :: Severity -> Doc AnsiStyle -> Logger m ()
 
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
-log severity logLine = send (Log (LogMsg severity logLine))
+log severity logLine = send (Log severity logLine)
 
 -- | Log a line to stdout. Usually, you want to use 'log', 'logInfo', ..., instead
 logStdout :: Has (Lift IO) sig m => Text -> m ()
@@ -81,48 +78,55 @@ logWarn = log SevWarn
 logError :: Has Logger sig m => Doc AnsiStyle -> m ()
 logError = log SevError
 
-withLogger :: Has (Lift IO) sig m => LogAction m -> LoggerC m a -> m a
+withLogger :: Has (Lift IO) sig m => LogCtx m -> LoggerC m a -> m a
 withLogger act = displayConsoleRegions . runLogger act
 
 withDefaultLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
 withDefaultLogger sev act = do
-  logAction <- determineDefaultLogAction sev
-  withLogger logAction act
+  formatter <- determineDefaultLogFormatter
+  let ctx =
+        LogCtx
+          { logCtxSeverity = sev
+          , logCtxFormatter = formatter
+          , logCtxWrite = sendIO . errorConcurrent
+          }
+  withLogger ctx act
 
-runLogger :: LogAction m -> LoggerC m a -> m a
+runLogger :: LogCtx m -> LoggerC m a -> m a
 runLogger act = runReader act . runLoggerC
 
 -- | Determine the default LogAction to use by checking whether the terminal
 -- supports ANSI rendering
-determineDefaultLogAction :: Has (Lift IO) sig m => Severity -> m (LogAction m)
-determineDefaultLogAction sev = do
-  -- TODO: should we check stderr or stdout here?
-  ansiSupported <- sendIO $ hSupportsANSI stdout
+determineDefaultLogFormatter :: Has (Lift IO) sig m => m LogFormatter
+determineDefaultLogFormatter = do
+  ansiSupported <- sendIO $ hSupportsANSI stderr
   if ansiSupported
-    then pure (termLoggerAction sev)
-    else pure (rawLoggerAction sev)
+    then pure termLoggerFormatter
+    else pure rawLoggerFormatter
 
-rawLoggerAction :: Has (Lift IO) sig m => Severity -> LogAction m
-rawLoggerAction minSeverity = LogAction $ \case
-  LogMsg sev logLine -> do
-    let rendered = renderIt . unAnnotate $ logLine <> line
-    when (sev >= minSeverity) $
-      sendIO $ errorConcurrent rendered
+rawLoggerFormatter :: LogFormatter
+rawLoggerFormatter sev msg = renderIt . unAnnotate $ formatCommon sev msg <> line
 
-termLoggerAction :: Has (Lift IO) sig m => Severity -> LogAction m
-termLoggerAction minSeverity = LogAction $ \case
-  LogMsg sev logLine ->
-    when (sev >= minSeverity) $
-      sendIO $ errorConcurrent $ renderIt $ logLine <> line
+termLoggerFormatter :: LogFormatter
+termLoggerFormatter sev msg = renderIt $ formatCommon sev msg <> line
 
-newtype LoggerC m a = LoggerC {runLoggerC :: ReaderC (LogAction m) m a}
+formatCommon :: Severity -> Doc AnsiStyle -> Doc AnsiStyle
+formatCommon sev msg = pretty '[' <> showSev sev <> pretty @String "] " <> msg
+  where
+    showSev SevError = annotate (color Red) (pretty @String "ERROR")
+    showSev SevWarn = annotate (color Yellow) (pretty @String " WARN")
+    showSev SevInfo = annotate (color Cyan) (pretty @String " INFO")
+    showSev SevDebug = annotate (color White) (pretty @String "DEBUG")
+
+newtype LoggerC m a = LoggerC {runLoggerC :: ReaderC (LogCtx m) m a}
   deriving (Functor, Applicative, Alternative, Monad, MonadIO)
 
 instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (LoggerC m) where
   alg hdl sig ctx = LoggerC $ case sig of
-    L (Log msg) -> do
-      LogAction action <- ask @(LogAction m)
-      lift $ action msg
+    L (Log sev msg) -> do
+      LogCtx{logCtxWrite,logCtxFormatter,logCtxSeverity} <- ask
+      when (logCtxSeverity <= sev) $
+        lift $ logCtxWrite $ logCtxFormatter sev msg
       pure ctx
     R other -> alg (runLoggerC . hdl) (R other) ctx
 
@@ -134,7 +138,7 @@ ignoreLogger = runIgnoreLoggerC
 
 instance Algebra sig m => Algebra (Logger :+: sig) (IgnoreLoggerC m) where
   alg hdl sig ctx = IgnoreLoggerC $ case sig of
-    L (Log _) -> pure ctx
+    L (Log _ _) -> pure ctx
     R other -> alg (runIgnoreLoggerC . hdl) other ctx
 
 renderIt :: Doc AnsiStyle -> Text
