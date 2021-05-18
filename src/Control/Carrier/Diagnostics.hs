@@ -79,6 +79,13 @@ instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
             pure (Left diag <$ ctx)
 
       go `catchError` errorHandler
+    L (ErrorBoundary act) -> do
+      let act' = runDiagnostics $ hdl (act <$ ctx)
+      -- have to lift for each inner monad transformer (reader, error, writer)
+      res' <- lift . lift . lift $ act'
+      case res' of
+        Left e -> pure (Left e <$ ctx)
+        Right a -> pure (Right <$> a)
     R other -> alg (runDiagnosticsC . hdl) (R (R (R other))) ctx
 
 -- | Run the DiagnosticsC carrier, also catching IO exceptions

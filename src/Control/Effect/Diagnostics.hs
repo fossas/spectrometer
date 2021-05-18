@@ -13,6 +13,7 @@ module Control.Effect.Diagnostics
     context,
     recover,
     recover',
+    errorBoundary,
 
     -- * Diagnostic result types
     FailureBundle (..),
@@ -51,6 +52,7 @@ data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
   Recover' :: m a -> Diagnostics m (Either SomeDiagnostic a)
   Context :: Text -> m a -> Diagnostics m a
+  ErrorBoundary :: m a -> Diagnostics m (Either FailureBundle a)
 
 -- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where
@@ -82,6 +84,14 @@ recover = fmap (either (const Nothing) Just) . recover'
 -- | Recover from a fatal error. The error will be recorded as a warning instead.
 recover' :: Has Diagnostics sig m => m a -> m (Either SomeDiagnostic a)
 recover' = send . Recover'
+
+-- | Form an "error boundary" around an action, where:
+-- - errors and warnings cannot "escape" the scope of the action
+-- - warnings from outside of the error boundary do not impact the FailureBundles produced by the action
+--
+-- This returns a FailureBundle if the action failed; otherwise returns the result of the action
+errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
+errorBoundary = send . ErrorBoundary
 
 -- | Push context onto the stack for "stack traces" in diagnostics.
 --
