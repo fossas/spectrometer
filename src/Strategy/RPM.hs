@@ -14,10 +14,9 @@ where
 
 import Control.Effect.Diagnostics
 import qualified Control.Effect.Diagnostics as Diag
-import Control.Monad (when)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
-import Data.Maybe (mapMaybe, catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Extra (splitOnceOn)

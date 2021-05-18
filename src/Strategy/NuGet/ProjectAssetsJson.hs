@@ -54,8 +54,8 @@ getDeps = context "ProjectAssetsJson" . context "Static analysis" . analyze' . p
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = do
-  json <- readContentsJson @ProjectAssetsJson file
-  context "Building dependency graph" $ pure (buildGraph json)
+  assetsJson <- readContentsJson @ProjectAssetsJson file
+  context "Building dependency graph" $ pure (buildGraph assetsJson)
 
 newtype ProjectAssetsJson = ProjectAssetsJson
   { targets     :: M.Map Text (M.Map Text DependencyInfo)
