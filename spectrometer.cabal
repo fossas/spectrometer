@@ -164,6 +164,7 @@ library
     Control.Carrier.Diagnostics
     Control.Carrier.Diagnostics.StickyContext
     Control.Carrier.Finally
+    Control.Carrier.Fresh
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
@@ -171,6 +172,7 @@ library
     Control.Effect.ConsoleRegion
     Control.Effect.Diagnostics
     Control.Effect.Finally
+    Control.Effect.Fresh
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.Record

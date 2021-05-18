@@ -83,6 +83,7 @@ import System.Exit (die, exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
 import Control.Carrier.Diagnostics.StickyContext
+import Control.Carrier.Fresh (Fresh, runFresh)
 
 data ScanDestination
   = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -170,7 +171,7 @@ discoverFuncs =
   ]
 
 runDependencyAnalysis ::
-  (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
+  (Has (Lift IO) sig m, Has Fresh sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
   BaseDir ->
   [BuildTargetFilter] ->
@@ -215,6 +216,7 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
       runOutput @ProjectResult
         . runFinally
         . withTaskPool capabilities (updateProgress region)
+        . runFresh
         $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults

@@ -7,6 +7,7 @@ module Discovery.Projects (
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Effect.Finally
+import Control.Effect.Fresh
 import Control.Effect.Lift
 import Control.Effect.TaskPool
 import Control.Monad (when)
@@ -22,7 +23,7 @@ import Types (DiscoveredProject)
 -- on each discovered project. Note that the provided function is also run in
 -- parallel.
 withDiscoveredProjects ::
-  (Has ReadFS sig m, Has (Lift IO) sig m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
+  (Has Fresh sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
   -- | Discover functions
   [Path Abs Dir -> StickyDiagC (Diag.DiagnosticsC m) [DiscoveredProject run]] ->
   -- | whether to unpack archives

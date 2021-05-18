@@ -14,6 +14,7 @@ import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Exception as Exc
 import Control.Effect.Lift (sendIO)
+import Control.Carrier.Fresh (runFresh)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
@@ -69,6 +70,7 @@ scan basedir = runFinally $ do
         . runReadFSIO
         . runFinally
         . withTaskPool capabilities (updateProgress region)
+        . runFresh
         $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
 
   sendIO (BL.putStr (encode projectResults))

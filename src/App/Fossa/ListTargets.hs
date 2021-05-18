@@ -10,6 +10,7 @@ import App.Types (BaseDir (..))
 import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
+import Control.Carrier.Fresh
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Lift
@@ -33,6 +34,7 @@ listTargetsMain (BaseDir basedir) = Sticky.withStickyRegion $ \region -> do
     . withTaskPool capabilities (updateProgress region)
     . runReadFSIO
     . runExecIO
+    . runFresh
     $ do
       withDiscoveredProjects discoverFuncs False basedir $ \(project :: DiscoveredProject DummyM) -> do
         let maybeRel = makeRelative basedir (projectPath project)
