@@ -111,7 +111,7 @@ termLoggerFormatter :: LogFormatter
 termLoggerFormatter sev msg = renderIt $ formatCommon sev msg <> line
 
 formatCommon :: Severity -> Doc AnsiStyle -> Doc AnsiStyle
-formatCommon sev msg = pretty '[' <> showSev sev <> pretty @String "] " <> msg
+formatCommon sev msg = hang 2 (pretty '[' <> showSev sev <> pretty @String "] " <> msg)
   where
     showSev SevError = annotate (color Red) (pretty @String "ERROR")
     showSev SevWarn = annotate (color Yellow) (pretty @String " WARN")

@@ -39,13 +39,14 @@ where
 
 import Control.Algebra as X
 import Control.Exception (SomeException (..))
+import Data.List (intersperse)
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
+import Data.Text.Prettyprint.Doc.Render.Terminal
 import Prelude
 
 data Diagnostics m k where
@@ -146,19 +147,26 @@ instance Show FailureBundle where
 renderFailureBundle :: FailureBundle -> Doc AnsiStyle
 renderFailureBundle FailureBundle {..} =
   vsep
-    [ "----------",
-      "An error occurred:",
+    [ annotate (color Yellow) "----------",
+      annotate (color Yellow) "An error occurred:",
       "",
-      indent 4 (align (renderSomeDiagnostic failureCause)),
+      indent 4 (renderSomeDiagnostic failureCause),
       "",
       ">>>",
-      indent 2 "Relevant warnings include:",
       "",
-      indent 4 (align (renderWarnings failureWarnings))
+      indent 2 (annotate (color Yellow) "Relevant warnings include:"),
+      "",
+      indent 4 (renderWarnings failureWarnings)
     ]
 
 renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
-renderSomeDiagnostic (SomeDiagnostic stack cause) = renderDiagnostic cause <> line <> align (indent 2 (vsep (map (pretty . ("when " <>)) stack)))
+renderSomeDiagnostic (SomeDiagnostic stack cause) =
+  renderDiagnostic cause
+    <> line
+    <> line
+    <> annotate (color Cyan) "Traceback:"
+    <> line
+    <> indent 2 (vsep (map (pretty . ("- " <>)) stack))
 
 renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
-renderWarnings = align . vsep . map renderSomeDiagnostic
+renderWarnings = vsep . intersperse (line <> "--" <> line) . map renderSomeDiagnostic

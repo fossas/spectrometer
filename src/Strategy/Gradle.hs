@@ -79,7 +79,7 @@ findProjects = walk' $ \dir _ files -> do
     Just _ -> do
 
       projectsStdout <- errorBoundary .
-        context ("getting gradle projects rooted at " <> pathToText dir) $
+        context ("Listing gradle projects at " <> pathToText dir) $
           execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew"))
             <||> execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew.bat"))
             <||> execThrow dir (gradleProjectsCmd "gradle")
@@ -87,7 +87,7 @@ findProjects = walk' $ \dir _ files -> do
       case projectsStdout of
         Left err -> do
           logWarn $ renderFailureBundle err
-          pure ([], WalkContinue)
+          pure ([], WalkSkipAll)
         Right result -> do
           let subprojects = parseProjects result
 

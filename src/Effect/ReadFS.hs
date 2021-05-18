@@ -60,7 +60,7 @@ import Data.Kind (Type)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Prettyprint.Doc (pretty)
+import Data.Text.Prettyprint.Doc (pretty, line, indent, vsep)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import GHC.Generics (Generic)
@@ -100,10 +100,19 @@ $(deriveReplayable ''ReadFS)
 
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
-    FileReadError path err -> "Error reading file " <> pretty path <> " : " <> pretty err
-    FileParseError path err -> "Error parsing file " <> pretty path <> " : " <> pretty err
-    ResolveError base rel err -> "Error resolving a relative file. base: " <> pretty base <> " . relative: " <> pretty rel <> " . error: " <> pretty err
-    ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> " : " <> pretty err
+    FileReadError path err -> "Error reading file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
+    FileParseError path err -> "Error parsing file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
+    ResolveError base rel err ->
+      "Error resolving a relative file:" <> line
+        <> indent
+          4
+          ( vsep
+              [ "base: " <> pretty base
+              , "relative: " <> pretty rel
+              , "error: " <> pretty err
+              ]
+          )
+    ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> ":" <> line <> indent 2 (pretty err)
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteString)

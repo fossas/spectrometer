@@ -40,7 +40,7 @@ import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Prettyprint.Doc (pretty, viaShow)
+import Data.Text.Prettyprint.Doc (pretty, viaShow, vsep, line, indent)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Path
@@ -129,7 +129,20 @@ data ExecErr
 
 instance ToDiagnostic ExecErr where
   renderDiagnostic = \case
-    CommandFailed err -> "Command execution failed: " <> viaShow err
+    CommandFailed err ->
+      "Command execution failed: "
+        <> line
+        <> indent
+          4
+          ( vsep
+              [ "command: " <> pretty (cmdFailureName err)
+              , "args: " <> pretty (cmdFailureArgs err)
+              , "dir: " <> pretty (cmdFailureDir err)
+              , "exit: " <> viaShow (cmdFailureExit err)
+              , "stdout: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStdout err)))
+              , "stderr: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStderr err)))
+              ]
+          )
     CommandParseError cmd err -> "Failed to parse command output. command: " <> viaShow cmd <> " . error: " <> pretty err
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
@@ -156,7 +169,7 @@ execJson dir cmd = do
 
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
 execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command -> m BL.ByteString
-execThrow dir cmd = context ("Running command: " <> T.pack (show cmd)) $ do
+execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   result <- exec dir cmd
   case result of
     Left failure -> fatal (CommandFailed failure)
