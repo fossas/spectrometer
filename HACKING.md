@@ -5,9 +5,12 @@
 Use [ghcup][ghcup] to install the `cabal` cli tool and the ghc version we're using:
 
 ```sh
-$ ghcup install-cabal
-$ ghcup install 8.8
-$ ghcup set 8.8
+$ ghcup install ghc 8.10
+$ ghcup set ghc 8.10
+$ ghcup install cabal 
+$ ghcup set cabal
+$ cabal update
+$ cabal build
 ```
 
 ### Building
@@ -27,6 +30,8 @@ In the base directory, run `cabal test`
 | cabal-install | The package manager we use (installed via ghcup) |
 | [haskell-language-server][hls] | LSP server for haskell projects (see below for installation instructions). Includes a formatter |
 | hlint | A linting + hints tool for haskell code. It provides really useful suggestions |
+| [ormolu][ormolu] | A haskell source code formatter |
+| [fourmolu][fourmolu] | A forked version of ormolu that we are evaluating |
 
 ### Installing haskell-language-server
 
@@ -59,6 +64,8 @@ cabal install hlint --installdir=$HOME/.cabal/bin --overwrite-policy=always
 
 If on macOS, [dash](https://kapeli.com/dash) is a great tool that allows for downloading searchable package haddocks
 
+On linux, you can use [zeal](https://zealdocs.org/).  (Currently there is an issue with building third-party docsets)
+
 ## Cheatsheets
 
 ### Cabal cheatsheet
@@ -85,3 +92,5 @@ Use `cabal repl` to open ghci.
 [hls]: https://github.com/haskell/haskell-language-server
 [hoogle]: https://hoogle.haskell.org/
 [hackage]: https://hackage.haskell.org/
+[ormolu]: https://github.com/tweag/ormolu
+[fourmolu]: https://github.com/fourmolu/fourmolu
