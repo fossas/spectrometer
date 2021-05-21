@@ -64,7 +64,7 @@ cabal install hlint --installdir=$HOME/.cabal/bin --overwrite-policy=always
 
 If on macOS, [dash](https://kapeli.com/dash) is a great tool that allows for downloading searchable package haddocks
 
-On linux, you can use [zeal](https://zealdocs.org/).  (Currently there is an issue with building third-party docsets)
+On linux, you can use [zeal](https://zealdocs.org/).  (Currently there is an issue with building third-party docsets, if you discover a solution to get e.g.: `aeson` docs in `zeal`, please file an issue or submit a PR to fix these docs.)
 
 ## Cheatsheets
 
