@@ -7,7 +7,6 @@ Use [ghcup][ghcup] to install the `cabal` cli tool and the ghc version we're usi
 ```sh
 $ ghcup install ghc 8.10
 $ ghcup set ghc 8.10
-$ ghcup install cabal 
 $ ghcup set cabal
 $ cabal update
 $ cabal build
