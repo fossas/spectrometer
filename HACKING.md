@@ -28,32 +28,30 @@ In the base directory, run `cabal test`
 | [ghcup][ghcup] | Used to manage installed versions of ghc and cabal-install |
 | ghc | The haskell compiler (installed via ghcup) |
 | cabal-install | The package manager we use (installed via ghcup) |
-| [haskell-language-server][hls] | LSP server for haskell projects (see below for installation instructions). Includes a formatter |
-| hlint | A linting + hints tool for haskell code. It provides really useful suggestions |
+| [haskell-language-server][hls] | LSP server for haskell projects |
+| [hlint][hlint] | A linting + hints tool for haskell code. It provides really useful suggestions |
 | [ormolu][ormolu] | A haskell source code formatter |
 | [fourmolu][fourmolu] | A forked version of ormolu that we are evaluating |
 
 ### Installing haskell-language-server
 
-```sh
-git clone --recursive https://github.com/haskell/haskell-language-server.git
-cd haskell-language-server
-cabal update
-cabal install --installdir=$HOME/.cabal/bin --overwrite-policy=always
-```
-
-- VSCode: Install Install the "Haskell Language Server" plugin in VSCode. In the
+In VSCode: Install the "Haskell Language Server" (`haskell.haskell`) plugin in VSCode. In the
 settings there's a `Language Server Haskell: Hie Variant` option, which you can
 set to `haskell-language-server`
 
-### Installing hlint
+## Linting
 
-```sh
-cabal update
-cabal install hlint --installdir=$HOME/.cabal/bin --overwrite-policy=always
-```
+Install [hlint][hlint].  Run `hlint /path/to/file-or-directory`.  You can also configure the haskell language server to run hlint.
+See [haskell-anguage-server][hls] for configuration instructions.
 
-- Run it with `hlint path/to/dir/or/file`
+`hlint` errors are usually required changes in pull requests, but we do not currently run `hlint` in CI, as there are a few outstanding lint errors that have not yet been fixed.
+You do not need to enforce that `hlint` passes to submit a PR, but it does help greatly, for both the author and reviewer.
+
+## Formatting
+
+Currently, we do not have a standardized formatting solution.  We have been using `ormolu`, but are now evaluating `fourmolu`, as it provides some configuration options that we want to take advantage of.
+
+For now, you can run `ormolu --mode inplace /path/to/file1 /path/to/file2`.  Shell globs and file-finders are recommended for formatting lots of files.  We do not require formatting yet, and when we do, we will ensure that it is present in CI.
 
 ## Docs
 
@@ -88,9 +86,10 @@ Use `cabal repl` to open ghci.
 | `:i`/`:info <symbol>` | query info about a symbol -- docs, where it was defined, etc |
 | `:l`/`:load <Module.Name>` | load a specific file into the repl |
 
-[ghcup]: https://gitlab.haskell.org/haskell/ghcup
+[fourmolu]: https://github.com/fourmolu/fourmolu
+[ghcup]: https://www.haskell.org/ghcup
+[hackage]: https://hackage.haskell.org/
+[hlint]: https://github.com/ndmitchell/hlint
 [hls]: https://github.com/haskell/haskell-language-server
 [hoogle]: https://hoogle.haskell.org/
-[hackage]: https://hackage.haskell.org/
 [ormolu]: https://github.com/tweag/ormolu
-[fourmolu]: https://github.com/fourmolu/fourmolu
