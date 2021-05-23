@@ -9,8 +9,8 @@ where
 import App.Fossa.API.BuildWait
 import App.Fossa.Container
 import App.Types (OverrideProject (..), ProjectRevision (..))
-import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics
+import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Lift
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson qualified as Aeson
@@ -38,21 +38,21 @@ testMain ::
   ImageText ->
   IO ()
 testMain apiOpts logSeverity timeoutSeconds outputType override image = do
-  void $ timeout timeoutSeconds $ withDefaultLogger logSeverity $ do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
     logWithExit_ $ testInner apiOpts outputType override image
 
   hPutStrLn stderr "Timed out while wait for issues"
   exitFailure
 
 testInner ::
-  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, MonadIO m) =>
+  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m, MonadIO m) =>
   ApiOpts ->
   TestOutputType ->
   OverrideProject ->
   ImageText ->
   m ()
-testInner apiOpts outputType override image = Sticky.withStickyRegion $ \region -> do
-  Sticky.setSticky region "Running embedded syft binary"
+testInner apiOpts outputType override image = do
+  logSticky "Running embedded syft binary"
 
   containerScan <- runSyft image >>= toContainerScan
   let revision = extractRevision override containerScan
@@ -60,12 +60,12 @@ testInner apiOpts outputType override image = Sticky.withStickyRegion $ \region 
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
 
-  Sticky.setSticky region "[ Waiting for build completion ]"
-  waitForBuild region apiOpts revision
+  logSticky "[ Waiting for build completion ]"
+  waitForBuild apiOpts revision
 
-  Sticky.setSticky region "[ Waiting for issue scan completion ]"
-  issues <- waitForIssues region apiOpts revision
-  Sticky.setSticky region ""
+  logSticky "[ Waiting for issue scan completion ]"
+  issues <- waitForIssues apiOpts revision
+  logSticky ""
 
   case issuesCount issues of
     0 -> logInfo "Test passed! 0 issues found"

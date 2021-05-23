@@ -9,7 +9,7 @@ module App.Fossa.Compatibility
 where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withCLIv1Binary)
-import Console.Sticky qualified as Sticky
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.String.Conversion (decodeUtf8)
@@ -19,6 +19,7 @@ import Effect.Logger (Pretty (pretty), Severity (SevInfo), logInfo, withDefaultL
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Path
 import System.Exit (exitFailure, exitSuccess)
+
 type Argument = Text
 
 argumentParser :: Parser Argument
@@ -28,8 +29,8 @@ compatibilityMain ::
   [Argument] ->
   IO ()
 compatibilityMain args = withDefaultLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
-  cmd <- Sticky.withStickyRegion $ \region -> do
-    Sticky.setSticky region "[ Waiting for fossa analyze completion ]"
+  cmd <- runStickyLogger $ do
+    logSticky "[ Waiting for fossa analyze completion ]"
     exec [reldir|.|] $ v1Command v1Bin args
 
   case cmd of

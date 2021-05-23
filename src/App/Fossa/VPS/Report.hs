@@ -9,8 +9,8 @@ import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
-import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -52,25 +52,25 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  void $ timeout timeoutSeconds $ withDefaultLogger logSeverity $ do
-    result <- runDiagnostics . runReadFSIO . Sticky.withStickyRegion $ \region -> do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
+    result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
-      Sticky.setSticky region "[ Getting latest scan ID ]"
+      logSticky "[ Getting latest scan ID ]"
 
       Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
       let locator = VPSCore.createLocator (projectName revision) orgId
 
       scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
 
-      Sticky.setSticky region "[ Waiting for component scan... ]"
+      logSticky "[ Waiting for component scan... ]"
 
-      waitForSherlockScan region apiOpts locator (ScotlandYard.responseScanId scan)
+      waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
 
-      Sticky.setSticky region "[ Waiting for issue scan completion... ]"
-      _ <- waitForIssues region apiOpts revision
+      logSticky "[ Waiting for issue scan completion... ]"
+      _ <- waitForIssues apiOpts revision
 
-      Sticky.setSticky' region $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
+      logSticky $ "[ Fetching " <> reportName reportType <> " report... ]"
       jsonValue <- case reportType of
         AttributionReport ->
           Fossa.getAttributionRaw apiOpts revision

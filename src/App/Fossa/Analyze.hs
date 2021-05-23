@@ -16,10 +16,10 @@ import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContribu
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Types
 import App.Util (validateDir)
-import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky', StickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Diagnostics ((<||>))
@@ -212,12 +212,12 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
-    Sticky.withStickyRegion $ \region ->
-      runOutput @ProjectResult
-        . runFinally
-        . withTaskPool capabilities (updateProgress region)
-        . runFresh
-        $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+    runOutput @ProjectResult
+      . runStickyLogger
+      . runFinally
+      . withTaskPool capabilities updateProgress
+      . runFresh
+      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
@@ -331,10 +331,9 @@ buildProject project = Aeson.object
   , "graph" .= graphingToGraph (projectResultGraph project)
   ]
 
-updateProgress :: (Has (Lift IO) sig m, Has Logger sig m) => Sticky.StickyRegion -> Progress -> m ()
-updateProgress region Progress {..} =
-  Sticky.setSticky'
-    region
+updateProgress :: Has StickyLogger sig m => Progress -> m ()
+updateProgress Progress {..} =
+  logSticky'
     ( "[ "
         <> annotate (color Cyan) (pretty pQueued)
         <> " Waiting / "

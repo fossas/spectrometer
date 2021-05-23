@@ -5,11 +5,11 @@ module App.Pathfinder.Scan
   ( scanMain
   ) where
 
-import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
+import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Exception as Exc
@@ -65,13 +65,13 @@ scan basedir = runFinally $ do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
-    Sticky.withStickyRegion $ \region ->
-      runOutput @ProjectLicenseScan
-        . runReadFSIO
-        . runFinally
-        . withTaskPool capabilities (updateProgress region)
-        . runFresh
-        $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
+    runOutput @ProjectLicenseScan
+      . runStickyLogger
+      . runReadFSIO
+      . runFinally
+      . withTaskPool capabilities updateProgress
+      . runFresh
+      $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
 
   sendIO (BL.putStr (encode projectResults))
 
@@ -122,10 +122,9 @@ mkLicenseScan project licenses =
       discoveredLicenses = licenses
     }
 
-updateProgress :: (Has (Lift IO) sig m, Has Logger sig m) => Sticky.StickyRegion -> Progress -> m ()
-updateProgress region Progress {..} =
-  Sticky.setSticky'
-    region
+updateProgress :: Has StickyLogger sig m => Progress -> m ()
+updateProgress Progress {..} =
+  logSticky'
     ( "[ "
         <> annotate (color Cyan) (pretty pQueued)
         <> " Waiting / "

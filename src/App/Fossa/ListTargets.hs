@@ -7,13 +7,12 @@ where
 
 import App.Fossa.Analyze (discoverFuncs)
 import App.Types (BaseDir (..))
-import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
 import Control.Carrier.Fresh
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky', StickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Lift
 import Data.Foldable (for_)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
@@ -26,12 +25,13 @@ import Types (BuildTarget (..), DiscoveredProject (..))
 type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))
 
 listTargetsMain :: BaseDir -> IO ()
-listTargetsMain (BaseDir basedir) = Sticky.withStickyRegion $ \region -> do
+listTargetsMain (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
   withDefaultLogger SevInfo
+    . runStickyLogger
     . runFinally
-    . withTaskPool capabilities (updateProgress region)
+    . withTaskPool capabilities updateProgress
     . runReadFSIO
     . runExecIO
     . runFresh
@@ -57,10 +57,9 @@ listTargetsMain (BaseDir basedir) = Sticky.withStickyRegion $ \region -> do
                   <> ":"
                   <> pretty (unBuildTarget target)
 
-updateProgress :: (Has (Lift IO) sig m, Has Logger sig m) => Sticky.StickyRegion -> Progress -> m ()
-updateProgress region Progress {..} =
-  Sticky.setSticky'
-    region
+updateProgress :: Has StickyLogger sig m => Progress -> m ()
+updateProgress Progress {..} =
+  logSticky'
     ( "[ "
         <> annotate (color Cyan) (pretty pQueued)
         <> " Waiting / "

@@ -6,8 +6,8 @@ module App.Fossa.Test
 import App.Fossa.API.BuildWait
 import App.Fossa.ProjectInference
 import App.Types
-import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
@@ -32,21 +32,21 @@ testMain
   -> OverrideProject
   -> IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  void $ timeout timeoutSeconds $ withDefaultLogger logSeverity $ do
-    result <- runDiagnostics . runReadFSIO . Sticky.withStickyRegion $ \region -> do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
+    result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-      Sticky.setSticky region "[ Waiting for build completion... ]"
+      logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild region apiOpts revision
+      waitForBuild apiOpts revision
 
-      Sticky.setSticky region "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues region apiOpts revision
-      Sticky.setSticky region ""
+      logSticky "[ Waiting for issue scan completion... ]"
+      issues <- waitForIssues apiOpts revision
+      logSticky ""
       logInfo ""
 
       case issuesCount issues of

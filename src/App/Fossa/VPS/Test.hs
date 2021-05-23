@@ -10,8 +10,8 @@ import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
-import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.String.Conversion
@@ -38,28 +38,28 @@ testMain ::
   OverrideProject ->
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  _ <- timeout timeoutSeconds . withDefaultLogger logSeverity $ do
-    result <- runDiagnostics . runReadFSIO . Sticky.withStickyRegion $ \region -> do
+  _ <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
+    result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-      Sticky.setSticky region "[ Getting latest scan ID ]"
+      logSticky "[ Getting latest scan ID ]"
 
       Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
       let locator = VPSCore.createLocator (projectName revision) orgId
 
       scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
 
-      Sticky.setSticky region "[ Waiting for component scan... ]"
+      logSticky "[ Waiting for component scan... ]"
 
-      waitForSherlockScan region apiOpts locator (ScotlandYard.responseScanId scan)
+      waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
 
-      Sticky.setSticky region "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues region apiOpts revision
-      Sticky.setSticky region ""
+      logSticky "[ Waiting for issue scan completion... ]"
+      issues <- waitForIssues apiOpts revision
+      logSticky ""
 
       case issuesCount issues of
         0 -> logInfo "Test passed! 0 issues found"

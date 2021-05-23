@@ -166,6 +166,7 @@ library
     Control.Carrier.Finally
     Control.Carrier.Fresh
     Control.Carrier.Output.IO
+    Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
     Control.Effect.AtomicState
@@ -179,6 +180,7 @@ library
     Control.Effect.Record.TH
     Control.Effect.Replay
     Control.Effect.Replay.TH
+    Control.Effect.StickyLogger
     Control.Effect.TaskPool
     Control.Exception.Extra
     Data.FileEmbed.Extra

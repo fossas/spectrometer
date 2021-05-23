@@ -7,8 +7,8 @@ import App.Fossa.API.BuildWait
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
 import App.Types
-import Console.Sticky qualified as Sticky
 import Control.Carrier.Diagnostics
+import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
@@ -49,23 +49,23 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  void $ timeout timeoutSeconds $ withDefaultLogger logSeverity $ do
-    result <- runDiagnostics . runReadFSIO . Sticky.withStickyRegion $ \region -> do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
+    result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-      Sticky.setSticky' region "[ Waiting for build completion... ]"
+      logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild region apiOpts revision
+      waitForBuild apiOpts revision
 
-      Sticky.setSticky' region "[ Waiting for issue scan completion... ]"
+      logSticky "[ Waiting for issue scan completion... ]"
 
-      _ <- waitForIssues region apiOpts revision
+      _ <- waitForIssues apiOpts revision
 
-      Sticky.setSticky' region $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
+      logSticky $ "[ Fetching " <> reportName reportType <> " report... ]"
 
       jsonValue <- case reportType of
         AttributionReport ->
