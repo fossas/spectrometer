@@ -94,9 +94,22 @@ recover' = send . Recover'
 errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
 errorBoundary = send . ErrorBoundary
 
--- | Push context onto the stack for "stack traces" in diagnostics.
+-- | Push context onto the stack for "stack traces"/"tracebacks" in diagnostics.
 --
--- This is spiritually similar to @errors.Wrap@ from golang
+-- This is spiritually similar to @errors.Wrap@ from golang.
+--
+-- In the default Diagnostics carrier from Control.Carrier.Diagnostics, context
+-- messages are additive and scoped:
+--
+--     context "foo" $ do
+--       -- context is [foo] here
+--       context "bar" $ do
+--         -- context is [foo,bar] here
+--         pure ()
+--       context "baz" $ do
+--         -- context is [foo,baz] here
+--         pure ()
+--       -- context is [foo] here
 context :: Has Diagnostics sig m => Text -> m a -> m a
 context ctx go = send (Context ctx go)
 
