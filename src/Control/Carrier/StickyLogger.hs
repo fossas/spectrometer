@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- | Exports StickyLoggerC, a carrier for the StickyRegion effect that uses
+-- | Exports StickyLoggerC, a carrier for the StickyLogger effect that uses
 -- 'Console.Sticky.withStickyRegion' and 'Console.Sticky.setSticky' to implement
 -- 'logSticky'
 module Control.Carrier.StickyLogger (
