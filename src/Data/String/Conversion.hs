@@ -109,6 +109,39 @@ instance TypeError ( 'Text "Error: Use decodeUtf8 instead") => ToString BL.ByteS
 
 ----- LazyStrict
 
+-- The `| l -> s, s -> l` syntax comes from FunctionalDependencies.
+--
+-- FunctionalDependencies is useful for MultiParamTypeClasses to restrict the
+-- instances you're allowed to create.
+--
+-- Similar to how database primary keys describe relationships between
+-- uniquely-identifying keys and rows, a functional dependency describes a
+-- uniquely-identifying relationship between types in a typeclass instance
+--
+-- In this case, we have two such "primary keys":
+-- - `l -> s`, which says that the type of `l` uniquely maps to the type of `s`
+-- - `s -> l`, which says that the type of `s` uniquely maps to the type of `l`
+--
+-- This is important to restrict the instances we can create, and also
+-- drastically improves type inference.
+--
+-- Without the functional dependencies, we'd be allowed to create instances like:
+--
+--     instance LazyStrict Foo Bar where
+--     instance LazyStrict Foo Baz where
+--     instance LazyStrict Foo Quux where
+--
+-- ..which makes things really hard when we call `toStrict someFoo`: which of
+-- the instances are we referring to?
+--
+-- But even if we were to define only one such instance:
+--
+--     instance LazyStrict Foo Bar where
+--
+-- ..other instances are still permitted, and the type checker can't be
+-- convinced otherwise. You'd nearly always have to use type annotations:
+--
+--     toStrict someFoo :: Bar
 class LazyStrict l s | l -> s, s -> l where
   toLazy :: s -> l
   toStrict :: l -> s
