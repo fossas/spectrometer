@@ -116,7 +116,7 @@ instance TypeError ( 'Text "Error: Use decodeUtf8 instead") => ToString BL.ByteS
 --
 -- Similar to how database primary/unique keys describe relationships between
 -- uniquely-identifying keys and rows, a functional dependency describes a
--- uniquely-identifying relationship between types in a typeclass instance
+-- uniquely-identifying relationship between types and typeclass instances
 --
 -- In this case, we have two such "unique keys":
 -- - `l -> s`, which says that the type of `l` uniquely maps to the type of `s`
