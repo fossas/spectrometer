@@ -5,6 +5,7 @@ module App.Pathfinder.Scan
   ( scanMain
   ) where
 
+import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
@@ -14,7 +15,6 @@ import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Exception as Exc
 import Control.Effect.Lift (sendIO)
-import Control.Carrier.Fresh (runFresh)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
@@ -68,7 +68,7 @@ scan basedir = runFinally $ do
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
-      . runFresh
+      . runAtomicCounter
       $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
 
   sendIO (BL.putStr (encode projectResults))

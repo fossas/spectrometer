@@ -15,9 +15,9 @@ import Control.Monad.Trans.Class (MonadTrans (..))
 import Data.List (intersperse)
 import Data.Text qualified as T
 import Effect.Logger
-import Control.Effect.Fresh
+import Control.Effect.AtomicCounter
 
-stickyDiag :: (Has Fresh sig m, Has (Lift IO) sig m) => StickyDiagC m a -> m a
+stickyDiag :: (Has AtomicCounter sig m, Has (Lift IO) sig m) => StickyDiagC m a -> m a
 stickyDiag act = do
   taskId <- generateId
   Sticky.withStickyRegion $ \region ->

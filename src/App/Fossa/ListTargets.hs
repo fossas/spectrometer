@@ -9,7 +9,7 @@ import App.Fossa.Analyze (discoverFuncs)
 import App.Types (BaseDir (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
-import Control.Carrier.Fresh
+import Control.Carrier.AtomicCounter
 import Control.Carrier.StickyLogger (runStickyLogger, logSticky', StickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
@@ -34,7 +34,7 @@ listTargetsMain (BaseDir basedir) = do
     . withTaskPool capabilities updateProgress
     . runReadFSIO
     . runExecIO
-    . runFresh
+    . runAtomicCounter
     $ do
       withDiscoveredProjects discoverFuncs False basedir $ \(project :: DiscoveredProject DummyM) -> do
         let maybeRel = makeRelative basedir (projectPath project)

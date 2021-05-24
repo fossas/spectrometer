@@ -164,7 +164,7 @@ library
     Control.Carrier.Diagnostics
     Control.Carrier.Diagnostics.StickyContext
     Control.Carrier.Finally
-    Control.Carrier.Fresh
+    Control.Carrier.AtomicCounter
     Control.Carrier.Output.IO
     Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
@@ -173,7 +173,7 @@ library
     Control.Effect.ConsoleRegion
     Control.Effect.Diagnostics
     Control.Effect.Finally
-    Control.Effect.Fresh
+    Control.Effect.AtomicCounter
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.Record
