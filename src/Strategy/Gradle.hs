@@ -87,6 +87,13 @@ findProjects = walk' $ \dir _ files -> do
       case projectsStdout of
         Left err -> do
           logWarn $ renderFailureBundle err
+          -- Nearly all gradle projects have a multi-module structure with a
+          -- top-level root project, and subdirectories contain subprojects of
+          -- the top-level root project
+          --
+          -- If we're not able to scan the top-level root project, there's no
+          -- reason to recurse and try the lower-level subprojects -- it only
+          -- adds noise
           pure ([], WalkSkipAll)
         Right result -> do
           let subprojects = parseProjects result
