@@ -20,7 +20,6 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bool (bool)
 import Data.ByteString.Lazy qualified as BL
-import Data.Function ((&))
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -43,8 +42,7 @@ scanMain basedir debug = do
   exists <- PIO.doesDirExist basedir
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
-  scan basedir
-    & withDefaultLogger (bool SevInfo SevDebug debug)
+  withDefaultLogger (bool SevInfo SevDebug debug) $ scan basedir
 
 runLicenseAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>
