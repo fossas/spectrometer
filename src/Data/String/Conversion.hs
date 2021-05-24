@@ -114,11 +114,11 @@ instance TypeError ( 'Text "Error: Use decodeUtf8 instead") => ToString BL.ByteS
 -- FunctionalDependencies is useful for MultiParamTypeClasses to restrict the
 -- instances you're allowed to create.
 --
--- Similar to how database primary keys describe relationships between
+-- Similar to how database primary/unique keys describe relationships between
 -- uniquely-identifying keys and rows, a functional dependency describes a
 -- uniquely-identifying relationship between types in a typeclass instance
 --
--- In this case, we have two such "primary keys":
+-- In this case, we have two such "unique keys":
 -- - `l -> s`, which says that the type of `l` uniquely maps to the type of `s`
 -- - `s -> l`, which says that the type of `s` uniquely maps to the type of `l`
 --
