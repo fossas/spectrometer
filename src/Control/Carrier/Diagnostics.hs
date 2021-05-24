@@ -80,7 +80,14 @@ instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
 
       go `catchError` errorHandler
     L (ErrorBoundary act) -> do
-      let act' = runDiagnostics $ hdl (act <$ ctx)
+      currentContext <- ask
+
+      let -- Inject our current context stack as a starting point for the inner action
+          injectContext :: DiagnosticsC m a -> DiagnosticsC m a
+          injectContext = DiagnosticsC . local @[Text] (const currentContext) . runDiagnosticsC
+
+      let act' = runDiagnostics . injectContext $ hdl (act <$ ctx)
+
       -- have to lift for each inner monad transformer (reader, error, writer)
       res' <- lift . lift . lift $ act'
       case res' of
