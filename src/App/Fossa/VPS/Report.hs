@@ -13,14 +13,13 @@ import Control.Carrier.Diagnostics
 import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
-import Data.ByteString.Lazy qualified as BL
 import Data.Functor (void)
 import Data.Text (Text)
-import Data.Text.Encoding qualified as TE
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
+import Data.String.Conversion (decodeUtf8)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
 
@@ -75,7 +74,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
         AttributionReport ->
           Fossa.getAttributionRaw apiOpts revision
 
-      logStdout . TE.decodeUtf8 . BL.toStrict $ Aeson.encode jsonValue
+      logStdout . decodeUtf8 $ Aeson.encode jsonValue
 
     case result of
       Left err -> do
