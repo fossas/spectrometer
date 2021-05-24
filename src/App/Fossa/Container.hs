@@ -31,6 +31,7 @@ import Data.Aeson
 import Data.Aeson.Types (parseEither)
 import qualified Data.ByteString.Lazy as BL
 import Data.Functor.Extra ((<$$>))
+import Data.List (nub)
 import qualified Data.Map.Lazy as LMap
 import Data.Map.Strict (Map)
 import Data.Maybe (listToMaybe, fromMaybe)
@@ -76,6 +77,7 @@ data ResponseArtifact
       { artifactName :: Text,
         artifactVersion :: Text,
         artifactType :: Text,
+        artifactLocations :: [ContainerLocation],
         artifactPkgUrl :: Text,
         artifactMetadataType :: Text,
         artifactMetadata :: Maybe (Map Text Value)
@@ -86,6 +88,7 @@ instance FromJSON ResponseArtifact where
     ResponseArtifact <$> obj .: "name"
       <*> obj .: "version"
       <*> obj .: "type"
+      <*> obj .: "locations"
       <*> obj .: "purl"
       <*> obj .: "metadataType"
       -- We delete "files" as early as possible, which reduces
@@ -117,13 +120,31 @@ instance FromJSON ResponseDistro where
 data SourceTarget
   = SourceTarget
       { targetDigest :: Text,
+        targetLayers :: [LayerTarget],
         targetTags :: [Text]
       }
 
 instance FromJSON SourceTarget where
   parseJSON = withObject "SourceTarget" $ \obj ->
-    SourceTarget <$> obj .: "digest"
+    SourceTarget <$> obj .: "imageID"
+      <*> obj .: "layers"
       <*> obj .: "tags"
+
+-- Capture container layers from target
+-- The digest will correspond to location -> layerId
+newtype LayerTarget
+  = LayerTarget {
+    layerTargetDigest :: Text
+  } deriving (Eq, Show, Ord)
+
+instance FromJSON LayerTarget where
+  parseJSON = withObject "LayerTarget" $ \obj ->
+    LayerTarget <$> obj .: "digest"
+
+instance ToJSON LayerTarget where
+  toJSON LayerTarget {..} =
+    object ["digest" .= layerTargetDigest ]
+
 
 -- | The reorganized output of syft into a slightly different format
 data ContainerScan
@@ -140,7 +161,8 @@ data ContainerImage
   = ContainerImage
       { imageArtifacts :: [ContainerArtifact],
         imageOs :: Text,
-        imageOsRelease :: Text
+        imageOsRelease :: Text,
+        imageLayers :: [LayerTarget]
       }
 
 instance ToJSON ContainerImage where
@@ -148,14 +170,31 @@ instance ToJSON ContainerImage where
     object
       [ "os" .= imageOs,
         "osRelease" .= imageOsRelease,
+        "layers" .= imageLayers,
         "artifacts" .= imageArtifacts
       ]
+
+-- Define Layer/Location type to capture layers in which a dep is found
+-- omitting "path" from the object to reduce noise
+newtype ContainerLocation
+  = ContainerLocation {
+    conLayerId :: Text
+  } deriving (Eq, Show, Ord)
+
+instance FromJSON ContainerLocation where
+  parseJSON = withObject "ContainerLocation" $ \obj ->
+    ContainerLocation <$> obj .: "layerID"
+
+instance ToJSON ContainerLocation where
+  toJSON ContainerLocation {..} =
+    object [ "layerId" .= conLayerId ]
 
 data ContainerArtifact
   = ContainerArtifact
       { conArtifactName :: Text,
         conArtifactVersion :: Text,
         conArtifactType :: Text,
+        conArtifactLocations :: [ContainerLocation],
         conArtifactPkgUrl :: Text,
         conArtifactMetadataType :: Text,
         conArtifactMetadata :: Map Text Value
@@ -167,6 +206,7 @@ instance ToJSON ContainerArtifact where
       [ "name" .= conArtifactName,
         "fullVersion" .= conArtifactVersion,
         "type" .= conArtifactType,
+        "locations" .= nub conArtifactLocations,
         "purl" .= conArtifactPkgUrl,
         "metadataType" .= conArtifactMetadataType,
         "metadata" .= LMap.delete "files" conArtifactMetadata
@@ -182,7 +222,7 @@ extractRevision OverrideProject {..} ContainerScan {..} = ProjectRevision name r
 toContainerScan :: Has Diagnostics sig m => SyftResponse -> m ContainerScan
 toContainerScan SyftResponse {..} = do
   newArts <- context "error while validating system artifacts" $ traverse convertArtifact responseArtifacts
-  let image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro)
+  let image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro) (targetLayers $ sourceTarget responseSource)
       target = sourceTarget responseSource
   tag <- context "error while extracting image tags" . extractTag $ targetTags target
   pure . ContainerScan image tag $ targetDigest target
@@ -195,6 +235,7 @@ convertArtifact ResponseArtifact {..} = do
     { conArtifactName = artifactName,
       conArtifactVersion = artifactVersion,
       conArtifactType = artifactType,
+      conArtifactLocations = artifactLocations,
       conArtifactPkgUrl = artifactPkgUrl,
       conArtifactMetadataType = artifactMetadataType,
       conArtifactMetadata = validMetadata
@@ -216,11 +257,13 @@ runSyft ::
 runSyft image = runExecIO . withSyftBinary $ \syftBin -> do
   execJson @SyftResponse [reldir|.|] $ syftCommand syftBin image
 
+-- Scope to all layers, to prevent odd "squashing" that syft does
+-- Output to produce machine readable json that we can ingest
 syftCommand :: BinaryPaths -> ImageText -> Command
 syftCommand bin (ImageText image) =
   Command
     { cmdName = pack . toFilePath $ toExecutablePath bin,
-      cmdArgs = ["-o", "json", image],
+      cmdArgs = ["--scope", "all-layers", "-o", "json", image],
       cmdAllowErr = Never
     }
 

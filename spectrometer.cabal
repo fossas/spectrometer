@@ -132,6 +132,7 @@ library
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
     App.Fossa.Compatibility
+    App.Fossa.Configuration
     App.Fossa.Container
     App.Fossa.Container.Analyze
     App.Fossa.Container.Test
@@ -256,6 +257,7 @@ library
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Strategy.Yarn
+    Strategy.UserSpecified.YamlDependencies
     Text.URI.Builder
     Types
     VCS.Git
@@ -288,6 +290,7 @@ test-suite unit-tests
     App.Fossa.API.BuildLinkSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.Configuration.ConfigurationSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
@@ -305,6 +308,7 @@ test-suite unit-tests
     Go.GomodSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
+    Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
     GraphingSpec
@@ -329,6 +333,7 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
+    UserSpecified.YamlDependenciesSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:

@@ -31,7 +31,7 @@ stripDiag = either (const Nothing) Just . runIdentity . runDiagnostics
 
 spec :: Spec
 spec = do
-  let apiOpts = ApiOpts [uri|https://app.fossa.com/|] $ ApiKey ""
+  let apiOpts = ApiOpts (Just [uri|https://app.fossa.com/|]) $ ApiKey ""
   describe "SAML URL builder" $ do
     it "should render simple locators" $ do
       let locator = Locator "fetcher123" "project123" $ Just "revision123"
