@@ -58,7 +58,7 @@ mkProject project =
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (Graphing Dependency)
 getDeps project =
   context "Cocoapods" $
-    Diag.context "Podfile.lock analysis" (analyzePodfileLock project) <||> Diag.context "Podfile analysis" (analyzePodfile project)
+    context "Podfile.lock analysis" (analyzePodfileLock project) <||> context "Podfile analysis" (analyzePodfile project)
 
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (Graphing Dependency)
 analyzePodfile project = Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project) >>= Podfile.analyze'
