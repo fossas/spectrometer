@@ -256,6 +256,7 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
+    Strategy.VSI
     Strategy.Yarn
     Strategy.UserSpecified.YamlDependencies
     Text.URI.Builder

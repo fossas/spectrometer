@@ -4,6 +4,7 @@ module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)
   , UnpackArchives(..)
+  , EnableVSI (..)
   , discoverFuncs
   , RecordMode(..)
   ) where
@@ -79,6 +80,7 @@ import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.UserSpecified.YamlDependencies qualified as UserYaml
+import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
 import Types
@@ -93,14 +95,17 @@ data ScanDestination
 -- | UnpackArchives bool flag
 data UnpackArchives = UnpackArchives
 
+-- | EnableVSI bool flag
+data EnableVSI = EnableVSI
+
 -- | "Replay logging" modes
 data RecordMode =
     RecordModeRecord -- ^ record effect invocations
   | RecordModeReplay FilePath -- ^ replay effect invocations from a file
   | RecordModeNone -- ^ don't record or replay
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives filters =
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag EnableVSI -> [BuildTargetFilter] -> IO ()
+analyzeMain workdir recordMode logSeverity destination project unpackArchives enableVSI filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -108,12 +113,12 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives fi
     $ case recordMode of
       RecordModeNone -> do
         basedir <- sendIO $ validateDir workdir
-        analyze basedir destination project unpackArchives filters
+        analyze basedir destination project unpackArchives enableVSI filters
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
         (execLogs, (readFSLogs, ())) <-
           runRecord @Exec . runRecord @ReadFS $
-            analyze basedir destination project unpackArchives filters
+            analyze basedir destination project unpackArchives enableVSI filters
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
       RecordModeReplay file -> do
         basedir <- BaseDir <$> P.resolveDir' workdir
@@ -124,7 +129,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives fi
             let effects = analyzeEffects journal
             runReplay @ReadFS (effectsReadFS effects)
               . runReplay @Exec (effectsExec effects)
-              $ analyze basedir destination project unpackArchives filters
+              $ analyze basedir destination project unpackArchives enableVSI filters
 
 discoverFuncs ::
   ( Has (Lift IO) sig m,
@@ -140,8 +145,8 @@ discoverFuncs ::
     Has Exec rsig run
   ) =>
   -- | Discover functions
-  [Path Abs Dir -> m [DiscoveredProject run]]
-discoverFuncs =
+  Flag EnableVSI -> [Path Abs Dir -> m [DiscoveredProject run]]
+discoverFuncs enableVSI =
   [ Bundler.discover,
     Cargo.discover,
     Carthage.discover,
@@ -169,7 +174,8 @@ discoverFuncs =
     ProjectJson.discover,
     Glide.discover,
     Pipenv.discover,
-    UserYaml.discover
+    UserYaml.discover,
+    VSI.discover (fromFlag EnableVSI enableVSI)
   ]
 
 runDependencyAnalysis ::
@@ -208,9 +214,10 @@ analyze ::
   -> ScanDestination
   -> OverrideProject
   -> Flag UnpackArchives
+  -> Flag EnableVSI
   -> [BuildTargetFilter]
   -> m ()
-analyze (BaseDir basedir) destination override unpackArchives filters = do
+analyze (BaseDir basedir) destination override unpackArchives enableVSI filters = do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
@@ -219,7 +226,7 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+      $ withDiscoveredProjects (discoverFuncs enableVSI) (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
