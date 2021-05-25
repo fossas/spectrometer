@@ -70,6 +70,7 @@ import Strategy.Gradle qualified as Gradle
 import Strategy.Haskell.Cabal qualified as Cabal
 import Strategy.Haskell.Stack qualified as Stack
 import Strategy.Leiningen qualified as Leiningen
+import Strategy.ManuallySpecified.YamlDependencies qualified as YamlDeps
 import Strategy.Maven qualified as Maven
 import Strategy.Npm qualified as Npm
 import Strategy.NuGet.Nuspec qualified as Nuspec
@@ -186,7 +187,7 @@ discoverFuncs =
     Glide.discover,
     Pipenv.discover,
     Conda.discover,
-    UserYaml.discover
+    YamlDeps.discover
   ]
 
 runDependencyAnalysis ::

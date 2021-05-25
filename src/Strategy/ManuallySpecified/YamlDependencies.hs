@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Strategy.UserSpecified.YamlDependencies
+module Strategy.ManuallySpecified.YamlDependencies
   ( analyze,
     discover,
     buildGraph,

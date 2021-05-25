@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeApplications #-}
 
-module UserSpecified.YamlDependenciesSpec
+module ManuallySpecified.YamlDependenciesSpec
   ( spec,
   )
 where
@@ -12,7 +12,7 @@ import Data.Yaml
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
-import Strategy.UserSpecified.YamlDependencies
+import Strategy.ManuallySpecified.YamlDependencies
 import Test.Hspec
 
 expected :: Graphing Dependency
@@ -38,8 +38,8 @@ expected = run . evalGrapher $ do
 
 spec :: Spec
 spec = do
-  testFile <- runIO (BS.readFile "test/UserSpecified/testdata/valid-deps.yaml")
-  unsupportedTypeFile <- runIO (BS.readFile "test/UserSpecified/testdata/invalid-deps.yaml")
+  testFile <- runIO (BS.readFile "test/ManuallySpecified/testdata/valid-deps.yaml")
+  unsupportedTypeFile <- runIO (BS.readFile "test/ManuallySpecified/testdata/invalid-deps.yaml")
 
   describe "yaml user specified dependencies" $ do
     it "works end to end" $
