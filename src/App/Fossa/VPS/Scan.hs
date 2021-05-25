@@ -29,8 +29,8 @@ data SkipIPRScan = SkipIPRScan
 data LicenseOnlyScan = LicenseOnlyScan
 
 scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag SkipIPRScan -> Flag LicenseOnlyScan ->  IO ()
-scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters skipIprFlag licenseOnlyScan = do
-  result <- runDiagnostics $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
+scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters followSymlinks skipIprFlag licenseOnlyScan = do
+  result <- runDiagnostics $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject followSymlinks skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
   case result of
     Left failure -> do
       print $ renderFailureBundle failure
