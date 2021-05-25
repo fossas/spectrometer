@@ -517,8 +517,8 @@ data TestOptions = TestOptions
   }
 
 data VPSOptions = VPSOptions
-  { skipIprScan :: Flag SkipIPRScan,
-    followSymlinks :: Flag FollowSymlinks,
+  { followSymlinks :: Flag FollowSymlinks,
+    skipIprScan :: Flag SkipIPRScan,
     licenseOnlyScan :: Flag LicenseOnlyScan,
     vpsFileFilter :: FilterExpressions,
     vpsCommand :: VPSCommand
