@@ -18,7 +18,7 @@ import qualified App.Fossa.Report as Report
 import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
 import qualified App.Fossa.VPS.Report as VPSReport
-import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
+import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
 import qualified App.Fossa.VPS.Test as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaScanID (..), NinjaFilePaths (..))
@@ -319,8 +319,9 @@ testOpts =
     <*> baseDirArg
 
 vpsOpts :: Parser VPSOptions
-vpsOpts = VPSOptions <$> skipIprScanOpt <*> licenseOnlyScanOpt <*> fileFilterOpt <*> vpsCommands
+vpsOpts = VPSOptions <$> followSymlinks <*> skipIprScanOpt <*> licenseOnlyScanOpt <*> fileFilterOpt <*> vpsCommands
   where
+    followSymlinks = flagOpt FollowSymlinks (long "follow" <> help "If specified, follows symbolic links but has no protection against loops")
     skipIprScanOpt = flagOpt SkipIPRScan (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
     licenseOnlyScanOpt = flagOpt LicenseOnlyScan (long "license-only" <> help "If specified, the scan directory will not be scanned for vendored dependencies")
     fileFilterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
@@ -517,6 +518,7 @@ data TestOptions = TestOptions
 
 data VPSOptions = VPSOptions
   { skipIprScan :: Flag SkipIPRScan,
+    followSymlinks :: Flag FollowSymlinks,
     licenseOnlyScan :: Flag LicenseOnlyScan,
     vpsFileFilter :: FilterExpressions,
     vpsCommand :: VPSCommand

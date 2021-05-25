@@ -19,6 +19,9 @@ import Fossa.API.Types (ApiOpts(..))
 import App.Fossa.ProjectInference
 import Data.Text
 
+-- | FollowSymlinks bool flag
+data FollowSymlinks = FollowSymlinks
+
 -- | SkipIPRScan bool flag
 data SkipIPRScan = SkipIPRScan
 
@@ -44,7 +47,7 @@ vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlySca
   projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision projectRevision
 
-  let scanType = ScanType (fromFlag SkipIPRScan skipIprFlag) (fromFlag LicenseOnlyScan licenseOnlyScan)
+  let scanType = ScanType (fromFlag FollowSymlinks followSymlinks) (fromFlag SkipIPRScan skipIprFlag) (fromFlag LicenseOnlyScan licenseOnlyScan)
   let wigginsOpts = generateWigginsScanOpts basedir logSeverity projectRevision scanType fileFilters apiOpts metadata
 
   logInfo "Running VPS plugin scan"
