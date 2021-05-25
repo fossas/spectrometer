@@ -1,5 +1,6 @@
 module App.Fossa.VPS.Scan
   ( scanMain,
+    FollowSymlinks (..),
     SkipIPRScan (..),
     LicenseOnlyScan (..)
   ) where
