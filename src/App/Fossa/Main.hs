@@ -321,7 +321,7 @@ testOpts =
 vpsOpts :: Parser VPSOptions
 vpsOpts = VPSOptions <$> followSymlinksOpt <*> skipIprScanOpt <*> licenseOnlyScanOpt <*> fileFilterOpt <*> vpsCommands
   where
-    followSymlinksOpt = flagOpt FollowSymlinks (long "follow" <> help "If specified, follows symbolic links but has no protection against loops")
+    followSymlinksOpt = flagOpt FollowSymlinks (long "follow" <> help "If specified, follows symbolic links (does not protect against cyclic links)")
     skipIprScanOpt = flagOpt SkipIPRScan (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
     licenseOnlyScanOpt = flagOpt LicenseOnlyScan (long "license-only" <> help "If specified, the scan directory will not be scanned for vendored dependencies")
     fileFilterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
