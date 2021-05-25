@@ -24,13 +24,13 @@ Spectrometer is a tool that requires minimal configuration: usually, only a FOSS
 
 If you do not have an API key, please check the [FOSSA documentation](https://docs.fossa.com/docs/api-reference) for instructions on generating an API key.
 
-**Configure your API key**
+### Configure your API key
 
 ```sh
 export FOSSA_API_KEY=abcdef123456
 ```
 
-**Run Analysis**
+### Run Analysis
 
 This runs dependency analysis in the current directory, uploading results to FOSSA
 
@@ -38,13 +38,14 @@ This runs dependency analysis in the current directory, uploading results to FOS
 fossa analyze
 ```
 
-**Check for FOSSA scan results**
+### Check for FOSSA scan results
 
 ```sh
 fossa test
 ```
 
 For additional commands and command flags, use `--help`:
+
 ```sh
 fossa --help
 fossa analyze --help
@@ -187,9 +188,11 @@ dependencies:
   package: Django
   version: 2.1.7
 ```
+
 The `package` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
 
 Supported dependency types:
+
 - `cargo` - Rust dependencies that a typically found at [crates.io](https://crates.io/).
 - `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
 - `composer` - Dependencies specified by the PHP package manager [Composer](https://getcomposer.org/), which are located on [Packagist](https://packagist.org/).
@@ -246,9 +249,9 @@ fossa report attribution
 
 ### Report types
 
-* `fossa report attribution` - A report that contains information about your dependencies and their authors. For more info about attributions, check the [FOSSA docs page illustrating the topic](https://docs.fossa.com/docs/generating-reports).
+- `fossa report attribution` - A report that contains information about your dependencies and their authors. For more info about attributions, check the [FOSSA docs page illustrating the topic](https://docs.fossa.com/docs/generating-reports).
 
-### Specifying a timeout
+### Specifying a report timeout
 
 By default, `fossa report` waits a maximum of 10 minutes for report contents. To override the default timeout, use, e.g.:
 
