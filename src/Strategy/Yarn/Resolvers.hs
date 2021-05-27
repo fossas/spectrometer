@@ -17,6 +17,8 @@ import Path
 import Strategy.Yarn.LockfileV2
 import Data.Bifunctor (first)
 import Control.Effect.Diagnostics
+import Text.Megaparsec
+import Data.Void (Void)
 
 data Resolver = Resolver
   { resolverName :: Text
@@ -28,6 +30,7 @@ data Package
   = WorkspacePackage (Path Rel Dir)
   | NpmPackage (Maybe Text) Text Text -- scope, package, version
   | GitPackage Text Text -- url, commit
+  | TarPackage Text -- url
   deriving (Eq, Ord, Show)
 
 ---------- WorkspaceResolver
@@ -122,11 +125,48 @@ splitSingle needle txt =
 parseGitMetadata :: Text -> Maybe (Map Text Text)
 parseGitMetadata = fmap M.fromList . traverse (splitSingle "=") . T.splitOn "&"
 
----------- TODO: file: and tarball
+---------- TarResolver
+
+type Parser = Parsec Void Text
+
+matchParser :: Parser a -> Text -> Bool
+matchParser p = either (const False) (const True) . runParser p ""
+
+-- For a locator to be a valid tar, it must match both of these regexes:
+--
+-- @
+--     export const TARBALL_REGEXP = /^[^?]*\.(?:tar\.gz|tgz)(?:\?.*)?$/;
+--     export const PROTOCOL_REGEXP = /^https?:/;
+-- @
+tarMatchP :: Parser ()
+tarMatchP = do
+  _ <- chunk "https:" <|> chunk "http:"
+  lookForExtension
+  _ <- optional (single '?' *> takeRest)
+  eof
+
+  where
+    lookForExtension = do
+      _ <- takeWhile1P Nothing (\c -> c /= '?' && c /= '.')
+      found <- optional $ chunk ".tar.gz" <|> chunk ".tgz"
+      case found of
+        Nothing -> anySingle *> lookForExtension
+        Just _ -> pure ()
+
+
+tarResolver :: Resolver
+tarResolver =
+  Resolver
+    { resolverName = "TarResolver"
+    , resolverSupportsLocator = matchParser tarMatchP . locatorReference
+    , resolverLocatorToPackage = Right . TarPackage . locatorReference
+    }
+
+---------- TODO: file:
 ----------
 
 allResolvers :: [Resolver]
-allResolvers = [workspaceResolver, npmResolver, gitResolver]
+allResolvers = [workspaceResolver, npmResolver, gitResolver, tarResolver]
 
 -- TODO: turn this into real diagnostics error?
 resolveLocatorToPackage :: Has Diagnostics sig m => Locator -> m Package

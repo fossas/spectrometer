@@ -122,6 +122,16 @@ packageToDependency (GitPackage repo commit) =
       , dependencyTags = M.empty
       , dependencyEnvironments = []
       }
+packageToDependency (TarPackage url) =
+  Just
+    Dependency
+      { dependencyType = URLType
+      , dependencyName = url
+      , dependencyVersion = Nothing
+      , dependencyLocations = []
+      , dependencyTags = M.empty
+      , dependencyEnvironments = []
+      }
 
 ------------------------
 
