@@ -171,7 +171,7 @@ allResolvers = [workspaceResolver, npmResolver, gitResolver, tarResolver]
 -- TODO: turn this into real diagnostics error?
 resolveLocatorToPackage :: Has Diagnostics sig m => Locator -> m Package
 resolveLocatorToPackage locator = context ("Resolving locator " <> showT locator) $ do
-  resolver <- fromMaybe @Text "Couldn't find resolver for locator" $
+  resolver <- fromMaybe @Text "Unsupported locator (no resolver found)" $
     find (`resolverSupportsLocator` locator) allResolvers
 
   context ("Running resolver: " <> resolverName resolver) . fromEither $
