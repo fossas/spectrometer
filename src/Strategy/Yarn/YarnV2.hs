@@ -30,10 +30,10 @@ buildGraph :: YarnLockfile -> Graphing Dependency
 buildGraph = undefined
 
 doSomething :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m ()
-doSomething file = do
+doSomething file = context "Yarn" $ do
   lockfile <- context "Reading lockfile" $ readContentsYaml @YarnLockfile file
   stitched <- context "Validating lockfile" $ stitchLockfile lockfile
-  packageGraph <- context "Resolving yarn locators" $ fromEither (AME.gtraverse resolveLocatorToPackage stitched)
+  packageGraph <- context "Resolving yarn locators" $ AME.gtraverse resolveLocatorToPackage stitched
   traceM (show packageGraph)
   pure ()
 

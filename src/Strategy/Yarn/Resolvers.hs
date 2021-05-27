@@ -16,9 +16,11 @@ import Data.Text.Extra (dropPrefix, showT)
 import Path
 import Strategy.Yarn.LockfileV2
 import Data.Bifunctor (first)
+import Control.Effect.Diagnostics
 
 data Resolver = Resolver
-  { resolverSupportsLocator :: Locator -> Bool
+  { resolverName :: Text
+  , resolverSupportsLocator :: Locator -> Bool
   , resolverLocatorToPackage :: Locator -> Either Text Package
   }
 
@@ -37,7 +39,8 @@ workspaceProtocol = "workspace:"
 workspaceResolver :: Resolver
 workspaceResolver =
   Resolver
-    { resolverSupportsLocator = (workspaceProtocol `T.isPrefixOf`) . locatorReference
+    { resolverName = "WorkspaceResolver"
+    , resolverSupportsLocator = (workspaceProtocol `T.isPrefixOf`) . locatorReference
     , resolverLocatorToPackage =
         fmap WorkspacePackage
           . first showT
@@ -55,7 +58,8 @@ npmProtocol = "npm:"
 npmResolver :: Resolver
 npmResolver =
   Resolver
-    { resolverSupportsLocator = \loc ->
+    { resolverName = "NpmResolver"
+    , resolverSupportsLocator = \loc ->
         (npmProtocol `T.isPrefixOf` locatorReference loc)
           || isValidSemver (locatorReference loc)
     , resolverLocatorToPackage = \loc ->
@@ -84,7 +88,8 @@ isValidSemver = isRight . SemVer.fromText
 gitResolver :: Resolver
 gitResolver =
   Resolver
-    { resolverSupportsLocator = ("commit=" `T.isInfixOf`) . locatorReference
+    { resolverName = "GitResolver"
+    , resolverSupportsLocator = ("commit=" `T.isInfixOf`) . locatorReference
     , resolverLocatorToPackage = gitResolverLocatorToPackage
     }
 
@@ -100,6 +105,9 @@ gitResolverLocatorToPackage loc = do
     M.lookup "commit" metaMap
 
   Right $ GitPackage url commit
+
+tag :: a -> Maybe b -> Either a b
+tag a = maybe (Left a) Right
 
 -- | T.splitOn, but only expects to split once
 splitSingle :: Text -> Text -> Maybe (Text, Text)
@@ -121,14 +129,10 @@ allResolvers :: [Resolver]
 allResolvers = [workspaceResolver, npmResolver, gitResolver]
 
 -- TODO: turn this into real diagnostics error?
-resolveLocatorToPackage :: Locator -> Either Text Package
-resolveLocatorToPackage locator = do
-  case find (`resolverSupportsLocator` locator) allResolvers of
-    Nothing -> Left $ "Couldn't find resolver for locator: " <> showT locator
-    Just resolver ->
-      case resolverLocatorToPackage resolver locator of
-        Left err -> Left $ "Resolver failed when turning locator into package: " <> showT locator <> " : " <> err
-        Right resolved -> Right resolved
+resolveLocatorToPackage :: Has Diagnostics sig m => Locator -> m Package
+resolveLocatorToPackage locator = context ("Resolving locator " <> showT locator) $ do
+  resolver <- fromMaybe @Text "Couldn't find resolver for locator" $
+    find (`resolverSupportsLocator` locator) allResolvers
 
-tag :: a -> Maybe b -> Either a b
-tag a = maybe (Left a) Right
+  context ("Running resolver: " <> resolverName resolver) . fromEither $
+    resolverLocatorToPackage resolver locator
