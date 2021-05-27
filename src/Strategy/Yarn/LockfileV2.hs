@@ -2,6 +2,7 @@ module Strategy.Yarn.LockfileV2 (
   YarnLockfile (..),
   Locator (..),
   Descriptor (..),
+  PackageDescription (..),
 ) where
 
 import Data.Aeson

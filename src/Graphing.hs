@@ -29,6 +29,7 @@ module Graphing
 
 import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import qualified Algebra.Graph.AdjacencyMap as AM
+import qualified Algebra.Graph.AdjacencyMap.Extra as AME
 import qualified Algebra.Graph.AdjacencyMap.Algorithm as AMA
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -75,10 +76,7 @@ gtraverse f Graphing{..} = Graphing <$> newSet <*> newAdjacent
     newSet = fmap S.fromList . traverse f . S.toList $ graphingDirect
 
     -- newAdjacent :: f (AM.AdjacencyMap b)
-    newAdjacent = fmap mkAdjacencyMap . traverse (\(a,xs) -> (,) <$> f a <*> traverse f xs) . AM.adjacencyList $ graphingAdjacent
-
-    -- mkAdjacencyMap :: Ord c => [(c,[c])] -> AM.AdjacencyMap c
-    mkAdjacencyMap = AM.fromAdjacencySets . fmap (fmap S.fromList)
+    newAdjacent = AME.gtraverse f graphingAdjacent
 
 -- | Filter Graphing elements
 filter :: (ty -> Bool) -> Graphing ty -> Graphing ty
