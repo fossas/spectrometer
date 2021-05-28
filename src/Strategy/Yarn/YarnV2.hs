@@ -99,6 +99,11 @@ buildGraph gr = convertedGraphing
 -- Dependency types that aren't supported return Nothing
 packageToDependency :: Package -> Maybe Dependency
 packageToDependency WorkspacePackage{} = Nothing
+packageToDependency FilePackage{} = Nothing
+packageToDependency LinkPackage{} = Nothing
+packageToDependency PortalPackage{} = Nothing
+packageToDependency ExecPackage{} = Nothing
+packageToDependency PatchPackage{} = Nothing
 packageToDependency (NpmPackage maybeScope name version) =
   Just
     Dependency
