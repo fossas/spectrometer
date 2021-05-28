@@ -131,6 +131,28 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives en
               . runReplay @Exec (effectsExec effects)
               $ analyze basedir destination project unpackArchives enableVSI filters
 
+-- vsiDiscoverFunc is appended to discoverFuncs during analyze.
+-- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
+vsiDiscoverFunc ::
+  ( Has (Lift IO) sig m,
+    MonadIO m,
+    Has ReadFS sig m,
+    Has Exec sig m,
+    Has Logger sig m,
+    Has Diag.Diagnostics sig m,
+
+    Has (Lift IO) rsig run,
+    Has ReadFS rsig run,
+    Has Diag.Diagnostics rsig run,
+    Has Exec rsig run
+  ) => Flag EnableVSI -> ScanDestination -> Path Abs Dir -> m [DiscoveredProject run]
+vsiDiscoverFunc enableVSI destination dir =
+  if fromFlag EnableVSI enableVSI then (
+    case destination of
+      OutputStdout -> pure []
+      UploadScan apiOpts _ -> VSI.discover apiOpts dir
+  ) else pure []
+
 discoverFuncs ::
   ( Has (Lift IO) sig m,
     MonadIO m,
@@ -145,8 +167,8 @@ discoverFuncs ::
     Has Exec rsig run
   ) =>
   -- | Discover functions
-  Flag EnableVSI -> [Path Abs Dir -> m [DiscoveredProject run]]
-discoverFuncs enableVSI =
+  [Path Abs Dir -> m [DiscoveredProject run]]
+discoverFuncs =
   [ Bundler.discover,
     Cargo.discover,
     Carthage.discover,
@@ -174,8 +196,7 @@ discoverFuncs enableVSI =
     ProjectJson.discover,
     Glide.discover,
     Pipenv.discover,
-    UserYaml.discover,
-    VSI.discover (fromFlag EnableVSI enableVSI)
+    UserYaml.discover
   ]
 
 runDependencyAnalysis ::
@@ -185,7 +206,7 @@ runDependencyAnalysis ::
   [BuildTargetFilter] ->
   DiscoveredProject (StickyDiagC (Diag.DiagnosticsC m)) ->
   m ()
-runDependencyAnalysis (BaseDir basedir) filters project = do
+runDependencyAnalysis (BaseDir basedir) filters project =
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
@@ -219,6 +240,9 @@ analyze ::
   -> m ()
 analyze (BaseDir basedir) destination override unpackArchives enableVSI filters = do
   capabilities <- sendIO getNumCapabilities
+  -- When running analysis, append the vsi discover function to the end of the discover functions list.
+  -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
+  let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination]
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -226,7 +250,7 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      $ withDiscoveredProjects (discoverFuncs enableVSI) (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+      $ withDiscoveredProjects discoverFuncs' (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 

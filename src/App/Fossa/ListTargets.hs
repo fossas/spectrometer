@@ -5,7 +5,7 @@ module App.Fossa.ListTargets
   )
 where
 
-import App.Fossa.Analyze (discoverFuncs, EnableVSI (EnableVSI))
+import App.Fossa.Analyze (discoverFuncs)
 import App.Types (BaseDir (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
@@ -21,7 +21,6 @@ import Effect.ReadFS
 import Path (toFilePath)
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..))
-import Data.Flag (toFlag)
 
 type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))
 
@@ -37,9 +36,7 @@ listTargetsMain (BaseDir basedir) = do
     . runExecIO
     . runAtomicCounter
     $ do
-      -- VSI is only intended to be set for Analyze. Default to False everywhere else.
-      let enableVSI = toFlag EnableVSI False
-      withDiscoveredProjects (discoverFuncs enableVSI) False basedir $ \(project :: DiscoveredProject DummyM) -> do
+      withDiscoveredProjects discoverFuncs False basedir $ \(project :: DiscoveredProject DummyM) -> do
         let maybeRel = makeRelative basedir (projectPath project)
 
         case maybeRel of
