@@ -223,61 +223,28 @@ tarResolver =
     , resolverLocatorToPackage = Right . TarPackage . locatorReference
     }
 
----------- FileResolver
-
-fileProtocol :: Text
-fileProtocol = "file:"
+---------- Unsupported (by fossa) resolvers
 
 -- | The file resolver supports local "file:" references on disk
 --
 -- Fossa cannot handle these, so we don't do any further parsing of the
 -- resolution field
 fileResolver :: Resolver
-fileResolver =
-  Resolver
-    { resolverName = "FileResolver"
-    , resolverSupportsLocator = (fileProtocol `T.isPrefixOf`) . locatorReference
-    , resolverLocatorToPackage = Right . FilePackage . locatorReference
-    }
-
----------- LinkResolver
-
-linkProtocol :: Text
-linkProtocol = "link:"
+fileResolver = unsupportedResolver "FileResolver" "file:" FilePackage
 
 -- | The link resolver is similar to the file resolver
 --
 -- Fossa cannot handle these, so we don't do any further parsing of the
 -- resolution field
 linkResolver :: Resolver
-linkResolver =
-  Resolver
-    { resolverName = "LinkResolver"
-    , resolverSupportsLocator = (linkProtocol `T.isPrefixOf`) . locatorReference
-    , resolverLocatorToPackage = Right . LinkPackage . locatorReference
-    }
-
----------- PortalResolver
-
-portalProtocol :: Text
-portalProtocol = "portal:"
+linkResolver = unsupportedResolver "LinkResolver" "link:" LinkPackage
 
 -- | The portal resolver is similar to the link resolver
 --
 -- Fossa cannot handle these, so we don't do any further parsing of the
 -- resolution field
 portalResolver :: Resolver
-portalResolver =
-  Resolver
-    { resolverName = "PortalResolver"
-    , resolverSupportsLocator = (portalProtocol `T.isPrefixOf`) . locatorReference
-    , resolverLocatorToPackage = Right . PortalPackage . locatorReference
-    }
-
----------- ExecResolver
-
-execProtocol :: Text
-execProtocol = "exec:"
+portalResolver = unsupportedResolver "PortalResolver" "portal:" PortalPackage
 
 -- | The exec resolver allows you to point to a script to run; the output of the
 -- script is used as a package
@@ -285,25 +252,18 @@ execProtocol = "exec:"
 -- Fossa cannot handle these, so we don't do any further parsing of the
 -- resolution field
 execResolver :: Resolver
-execResolver =
-  Resolver
-    { resolverName = "ExecResolver"
-    , resolverSupportsLocator = (execProtocol `T.isPrefixOf`) . locatorReference
-    , resolverLocatorToPackage = Right . ExecPackage . locatorReference
-    }
-
----------- PatchResolver
-
-patchProtocol :: Text
-patchProtocol = "patch:"
+execResolver = unsupportedResolver "ExecResolver" "exec:" ExecPackage
 
 -- | The patch resolver allows you to modify another package with patch files.
 -- The packages appear elsewhere in the lockfile, so we don't do any further
 -- processing of the resolution field
 patchResolver :: Resolver
-patchResolver =
+patchResolver = unsupportedResolver "PatchResolver" "patch:" PatchPackage
+
+unsupportedResolver :: Text -> Text -> (Text -> Package) -> Resolver
+unsupportedResolver name protocol constructor =
   Resolver
-    { resolverName = "PatchResolver"
-    , resolverSupportsLocator = (patchProtocol `T.isPrefixOf`) . locatorReference
-    , resolverLocatorToPackage = Right . PatchPackage . locatorReference
+    { resolverName = name
+    , resolverSupportsLocator = (protocol `T.isPrefixOf`) . locatorReference
+    , resolverLocatorToPackage = Right . constructor . locatorReference
     }
