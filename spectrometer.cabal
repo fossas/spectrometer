@@ -337,6 +337,7 @@ test-suite unit-tests
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
     UserSpecified.YamlDependenciesSpec
+    Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1

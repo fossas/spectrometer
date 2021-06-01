@@ -10,17 +10,27 @@
 --
 -- See also: default plugins, many of which contain resolvers https://github.com/yarnpkg/berry/blob/8afcaa2a954e196d6cd997f8ba506f776df83b1f/packages/yarnpkg-cli/package.json#L68-L82
 module Strategy.Yarn.V2.Resolvers (
+  -- * Primary exports
   Resolver (..),
   Package (..),
   resolveLocatorToPackage,
+
+  -- * Individual resolvers
+  workspaceResolver,
+  npmResolver,
+  gitResolver,
+  tarResolver,
+  fileResolver,
+  linkResolver,
+  execResolver,
+  portalResolver,
+  patchResolver,
 ) where
 
 import Control.Effect.Diagnostics
-import Data.Either (isRight)
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import Data.SemVer qualified as SemVer
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Extra (dropPrefix, showT)
@@ -104,28 +114,18 @@ npmProtocol = "npm:"
 -- | A resolver for packages that come from npm
 --
 -- As a fun implementation detail, this resolver is split across several
--- "resolvers" in the yarn codebase. One such resolver is the
--- @ProtocolResolver@, which prepends a configured @defaultProtocol@ to locator
--- references that are valid semvers. @defaultProtocol@ defaults to @npm:@,
--- which corresponds to this resolver.
+-- "resolvers" in the yarn codebase -- though by the time locators are committed
+-- to a yarn lockfile, they're always structured the same way
 --
--- For this reason, we check both for the @npm:@ prefix and valid semvers in @resolverSupportsLocator@
---
--- See: defaultProtocol documentation: https://next.yarnpkg.com/configuration/yarnrc#defaultProtocol
 -- See: Npm*Resolver in the yarn codebase
 npmResolver :: Resolver
 npmResolver =
   Resolver
     { resolverName = "NpmResolver"
-    , resolverSupportsLocator = \loc ->
-        (npmProtocol `T.isPrefixOf` locatorReference loc)
-          || isValidSemver (locatorReference loc)
+    , resolverSupportsLocator = (npmProtocol `T.isPrefixOf`) . locatorReference
     , resolverLocatorToPackage = \loc ->
         Right $ NpmPackage (locatorScope loc) (locatorName loc) (dropPrefix npmProtocol (locatorReference loc))
     }
-
-isValidSemver :: Text -> Bool
-isValidSemver = isRight . SemVer.fromText
 
 ---------- GitResolver
 
@@ -206,10 +206,11 @@ tarMatchP = do
   eof
   where
     lookForExtension = do
-      _ <- takeWhile1P Nothing (\c -> c /= '?' && c /= '.')
+      _ <- takeWhileP Nothing (\c -> c /= '?' && c /= '.')
       found <- optional $ chunk ".tar.gz" <|> chunk ".tgz"
       case found of
-        Nothing -> anySingle *> lookForExtension
+        -- if takeWhileP stopped at a '.', we can continue. '?' is still disallowed
+        Nothing -> single '.' *> lookForExtension
         Just _ -> pure ()
 
 -- | The tar resolver supports http/https URLs that point to a tarball (.tar.gz/.tgz)
@@ -265,5 +266,5 @@ unsupportedResolver name protocol constructor =
   Resolver
     { resolverName = name
     , resolverSupportsLocator = (protocol `T.isPrefixOf`) . locatorReference
-    , resolverLocatorToPackage = Right . constructor . locatorReference
+    , resolverLocatorToPackage = Right . constructor . dropPrefix protocol . locatorReference
     }
