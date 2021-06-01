@@ -1,6 +1,14 @@
+# Unreleased
+
+- Adds support for Yarn v2 lockfiles ([#244](https://github.com/fossas/spectrometer/pull/244))
+
+# v2.6.1
+
+- Adds --follow to the vps analyze subcommand, which allows for following symbolic links during VPS scans. ([#243](https://github.com/fossas/spectrometer/pull/243))
+
 # v2.6.0
 
-- Improves the output of `fossa analyze` by displaying the status of ongoing Project Discovery and Project Analysis tasks ([#241](https://github.com/fossas/spectrometer/pull/241))
+- Improves the output of `fossa analyze` by displaying the status of ongoing Project Discovery and Project Analysis tasks ([#239](https://github.com/fossas/spectrometer/pull/239))
 
 # v2.5.18
 
