@@ -18,7 +18,7 @@ import Strategy.Yarn.V2.Lockfile
 import Strategy.Yarn.V2.Resolvers
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m (Graphing Dependency)
-analyze file = context "YarnV2" $ do
+analyze file = context "Lockfile V2 analysis" $ do
   lockfile <- context "Reading lockfile" $ readContentsYaml @YarnLockfile file
   stitched <- context "Validating lockfile" $ stitchLockfile lockfile
   packageGraph <- context "Resolving yarn locators" $ AME.gtraverse resolveLocatorToPackage stitched

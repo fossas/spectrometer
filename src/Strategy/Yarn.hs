@@ -8,6 +8,7 @@ import Effect.ReadFS
 import Graphing qualified as G
 import Path
 import Strategy.Yarn.V1.YarnLock qualified as V1
+import Strategy.Yarn.V2.YarnLock qualified as V2
 import Types
 import Prelude
 
@@ -40,7 +41,13 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
-getDeps = context "Yarn" . context "Static analysis" . V1.analyze' . yarnLock
+getDeps project = context "Yarn" $ getDepsV1 project <||> getDepsV2 project
+
+getDepsV1 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
+getDepsV1 = V1.analyze . yarnLock
+
+getDepsV2 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
+getDepsV2 = V2.analyze . yarnLock
 
 data YarnProject = YarnProject
   { yarnDir :: Path Abs Dir
