@@ -1,4 +1,4 @@
-module Strategy.Node.YarnLock
+module Strategy.Yarn.V1.YarnLock
   ( analyze'
   , buildGraph
   ) where

@@ -1,15 +1,15 @@
-module Strategy.Yarn
-  ( discover
-  ) where
+module Strategy.Yarn (
+  discover,
+) where
 
 import Control.Effect.Diagnostics
 import Discovery.Walk
 import Effect.ReadFS
-import qualified Graphing as G
+import Graphing qualified as G
 import Path
+import Strategy.Yarn.V1.YarnLock qualified as V1
 import Types
 import Prelude
-import qualified Strategy.Node.YarnLock as YarnLock
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Yarn" $ do
@@ -23,26 +23,27 @@ findProjects = walk' $ \dir _ files -> do
     Just lock -> do
       let project =
             YarnProject
-            { yarnDir = dir
-            , yarnLock = lock
-            }
+              { yarnDir = dir
+              , yarnLock = lock
+              }
 
       pure ([project], WalkSkipSome ["node_modules"])
 
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => YarnProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "yarn",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = yarnDir project,
-      projectLicenses = pure []
+    { projectType = "yarn"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = yarnDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
-getDeps = context "Yarn" . context "Static analysis" . YarnLock.analyze' . yarnLock
+getDeps = context "Yarn" . context "Static analysis" . V1.analyze' . yarnLock
 
 data YarnProject = YarnProject
   { yarnDir :: Path Abs Dir
   , yarnLock :: Path Abs File
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)

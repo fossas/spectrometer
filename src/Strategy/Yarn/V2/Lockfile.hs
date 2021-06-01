@@ -1,7 +1,7 @@
 -- | Types and decoders for the elements found in a yarn v2 lockfile
 --
 -- See the yarnv2 devdocs for an overview
-module Strategy.Yarn.LockfileV2 (
+module Strategy.Yarn.V2.Lockfile (
   YarnLockfile (..),
   Locator (..),
   Descriptor (..),

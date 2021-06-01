@@ -239,8 +239,6 @@ library
     Strategy.Node.NpmList
     Strategy.Node.NpmLock
     Strategy.Node.PackageJson
-    Strategy.Node.YarnLock
-    Strategy.Node.YarnLockV2
     Strategy.Npm
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
@@ -260,9 +258,10 @@ library
     Strategy.Scala
     Strategy.UserSpecified.YamlDependencies
     Strategy.Yarn
-    Strategy.Yarn.LockfileV2
-    Strategy.Yarn.Resolvers
-    Strategy.Yarn.YarnV2
+    Strategy.Yarn.V1.YarnLock
+    Strategy.Yarn.V2.Lockfile
+    Strategy.Yarn.V2.Resolvers
+    Strategy.Yarn.V2.YarnLock
     Text.URI.Builder
     Types
     VCS.Git
@@ -324,7 +323,6 @@ test-suite unit-tests
     Maven.PomStrategySpec
     Node.NpmLockSpec
     Node.PackageJsonSpec
-    Node.YarnLockSpec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec
@@ -339,6 +337,7 @@ test-suite unit-tests
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
     UserSpecified.YamlDependenciesSpec
+    Yarn.YarnLockV1Spec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:
