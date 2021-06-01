@@ -9,7 +9,7 @@ For dependency analysis, we focus exclusively on the lockfile.
 * Lockfile (=yarn.lock=)
 As part of the update from Yarn v1 to Yarn v2, some major changes were made to the lockfile. Most notably:
 
-+ The lockfile is now real yaml. Yarn v1 used an almost-but-not-quite pseudo-yaml format.
++ The lockfile [[https://dev.to/arcanis/introducing-yarn-2-4eh1#new-lockfile-format][is now real yaml]]. Yarn v1 used an almost-but-not-quite pseudo-yaml format.
 + While Yarn v1's lockfile contained information only about dependencies of user projects, Yarn v2's lockfile is much more information-rich. It contains information about first-party user projects ("workspaces"), the version ranges specified in =package.json= for dependencies ("descriptors"), and the resolved version for each dependency ("locators")
 
 ** Concepts
@@ -21,7 +21,7 @@ Workspaces are first-party package directories containing =package.json= files. 
 
 A yarn project can have several workspaces, where workspaces may (but *are not required to*) depend on each other in a DAG. This is similar to "multi-module projects" in other buildtools like maven or gomodules.
 
-Every yarn project will contain at least one workspace
+Every yarn project will contain at least one workspace.
 
 *** Locators
 Somewhat similar to fossa locators, a yarn locator is an unambiguous reference to a specific version of a package and where to find it.
@@ -31,9 +31,9 @@ Locators have three components:
 + Package name -- like =underscore=
 + Package reference -- which can vary in shape depending on where the package is coming from. For example, this could be a pointer to specific package version on the npm registry, a pointer to a git repo at a specific commit, or a link to a tarball.
 
-Package scope and name in a locator, for the purposes of dependency resolution, *are unused*. The only part that matters is the package reference
+Package scope and name in a locator, for the purposes of dependency resolution, *are unused*. Only the package reference matters.
 
-Yarn supports a handful of reference types by default, and plugins can be added to support new reference types. See the =Resolvers= section below
+Yarn supports a handful of reference types by default, and plugins can be added to support new reference types. See the =Resolvers= section below.
 
 *** Descriptors
 Descriptors are similar to locators, but may point to a /range/ of package versions. For the purposes of dependency analysis, we don't care much about the shape and content of descriptors.
@@ -41,7 +41,7 @@ Descriptors are similar to locators, but may point to a /range/ of package versi
 Descriptors have three components:
 + Package scope (optional) -- like =@babel= -- a scope on npm
 + Package name -- like =underscore=
-+ Package range -- which can vary in shape depending on where the package is coming from. For example, this could be a semver for a package on the npm registry, a pointer to a git repo on a branch, or a link to a tarball.
++ Package range -- which can vary in shape depending on where the package is coming from. For example, this could be a semver for a package on the npm registry, a pointer to a git repo on a branch, or a link to a tarball
 
 All locators are valid descriptors; not all descriptors are valid locators.
 
@@ -50,7 +50,7 @@ Plugins are the yarn v2 mechanism used to add support for, among other things, n
 
 A plugin can export zero or more "Resolvers", each of which can add support for new types of locator. Yarn itself implements support for "built-in" locator types (npm dependencies, git dependencies, etc) as resolvers in bundled plugins.
 
-For dependency analysis, we support locators produced by all of the built-in plugins.
+For dependency analysis, we support locators produced by all of the built-in plugins (the [[https://github.com/yarnpkg/berry/tree/fe19f603cb5e7926b644c72e99f62072f3efc0b5/packages][packages prefixed by =plugin-= here]]).
 
 ** Format
 #+BEGIN_SRC yaml
