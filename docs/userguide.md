@@ -177,6 +177,7 @@ We support the following archive formats:
 FOSSA offers a way to manually upload dependencies provided we support the dependency type. Manually specifying dependencies is very helpful in the event your package manager is unsupported or you are using a custom and nonstandard dependency management solution.
 
 The FOSSA CLI will automatically read `fossa-deps.yml` in the root directory (usually the current working directory) when `fossa analyze` is run and parse dependencies from it.
+The CLI also accepts `fossa-deps.yaml`, but will abort if it finds both.
 
 > Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
 
@@ -235,6 +236,27 @@ dependencies:
   url: https://www.myproject.com/about
   description: Provides foo and a helpful interface around foo-like tasks.
 ```
+
+The `fossa-deps` scanner tries to report clear error messages when fields are missing, incorrect, or invalid.  For example:
+
+```yaml
+dependencies:
+- type: python
+  package: flask
+  version: "2.0" # without quotes, yaml might interpret that as a number
+  license: MIT # Error!
+```
+
+This would return an error with the message `license field is only allowed for user dependencies`.  However, we don't check for everything:
+
+```yaml
+dependencies:
+- type: cargo
+  package: bitflags
+  some-unexpected-field: hello  # Has no effect
+```
+
+If you see an error message that isn't clear, file an issue in this repository!  Clear error messages are a priority for us, and we want to know where we're lacking.
 
 ## `fossa test`
 
@@ -298,7 +320,7 @@ fossa report attribtion --json
 ```
 
 *NOTE: Currently, text reports are not supported, and the report will be*
-*printed as JSON.  It is reccommended to use the `--json` flag anyway, since*
+*printed as JSON.  It is recommended to use the `--json` flag anyway, since*
 *the behavior of the command without the flag will change in the future.*
 
 ## Common FOSSA Project Flags
