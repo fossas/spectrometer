@@ -13,22 +13,19 @@ As part of the update from Yarn v1 to Yarn v2, some major changes were made to t
 + While Yarn v1's lockfile contained information only about dependencies of user projects, Yarn v2's lockfile is much more information-rich. It contains information about first-party user projects ("workspaces"), the version ranges specified in =package.json= for dependencies ("descriptors"), and the resolved version for each dependency ("locators")
 
 ** Concepts
-
-Yarn v2's lockfile introduces a bunch of new concepts related to dependency management, many of which appear in the lockfile.
-
 *** Workspaces
-Workspaces are first-party package directories containing =package.json= files. Workspaces are always available locally on disk, and are specified by a relative reference to a directory (e.g., =.= or =./foo/bar= or =../baz=)
+Workspaces are first-party package directories (directories that contain =package.json=). Workspaces are always available locally on disk, and are specified by a relative reference to a directory (e.g., =.= or =./foo/bar= or =../baz=)
 
 A yarn project can have several workspaces, where workspaces may (but *are not required to*) depend on each other in a DAG. This is similar to "multi-module projects" in other buildtools like maven or gomodules.
 
 Every yarn project will contain at least one workspace.
 
 *** Locators
-Somewhat similar to fossa locators, a yarn locator is an unambiguous reference to a specific version of a package and where to find it.
+/Somewhat/ similar to fossa locators, a yarn locator is an unambiguous reference to a specific version of a package and where to find it.
 
 Locators have three components:
-+ Package scope (optional) -- like =@babel= -- a scope on npm
-+ Package name -- like =underscore=
++ Package scope (optional) -- like =@babel= -- a scope on npm.
++ Package name -- like =underscore=.
 + Package reference -- which can vary in shape depending on where the package is coming from. For example, this could be a pointer to specific package version on the npm registry, a pointer to a git repo at a specific commit, or a link to a tarball.
 
 Package scope and name in a locator, for the purposes of dependency resolution, *are unused*. Only the package reference matters.
@@ -125,13 +122,11 @@ Full dependency descriptors can be reconstructed by joining key-value pairs on =
 #+BEGIN_QUOTE
 *NOTE*: a fun note about dependency descriptors
 
-A keen eye may notice that in the lockfile above, some descriptor keys contain =npm:= at the top-level. For example, there's =underscore@npm:1.13.1= -- but there is no corresponding descriptor used as a dependency. The closest is =underscore@1.13.1=, a dependency of the =bar= workspace.
+A keen eye may notice that in the lockfile above, some descriptor keys contain =npm:= at the top-level. For example, there's =underscore@npm:1.13.1= -- but that descriptor isn't used anywhere as a dependency. The closest is =underscore@1.13.1=, a dependency of the =bar= workspace.
 
-In an interesting design decision, yarn makes the default resolver for packages configurable. This means that when you provide a raw version (e.g., =1.13.1=) or semver (=^1.13.1=) in =package.json=, the default resolver is used to form the locator.
+In an interesting design decision, yarn makes the default resolver for packages configurable. When a user provides a raw version (e.g., =1.13.1=) or semver (=^1.13.1=) for a dependency in =package.json=, a "default protocol" string is prepended to the descriptor range. This option [[https://next.yarnpkg.com/configuration/yarnrc#defaultProtocol][is configured]] as =defaultProtocol=, which defaults to =npm:=.
 
-This option [[https://next.yarnpkg.com/configuration/yarnrc#defaultProtocol][is configured]] as =defaultProtocol=, which defaults to =npm:=. The =defaultProtocol= is used as a prefix for descriptor ranges
-
-As such, when using a descriptor =name@range= to look up a package, we must also try =name@npm:range=
+As a workaround, when using a descriptor =name@range= to look up a package in the lockfile, we must also try =name@npm:range=
 #+END_QUOTE
 
 *** Lockfile sources
