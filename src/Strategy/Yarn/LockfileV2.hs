@@ -1,3 +1,6 @@
+-- | Types and decoders for the elements found in a yarn v2 lockfile
+--
+-- See the yarnv2 devdocs for an overview
 module Strategy.Yarn.LockfileV2 (
   YarnLockfile (..),
   Locator (..),
@@ -17,11 +20,9 @@ import Text.Megaparsec.Char
 
 ---------- Types
 
--- FIXME: doc link
 newtype YarnLockfile = YarnLockfile (Map [Descriptor] PackageDescription)
   deriving (Eq, Ord, Show)
 
--- FIXME: doc link
 data Locator = Locator
   { locatorScope :: Maybe Text
   , locatorName :: Text
@@ -29,7 +30,6 @@ data Locator = Locator
   }
   deriving (Eq, Ord, Show)
 
--- FIXME: doc link
 data Descriptor = Descriptor
   { descriptorScope :: Maybe Text
   , descriptorName :: Text
@@ -37,7 +37,6 @@ data Descriptor = Descriptor
   }
   deriving (Eq, Ord, Show)
 
--- FIXME: doc link
 data PackageDescription = PackageDescription
   { descVersion :: Text
   , descResolution :: Locator
@@ -52,26 +51,39 @@ data PackageDescription = PackageDescription
 --
 -- To decode the lockfile, we kill the metadata field, and run parseJSON again
 -- on the object
--- FIXME: doc link
 instance FromJSON YarnLockfile where
   parseJSON = withObject "YarnLockfile" (fmap YarnLockfile . parseJSON . Object . HM.delete "__metadata")
 
--- FIXME: doc link
+-- | See 'packageRefP'/'locatorP' below
 instance FromJSON Locator where
   parseJSON = withText "Locator" (tryParse locatorP)
 
--- FIXME: doc link
+-- | See 'packageRefP'/'descriptorP' below
 instance FromJSON Descriptor where
   parseJSON = withText "Descriptor" (tryParse descriptorP)
 
--- FIXME: doc link
+-- | Each key at the top level in a yarn lockfile is a comma-separated list of
+-- descriptors, in string form.
+--
+-- Fortunately, aeson provides a mechanism for us to represent this:
+-- 'FromJSONKey', which is used in the 'FromJSON' instance for 'Map'. It allows
+-- us to arbitrarily decode any type as a Map key (assuming an 'Ord' instance,
+-- of course).
+--
+-- See 'parsePackageKeys' for the implementation of the key parser
 instance FromJSONKey Descriptor where
   fromJSONKey = FromJSONKeyTextParser (tryParse descriptorP)
   fromJSONKeyList = FromJSONKeyTextParser parsePackageKeys
 
--- FIXME: doc link
+-- | A comma-separated list of descriptors
+--
+-- See: https://github.com/yarnpkg/berry/blob/8afcaa2a954e196d6cd997f8ba506f776df83b1f/packages/yarnpkg-core/sources/Project.ts#L303
 parsePackageKeys :: MonadFail m => Text -> m [Descriptor]
 parsePackageKeys = traverse (tryParse descriptorP) . splitTrim ","
+
+-- | 'Data.Text.splitOn', but trims surrounding whitespace from the results
+splitTrim :: Text -> Text -> [Text]
+splitTrim needle = map T.strip . T.splitOn needle
 
 instance FromJSON PackageDescription where
   parseJSON = withObject "PackageDescription" $ \obj ->
@@ -82,10 +94,9 @@ instance FromJSON PackageDescription where
 
 -- | Rather than storing dependencies as a flat list of Descriptors, the yarn
 -- lockfile stores them as key/value pairs, split on the last "@" in a
--- descriptor
+-- descriptor. This is identical to how they'd be found in a @package.json@
 --
 -- We re-construct the raw descriptor by rejoining on "@" before running the parser
--- FIXME: doc link
 parseDependencyDescriptors :: MonadFail m => Map Text Text -> m [Descriptor]
 parseDependencyDescriptors = traverse (\(name, range) -> tryParse descriptorP (name <> "@" <> range)) . M.toList
 
@@ -108,6 +119,8 @@ tryParse p = either (fail . errorBundlePretty) pure . runParser p ""
 -- - package scope
 -- - package name
 -- - package range (descriptor) or package reference (locator)
+--
+-- See: https://github.com/yarnpkg/berry/blob/8afcaa2a954e196d6cd997f8ba506f776df83b1f/packages/yarnpkg-core/sources/structUtils.ts#L333-L425
 packageRefP :: Parser (Maybe Text, Text, Text)
 packageRefP = do
   scope <- optional $ char '@' *> segment "Scope" <* char '/'
@@ -124,9 +137,3 @@ descriptorP = (\(scope, package, range) -> Descriptor scope package range) <$> p
 
 locatorP :: Parser Locator
 locatorP = (\(scope, package, reference) -> Locator scope package reference) <$> packageRefP
-
----------- Misc
-
--- | 'Data.Text.splitOn', but trims surrounding whitespace from the results
-splitTrim :: Text -> Text -> [Text]
-splitTrim needle = map T.strip . T.splitOn needle
