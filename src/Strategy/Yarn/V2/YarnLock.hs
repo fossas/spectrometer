@@ -1,5 +1,8 @@
 module Strategy.Yarn.V2.YarnLock (
   analyze,
+
+  stitchLockfile,
+  buildGraph,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
