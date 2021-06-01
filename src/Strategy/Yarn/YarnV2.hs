@@ -1,6 +1,3 @@
--- TODO: kill
-{-# LANGUAGE TemplateHaskell #-}
-
 module Strategy.Yarn.YarnV2 (
   analyze,
 ) where
@@ -8,7 +5,6 @@ module Strategy.Yarn.YarnV2 (
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Control.Applicative ((<|>))
-import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Effect.Diagnostics
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
@@ -38,7 +34,12 @@ stitchLockfile (YarnLockfile lockfile) = graph
     remapped :: Map Descriptor PackageDescription
     remapped = M.fromList . concatMap (\(ks, v) -> map (,v) ks) . M.toList $ lockfile
 
-    -- FIXME: doc about default npm: protocol
+    -- look up a package by trying:
+    -- - the descriptor, verbatim
+    -- - the descriptor with its range prefixed by @npm:@
+    --
+    -- Search for "defaultProtocol" in the Resolvers module or in the yarnv2
+    -- devdocs for more context about why this is necessary
     lookupPackage :: Has Diagnostics sig m => Descriptor -> m PackageDescription
     lookupPackage desc =
       fromMaybeText ("Couldn't find package for descriptor: " <> T.pack (show desc)) $
@@ -137,12 +138,3 @@ packageToDependency (TarPackage url) =
       , dependencyTags = M.empty
       , dependencyEnvironments = []
       }
-
-------------------------
-
-debug :: IO ()
-debug = bind (either (print . renderFailureBundle) print) . runDiagnostics . runReadFSIO $ analyze $(mkAbsFile "/Users/connor/Desktop/data-block-extract/yarn.lock")
-
---debug = bind (either (print . renderFailureBundle) print) . runDiagnostics . runReadFSIO $ analyze $(mkAbsFile "/Users/connor/Desktop/tmp26/yarn.lock")
-
-bind = (=<<)
