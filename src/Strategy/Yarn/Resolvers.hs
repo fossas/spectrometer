@@ -6,7 +6,6 @@ module Strategy.Yarn.Resolvers (
 ) where
 
 import Control.Effect.Diagnostics
-import Data.Bifunctor (first)
 import Data.Either (isRight)
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
@@ -16,7 +15,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Extra (dropPrefix, showT)
 import Data.Void (Void)
-import Path
 import Strategy.Yarn.LockfileV2
 import Text.Megaparsec
 
@@ -27,7 +25,7 @@ data Resolver = Resolver
   }
 
 data Package
-  = WorkspacePackage (Path Rel Dir)
+  = WorkspacePackage Text -- relative reference to a directory. not quite a Path Rel Dir because it may contain '..'
   | NpmPackage (Maybe Text) Text Text -- scope, package, version
   | GitPackage Text Text -- url, commit
   | TarPackage Text -- url
@@ -49,7 +47,6 @@ resolveLocatorToPackage locator = context ("Resolving locator " <> showT locator
   context ("Running resolver: " <> resolverName resolver) . fromEither $
     resolverLocatorToPackage resolver locator
 
-
 allResolvers :: [Resolver]
 allResolvers =
   [ workspaceResolver
@@ -68,17 +65,17 @@ allResolvers =
 workspaceProtocol :: Text
 workspaceProtocol = "workspace:"
 
--- | Resolved workspace locators come in the form @workspace:./relative/path@
+-- | Resolved workspace locators come in the form @workspace:./relative/reference/to/dir@
+--
+-- Relative references may contain '..', so they're not quite @Path Rel Dir@
 workspaceResolver :: Resolver
 workspaceResolver =
   Resolver
     { resolverName = "WorkspaceResolver"
     , resolverSupportsLocator = (workspaceProtocol `T.isPrefixOf`) . locatorReference
     , resolverLocatorToPackage =
-        fmap WorkspacePackage
-          . first showT
-          . parseRelDir
-          . T.unpack
+        Right
+          . WorkspacePackage
           . dropPrefix workspaceProtocol
           . locatorReference
     }
