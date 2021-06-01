@@ -154,6 +154,7 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
+    App.Fossa.YamlDeps
     App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
@@ -327,6 +328,7 @@ test-suite unit-tests
     GraphingSpec
     Haskell.CabalSpec
     Haskell.StackSpec
+    ManuallySpecified.YamlDependenciesSpec
     Maven.PluginStrategySpec
     Maven.PomStrategySpec
     Node.NpmLockSpec

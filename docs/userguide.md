@@ -176,7 +176,7 @@ We support the following archive formats:
 
 FOSSA offers a way to manually upload dependencies provided we support the dependency type. Manually specifying dependencies is very helpful in the event your package manager is unsupported or you are using a custom and nonstandard dependency management solution.
 
-The FOSSA CLI will automatically read `fossa-deps.yml` in the root directory when `fossa analyze` is run and parse dependencies from it.
+The FOSSA CLI will automatically read `fossa-deps.yml` in the root directory (usually the current working directory) when `fossa analyze` is run and parse dependencies from it.
 
 > Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
 
@@ -207,6 +207,34 @@ Supported dependency types:
 - `python` - Python dependencies found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
 - `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar`. The `version` field will be ignored for `url` type dependencies.
+- `user` - Specify a user-defined dependency by providing all of the necessary dependency's info.  See [User-defined dependencies](#User-defined-dependencies) for more info and examples.
+
+### User-defined dependencies
+
+FOSSA supports users that have dependencies that can't be automatically discovered or identified, by offering the ability to define new dependencies.
+
+To do this, you must supply the name, revision (or version), and license that would normally be automatically discovered.  This must be done using the `fossa-deps.yml` file.
+For the `type`, `package`, and `version` fields, nothing changes, except `version` is now required.  However, you must now also specify a `license`.  A minimal example is found here:
+
+```yaml
+dependencies:
+- type: user
+  package: foo
+  version: 1.2.3
+  license: "MIT or Apache-2.0"
+```
+
+You may optionally specify a `url` (some homepage or project page, not specific to the version), and a `description` (project description, not version-specific):
+
+```yaml
+dependencies:
+- type: user
+  package: foo
+  version: 1.2.3
+  license: MIT
+  url: https://www.myproject.com/about
+  description: Provides foo and a helpful interface around foo-like tasks.
+```
 
 ## `fossa test`
 
