@@ -1,4 +1,14 @@
--- TODO: figure out wth a virtual package is and if they can appear in locators
+-- | Yarn v2 has a handful of default protocols it supports through "Resolvers"
+-- in bundled plugins.
+--
+-- Protocol documentation can be found here: https://yarnpkg.com/features/protocols
+--
+-- Confusingly, the package examples described on that page are /Descriptors/,
+-- not Locators. As such, we don't care to support parsing all of these
+-- examples: we only care to parse the Locators produced by the related
+-- Resolvers
+--
+-- See also: default plugins, many of which contain resolvers https://github.com/yarnpkg/berry/blob/8afcaa2a954e196d6cd997f8ba506f776df83b1f/packages/yarnpkg-cli/package.json#L68-L82
 module Strategy.Yarn.Resolvers (
   Resolver (..),
   Package (..),
@@ -19,9 +29,9 @@ import Strategy.Yarn.LockfileV2
 import Text.Megaparsec
 
 data Resolver = Resolver
-  { resolverName :: Text
-  , resolverSupportsLocator :: Locator -> Bool
-  , resolverLocatorToPackage :: Locator -> Either Text Package
+  { resolverName :: Text -- ^ Used for error messages
+  , resolverSupportsLocator :: Locator -> Bool -- ^ Does this resolver support the locator?
+  , resolverLocatorToPackage :: Locator -> Either Text Package -- ^ Convert this locator to a yarn package
   }
 
 data Package
@@ -38,6 +48,7 @@ data Package
 
 ----------
 
+-- | Search for a resolver that supports the Locator, and turn it into a Package
 resolveLocatorToPackage :: Has Diagnostics sig m => Locator -> m Package
 resolveLocatorToPackage locator = context ("Resolving locator " <> showT locator) $ do
   resolver <-
@@ -68,6 +79,8 @@ workspaceProtocol = "workspace:"
 -- | Resolved workspace locators come in the form @workspace:./relative/reference/to/dir@
 --
 -- Relative references may contain '..', so they're not quite @Path Rel Dir@
+--
+-- See: https://github.com/yarnpkg/berry/blob/8afcaa2a954e196d6cd997f8ba506f776df83b1f/packages/yarnpkg-core/sources/WorkspaceResolver.ts
 workspaceResolver :: Resolver
 workspaceResolver =
   Resolver
@@ -85,6 +98,18 @@ workspaceResolver =
 npmProtocol :: Text
 npmProtocol = "npm:"
 
+-- | A resolver for packages that come from npm
+--
+-- As a fun implementation detail, this resolver is split across several
+-- "resolvers" in the yarn codebase. One such resolver is the
+-- @ProtocolResolver@, which prepends a configured @defaultProtocol@ to locator
+-- references that are valid semvers. @defaultProtocol@ defaults to @npm:@,
+-- which corresponds to this resolver.
+--
+-- For this reason, we check both for the @npm:@ prefix and valid semvers in @resolverSupportsLocator@
+--
+-- See: defaultProtocol documentation: https://next.yarnpkg.com/configuration/yarnrc#defaultProtocol
+-- See: Npm*Resolver in the yarn codebase
 npmResolver :: Resolver
 npmResolver =
   Resolver
@@ -104,7 +129,7 @@ isValidSemver = isRight . SemVer.fromText
 -- | The git resolver in yarn ALWAYS normalizes and resolves git references the same way:
 --
 -- @
---     $URL#metadata
+--     URL#METADATA
 --
 --     -- e.g.
 --
@@ -112,9 +137,11 @@ isValidSemver = isRight . SemVer.fromText
 --     https://example.com/baz.git#branch=$BRANCH&commit=$COMMITID
 -- @
 --
--- The string after # is a set of key/value pairs, separated by &
+-- The metadata (string after #) is a set of key/value pairs, separated by &
 --
 -- We can always expect to find a commit key, so we use that for the package
+--
+-- See: https://github.com/yarnpkg/berry/blob/master/packages/plugin-git/sources/GitResolver.ts
 gitResolver :: Resolver
 gitResolver =
   Resolver
@@ -183,6 +210,8 @@ tarMatchP = do
         Just _ -> pure ()
 
 -- | The tar resolver supports http/https URLs that point to a tarball (.tar.gz/.tgz)
+--
+-- See: https://github.com/yarnpkg/berry/blob/master/packages/plugin-http/sources/TarballHttpResolver.ts
 tarResolver :: Resolver
 tarResolver =
   Resolver
