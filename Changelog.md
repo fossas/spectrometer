@@ -1,4 +1,17 @@
-# Unreleased
+# v2.6.0
+
+- Improves the output of `fossa analyze` by displaying the status of ongoing Project Discovery and Project Analysis tasks ([#241](https://github.com/fossas/spectrometer/pull/241))
+
+# v2.5.18
+
+- Fixes issue where transitive dependencies could be missing in npm projects ([#240](https://github.com/fossas/spectrometer/pull/240))
+
+# v2.5.17
+
+- Fix `fossa container analyze` `--project` and `--revision` flags ([#238](https://github.com/fossas/spectrometer/pull/238))
+
+# v2.5.16
+
 - Support for manually specified dependencies through `fossa-deps.yaml` ([#236](https://github.com/fossas/spectrometer/pull/236))
 
 # v2.5.15
