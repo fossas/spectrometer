@@ -1,6 +1,5 @@
 module Strategy.Yarn.V2.YarnLock (
   analyze,
-
   stitchLockfile,
   buildGraph,
 ) where
@@ -9,6 +8,7 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
+import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
@@ -38,15 +38,29 @@ stitchLockfile (YarnLockfile lockfile) = graph
     remapped = M.fromList . concatMap (\(ks, v) -> map (,v) ks) . M.toList $ lockfile
 
     -- look up a package by trying:
-    -- - the descriptor, verbatim
-    -- - the descriptor with its range prefixed by @npm:@
+    -- 1. the descriptor, verbatim
+    -- 2. the descriptor with its range prefixed by @npm:@
+    -- 3. any other descriptor with a matching scope/name and an @npm:@ prefix to its range
     --
-    -- Search for "defaultProtocol" in the Resolvers module or in the yarnv2
-    -- devdocs for more context about why this is necessary
+    -- For (2), search for "defaultProtocol" in the Resolvers module or in the
+    -- yarnv2 devdocs for more context about why this is necessary
+    --
+    -- For (3), yarn coalesces matching semver range subsets in descriptors for
+    -- npm dependencies. For example, given dependencies on @package: ^1.0.0@
+    -- and @package: ^2.0.0@, only @package@npm:^2.0.0@ will appear as a
+    -- descriptor key for a package in the lockfile
     lookupPackage :: Has Diagnostics sig m => Descriptor -> m PackageDescription
     lookupPackage desc =
       fromMaybeText ("Couldn't find package for descriptor: " <> T.pack (show desc)) $
-        M.lookup desc remapped <|> M.lookup (desc{descriptorRange = "npm:" <> descriptorRange desc}) remapped
+        M.lookup desc remapped <|> M.lookup (desc{descriptorRange = "npm:" <> descriptorRange desc}) remapped <|> lookupAnyNpm desc
+
+    -- find any package with a descriptor with matching scope/name, and an @npm:@ prefix prefix
+    lookupAnyNpm :: Descriptor -> Maybe PackageDescription
+    lookupAnyNpm desc = find (\other -> identMatches desc other && "npm:" `T.isPrefixOf` descriptorRange other) (M.keys remapped) >>= (`M.lookup` remapped)
+
+    -- whether the scope and name of the package matches in both descriptors
+    identMatches :: Descriptor -> Descriptor -> Bool
+    identMatches one two = descriptorScope one == descriptorScope two && descriptorName one == descriptorName two
 
     -- look up all of a package's dependencies as locators in the lockfile
     lookupPackageDeps :: Has Diagnostics sig m => PackageDescription -> m [Locator]
