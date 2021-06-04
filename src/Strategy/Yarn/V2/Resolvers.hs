@@ -117,14 +117,25 @@ npmProtocol = "npm:"
 -- "resolvers" in the yarn codebase -- though by the time locators are committed
 -- to a yarn lockfile, they're always structured the same way
 --
--- See: Npm*Resolver in the yarn codebase
+-- ..with one caveat anyway. npm locators are allowed to contain `::selectors`
+-- at the end. This is often used for a pinned archive URL from npm:
+--
+-- @
+--     npm:8.0.0::__archiveUrl=https://....
+-- @
+--
+-- ..so when converting to a package, we drop anything after we find a colon.
+--
+-- See: https://github.com/yarnpkg/berry/blob/8afcaa2a954e196d6cd997f8ba506f776df83b1f/packages/plugin-npm/tests/NpmSemverResolver.test.ts#L7
+-- See: https://github.com/yarnpkg/berry/blob/master/packages/plugin-npm/sources/NpmSemverResolver.ts#L26
+-- See: Npm*Resolver in the yarn codebase (and NpmSemverResolver in particular)
 npmResolver :: Resolver
 npmResolver =
   Resolver
     { resolverName = "NpmResolver"
     , resolverSupportsLocator = (npmProtocol `T.isPrefixOf`) . locatorReference
     , resolverLocatorToPackage = \loc ->
-        Right $ NpmPackage (locatorScope loc) (locatorName loc) (dropPrefix npmProtocol (locatorReference loc))
+        Right $ NpmPackage (locatorScope loc) (locatorName loc) (T.takeWhile (/= ':') (dropPrefix npmProtocol (locatorReference loc)))
     }
 
 ---------- GitResolver
