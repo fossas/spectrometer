@@ -12,7 +12,7 @@ module Strategy.NuGet.PackageReference
   , Package(..)
   ) where
 
-import Control.Applicative (optional)
+import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
 import qualified Data.List as L
@@ -90,7 +90,7 @@ instance FromXML ItemGroup where
 instance FromXML Package where
   parseElement el =
     Package <$> attr "Include" el
-            <*> optional (attr "Version" el)
+            <*> optional (attr "Version" el <|> child "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency
 buildGraph project = Graphing.fromList (map toDependency direct)
