@@ -87,7 +87,6 @@ import Types
 import VCS.Git (fetchGitContributors)
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import App.Fossa.EmbeddedBinary
 
 data ScanDestination
   = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -136,9 +135,9 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives en
 -- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
 vsiDiscoverFunc ::
   ( Has (Lift IO) sig m,
-    MonadIO m,
     Has Diag.Diagnostics sig m,
     Has (Lift IO) rsig run,
+    MonadIO run,
     Has Diag.Diagnostics rsig run,
     Has Exec rsig run
   ) => Flag EnableVSI -> ScanDestination -> Path Abs Dir -> m [DiscoveredProject run]
@@ -146,9 +145,7 @@ vsiDiscoverFunc enableVSI destination dir =
   if fromFlag EnableVSI enableVSI then (
     case destination of
       OutputStdout -> pure []
-      UploadScan apiOpts _ -> do 
-        binaryPaths <- extractEmbeddedBinary Wiggins
-        VSI.discover apiOpts dir binaryPaths
+      UploadScan apiOpts _ -> VSI.discover apiOpts dir
   ) else pure []
 
 discoverFuncs ::

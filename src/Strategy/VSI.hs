@@ -13,6 +13,8 @@ import App.Fossa.VPS.Scan.RunWiggins
 import qualified Data.Text as T
 import Data.Aeson;
 import GHC.Generics;
+import Control.Effect.Lift
+import Control.Monad.IO.Class
 
 newtype VSIProject = VSIProject
   { vsiDir :: Path Abs Dir
@@ -22,30 +24,30 @@ newtype VSIStandaloneResults = VSIStandaloneResults
   { vsiStandaloneLocators :: [T.Text]
   } deriving (Show, Generic, FromJSON)
 
-discover :: (Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => ApiOpts -> Path Abs Dir -> BinaryPaths -> m [DiscoveredProject run]
-discover apiOpts dir binaryPaths = context "VSI" $ do
+discover :: (Has Diagnostics sig m, Has (Lift IO) rsig run, MonadIO run, Has Exec rsig run, Has Diagnostics rsig run) => ApiOpts -> Path Abs Dir -> m [DiscoveredProject run]
+discover apiOpts dir = context "VSI" $ do
   -- Right now we assume that if the VSI strategy is run, the top level root is a project to scan.
   -- In the future we will likely add heuristics to detect whether the VSI strategy will yield results.
   let wigginsOpts = generateVSIStandaloneOpts dir apiOpts
-  pure [mkProject binaryPaths wigginsOpts (VSIProject dir)]
+  pure [mkProject wigginsOpts (VSIProject dir)]
 
-mkProject :: (Has Exec sig n, Has Diagnostics sig n) => BinaryPaths -> WigginsOpts -> VSIProject -> DiscoveredProject n
-mkProject binaryPaths wigginsOpts project =
+mkProject :: (Has (Lift IO) sig n, MonadIO n, Has Exec sig n, Has Diagnostics sig n) => WigginsOpts -> VSIProject -> DiscoveredProject n
+mkProject wigginsOpts project =
   DiscoveredProject
     { projectType = "vsi"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ analyze binaryPaths wigginsOpts
+    , projectDependencyGraph = const $ analyze wigginsOpts
     , projectPath = vsiDir project
     , projectLicenses = pure []
     }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m (Graphing Dependency)
-analyze binaryPaths opts = do
-  results <- runWiggins binaryPaths opts
+analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency)
+analyze opts = do
+  results <- withWigginsBinary $ runWiggins opts
   pure $ convertResults results
 
-runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m (Maybe VSIStandaloneResults)
-runWiggins binaryPaths opts = do
+runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> BinaryPaths -> m (Maybe VSIStandaloneResults)
+runWiggins opts binaryPaths = do
   jsonEncodedLocators <- execWigginsRaw binaryPaths opts
   pure $ decode jsonEncodedLocators
 
