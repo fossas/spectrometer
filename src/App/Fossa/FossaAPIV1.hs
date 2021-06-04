@@ -4,30 +4,40 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module App.Fossa.FossaAPIV1 (
-  uploadAnalysis,
-  uploadContributors,
-  uploadContainerScan,
-  UploadResponse (..),
-  mkMetadataOpts,
-  FossaError (..),
-  FossaReq (..),
-  Contributors (..),
-  fossaReq,
-  getLatestBuild,
-  Build (..),
-  BuildTask (..),
-  BuildStatus (..),
-  getIssues,
-  Organization (..),
-  getOrganization,
-  getAttribution,
-  getAttributionRaw,
-) where
+module App.Fossa.FossaAPIV1
+  ( uploadAnalysis,
+    uploadContributors,
+    uploadContainerScan,
+    UploadResponse (..),
+    mkMetadataOpts,
+    FossaError (..),
+    FossaReq (..),
+    Contributors (..),
+    fossaReq,
+    getLatestBuild,
+    Build (..),
+    BuildTask (..),
+    BuildStatus (..),
+    getIssues,
+    Organization (..),
+    getOrganization,
+    getAttribution,
+    getAttributionRaw,
+    getSignedURL,
+    archiveUpload,
+    archiveBuildUpload,
+    ArchiveComponents (..),
+    Archive (..),
+  )
+where
 
+import Prelude
+import App.Fossa.Analyze.Project
 import App.Fossa.Container (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Types
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as C
 import App.Version (versionNumber)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
@@ -39,13 +49,16 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Effect.Logger
-import Fossa.API.Types (ApiOpts, Issues, useApiOpts)
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
 import Network.HTTP.Types qualified as HTTP
 import Srclib.Types
 import Text.URI (URI)
 import Text.URI qualified as URI
+import Fossa.API.Types (ApiOpts, Issues, SignedURL, useApiOpts, signedURL)
+import Network.HTTP.Req
+import Network.HTTP.Client qualified as C
+import Data.Word (Word8)
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -235,6 +248,104 @@ getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
 
   response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
+
+---------- Archive build queueing. This Endpoint ensures that after an archive is uploaded, it is scanned.
+
+newtype ArchiveComponents = ArchiveComponents
+  { archives :: [Archive]
+  }
+
+data Archive = Archive
+ { packageSpec :: Text
+ , revision :: Text
+ }
+
+instance ToJSON ArchiveComponents where
+ toJSON ArchiveComponents{..} = object
+   [ "archives" .= archives
+   ]
+
+instance ToJSON Archive where
+ toJSON Archive{..} = object
+   [ "packageSpec" .= packageSpec
+   , "revision" .= revision
+   ]
+
+archiveBuildURL :: Url 'Https -> Url 'Https
+archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
+
+archiveBuildUpload ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ArchiveComponents ->
+  m C.ByteString
+archiveBuildUpload apiOpts archiveProjects = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = "dependency" =: True
+           <> "rawLicenseScan" =: True
+
+  resp <- req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+  pure (responseBody resp)
+
+---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
+
+signedURLEndpoint :: Url 'Https -> Url 'Https
+signedURLEndpoint baseUrl = baseUrl /: "api" /: "components" /: "signed_url"
+
+getSignedURL ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  m SignedURL
+getSignedURL apiOpts revision packageName = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = "packageSpec" =: packageName <> "revision" =: revision
+
+  response <- req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody response)
+
+---------- The archive upload function uploads the file it is given directly to the signed URL it is provided.
+
+archiveUpload ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  SignedURL ->
+  FilePath ->
+  m String
+archiveUpload signedArcURI arcFile = fossaReq $ do
+        let arcURL = mkURI $ signedURL signedArcURI
+
+        case arcURL >>= useHttpsURI of
+              Nothing -> case arcURL of
+                Nothing -> fatalText ("Error attempting to archive upload file: " <> T.pack arcFile <> ". No signed URL supplied")
+                Just resultURL -> fatalText ("Invalid URL: " <> render resultURL)
+              Just (url, options) -> do
+                    res <- reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+                    pure $ show res
+                    where
+
+-- requestEncoder properly encodes the Request path. 
+-- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry. 
+-- This is accomplished by passing "True" to "Http.urlEncode" to signify that we want to encode more characters.
+requestEncoder :: C.Request -> C.Request
+requestEncoder r = r { C.path = encoder (C.path r) }
+
+encoder :: BS.ByteString -> BS.ByteString
+encoder path = BS.singleton slashWord8 <> joined
+  where
+    split :: [BS.ByteString]
+    split = BS.split slashWord8 path
+    filtered :: [BS.ByteString]
+    filtered = filter (/= BS.empty) split
+    encoded :: [BS.ByteString]
+    encoded = map (HTTP.urlEncode True) filtered
+    joined :: BS.ByteString
+    joined = BS.intercalate (BS.singleton slashWord8) encoded
+
+slashWord8 :: Word8
+slashWord8 = fromIntegral $ fromEnum '/'
 
 ----------
 

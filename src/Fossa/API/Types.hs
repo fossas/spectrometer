@@ -11,6 +11,7 @@ module Fossa.API.Types (
   IssueRule (..),
   IssueType (..),
   Issue (..),
+  SignedURL (..),
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
@@ -37,6 +38,14 @@ data ApiOpts = ApiOpts
   , apiOptsApiKey :: ApiKey
   }
   deriving (Eq, Ord, Show)
+
+newtype SignedURL = SignedURL
+  { signedURL :: Text
+  } deriving (Eq, Ord, Show)
+
+instance FromJSON SignedURL where
+  parseJSON = withObject "SignedUrl" $ \obj ->
+    SignedURL <$> obj .: "signedUrl"
 
 data Issues = Issues
   { issuesCount :: Int
