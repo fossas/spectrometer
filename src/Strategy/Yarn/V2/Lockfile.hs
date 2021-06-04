@@ -9,6 +9,7 @@ module Strategy.Yarn.V2.Lockfile (
 ) where
 
 import Data.Aeson
+import Data.Aeson.Extra (TextLike (..))
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
@@ -90,7 +91,7 @@ instance FromJSON PackageDescription where
     PackageDescription
       <$> obj .: "version"
       <*> obj .: "resolution"
-      <*> (obj .:? "dependencies" .!= M.empty >>= parseDependencyDescriptors)
+      <*> (obj .:? "dependencies" .!= M.empty >>= parseDependencyDescriptors . M.map unTextLike)
 
 -- | Rather than storing dependencies as a flat list of Descriptors, the yarn
 -- lockfile stores them as key/value pairs, split on the last "@" in a
