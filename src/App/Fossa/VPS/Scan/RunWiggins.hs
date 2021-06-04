@@ -2,8 +2,10 @@
 
 module App.Fossa.VPS.Scan.RunWiggins
   ( execWiggins
+  , execWigginsRaw
   , generateWigginsScanOpts
   , generateWigginsAOSPNoticeOpts
+  , generateVSIStandaloneOpts
   , WigginsOpts(..)
   , ScanType(..)
   )
@@ -46,6 +48,9 @@ generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> ApiOpts -> ProjectR
 generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles =
   WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles
 
+generateVSIStandaloneOpts :: Path Abs Dir -> ApiOpts -> WigginsOpts
+generateVSIStandaloneOpts scanDir apiOpts = WigginsOpts scanDir $ generateVSIStandaloneArgs apiOpts
+
 generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaFilePaths -> [Text]
 generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} ninjaScanId ninjaInputFiles =
   ["aosp-notice-files"]
@@ -56,6 +61,13 @@ generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} n
       ++ ["-name", projectName]
       ++ ["."]
       ++ (T.pack . toFilePath <$> unNinjaFilePaths ninjaInputFiles)
+
+generateVSIStandaloneArgs :: ApiOpts -> [Text]
+generateVSIStandaloneArgs ApiOpts{..} =
+    "vsi-direct"
+      : optMaybeText "-endpoint" (render <$> apiOptsUri)
+      ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
+      ++ ["."]
 
 generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
 generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
@@ -89,6 +101,9 @@ optMaybeText flag (Just value) = [flag, value]
 
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
+
+execWigginsRaw :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m BL.ByteString 
+execWigginsRaw binaryPaths opts = execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
 
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts{..} = do
