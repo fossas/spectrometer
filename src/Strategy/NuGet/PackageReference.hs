@@ -83,10 +83,14 @@ instance FromXML PackageReference where
 instance FromXML ItemGroup where
   parseElement el = ItemGroup <$> children "PackageReference" el
 
+-- | A "PackageReference" xml tag
+--
+-- See: https://docs.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#packagereference
+-- See: https://cloud.google.com/functions/docs/writing/specifying-dependencies-dotnet
 instance FromXML Package where
   parseElement el =
     Package <$> attr "Include" el
-            <*> optional (child "Version" el)
+            <*> optional (attr "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency
 buildGraph project = Graphing.fromList (map toDependency direct)
