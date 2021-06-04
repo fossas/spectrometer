@@ -1,6 +1,12 @@
-# Unreleased
+# 2.7.1
 
 - Adds support for Yarn v2 lockfiles ([#244](https://github.com/fossas/spectrometer/pull/244))
+- Fixes the dependency version parser for `.csproj`, `.vbproj`, and similar .NET files ([#247](https://github.com/fossas/spectrometer/pull/247))
+- Re-enables status messages for commands like `fossa test` in CI environments ([#248](https://github.com/fossas/spectrometer/pull/248))
+
+# v2.7.0
+
+- Adds support for the Conda package manager ([#226](https://github.com/fossas/spectrometer/pull/226))
 
 # v2.6.1
 
