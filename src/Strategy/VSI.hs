@@ -15,13 +15,15 @@ import Data.Aeson;
 import GHC.Generics;
 import Control.Effect.Lift
 import Control.Monad.IO.Class
+import Srclib.Types (parseLocator, Locator(..))
+import Data.Maybe
 
 newtype VSIProject = VSIProject
   { vsiDir :: Path Abs Dir
   } deriving (Eq, Ord, Show)
 
-newtype VSIStandaloneResults = VSIStandaloneResults
-  { vsiStandaloneLocators :: [T.Text]
+newtype VSILocator = VSILocator
+  { unVSILocator :: T.Text
   } deriving (Show, Generic, FromJSON)
 
 discover :: (Has Diagnostics sig m, Has (Lift IO) rsig run, MonadIO run, Has Exec rsig run, Has Diagnostics rsig run) => ApiOpts -> Path Abs Dir -> m [DiscoveredProject run]
@@ -43,15 +45,39 @@ mkProject wigginsOpts project =
 
 analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency)
 analyze opts = do
-  results <- withWigginsBinary $ runWiggins opts
-  pure $ convertResults results
+  vsiLocators <- withWigginsBinary $ runWiggins opts
+  pure $ toGraph vsiLocators
 
-runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> BinaryPaths -> m (Maybe VSIStandaloneResults)
+runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> BinaryPaths -> m (Maybe [VSILocator])
 runWiggins opts binaryPaths = do
   jsonEncodedLocators <- execWigginsRaw binaryPaths opts
   pure $ decode jsonEncodedLocators
 
-convertResults :: Maybe VSIStandaloneResults -> Graphing Dependency
-convertResults results = case results of
-  Just _ -> empty
+toGraph :: Maybe [VSILocator] -> Graphing Dependency
+toGraph vsiLocators = case vsiLocators of
+  Just locators -> Graphing.fromList $ mapMaybe toDependency locators
   Nothing -> empty
+
+toDependency :: VSILocator -> Maybe Dependency
+toDependency vsiLocator = do
+  let locator = parseLocator (unVSILocator vsiLocator)
+  let name = locatorProject locator
+  let revision = toRevision locator
+
+  case toDepType locator of
+    Just depType -> Just $ Dependency depType name revision [] [] mempty
+    Nothing -> Nothing
+
+toRevision :: Locator -> Maybe VerConstraint
+toRevision locator = case locatorRevision locator of
+  Just rev -> Just $ CEq rev
+  Nothing -> Nothing
+
+-- toDepType converts the fetchers that the VSI strategy may output into the appropriate DepType.
+toDepType :: Locator -> Maybe DepType
+toDepType locator = case locatorFetcher locator of
+  "git" -> Just GitType
+  "archive" -> Just GooglesourceType
+  "mvn" -> Just MavenType 
+  "nuget" -> Just NuGetType
+  _ -> Nothing 
