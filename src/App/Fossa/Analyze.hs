@@ -4,7 +4,7 @@ module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)
   , UnpackArchives(..)
-  , EnableVSI (..)
+  , VSIAnalysisMode(..)
   , discoverFuncs
   , RecordMode(..)
   ) where
@@ -96,8 +96,10 @@ data ScanDestination
 -- | UnpackArchives bool flag
 data UnpackArchives = UnpackArchives
 
--- | EnableVSI bool flag
-data EnableVSI = EnableVSI
+-- | "VSI analysis" modes
+data VSIAnalysisMode =
+    VSIAnalysisEnabled -- ^ enable the VSI analysis strategy
+  | VSIAnalysisDisabled -- ^ disable the VSI analysis strategy
 
 -- | "Replay logging" modes
 data RecordMode =
@@ -105,7 +107,7 @@ data RecordMode =
   | RecordModeReplay FilePath -- ^ replay effect invocations from a file
   | RecordModeNone -- ^ don't record or replay
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag EnableVSI -> [BuildTargetFilter] -> IO ()
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> VSIAnalysisMode -> [BuildTargetFilter] -> IO ()
 analyzeMain workdir recordMode logSeverity destination project unpackArchives enableVSI filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
@@ -141,13 +143,12 @@ vsiDiscoverFunc ::
     MonadIO run,
     Has Diag.Diagnostics rsig run,
     Has Exec rsig run
-  ) => Flag EnableVSI -> ScanDestination -> Path Abs Dir -> m [DiscoveredProject run]
-vsiDiscoverFunc enableVSI destination dir =
-  if fromFlag EnableVSI enableVSI then (
-    case destination of
-      OutputStdout -> pure []
-      UploadScan apiOpts _ -> VSI.discover apiOpts dir
-  ) else pure []
+  ) => VSIAnalysisMode -> ScanDestination -> Path Abs Dir -> m [DiscoveredProject run]
+vsiDiscoverFunc vsiMode destination dir = case vsiMode of
+  VSIAnalysisEnabled -> case destination of
+    OutputStdout -> pure []
+    UploadScan apiOpts _ -> VSI.discover apiOpts dir
+  VSIAnalysisDisabled -> pure []
 
 discoverFuncs ::
   ( Has (Lift IO) sig m,
@@ -232,7 +233,7 @@ analyze ::
   -> ScanDestination
   -> OverrideProject
   -> Flag UnpackArchives
-  -> Flag EnableVSI
+  -> VSIAnalysisMode
   -> [BuildTargetFilter]
   -> m ()
 analyze (BaseDir basedir) destination override unpackArchives enableVSI filters = do

@@ -6,7 +6,7 @@ module App.Fossa.Main
   )
 where
 
-import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), RecordMode (..), analyzeMain, EnableVSI (..))
+import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), RecordMode (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Container (imageTextArg, ImageText (..), parseSyftOutputMain, dumpSyftScanMain)
 import qualified App.Fossa.Container.Analyze as ContainerAnalyze
 import qualified App.Fossa.Container.Test as ContainerTest
@@ -89,12 +89,12 @@ appMain = do
       -- the preference for command line options.
       let analyzeOverride = override {overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
       if analyzeOutput
-        then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeEnableVSI analyzeBuildTargetFilters
+        then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeVSIMode analyzeBuildTargetFilters
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
-          analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts metadata) analyzeOverride analyzeUnpackArchives analyzeEnableVSI analyzeBuildTargetFilters
+          analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts metadata) analyzeOverride analyzeUnpackArchives analyzeVSIMode analyzeBuildTargetFilters
     --
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
@@ -269,12 +269,17 @@ analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
-    <*> flagOpt EnableVSI (long "enable-vsi" <> help "Enable the VSI strategy for C/C++ support" <> hidden)
     <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
+    <*> vsiAnalyzeOpt
     <*> analyzeReplayOpt
     <*> baseDirArg
+
+vsiAnalyzeOpt :: Parser VSIAnalysisMode
+vsiAnalyzeOpt =
+      flag' VSIAnalysisEnabled (long "enable-vsi" <> hidden)
+  <|> pure VSIAnalysisDisabled
 
 analyzeReplayOpt :: Parser RecordMode
 analyzeReplayOpt =
@@ -504,10 +509,10 @@ data ReportOptions = ReportOptions
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool,
     analyzeUnpackArchives :: Flag UnpackArchives,
-    analyzeEnableVSI :: Flag EnableVSI,
     analyzeBranch :: Maybe Text,
     analyzeMetadata :: ProjectMetadata,
     analyzeBuildTargetFilters :: [BuildTargetFilter],
+    analyzeVSIMode :: VSIAnalysisMode,
     analyzeRecordMode :: RecordMode,
     analyzeBaseDir :: FilePath
   }
