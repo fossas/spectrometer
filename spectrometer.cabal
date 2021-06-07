@@ -346,12 +346,10 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
-    UserSpecified.YamlDependenciesSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec
 
-  -- ManuallySpecified.YamlDependenciesSpec
   build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:
     , hedgehog                        ^>=1.0.2
