@@ -302,14 +302,15 @@ test-suite unit-tests
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.YamlDepsSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
-    Conda.EnvironmentYmlSpec
-    Conda.CondaListSpec
     Composer.ComposerLockSpec
+    Conda.CondaListSpec
+    Conda.EnvironmentYmlSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Erlang.ConfigParserSpec
@@ -328,7 +329,6 @@ test-suite unit-tests
     GraphingSpec
     Haskell.CabalSpec
     Haskell.StackSpec
-    ManuallySpecified.YamlDependenciesSpec
     Maven.PluginStrategySpec
     Maven.PomStrategySpec
     Node.NpmLockSpec
@@ -351,10 +351,12 @@ test-suite unit-tests
     Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec
 
+  -- ManuallySpecified.YamlDependenciesSpec
   build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:
     , hedgehog                        ^>=1.0.2
     , hspec                           ^>=2.7.1
+    , hspec-core                      ^>=2.7.9
     , hspec-expectations-pretty-diff  ^>=0.7.2.5
     , hspec-hedgehog                  ^>=0.0.1.2
     , hspec-megaparsec                ^>=2.1

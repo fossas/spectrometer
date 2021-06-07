@@ -1,0 +1,16 @@
+referenced-dependencies:
+- package: one
+  type: gem
+- type: url
+  package: two
+  version: 1.0.0
+
+custom-dependencies:
+- package: hello
+  version: 1.2.3
+  license: MIT
+- package: full
+  version: 3.2.1
+  license: GPL-3.0
+  description: description for full
+  url: we don't validate url's
