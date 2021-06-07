@@ -1,13 +1,14 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze
-  ( analyzeMain
-  , ScanDestination(..)
-  , UnpackArchives(..)
-  , VSIAnalysisMode(..)
-  , discoverFuncs
-  , RecordMode(..)
-  ) where
+  ( analyzeMain,
+    ScanDestination (..),
+    UnpackArchives (..),
+    VSIAnalysisMode (..),
+    discoverFuncs,
+    RecordMode (..),
+  )
+where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -17,10 +18,12 @@ import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContribu
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Types
 import App.Util (validateDir)
+import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
-import Control.Carrier.StickyLogger (runStickyLogger, logSticky', StickyLogger)
+import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Diagnostics ((<||>))
@@ -57,8 +60,8 @@ import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
 import Strategy.Cocoapods qualified as Cocoapods
-import Strategy.Conda qualified as Conda
 import Strategy.Composer qualified as Composer
+import Strategy.Conda qualified as Conda
 import Strategy.Glide qualified as Glide
 import Strategy.Godep qualified as Godep
 import Strategy.Gomodules qualified as Gomodules
@@ -86,26 +89,30 @@ import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
-import Control.Carrier.Diagnostics.StickyContext
-import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 
 data ScanDestination
-  = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
+  = -- | upload to fossa with provided api key and base url
+    UploadScan ApiOpts ProjectMetadata
   | OutputStdout
 
 -- | UnpackArchives bool flag
 data UnpackArchives = UnpackArchives
 
 -- | "VSI analysis" modes
-data VSIAnalysisMode =
-    VSIAnalysisEnabled -- ^ enable the VSI analysis strategy
-  | VSIAnalysisDisabled -- ^ disable the VSI analysis strategy
+data VSIAnalysisMode
+  = -- | enable the VSI analysis strategy
+    VSIAnalysisEnabled
+  | -- | disable the VSI analysis strategy
+    VSIAnalysisDisabled
 
 -- | "Replay logging" modes
-data RecordMode =
-    RecordModeRecord -- ^ record effect invocations
-  | RecordModeReplay FilePath -- ^ replay effect invocations from a file
-  | RecordModeNone -- ^ don't record or replay
+data RecordMode
+  = -- | record effect invocations
+    RecordModeRecord
+  | -- | replay effect invocations from a file
+    RecordModeReplay FilePath
+  | -- | don't record or replay
+    RecordModeNone
 
 analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> VSIAnalysisMode -> [BuildTargetFilter] -> IO ()
 analyzeMain workdir recordMode logSeverity destination project unpackArchives enableVSI filters =
@@ -143,7 +150,11 @@ vsiDiscoverFunc ::
     MonadIO run,
     Has Diag.Diagnostics rsig run,
     Has Exec rsig run
-  ) => VSIAnalysisMode -> ScanDestination -> Path Abs Dir -> m [DiscoveredProject run]
+  ) =>
+  VSIAnalysisMode ->
+  ScanDestination ->
+  Path Abs Dir ->
+  m [DiscoveredProject run]
 vsiDiscoverFunc vsiMode destination dir = case vsiMode of
   VSIAnalysisEnabled -> case destination of
     OutputStdout -> pure []
@@ -157,7 +168,6 @@ discoverFuncs ::
     Has Exec sig m,
     Has Logger sig m,
     Has Diag.Diagnostics sig m,
-
     Has (Lift IO) rsig run,
     Has ReadFS rsig run,
     Has Diag.Diagnostics rsig run,
@@ -213,7 +223,7 @@ runDependencyAnalysis (BaseDir basedir) filters project =
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
 applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject n -> Maybe (Set BuildTarget)
-applyFiltersToProject basedir filters DiscoveredProject{..} =
+applyFiltersToProject basedir filters DiscoveredProject {..} =
   case makeRelative basedir projectPath of
     -- FIXME: this is required for --unpack-archives to continue to work.
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
@@ -222,20 +232,20 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     Just rel -> applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
-  ( Has (Lift IO) sig m
-  , Has Logger sig m
-  , Has Diag.Diagnostics sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  , MonadIO m
-  )
-  => BaseDir
-  -> ScanDestination
-  -> OverrideProject
-  -> Flag UnpackArchives
-  -> VSIAnalysisMode
-  -> [BuildTargetFilter]
-  -> m ()
+  ( Has (Lift IO) sig m,
+    Has Logger sig m,
+    Has Diag.Diagnostics sig m,
+    Has Exec sig m,
+    Has ReadFS sig m,
+    MonadIO m
+  ) =>
+  BaseDir ->
+  ScanDestination ->
+  OverrideProject ->
+  Flag UnpackArchives ->
+  VSIAnalysisMode ->
+  [BuildTargetFilter] ->
+  m ()
 analyze (BaseDir basedir) destination override unpackArchives enableVSI filters = do
   capabilities <- sendIO getNumCapabilities
   -- When running analysis, append the vsi discover function to the end of the discover functions list.
@@ -272,14 +282,15 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
 
         uploadResult <- uploadAnalysis apiOpts revision metadata someProjects
         buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult
-        logInfo $ vsep
-          [ "============================================================"
-          , ""
-          , "    View FOSSA Report:"
-          , "    " <> pretty buildUrl
-          , ""
-          , "============================================================"
-          ]
+        logInfo $
+          vsep
+            [ "============================================================",
+              "",
+              "    View FOSSA Report:",
+              "    " <> pretty buildUrl,
+              "",
+              "============================================================"
+            ]
         traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
         -- Warn on contributor errors, never fail
         void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
@@ -297,12 +308,12 @@ checkForEmptyUpload xs ys
   | xlen == 0 && ylen == 0 = NoneDiscovered
   | xlen == 0 || ylen == 0 = FilteredAll filterCount
   -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
-  | otherwise              = FoundSome $ NE.fromList filtered
+  | otherwise = FoundSome $ NE.fromList filtered
   where
     xlen = length xs
     ylen = length ys
     filterCount = abs $ xlen - ylen
-    -- | Return the smaller list, since filtering cannot add projects
+
     filtered = if xlen > ylen then ys else xs
 
 -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
@@ -316,24 +327,27 @@ filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAb
     dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
 
 isProductionPath :: FilePath -> Bool
-isProductionPath path = not $ any (`isInfixOf` path)
-  [ "doc/"
-  , "docs/"
-  , "test/"
-  , "example/"
-  , "examples/"
-  , "vendor/"
-  , "node_modules/"
-  , ".srclib-cache/"
-  , "spec/"
-  , "Godeps/"
-  , ".git/"
-  , "bower_components/"
-  , "third_party/"
-  , "third-party/"
-  , "Carthage/"
-  , "Checkouts/"
-  ]
+isProductionPath path =
+  not $
+    any
+      (`isInfixOf` path)
+      [ "doc/",
+        "docs/",
+        "test/",
+        "example/",
+        "examples/",
+        "vendor/",
+        "node_modules/",
+        ".srclib-cache/",
+        "spec/",
+        "Godeps/",
+        ".git/",
+        "bower_components/",
+        "third_party/",
+        "third-party/",
+        "Carthage/",
+        "Checkouts/"
+      ]
 
 tryUploadContributors ::
   ( Has Diag.Diagnostics sig m,
@@ -350,17 +364,19 @@ tryUploadContributors baseDir apiOpts locator = do
   uploadContributors apiOpts locator contributors
 
 buildResult :: [ProjectResult] -> Aeson.Value
-buildResult projects = Aeson.object
-  [ "projects" .= map buildProject projects
-  , "sourceUnits" .= map Srclib.toSourceUnit projects
-  ]
+buildResult projects =
+  Aeson.object
+    [ "projects" .= map buildProject projects,
+      "sourceUnits" .= map Srclib.toSourceUnit projects
+    ]
 
 buildProject :: ProjectResult -> Aeson.Value
-buildProject project = Aeson.object
-  [ "path" .= projectResultPath project
-  , "type" .= projectResultType project
-  , "graph" .= graphingToGraph (projectResultGraph project)
-  ]
+buildProject project =
+  Aeson.object
+    [ "path" .= projectResultPath project,
+      "type" .= projectResultType project,
+      "graph" .= graphingToGraph (projectResultGraph project)
+    ]
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress {..} =

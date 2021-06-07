@@ -1,30 +1,33 @@
 module Strategy.VSI
-  ( discover
-  ) where
+  ( discover,
+  )
+where
 
-import Control.Effect.Diagnostics
-import Effect.Exec
-import Path
-import Types
-import Graphing
-import Fossa.API.Types
 import App.Fossa.EmbeddedBinary
 import App.Fossa.VPS.Scan.RunWiggins
-import qualified Data.Text as T
-import Data.Aeson;
-import GHC.Generics;
+import Control.Effect.Diagnostics
 import Control.Effect.Lift
 import Control.Monad.IO.Class
-import Srclib.Types (parseLocator, Locator(..))
+import Data.Aeson
 import Data.Maybe
+import Data.Text qualified as T
+import Effect.Exec
+import Fossa.API.Types
+import GHC.Generics
+import Graphing
+import Path
+import Srclib.Types (Locator (..), parseLocator)
+import Types
 
 newtype VSIProject = VSIProject
   { vsiDir :: Path Abs Dir
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 newtype VSILocator = VSILocator
   { unVSILocator :: T.Text
-  } deriving (Show, Generic, FromJSON)
+  }
+  deriving (Show, Generic, FromJSON)
 
 discover :: (Has Diagnostics sig m, Has (Lift IO) rsig run, MonadIO run, Has Exec rsig run, Has Diagnostics rsig run) => ApiOpts -> Path Abs Dir -> m [DiscoveredProject run]
 discover apiOpts dir = context "VSI" $ do
@@ -36,11 +39,11 @@ discover apiOpts dir = context "VSI" $ do
 mkProject :: (Has (Lift IO) sig n, MonadIO n, Has Exec sig n, Has Diagnostics sig n) => WigginsOpts -> VSIProject -> DiscoveredProject n
 mkProject wigginsOpts project =
   DiscoveredProject
-    { projectType = "vsi"
-    , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ analyze wigginsOpts
-    , projectPath = vsiDir project
-    , projectLicenses = pure []
+    { projectType = "vsi",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const $ analyze wigginsOpts,
+      projectPath = vsiDir project,
+      projectLicenses = pure []
     }
 
 analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency)
@@ -78,6 +81,6 @@ toDepType :: Locator -> Maybe DepType
 toDepType locator = case locatorFetcher locator of
   "git" -> Just GitType
   "archive" -> Just GooglesourceType
-  "mvn" -> Just MavenType 
+  "mvn" -> Just MavenType
   "nuget" -> Just NuGetType
-  _ -> Nothing 
+  _ -> Nothing
