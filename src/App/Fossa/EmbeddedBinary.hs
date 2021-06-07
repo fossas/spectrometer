@@ -109,7 +109,7 @@ writeExecutable path content = do
 extractedPath :: PackagedBinary -> Path Rel File
 extractedPath bin = case bin of
   Syft -> $(mkRelFile "syft")
-  Wiggins -> $(mkRelFile "wiggins")
+  Wiggins -> $(mkRelFile "vsi-plugin")
   CLIv1 -> $(mkRelFile "cliv1")
 
 extractDir :: MonadIO m => m (Path Abs Dir)
