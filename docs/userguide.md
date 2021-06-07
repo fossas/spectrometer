@@ -172,7 +172,7 @@ We support the following archive formats:
 - `.jar`
 - `.rpm`
 
-### Manually specifying dependencies
+## Manually specifying dependencies
 
 FOSSA offers a way to manually upload dependencies provided we support the dependency type. Manually specifying dependencies is very helpful in the event your package manager is unsupported or you are using a custom and nonstandard dependency management solution.
 
@@ -181,8 +181,10 @@ The CLI also accepts `fossa-deps.yaml`, but will abort if it finds both.
 
 > Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
 
+To manually specify a dependency, you must provide the package type, package name, and optionally a package version, under the `referenced-dependencies` array, as shown here:
+
 ```yaml
-dependencies:
+referenced-dependencies:
 - type: gem
   package: iron
 - type: pip
@@ -190,11 +192,11 @@ dependencies:
   version: 2.1.7
 ```
 
-The `package` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
+The `package` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.  Note that many version numbers can look like actual numbers in YAML, but they should always be strings!  You can quote them to make sure YAML treats them as strings, otherwise you may run into an error.
 
 Supported dependency types:
 
-- `cargo` - Rust dependencies that a typically found at [crates.io](https://crates.io/).
+- `cargo` - Rust dependencies that are typically found at [crates.io](https://crates.io/).
 - `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
 - `composer` - Dependencies specified by the PHP package manager [Composer](https://getcomposer.org/), which are located on [Packagist](https://packagist.org/).
 - `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
@@ -205,56 +207,61 @@ Supported dependency types:
 - `maven` - Maven dependencies that can be found at many different sources. Specified as `package: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
 - `npm` - Javascript dependencies found at [npmjs.com](https://www.npmjs.com/).
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
-- `python` - Python dependencies found at [Pypi.org](https://pypi.org/).
+- `python` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
-- `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar`. The `version` field will be ignored for `url` type dependencies.
-- `user` - Specify a user-defined dependency by providing all of the necessary dependency's info.  See [User-defined dependencies](#User-defined-dependencies) for more info and examples.
+- `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar`. The `version` field will be silently ignored for `url` type dependencies.
 
 ### User-defined dependencies
 
 FOSSA supports users that have dependencies that can't be automatically discovered or identified, by offering the ability to define new dependencies.
 
-To do this, you must supply the name, revision (or version), and license that would normally be automatically discovered.  This must be done using the `fossa-deps.yml` file.
-For the `type`, `package`, and `version` fields, nothing changes, except `version` is now required.  However, you must now also specify a `license`.  A minimal example is found here:
+To do this, you must supply the name, version, and license of the dependency.  This creates a stub package which requires no source code or linkage to any other system, but still acts as a normal dependency in other areas of FOSSA, like reports and the dependency views.
+You may also supply a description and/or url, but both are optional.  Note that these fields reference the dependency itself, and do not reference the parent project (the one at the current analysis directory), or the individual versions of the dependency.
 
 ```yaml
-dependencies:
-- type: user
-  package: foo
+custom-dependencies:
+# Custom dependencies need package, version, and license
+- package: foo
   version: 1.2.3
   license: "MIT or Apache-2.0"
-```
-
-You may optionally specify a `url` (some homepage or project page, not specific to the version), and a `description` (project description, not version-specific):
-
-```yaml
-dependencies:
-- type: user
-  package: foo
+# You can also provide a description and/or url
+- package: foo-wrapper
   version: 1.2.3
   license: MIT
-  url: https://www.myproject.com/about
+  url: https://www.foowrapper.com/about
   description: Provides foo and a helpful interface around foo-like tasks.
 ```
+
+### Errors in the `fossa-deps` file
 
 The `fossa-deps` scanner tries to report clear error messages when fields are missing, incorrect, or invalid.  For example:
 
 ```yaml
-dependencies:
+referenced-dependencies:
 - type: python
   package: flask
-  version: "2.0" # without quotes, yaml might interpret that as a number
-  license: MIT # Error!
+  version: "2.0.1"
+  license: MIT  # Error!  "license" is only allowed for custom-dependencies
+
+custom-dependencies:
+- type: custom  # Error!  "type" is only allowed for referenced-dependencies
+  package: mydep
+  version: "3.14.15"
+  license: GPL-3.0
 ```
 
-This would return an error with the message `license field is only allowed for user dependencies`.  However, we don't check for everything:
+This would return an error with a message explaining what went wrong, and where.  However, we don't check for everything:
 
 ```yaml
-dependencies:
+referenced-dependencies:
 - type: cargo
   package: bitflags
   some-unexpected-field: hello  # Has no effect
 ```
+
+This is an intentional gap in coverage, due to the way some of these files are built
+
+The `fossa-deps` scanner also requires at least one valid dependency if the file exists.  This prevents the file from being created with the wrong array names and us silently ignoring them.
 
 If you see an error message that isn't clear, file an issue in this repository!  Clear error messages are a priority for us, and we want to know where we're lacking.
 

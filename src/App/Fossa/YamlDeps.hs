@@ -4,16 +4,15 @@
 {-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.YamlDeps
-  ( ManualDependencies (..),
-    ManualDependency (..),
-    ManagedDependency (..),
-    UserDefinedDependency (..),
+  ( CustomDependency (..),
+    ReferencedDependency (..),
+    YamlDependencies (..),
     analyzeFossaDepsYaml,
   )
 where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fromMaybeText)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Data.Aeson
   ( FromJSON (parseJSON),
     withObject,
@@ -31,8 +30,8 @@ import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
 import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
-import Control.Applicative (Alternative((<|>)))
-import Data.HashMap.Strict (member, HashMap)
+import Data.HashMap.Strict (member)
+import Control.Monad (when)
 
 analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit)
 analyzeFossaDepsYaml root = do
@@ -40,8 +39,8 @@ analyzeFossaDepsYaml root = do
   case maybeDepsFile of
     Nothing -> pure Nothing
     Just depsFile -> do
-      manualDeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
-      context "Converting fossa-deps to partial API payload" . toSourceUnit root $ dependencies manualDeps
+      yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
+      context "Converting fossa-deps to partial API payload" $ toSourceUnit root yamldeps
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
 findFossaDepsFile root = do
@@ -55,13 +54,12 @@ findFossaDepsFile root = do
     (False, True) -> pure $ Just yamlFile
     (False, False) -> pure Nothing
 
-toSourceUnit :: Has Diagnostics sig m => Path Abs Dir -> [ManualDependency] -> m (Maybe SourceUnit)
-toSourceUnit root manualDeps = do
-  _ <- fromMaybeText "No dependencies found to convert" $ NE.nonEmpty manualDeps
+toSourceUnit :: Has Diagnostics sig m => Path Abs Dir -> YamlDependencies -> m (Maybe SourceUnit)
+toSourceUnit root yamldeps@YamlDependencies{..} = do
+  when (hasNoDeps yamldeps) $ fatalText "No dependencies found in fossa-deps file"
   let renderedPath = toText root
-      (managed, userdef) = splitDeps manualDeps
-      build = toBuildData <$> NE.nonEmpty managed
-      additional = toAdditionalData <$> NE.nonEmpty userdef
+      build = toBuildData <$> NE.nonEmpty referencedDependencies
+      additional = toAdditionalData <$> NE.nonEmpty customDependencies
   pure . Just $
     SourceUnit
       { sourceUnitName = renderedPath,
@@ -71,7 +69,7 @@ toSourceUnit root manualDeps = do
         additionalData = additional
       }
 
-toBuildData :: NE.NonEmpty ManagedDependency -> SourceUnitBuild
+toBuildData :: NE.NonEmpty ReferencedDependency -> SourceUnitBuild
 toBuildData deps =
   SourceUnitBuild
     { buildArtifact = "default",
@@ -82,8 +80,8 @@ toBuildData deps =
   where
     (imports, buildDeps) = unzip . map (addEmptyDep . toImport) $ NE.toList deps
 
-    toImport :: ManagedDependency -> Locator
-    toImport ManagedDependency {..} =
+    toImport :: ReferencedDependency -> Locator
+    toImport ReferencedDependency {..} =
       Locator
         { locatorFetcher = depTypeToFetcher locDepType,
           locatorProject = locDepPackage,
@@ -93,99 +91,87 @@ toBuildData deps =
     addEmptyDep :: Locator -> (Locator, SourceUnitDependency)
     addEmptyDep loc = (loc, SourceUnitDependency loc [])
 
-toAdditionalData :: NE.NonEmpty UserDefinedDependency -> AdditionalDepData
+toAdditionalData :: NE.NonEmpty CustomDependency -> AdditionalDepData
 toAdditionalData deps = AdditionalDepData {userDefinedDeps = map tosrc $ NE.toList deps}
   where
-    tosrc UserDefinedDependency {..} =
+    tosrc CustomDependency {..} =
       SourceUserDefDep
-        { srcUserDepName = userDepPackage,
-          srcUserDepVersion = userDepVersion,
-          srcUserDepLicense = userDepLicense,
-          srcUserDepDescription = userDepDescription,
-          srcUserDepUrl = userDepUrl
+        { srcUserDepName = customPackage,
+          srcUserDepVersion = customVersion,
+          srcUserDepLicense = customLicense,
+          srcUserDepDescription = customDescription,
+          srcUserDepUrl = customUrl
         }
 
-type SplitDeps = ([ManagedDependency], [UserDefinedDependency])
+hasNoDeps :: YamlDependencies -> Bool
+hasNoDeps YamlDependencies{..} = all (0 ==)
+  [ length referencedDependencies,
+    length customDependencies
+  ]
 
-splitDeps :: [ManualDependency] -> SplitDeps
-splitDeps = foldr addToTuple ([], [])
-  where
-    addToTuple :: ManualDependency -> SplitDeps -> SplitDeps
-    addToTuple (Managed dep) (managed, user) = (dep : managed, user)
-    addToTuple (UserDefined dep) (managed, user) = (managed, dep : user)
+data YamlDependencies = YamlDependencies
+  { referencedDependencies :: [ReferencedDependency],
+    customDependencies :: [CustomDependency]
+  } deriving (Eq, Ord, Show)
 
-newtype ManualDependencies = ManualDependencies
-  { dependencies :: [ManualDependency]
-  }
-
-data ManualDependency
-  = Managed ManagedDependency
-  | UserDefined UserDefinedDependency
-
-data ManagedDependency = ManagedDependency
+data ReferencedDependency = ReferencedDependency
   { locDepPackage :: Text,
     locDepType :: DepType,
     locDepVersion :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
-data UserDefinedDependency = UserDefinedDependency
-  { userDepPackage :: Text,
-    userDepVersion :: Text,
-    userDepLicense :: Text,
-    userDepDescription :: Maybe Text,
-    userDepUrl :: Maybe Text
-  }
+data CustomDependency = CustomDependency
+  { customPackage :: Text,
+    customVersion :: Text,
+    customLicense :: Text,
+    customDescription :: Maybe Text,
+    customUrl :: Maybe Text
+  } deriving (Eq, Ord, Show)
 
-instance FromJSON ManualDependencies where
-  parseJSON = withObject "Dependencies" $ \obj ->
-    ManualDependencies <$> obj .:? "dependencies" .!= []
+instance FromJSON YamlDependencies where
+  parseJSON = withObject "YamlDependencies" $ \obj ->
+    YamlDependencies <$ (obj .:? "version" >>= isMissingOr1)
+      <*> (obj .:? "referenced-dependencies" .!= [])
+      <*> (obj .:? "custom-dependencies" .!= [])
+    where
+      isMissingOr1 :: Maybe Int -> Parser ()
+      isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
+      isMissingOr1 _ = pure ()
 
 depTypeParser :: Text -> Parser DepType
 depTypeParser text = case depTypeFromText text of
   Just t -> pure t
   Nothing -> fail $ "dep type: " <> unpack text <> " not supported"
 
-instance FromJSON ManualDependency where
-  parseJSON value = withObject "ManualDependency" parser value
-    where
-      parser obj = do
-        depType <- obj .: "type" :: Parser String
-        case depType of
-          "user" -> UserDefined <$> parseJSON value <|> fail "'user' dependency requires package, version, and license fields"
-          _ -> Managed <$> parseJSON value
-
-instance FromJSON ManagedDependency where
-  parseJSON = withObject "ManualDependency" $ \obj ->
-    ManagedDependency <$ noUserDefFields obj
-      <*> obj .: "package"
+instance FromJSON ReferencedDependency where
+  parseJSON = withObject "ReferencedDependency" $ \obj ->
+    ReferencedDependency <$> obj .: "package"
       <*> (obj .: "type" >>= depTypeParser)
       <*> obj .:? "version"
-  
-    where
-      badMember :: HashMap Text a -> Text -> Parser ()
-      badMember hmap name = if member name hmap
-        then fail (toString name <> " field is only allowed for user dependencies")
-        else pure ()
+      <* forbidMembers "referenced dependencies" ["license", "description", "url"] obj
 
-      noUserDefFields :: Object -> Parser ()
-      noUserDefFields jsonObject = traverse_ (badMember jsonObject) ["license", "description", "url"]
-        
-
-instance FromJSON UserDefinedDependency where
-  parseJSON = withObject "UserDefinedDependency" $ \obj ->
-    UserDefinedDependency <$ (obj .: "type" >>= isUserType)
-      <*> obj .: "package"
+instance FromJSON CustomDependency where
+  parseJSON = withObject "CustomDependency" $ \obj ->
+    CustomDependency <$> obj .: "package"
       <*> obj .: "version"
       <*> obj .: "license"
       <*> obj .:? "description"
       <*> obj .:? "url"
-    where
-      isUserType :: String -> Parser ()
-      isUserType typ = case typ of
-        "user" -> pure ()
-        -- unreachable, we don't parse user deps without this
-        _ -> fail "UserDefinedDependency must have type: 'user'"
+      <* forbidMembers "custom dependencies" ["type"] obj
+
+-- | Parser insert to prevent specific fields from being used in parsers
+-- Primarily useful for rejecting aeson fields which should be reported with custom error messages
+--
+-- >  parseJSON = withObject "MyDataType" $ \obj ->
+-- >   MyDataType <$> obj .: "my-data-field"
+-- >     <* forbidMembers "Custom error message" ["badfield1", "badfield2"] obj
+forbidMembers :: Text -> [Text] -> Object -> Parser ()
+forbidMembers typename names obj = traverse_ (badMember obj) names
+  where
+    badMember hashmap name = if member name hashmap
+      then fail . toString $ "Invalid field name for " <> typename <> ": " <> name
+      else pure ()
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType
