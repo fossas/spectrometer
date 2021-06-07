@@ -254,9 +254,6 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
       logError ("Filtered out all " <> pretty count <> " projects due to directory name, no manual deps found")
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
-    ManualOnly unit -> case destination of
-      OutputStdout -> writeResultToConsole []
-      UploadScan apiOpts metadata -> uploadSuccesfulAnalysis (BaseDir basedir) apiOpts metadata override (unit NE.:| [])
     FoundSome sourceUnits -> case destination of
       OutputStdout -> writeResultToConsole filteredProjects 
       UploadScan apiOpts metadata -> uploadSuccesfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
@@ -302,7 +299,6 @@ uploadSuccesfulAnalysis (BaseDir basedir) apiOpts metadata override units = do
 data CountedResult
   = NoneDiscovered
   | FilteredAll Int
-  | ManualOnly SourceUnit
   | FoundSome (NE.NonEmpty SourceUnit)
 
 -- | Return some state of the projects found, since we can't upload empty result arrays.
@@ -314,9 +310,7 @@ checkForEmptyUpload xs ys unit =
   -- This nested case statement 
   case unit of
     -- If we have a manual source unit, then there's always somthing to upload.
-    Just manual -> if noResults
-      then ManualOnly manual
-      else FoundSome $ manual NE.:| discoveredUnits
+    Just manual -> FoundSome $ manual NE.:| discoveredUnits
     Nothing -> case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
@@ -326,9 +320,6 @@ checkForEmptyUpload xs ys unit =
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
   where
-    noResults = xnull || ynull
-    xnull = xlen == 0
-    ynull = ylen == 0
     xlen = length xs
     ylen = length ys
     filterCount = abs $ xlen - ylen
