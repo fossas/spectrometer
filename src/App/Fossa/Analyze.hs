@@ -256,7 +256,7 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
       sendIO exitFailure
     FoundSome sourceUnits -> case destination of
       OutputStdout -> writeResultToConsole filteredProjects 
-      UploadScan apiOpts metadata -> uploadSuccesfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
+      UploadScan apiOpts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
 
 
 uploadSuccessfulAnalysis :: 
@@ -270,7 +270,7 @@ uploadSuccessfulAnalysis ::
   -> OverrideProject
   -> NE.NonEmpty SourceUnit
   -> m ()
-uploadSuccesfulAnalysis (BaseDir basedir) apiOpts metadata override units = do
+uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override units = do
         revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
         saveRevision revision
 
