@@ -65,16 +65,11 @@ toDependency :: VSILocator -> Maybe Dependency
 toDependency vsiLocator = do
   let locator = parseLocator (unVSILocator vsiLocator)
   let name = locatorProject locator
-  let revision = toRevision locator
+  let revision = CEq <$> locatorRevision locator
 
   case toDepType locator of
     Just depType -> Just $ Dependency depType name revision [] [] mempty
     Nothing -> Nothing
-
-toRevision :: Locator -> Maybe VerConstraint
-toRevision locator = case locatorRevision locator of
-  Just rev -> Just $ CEq rev
-  Nothing -> Nothing
 
 -- toDepType converts the fetchers that the VSI strategy may output into the appropriate DepType.
 toDepType :: Locator -> Maybe DepType
