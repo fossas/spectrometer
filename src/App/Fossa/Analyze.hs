@@ -84,7 +84,6 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
-import Strategy.UserSpecified.YamlDependencies qualified as UserYaml
 import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
@@ -213,7 +212,7 @@ applyFiltersToProject basedir filters DiscoveredProject {..} =
     Nothing -> Just projectBuildTargets
     Just rel -> applyFilters filters projectType rel projectBuildTargets
 
-analyze ::
+analyze :: forall sig m.
   ( Has (Lift IO) sig m,
     Has Logger sig m,
     Has Diag.Diagnostics sig m,
