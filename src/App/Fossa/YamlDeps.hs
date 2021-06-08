@@ -32,6 +32,7 @@ import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 import Data.HashMap.Strict (member)
 import Control.Monad (when)
+import Data.Aeson.Extra
 
 analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit)
 analyzeFossaDepsYaml root = do
@@ -86,7 +87,7 @@ toBuildData deps =
       Locator
         { locatorFetcher = depTypeToFetcher locDepType,
           locatorProject = locDepName,
-          locatorRevision = locDepVersion
+          locatorRevision = unTextLike <$> locDepVersion
         }
 
     addEmptyDep :: Locator -> SourceUnitDependency
@@ -98,7 +99,7 @@ toAdditionalData deps = AdditionalDepData {userDefinedDeps = map tosrc $ NE.toLi
     tosrc CustomDependency {..} =
       SourceUserDefDep
         { srcUserDepName = customName,
-          srcUserDepVersion = customVersion,
+          srcUserDepVersion = unTextLike customVersion,
           srcUserDepLicense = customLicense,
           srcUserDepDescription = customDescription,
           srcUserDepUrl = customUrl
@@ -115,13 +116,13 @@ data YamlDependencies = YamlDependencies
 data ReferencedDependency = ReferencedDependency
   { locDepName :: Text,
     locDepType :: DepType,
-    locDepVersion :: Maybe Text
+    locDepVersion :: Maybe TextLike
   }
   deriving (Eq, Ord, Show)
 
 data CustomDependency = CustomDependency
   { customName :: Text,
-    customVersion :: Text,
+    customVersion :: TextLike,
     customLicense :: Text,
     customDescription :: Maybe Text,
     customUrl :: Maybe Text
