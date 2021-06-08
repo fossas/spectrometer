@@ -2,7 +2,7 @@
 
 module App.Fossa.VPS.Scan.RunWiggins
   ( execWiggins,
-    execWigginsRaw,
+    execWigginsJson,
     generateWigginsScanOpts,
     generateWigginsAOSPNoticeOpts,
     generateVSIStandaloneOpts,
@@ -30,6 +30,7 @@ import Effect.Logger
 import Fossa.API.Types
 import Path
 import Text.URI
+import Data.Aeson
 
 data ScanType = ScanType
   { followSymlinks :: Bool,
@@ -105,8 +106,8 @@ optMaybeText flag (Just value) = [flag, value]
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
 
-execWigginsRaw :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m BL.ByteString
-execWigginsRaw binaryPaths opts = execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
+execWigginsJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m a
+execWigginsJson binaryPaths opts = execJson (scanDir opts) (wigginsCommand binaryPaths opts)
 
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts {..} = do

@@ -49,17 +49,11 @@ mkProject wigginsOpts project =
 analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency)
 analyze opts = context "VSI" $ do
   vsiLocators <- context "Running VSI binary" $ withWigginsBinary (runWiggins opts)
-  context "Building dependency graph" $ pure (toGraph vsiLocators)
+  let graph = Graphing.fromList $ mapMaybe toDependency vsiLocators
+  context "Building dependency graph" $ pure graph
 
-runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> BinaryPaths -> m (Maybe [VSILocator])
-runWiggins opts binaryPaths = do
-  jsonEncodedLocators <- execWigginsRaw binaryPaths opts
-  pure $ decode jsonEncodedLocators
-
-toGraph :: Maybe [VSILocator] -> Graphing Dependency
-toGraph vsiLocators = case vsiLocators of
-  Just locators -> Graphing.fromList $ mapMaybe toDependency locators
-  Nothing -> empty
+runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> BinaryPaths -> m [VSILocator]
+runWiggins opts binaryPaths = execWigginsJson binaryPaths opts
 
 toDependency :: VSILocator -> Maybe Dependency
 toDependency vsiLocator = do
