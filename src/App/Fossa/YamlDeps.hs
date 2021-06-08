@@ -104,10 +104,7 @@ toAdditionalData deps = AdditionalDepData {userDefinedDeps = map tosrc $ NE.toLi
         }
 
 hasNoDeps :: YamlDependencies -> Bool
-hasNoDeps YamlDependencies{..} = all (0 ==)
-  [ length referencedDependencies,
-    length customDependencies
-  ]
+hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies
 
 data YamlDependencies = YamlDependencies
   { referencedDependencies :: [ReferencedDependency],
