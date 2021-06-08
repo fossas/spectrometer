@@ -47,9 +47,9 @@ mkProject wigginsOpts project =
     }
 
 analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency)
-analyze opts = do
-  vsiLocators <- withWigginsBinary $ runWiggins opts
-  pure $ toGraph vsiLocators
+analyze opts = context "VSI" $ do
+  vsiLocators <- context "Running VSI binary" $ withWigginsBinary (runWiggins opts)
+  context "Building dependency graph" $ pure (toGraph vsiLocators)
 
 runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> BinaryPaths -> m (Maybe [VSILocator])
 runWiggins opts binaryPaths = do
