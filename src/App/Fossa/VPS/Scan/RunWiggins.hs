@@ -106,8 +106,8 @@ optMaybeText flag (Just value) = [flag, value]
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
 
-execWigginsJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m a
-execWigginsJson binaryPaths opts = execJson (scanDir opts) (wigginsCommand binaryPaths opts)
+execWigginsJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> BinaryPaths -> m a
+execWigginsJson opts binaryPaths = execJson (scanDir opts) (wigginsCommand binaryPaths opts)
 
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts {..} = do
