@@ -313,6 +313,7 @@ checkForEmptyUpload xs ys
     xlen = length xs
     ylen = length ys
     filterCount = abs $ xlen - ylen
+    -- Return the smaller list, since filtering cannot add projects
 
     filtered = if xlen > ylen then ys else xs
 
