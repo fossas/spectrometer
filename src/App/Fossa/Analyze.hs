@@ -259,7 +259,7 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
       UploadScan apiOpts metadata -> uploadSuccesfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
 
 
-uploadSuccesfulAnalysis :: 
+uploadSuccessfulAnalysis :: 
   ( Has Diag.Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
