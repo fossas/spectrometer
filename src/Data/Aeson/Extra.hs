@@ -22,7 +22,7 @@ import Data.Text qualified as T
 -- This makes things really hard to parse.
 --
 -- As a workaround, we try parsing as Text, then Int, then Double
-newtype TextLike = TextLike {unTextLike :: Text}
+newtype TextLike = TextLike {unTextLike :: Text} deriving (Eq, Ord, Show)
 
 instance FromJSON TextLike where
   parseJSON val = parseAsText <|> parseAsInt <|> parseAsDouble
