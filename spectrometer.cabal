@@ -263,7 +263,6 @@ library
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Strategy.VSI
-    Strategy.UserSpecified.YamlDependencies
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock
     Strategy.Yarn.V2.Lockfile
