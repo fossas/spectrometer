@@ -15,12 +15,6 @@ import DepTypes (DepType (..))
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe, Expectation, shouldContain)
 import Test.Hspec.Core.Spec (SpecM)
 
-uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
-uncurry3 f (a, b, c) = f a b c
-
-uncurry5 :: (a -> b -> c -> d -> e -> f) -> (a, b, c, d, e) -> f
-uncurry5 f (a, b, c, d, e) = f a b c d e
-
 getTestDataFile :: String -> SpecM a BS.ByteString
 getTestDataFile name = runIO . BS.readFile $ "test/App/Fossa/testdata/" <> name
 
@@ -28,16 +22,12 @@ theWorks :: YamlDependencies
 theWorks = YamlDependencies references customs
   where
     references =
-      map
-        (uncurry3 ReferencedDependency)
-        [ ("one", GemType, Nothing),
-          ("two", URLType, Just "1.0.0")
+        [ ReferencedDependency "one" GemType Nothing,
+          ReferencedDependency "two" URLType $ Just "1.0.0"
         ]
     customs =
-      map
-        (uncurry5 CustomDependency)
-        [ ("hello", "1.2.3", "MIT", Nothing, Nothing),
-          ("full", "3.2.1", "GPL-3.0", Just "description for full", Just "we don't validate url's")
+        [ CustomDependency "hello" "1.2.3" "MIT" Nothing Nothing,
+          CustomDependency "full" "3.2.1" "GPL-3.0" (Just "description for full") (Just "we don't validate url's")
         ]
 
 exceptionContains :: BS.ByteString -> String -> Expectation
