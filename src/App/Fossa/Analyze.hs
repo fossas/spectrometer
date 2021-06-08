@@ -90,6 +90,15 @@ import System.Exit (die, exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
 
+type TaskEffs sig m =
+  ( Has (Lift IO) sig m
+  , MonadIO m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  , Has Diag.Diagnostics sig m
+  )
+
 data ScanDestination
   = -- | upload to fossa with provided api key and base url
     UploadScan ApiOpts ProjectMetadata
@@ -144,31 +153,22 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives en
 -- vsiDiscoverFunc is appended to discoverFuncs during analyze.
 -- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
 vsiDiscoverFunc ::
-  ( Has (Lift IO) sig m,
-    Has Diag.Diagnostics sig m,
-    Has (Lift IO) rsig run,
-    MonadIO run,
-    Has Diag.Diagnostics rsig run,
-    Has Exec rsig run
+  ( TaskEffs sig m,
+    TaskEffs rsig run
   ) =>
   VSIAnalysisMode ->
   ScanDestination ->
   Path Abs Dir ->
   m [DiscoveredProject run]
-vsiDiscoverFunc VSIAnalysisEnabled (UploadScan apiOpts _) dir = VSI.discover apiOpts dir
-vsiDiscoverFunc _ _ _ = pure []
+vsiDiscoverFunc VSIAnalysisEnabled (UploadScan apiOpts _) = VSI.discover apiOpts
+vsiDiscoverFunc _ _ = const $ pure []
 
 discoverFuncs ::
-  ( Has (Lift IO) sig m,
-    MonadIO m,
-    Has ReadFS sig m,
-    Has Exec sig m,
-    Has Logger sig m,
-    Has Diag.Diagnostics sig m,
+  ( TaskEffs sig m,
     Has (Lift IO) rsig run,
-    Has ReadFS rsig run,
     Has Diag.Diagnostics rsig run,
-    Has Exec rsig run
+    Has Exec rsig run,
+    Has ReadFS rsig run
   ) =>
   -- | Discover functions
   [Path Abs Dir -> m [DiscoveredProject run]]
