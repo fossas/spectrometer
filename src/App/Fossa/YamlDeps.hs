@@ -76,10 +76,10 @@ toBuildData deps =
     { buildArtifact = "default",
       buildSucceeded = True,
       buildImports = imports,
-      buildDependencies = buildDeps
+      buildDependencies = map addEmptyDep imports
     }
   where
-    (imports, buildDeps) = unzip . map (addEmptyDep . toImport) $ NE.toList deps
+    imports = map toImport $ NE.toList deps
 
     toImport :: ReferencedDependency -> Locator
     toImport ReferencedDependency {..} =
@@ -89,8 +89,8 @@ toBuildData deps =
           locatorRevision = locDepVersion
         }
 
-    addEmptyDep :: Locator -> (Locator, SourceUnitDependency)
-    addEmptyDep loc = (loc, SourceUnitDependency loc [])
+    addEmptyDep :: Locator -> SourceUnitDependency
+    addEmptyDep loc = SourceUnitDependency loc []
 
 toAdditionalData :: NE.NonEmpty CustomDependency -> AdditionalDepData
 toAdditionalData deps = AdditionalDepData {userDefinedDeps = map tosrc $ NE.toList deps}
