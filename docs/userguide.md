@@ -192,7 +192,7 @@ referenced-dependencies:
   version: 2.1.7
 ```
 
-The `package` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.  Note that many version numbers can look like actual numbers in YAML, but they should always be strings!  You can quote them to make sure YAML treats them as strings, otherwise you may run into an error.
+The `package` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
 
 Supported dependency types:
 
