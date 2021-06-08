@@ -22,6 +22,7 @@ import Data.Aeson
   )
 import Data.Aeson.Types (Parser, Object)
 import Data.Foldable (traverse_)
+import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toText, toString)
 import Data.Text (Text, unpack)
@@ -87,7 +88,7 @@ toBuildData deps =
       Locator
         { locatorFetcher = depTypeToFetcher locDepType,
           locatorProject = locDepName,
-          locatorRevision = unTextLike <$> locDepVersion
+          locatorRevision = locDepVersion
         }
 
     addEmptyDep :: Locator -> SourceUnitDependency
@@ -99,7 +100,7 @@ toAdditionalData deps = AdditionalDepData {userDefinedDeps = map tosrc $ NE.toLi
     tosrc CustomDependency {..} =
       SourceUserDefDep
         { srcUserDepName = customName,
-          srcUserDepVersion = unTextLike customVersion,
+          srcUserDepVersion = customVersion,
           srcUserDepLicense = customLicense,
           srcUserDepDescription = customDescription,
           srcUserDepUrl = customUrl
@@ -116,13 +117,13 @@ data YamlDependencies = YamlDependencies
 data ReferencedDependency = ReferencedDependency
   { locDepName :: Text,
     locDepType :: DepType,
-    locDepVersion :: Maybe TextLike
+    locDepVersion :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 data CustomDependency = CustomDependency
   { customName :: Text,
-    customVersion :: TextLike,
+    customVersion :: Text,
     customLicense :: Text,
     customDescription :: Maybe Text,
     customUrl :: Maybe Text
@@ -147,13 +148,13 @@ instance FromJSON ReferencedDependency where
   parseJSON = withObject "ReferencedDependency" $ \obj ->
     ReferencedDependency <$> obj .: "name"
       <*> (obj .: "type" >>= depTypeParser)
-      <*> obj .:? "version"
+      <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "referenced dependencies" ["license", "description", "url"] obj
 
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
     CustomDependency <$> obj .: "name"
-      <*> obj .: "version"
+      <*> (unTextLike <$> obj .: "version")
       <*> obj .: "license"
       <*> obj .:? "description"
       <*> obj .:? "url"
