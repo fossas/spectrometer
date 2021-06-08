@@ -38,9 +38,10 @@ analyzeFossaDepsYaml root = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
     Nothing -> pure Nothing
+    -- If the file exists and we have no SourceUnit to report, that's a failure
     Just depsFile -> do
       yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
-      context "Converting fossa-deps to partial API payload" $ toSourceUnit root yamldeps
+      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
 findFossaDepsFile root = do
@@ -54,13 +55,13 @@ findFossaDepsFile root = do
     (False, True) -> pure $ Just yamlFile
     (False, False) -> pure Nothing
 
-toSourceUnit :: Has Diagnostics sig m => Path Abs Dir -> YamlDependencies -> m (Maybe SourceUnit)
+toSourceUnit :: Has Diagnostics sig m => Path Abs Dir -> YamlDependencies -> m SourceUnit
 toSourceUnit root yamldeps@YamlDependencies{..} = do
   when (hasNoDeps yamldeps) $ fatalText "No dependencies found in fossa-deps file"
   let renderedPath = toText root
       build = toBuildData <$> NE.nonEmpty referencedDependencies
       additional = toAdditionalData <$> NE.nonEmpty customDependencies
-  pure . Just $
+  pure $
     SourceUnit
       { sourceUnitName = renderedPath,
         sourceUnitManifest = renderedPath,
