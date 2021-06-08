@@ -9,13 +9,13 @@ import Control.Effect.Diagnostics
 import Control.Effect.Lift
 import Control.Monad.IO.Class
 import Data.Aeson
-import Data.Maybe
 import Data.Text qualified as T
 import Effect.Exec
 import Fossa.API.Types
 import GHC.Generics
 import Graphing
 import Path
+import Prettyprinter (pretty, viaShow)
 import Srclib.Types (Locator (..), parseLocator)
 import Types
 
@@ -27,7 +27,20 @@ newtype VSIProject = VSIProject
 newtype VSILocator = VSILocator
   { unVSILocator :: T.Text
   }
-  deriving (Show, Generic, FromJSON)
+  deriving (Eq, Ord, Show, Generic, FromJSON)
+
+data ValidVSILocator = ValidVSILocator
+  { validType :: DepType,
+    validName :: T.Text,
+    validRevision :: Maybe T.Text
+  }
+
+data VSIError = UnsupportedLocatorType Locator T.Text
+  deriving (Eq, Ord, Show)
+
+instance ToDiagnostic VSIError where
+  renderDiagnostic (UnsupportedLocatorType locator ty) =
+    "Unsupported locator type: " <> pretty ty <> " . Locator: " <> viaShow locator
 
 discover :: (Has Diagnostics sig m, Has (Lift IO) rsig run, MonadIO run, Has Exec rsig run, Has Diagnostics rsig run) => ApiOpts -> Path Abs Dir -> m [DiscoveredProject run]
 discover apiOpts dir = context "VSI" $ do
@@ -46,30 +59,40 @@ mkProject wigginsOpts project =
       projectLicenses = pure []
     }
 
+buildGraph :: [VSILocator] -> Either VSIError (Graphing Dependency)
+buildGraph rawLocators = asAGraph
+  where
+    validated :: Either VSIError [ValidVSILocator]
+    validated = traverse validateLocator rawLocators
+
+    transformed :: Either VSIError [Dependency]
+    transformed = map transformLocator <$> validated
+
+    asAGraph :: Either VSIError (Graphing Dependency)
+    asAGraph = Graphing.fromList <$> transformed
+
+validateLocator :: VSILocator -> Either VSIError ValidVSILocator
+validateLocator vsiLocator = do
+  let locator = parseLocator $ unVSILocator vsiLocator
+  ty <- toDepType locator
+  pure (ValidVSILocator ty (locatorProject locator) (locatorRevision locator))
+
+transformLocator :: ValidVSILocator -> Dependency
+transformLocator locator =
+  Dependency (validType locator) (validName locator) (CEq <$> validRevision locator) [] [] mempty
+
 analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency)
 analyze opts = context "VSI" $ do
   vsiLocators <- context "Running VSI binary" $ withWigginsBinary (runWiggins opts)
-  let graph = Graphing.fromList $ mapMaybe toDependency vsiLocators
-  context "Building dependency graph" $ pure graph
+  context "Building dependency graph" $ fromEither (buildGraph vsiLocators)
 
 runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> BinaryPaths -> m [VSILocator]
 runWiggins opts binaryPaths = execWigginsJson binaryPaths opts
 
-toDependency :: VSILocator -> Maybe Dependency
-toDependency vsiLocator = do
-  let locator = parseLocator (unVSILocator vsiLocator)
-  let name = locatorProject locator
-  let revision = CEq <$> locatorRevision locator
-
-  case toDepType locator of
-    Just depType -> Just $ Dependency depType name revision [] [] mempty
-    Nothing -> Nothing
-
--- toDepType converts the fetchers that the VSI strategy may output into the appropriate DepType.
-toDepType :: Locator -> Maybe DepType
+toDepType :: Locator -> Either VSIError DepType
 toDepType locator = case locatorFetcher locator of
-  "git" -> Just GitType
-  "archive" -> Just GooglesourceType
-  "mvn" -> Just MavenType
-  "nuget" -> Just NuGetType
-  _ -> Nothing
+  "git" -> Right GitType
+  "archive" -> Right GooglesourceType
+  "mvn" -> Right MavenType
+  "nuget" -> Right NuGetType
+  other -> Left $ UnsupportedLocatorType locator other
