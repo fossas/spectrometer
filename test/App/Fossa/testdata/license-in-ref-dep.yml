@@ -1,4 +1,4 @@
 referenced-dependencies:
-- package: hello
+- name: hello
   type: go
   license: nope

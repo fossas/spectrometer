@@ -84,7 +84,7 @@ toBuildData deps =
     toImport ReferencedDependency {..} =
       Locator
         { locatorFetcher = depTypeToFetcher locDepType,
-          locatorProject = locDepPackage,
+          locatorProject = locDepName,
           locatorRevision = locDepVersion
         }
 
@@ -96,7 +96,7 @@ toAdditionalData deps = AdditionalDepData {userDefinedDeps = map tosrc $ NE.toLi
   where
     tosrc CustomDependency {..} =
       SourceUserDefDep
-        { srcUserDepName = customPackage,
+        { srcUserDepName = customName,
           srcUserDepVersion = customVersion,
           srcUserDepLicense = customLicense,
           srcUserDepDescription = customDescription,
@@ -115,14 +115,14 @@ data YamlDependencies = YamlDependencies
   } deriving (Eq, Ord, Show)
 
 data ReferencedDependency = ReferencedDependency
-  { locDepPackage :: Text,
+  { locDepName :: Text,
     locDepType :: DepType,
     locDepVersion :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 data CustomDependency = CustomDependency
-  { customPackage :: Text,
+  { customName :: Text,
     customVersion :: Text,
     customLicense :: Text,
     customDescription :: Maybe Text,
@@ -146,14 +146,14 @@ depTypeParser text = case depTypeFromText text of
 
 instance FromJSON ReferencedDependency where
   parseJSON = withObject "ReferencedDependency" $ \obj ->
-    ReferencedDependency <$> obj .: "package"
+    ReferencedDependency <$> obj .: "name"
       <*> (obj .: "type" >>= depTypeParser)
       <*> obj .:? "version"
       <* forbidMembers "referenced dependencies" ["license", "description", "url"] obj
 
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
-    CustomDependency <$> obj .: "package"
+    CustomDependency <$> obj .: "name"
       <*> obj .: "version"
       <*> obj .: "license"
       <*> obj .:? "description"

@@ -1,15 +1,15 @@
 referenced-dependencies:
-- package: one
+- name: one
   type: gem
 - type: url
-  package: two
+  name: two
   version: 1.0.0
 
 custom-dependencies:
-- package: hello
+- name: hello
   version: 1.2.3
   license: MIT
-- package: full
+- name: full
   version: 3.2.1
   license: GPL-3.0
   description: description for full

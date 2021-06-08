@@ -186,9 +186,9 @@ To manually specify a dependency, you must provide the package type, package nam
 ```yaml
 referenced-dependencies:
 - type: gem
-  package: iron
+  name: iron
 - type: pip
-  package: Django
+  name: Django
   version: 2.1.7
 ```
 
@@ -221,11 +221,11 @@ You may also supply a description and/or url, but both are optional.  Note that 
 ```yaml
 custom-dependencies:
 # Custom dependencies need package, version, and license
-- package: foo
+- name: foo
   version: 1.2.3
   license: "MIT or Apache-2.0"
 # You can also provide a description and/or url
-- package: foo-wrapper
+- name: foo-wrapper
   version: 1.2.3
   license: MIT
   url: https://www.foowrapper.com/about
@@ -239,13 +239,13 @@ The `fossa-deps` scanner tries to report clear error messages when fields are mi
 ```yaml
 referenced-dependencies:
 - type: python
-  package: flask
+  name: flask
   version: "2.0.1"
   license: MIT  # Error!  "license" is only allowed for custom-dependencies
 
 custom-dependencies:
 - type: custom  # Error!  "type" is only allowed for referenced-dependencies
-  package: mydep
+  name: mydep
   version: "3.14.15"
   license: GPL-3.0
 ```
@@ -255,11 +255,9 @@ This would return an error with a message explaining what went wrong, and where.
 ```yaml
 referenced-dependencies:
 - type: cargo
-  package: bitflags
+  name: bitflags
   some-unexpected-field: hello  # Has no effect
 ```
-
-This is an intentional gap in coverage, due to the way some of these files are built
 
 The `fossa-deps` scanner also requires at least one valid dependency if the file exists.  This prevents the file from being created with the wrong array names and us silently ignoring them.
 
