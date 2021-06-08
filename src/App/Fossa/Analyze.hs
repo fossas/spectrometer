@@ -155,11 +155,8 @@ vsiDiscoverFunc ::
   ScanDestination ->
   Path Abs Dir ->
   m [DiscoveredProject run]
-vsiDiscoverFunc vsiMode destination dir = case vsiMode of
-  VSIAnalysisEnabled -> case destination of
-    OutputStdout -> pure []
-    UploadScan apiOpts _ -> VSI.discover apiOpts dir
-  VSIAnalysisDisabled -> pure []
+vsiDiscoverFunc VSIAnalysisEnabled (UploadScan apiOpts _) dir = VSI.discover apiOpts dir
+vsiDiscoverFunc _ _ _ = pure []
 
 discoverFuncs ::
   ( Has (Lift IO) sig m,
