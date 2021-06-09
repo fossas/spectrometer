@@ -212,7 +212,7 @@ applyFiltersToProject basedir filters DiscoveredProject {..} =
     Nothing -> Just projectBuildTargets
     Just rel -> applyFilters filters projectType rel projectBuildTargets
 
-analyze :: forall sig m.
+analyze ::
   ( Has (Lift IO) sig m,
     Has Logger sig m,
     Has Diag.Diagnostics sig m,
@@ -244,8 +244,6 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
       $ withDiscoveredProjects discoverFuncs' (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
-      writeResultToConsole :: [ProjectResult] -> m ()
-      writeResultToConsole = logStdout . decodeUtf8 . Aeson.encode . buildResult manualSrcUnit
 
   case checkForEmptyUpload projectResults filteredProjects manualSrcUnit of
     NoneDiscovered -> logError "No projects were discovered" >> sendIO exitFailure
@@ -254,7 +252,7 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> writeResultToConsole filteredProjects 
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnit filteredProjects 
       UploadScan apiOpts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
 
 
