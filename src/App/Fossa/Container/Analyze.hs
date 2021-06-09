@@ -8,6 +8,9 @@ import App.Fossa.Container (ImageText (..), extractRevision, runSyft, toContaine
 import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics
+    ( renderFailureBundle,
+      Diagnostics,
+      runDiagnostics )
 import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
@@ -15,6 +18,7 @@ import Data.Foldable (traverse_)
 import Data.String.Conversion (decodeUtf8)
 import Effect.Logger
 import Srclib.Types (parseLocator)
+import Data.Maybe (fromMaybe)
 
 analyzeMain :: ScanDestination -> Severity -> OverrideProject -> ImageText -> IO ()
 analyzeMain scanDestination logSeverity override image = withDefaultLogger logSeverity $ do
@@ -42,6 +46,8 @@ analyze scanDestination override image = do
       let revision = extractRevision override containerScan
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
+      let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+      logInfo ("Using branch: `" <> pretty branchText <> "`")
 
       resp <- uploadContainerScan apiOpts revision projectMeta containerScan
 
