@@ -20,18 +20,16 @@ import Data.Aeson
     (.:),
     (.:?),
   )
-import Data.Aeson.Types (Parser, Object)
-import Data.Foldable (traverse_)
+import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
-import Data.String.Conversion (toText, toString)
+import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType(..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
 import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
-import Data.HashMap.Strict (member)
 import Control.Monad (when)
 import Data.Aeson.Extra
 
@@ -159,19 +157,6 @@ instance FromJSON CustomDependency where
       <*> obj .:? "description"
       <*> obj .:? "url"
       <* forbidMembers "custom dependencies" ["type"] obj
-
--- | Parser insert to prevent specific fields from being used in parsers
--- Primarily useful for rejecting aeson fields which should be reported with custom error messages
---
--- >  parseJSON = withObject "MyDataType" $ \obj ->
--- >   MyDataType <$> obj .: "my-data-field"
--- >     <* forbidMembers "Custom error message" ["badfield1", "badfield2"] obj
-forbidMembers :: Text -> [Text] -> Object -> Parser ()
-forbidMembers typename names obj = traverse_ (badMember obj) names
-  where
-    badMember hashmap name = if member name hashmap
-      then fail . toString $ "Invalid field name for " <> typename <> ": " <> name
-      else pure ()
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType
