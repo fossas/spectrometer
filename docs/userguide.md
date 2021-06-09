@@ -250,13 +250,13 @@ custom-dependencies:
   license: GPL-3.0
 ```
 
-This would return an error with a message explaining what went wrong, and where.  However, we don't check for everything:
+This would return an error with a message explaining what went wrong, and where.  However, we don't check for everything (yet!):
 
 ```yaml
 referenced-dependencies:
 - type: cargo
   name: bitflags
-  some-unexpected-field: hello  # Has no effect
+  some-unexpected-field: hello  # Has no effect, will be considered an error in future versions.
 ```
 
 The `fossa-deps` scanner also requires at least one valid dependency if the file exists.  This prevents the file from being created with the wrong array names and us silently ignoring them.
