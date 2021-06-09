@@ -73,9 +73,11 @@ You do not need to enforce that `hlint` passes to submit a PR, but it does help 
 
 ## Formatting
 
-Built into HLS, we use `fourmolu` for formatting source code files. In VSCode, the formatter can be activated with the standard format-file and format-region actions
+Built into HLS, we use `fourmolu` for formatting source code files. In the VSCode Haskell extension settings, under `Haskell: Formatting Provider`, choose `fourmolu`.
 
-Formatting is not currently a blanket requirement, though we do recommend that you run format-file on any new source files and any files you've substantially modified
+In VSCode, the formatter can be activated with the standard format-file and format-region actions.
+
+Make sure to run the formatter on any files you modify. Enabling `Editor: Format On Save` in VSCode can make satisfying this requirement easier.
 
 We do not recommend using formatters outside of HLS, as there are some issues with configuration (see [FAQ](#FAQ) for more info).
 
