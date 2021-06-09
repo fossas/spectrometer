@@ -187,7 +187,7 @@ To manually specify a dependency, you must provide the package type, package nam
 referenced-dependencies:
 - type: gem
   name: iron
-- type: pip
+- type: pypi
   name: Django
   version: 2.1.7
 ```
@@ -207,7 +207,7 @@ Supported dependency types:
 - `maven` - Maven dependencies that can be found at many different sources. Specified as `package: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
 - `npm` - Javascript dependencies found at [npmjs.com](https://www.npmjs.com/).
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
-- `python` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
+- `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
 - `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar`. The `version` field will be silently ignored for `url` type dependencies.
 
@@ -238,7 +238,7 @@ The `fossa-deps` scanner tries to report clear error messages when fields are mi
 
 ```yaml
 referenced-dependencies:
-- type: python
+- type: pypi
   name: flask
   version: "2.0.1"
   license: MIT  # Error!  "license" is only allowed for custom-dependencies

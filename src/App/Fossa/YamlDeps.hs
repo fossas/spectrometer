@@ -187,7 +187,7 @@ depTypeFromText text = case text of
   "maven" -> Just MavenType
   "npm" -> Just NodeJSType
   "nuget" -> Just NuGetType
-  "python" -> Just PipType
+  "pypi" -> Just PipType
   "cocoapods" -> Just PodType
   "url" -> Just URLType
   _ -> Nothing -- unsupported dep, need to respond with an error and skip this dependency
