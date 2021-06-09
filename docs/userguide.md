@@ -191,7 +191,7 @@ referenced-dependencies:
   version: 2.1.7
 ```
 
-The `package` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
+The `name` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
 
 Supported dependency types:
 
@@ -203,12 +203,12 @@ Supported dependency types:
 - `go` - Golang specific dependency. Many golang dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom golang URLs.
 - `hackage` - Haskell dependencies found at [Hackage](https://hackage.haskell.org/).
 - `hex` - Erlang and Elixir dependencies that are found at [Hex.pm](https://hex.pm/).
-- `maven` - Maven dependencies that can be found at many different sources. Specified as `package: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
+- `maven` - Maven dependencies that can be found at many different sources. Specified as `name: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
 - `npm` - Javascript dependencies found at [npmjs.com](https://www.npmjs.com/).
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
-- `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar`. The `version` field will be silently ignored for `url` type dependencies.
+- `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
 
 ### User-defined dependencies
 
@@ -219,7 +219,7 @@ You may also supply a description and/or url, but both are optional.  Note that 
 
 ```yaml
 custom-dependencies:
-# Custom dependencies need package, version, and license
+# Custom dependencies need name, version, and license
 - name: foo
   version: 1.2.3
   license: "MIT or Apache-2.0"
