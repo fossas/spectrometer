@@ -134,8 +134,8 @@ library
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
+    App.Fossa.ArchiveUploader
     App.Fossa.Compatibility
-    App.Fossa.Compression
     App.Fossa.Configuration
     App.Fossa.Container
     App.Fossa.Container.Analyze

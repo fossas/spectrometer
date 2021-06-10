@@ -12,6 +12,8 @@ module Fossa.API.Types (
   IssueType (..),
   Issue (..),
   SignedURL (..),
+  ArchiveComponents (..),
+  Archive (..),
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
@@ -217,3 +219,23 @@ useApiOpts opts = case useURI serverURI of
 
 authHeader :: ApiKey -> Option 'Https
 authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))
+
+newtype ArchiveComponents = ArchiveComponents
+  { archives :: [Archive]
+ } deriving (Eq, Ord, Show)
+
+data Archive = Archive
+ { archiveName :: Text
+ , archiveVersion :: Text
+ } deriving (Eq, Ord, Show)
+
+instance ToJSON ArchiveComponents where
+ toJSON ArchiveComponents{..} = object
+   [ "archives" .= archives
+   ]
+
+instance ToJSON Archive where
+ toJSON Archive{..} = object
+   [ "packageSpec" .= archiveName
+   , "revision" .= archiveVersion
+   ]

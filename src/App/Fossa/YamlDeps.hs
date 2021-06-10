@@ -6,6 +6,7 @@
 module App.Fossa.YamlDeps (
   CustomDependency (..),
   ReferencedDependency (..),
+  VendoredDependency (..),
   YamlDependencies (..),
   analyzeFossaDepsYaml,
 ) where
@@ -32,15 +33,16 @@ import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
-analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit)
+analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit, [VendoredDependency])
 analyzeFossaDepsYaml root = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
-    Nothing -> pure Nothing
+    Nothing -> pure (Nothing, [])
     -- If the file exists and we have no SourceUnit to report, that's a failure
     Just depsFile -> do
       yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
+      sourceUnits <- context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
+      pure (sourceUnits, vendoredDependencies yamldeps)
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
 findFossaDepsFile root = do
@@ -109,8 +111,8 @@ hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDepen
 data YamlDependencies = YamlDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]
-  }
-  deriving (Eq, Ord, Show)
+  , vendoredDependencies :: [VendoredDependency]
+  } deriving (Eq, Ord, Show)
 
 data ReferencedDependency = ReferencedDependency
   { locDepName :: Text
@@ -128,11 +130,18 @@ data CustomDependency = CustomDependency
   }
   deriving (Eq, Ord, Show)
 
+data VendoredDependency = VendoredDependency
+  { vendoredName :: Text,
+    vendoredPath :: Text,
+    vendoredVersion :: Maybe Text
+  } deriving (Eq, Ord, Show)
+
 instance FromJSON YamlDependencies where
   parseJSON = withObject "YamlDependencies" $ \obj ->
     YamlDependencies <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
       <*> (obj .:? "custom-dependencies" .!= [])
+      <*> (obj .:? "vendored-dependencies" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
@@ -148,7 +157,7 @@ instance FromJSON ReferencedDependency where
     ReferencedDependency <$> obj .: "name"
       <*> (obj .: "type" >>= depTypeParser)
       <*> (unTextLike <$$> obj .:? "version")
-      <* forbidMembers "referenced dependencies" ["license", "description", "url"] obj
+      <* forbidMembers "referenced dependencies" ["license", "description", "url", "path"] obj
 
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
@@ -157,7 +166,14 @@ instance FromJSON CustomDependency where
       <*> obj .: "license"
       <*> obj .:? "description"
       <*> obj .:? "url"
-      <* forbidMembers "custom dependencies" ["type"] obj
+      <* forbidMembers "custom dependencies" ["type", "path"] obj
+
+instance FromJSON VendoredDependency where
+  parseJSON = withObject "VendoredDependency" $ \obj ->
+    VendoredDependency <$> obj .: "name"
+      <*> obj .: "path"
+      <*> (unTextLike <$$> obj .:? "version")
+      <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType

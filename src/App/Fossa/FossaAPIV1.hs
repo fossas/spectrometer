@@ -26,8 +26,6 @@ module App.Fossa.FossaAPIV1
     getSignedURL,
     archiveUpload,
     archiveBuildUpload,
-    ArchiveComponents (..),
-    Archive (..),
   )
 where
 
@@ -39,7 +37,8 @@ import App.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
 import App.Version (versionNumber)
-import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics
+    ( Diagnostics, Has, Algebra, fatal, fatalText, ToDiagnostic(..) )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
@@ -50,6 +49,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Effect.Logger
 import Network.HTTP.Client qualified as HTTP
+import Fossa.API.Types (ApiOpts, Issues, SignedURL, useApiOpts, signedURL, ArchiveComponents)
 import Network.HTTP.Req
 import Network.HTTP.Types qualified as HTTP
 import Srclib.Types
@@ -251,25 +251,6 @@ getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
 
 ---------- Archive build queueing. This Endpoint ensures that after an archive is uploaded, it is scanned.
 
-newtype ArchiveComponents = ArchiveComponents
-  { archives :: [Archive]
-  }
-
-data Archive = Archive
- { packageSpec :: Text
- , revision :: Text
- }
-
-instance ToJSON ArchiveComponents where
- toJSON ArchiveComponents{..} = object
-   [ "archives" .= archives
-   ]
-
-instance ToJSON Archive where
- toJSON Archive{..} = object
-   [ "packageSpec" .= packageSpec
-   , "revision" .= revision
-   ]
 
 archiveBuildURL :: Url 'Https -> Url 'Https
 archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
@@ -324,7 +305,6 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
               Just (url, options) -> do
                     res <- reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
                     pure $ show res
-                    where
 
 -- requestEncoder properly encodes the Request path. 
 -- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry. 
