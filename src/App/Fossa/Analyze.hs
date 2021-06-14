@@ -294,6 +294,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override units = do
   -- Warn on contributor errors, never fail
   void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
+  logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl
+
 data CountedResult
   = NoneDiscovered
   | FilteredAll Int
@@ -370,6 +372,20 @@ tryUploadContributors ::
 tryUploadContributors baseDir apiOpts locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors apiOpts locator contributors
+
+-- | Build project summary JSON to be output to stdout
+buildProjectSummary :: ProjectRevision -> Text -> Text -> Aeson.Value
+buildProjectSummary project projectLocator projectUrl =
+  Aeson.object
+    [ "project"
+        .= Aeson.object
+          [ "name" .= projectName project
+          , "revision" .= projectRevision project
+          , "branch" .= projectBranch project
+          , "locator" .= projectLocator
+          , "url" .= projectUrl
+          ]
+    ]
 
 buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
 buildResult maybeSrcUnit projects =
