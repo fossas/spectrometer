@@ -13,6 +13,7 @@
 - Adds support and documentation for user-defined dependencies ([#245](https://github.com/fossas/spectrometer/pull/245))
 - Allows using `.yml` or `.yaml` extensions for `fossa-deps` file, but not both ([#245](https://github.com/fossas/spectrometer/pull/245))
 - `fossa-deps` file is checked before running discovery/analysis, and is no longer run in parallel with other analysis functions ([#245](https://github.com/fossas/spectrometer/pull/245))
+- Adds JSON-formatted project information to the output of `fossa analyze` ([#255](https://github.com/fossas/spectrometer/pull/255))
 
 ## 2.7.2
 
