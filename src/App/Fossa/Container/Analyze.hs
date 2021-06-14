@@ -7,18 +7,19 @@ import App.Fossa.Analyze (ScanDestination (..))
 import App.Fossa.Container (ImageText (..), extractRevision, runSyft, toContainerScan)
 import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
 import App.Types (OverrideProject (..), ProjectRevision (..))
-import Control.Carrier.Diagnostics
-    ( renderFailureBundle,
-      Diagnostics,
-      runDiagnostics )
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  renderFailureBundle,
+  runDiagnostics,
+ )
 import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Foldable (traverse_)
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Effect.Logger
 import Srclib.Types (parseLocator)
-import Data.Maybe (fromMaybe)
 
 analyzeMain :: ScanDestination -> Severity -> OverrideProject -> ImageText -> IO ()
 analyzeMain scanDestination logSeverity override image = withDefaultLogger logSeverity $ do

@@ -150,7 +150,7 @@ appMain = do
           if containerAnalyzeOutput
             then ContainerAnalyze.analyzeMain OutputStdout logSeverity override containerAnalyzeImage
             else do
-              let containerOverride = override {overrideBranch = containerBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
+              let containerOverride = override{overrideBranch = containerBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
               apikey <- requireKey maybeApiKey
               let apiOpts = ApiOpts optBaseUrl apikey
               let metadata = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) fileConfig
