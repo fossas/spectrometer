@@ -30,15 +30,13 @@ module App.Fossa.FossaAPIV1
 where
 
 import Prelude
-import App.Fossa.Analyze.Project
 import App.Fossa.Container (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
 import App.Version (versionNumber)
-import Control.Effect.Diagnostics
-    ( Diagnostics, Has, Algebra, fatal, fatalText, ToDiagnostic(..) )
+import Control.Effect.Diagnostics ( Diagnostics, context, fatal, fatalText, ToDiagnostic(..) )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
@@ -59,6 +57,8 @@ import Fossa.API.Types (ApiOpts, Issues, SignedURL, useApiOpts, signedURL)
 import Network.HTTP.Req
 import Network.HTTP.Client qualified as C
 import Data.Word (Word8)
+import Control.Carrier.Empty.Maybe (EmptyC, runEmpty, Empty)
+import Control.Effect.Empty (empty)
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -69,8 +69,33 @@ instance Has (Lift IO) sig m => MonadIO (FossaReq m) where
 instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
   handleHttpException = FossaReq . fatal . mangleError
 
+newtype FossaReqAllow401 m a = FossaReqAllow401 {unFossaReqAllow401 :: EmptyC m a}
+  deriving (Functor, Applicative, Monad, Algebra (Empty :+: sig))
+
+instance Has (Lift IO) sig m => MonadIO (FossaReqAllow401 m) where
+  liftIO = sendIO
+
+instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllow401 m) where
+  handleHttpException = FossaReqAllow401 . allow401
+        where allow401 :: HttpException -> EmptyC m a
+              allow401 err = maybe empty fatal (allow401' err)
+
+
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
+
+fossaReqAllow401 :: FossaReqAllow401 m a -> EmptyC m a
+fossaReqAllow401 = unFossaReqAllow401
+
+-- allow401 is implemented due to the FOSSA API returning 401 status codes when we attempt to queue a build
+-- that already exists. This function prevents us from erroring.
+allow401' :: HttpException -> Maybe FossaError
+allow401' err = case err of
+  VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException resp _)) ->
+    case HTTP.responseStatus resp of
+      HTTP.Status 401 _ -> Nothing
+      _                 -> Just $ mangleError err
+  _ -> Just $ mangleError err
 
 -- Don't send any version if one doesn't exist
 cliVersion :: Text
@@ -259,14 +284,15 @@ archiveBuildUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ArchiveComponents ->
-  m C.ByteString
-archiveBuildUpload apiOpts archiveProjects = fossaReq $ do
+  m (Maybe C.ByteString)
+archiveBuildUpload apiOpts archiveProjects = runEmpty $ fossaReqAllow401 $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "dependency" =: True
-           <> "rawLicenseScan" =: True
-
-  resp <- req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+  let opts = "dependency" =: True <> "rawLicenseScan" =: True
+      archiveBuildContext = "Queuing a build for an archive project"
+  -- The response appears to either be "Created" for new builds, or an error message for existing builds.
+  -- Making the actual return value of "Created" essentially worthless.
+  resp <- context archiveBuildContext $ req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
   pure (responseBody resp)
 
 ---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
@@ -284,8 +310,9 @@ getSignedURL apiOpts revision packageName = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts = "packageSpec" =: packageName <> "revision" =: revision
+      signedURLContext = "Retrieving a signed S3 URL"
 
-  response <- req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  response <- context signedURLContext $ req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody response)
 
 ---------- The archive upload function uploads the file it is given directly to the signed URL it is provided.
@@ -303,7 +330,8 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
                 Nothing -> fatalText ("Error attempting to archive upload file: " <> T.pack arcFile <> ". No signed URL supplied")
                 Just resultURL -> fatalText ("Invalid URL: " <> render resultURL)
               Just (url, options) -> do
-                    res <- reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+                    let archiveContext = "Attempting to archive upload a project"
+                    res <- context archiveContext $ reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
                     pure $ show res
 
 -- requestEncoder properly encodes the Request path. 

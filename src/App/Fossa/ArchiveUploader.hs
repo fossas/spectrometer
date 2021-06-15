@@ -7,12 +7,15 @@ module App.Fossa.ArchiveUploader
   )
 where
 
-import Debug.Trace
 
+import Debug.Trace
+import Control.Effect.Lift
+import Control.Effect.Path (withSystemTempDir)
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Compression.GZip as GZip
 import qualified Data.ByteString.Lazy as BS
 import Path hiding ((</>))
+-- import Path
 import Data.Text (Text)
 import App.Fossa.YamlDeps
 import qualified Data.Text as T
@@ -21,74 +24,43 @@ import qualified App.Fossa.FossaAPIV1 as Fossa
 import Fossa.API.Types
 import qualified Control.Carrier.Diagnostics as Diag
 import System.FilePath.Posix
-import Text.URI (mkURI)
-import System.IO.Temp ( withSystemTempDirectory )
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency))
 import Data.Maybe (fromMaybe)
 
-md5 :: BS.ByteString  -> Digest MD5
-md5 = hashlazy
-
--- testDir :: Path Abs Dir
--- testDir = $(mkAbsDir "/Users/zachlavallee/Programming/Fossa-Tools/spectrometer/")
-
-uploadArchives :: ApiOpts -> [VendoredDependency] -> FilePath -> FilePath -> IO [Archive]
+uploadArchives :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> [VendoredDependency] -> Path Abs Dir -> Path Abs Dir -> m [Archive]
 uploadArchives apiOpts deps arcDir tmpDir = traverse (compressAndUpload apiOpts arcDir tmpDir) deps
 
-compressAndUpload :: ApiOpts -> FilePath -> FilePath -> VendoredDependency -> IO Archive
+compressAndUpload ::(Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> Path Abs Dir -> Path Abs Dir -> VendoredDependency -> m Archive
 compressAndUpload apiOpts arcDir tmpDir dependency = do
-      compressedFile <- compressFile tmpDir arcDir (T.unpack $ vendoredPath dependency)
+      compressedFile <- sendIO $ compressFile tmpDir arcDir (T.unpack $ vendoredPath dependency)
 
-
+      traceM $ show compressedFile
       depVersion <- case vendoredVersion dependency of
-                      Nothing -> do
-                                   fileHash <- hashFile compressedFile
-                                   pure $ case fileHash of
-                                         -- Need to exit with an error here
-                                         -- Nothing -> traceM "No file hash able to be generated"
-                                         Nothing -> T.pack "asd"
-                                         Just md5Hash -> T.pack $ show md5Hash
+                      Nothing -> sendIO $ hashFile compressedFile
                       Just version -> pure version
 
-      response <- Diag.runDiagnostics $ Fossa.getSignedURL apiOpts depVersion (vendoredName dependency)
-      case response of 
-             Left _ -> pure ""
-             Right res -> do
-                     _ <- Diag.runDiagnostics $ Fossa.archiveUpload res compressedFile
-                     pure ""
+      traceM $ show depVersion
+      signedURL <- Fossa.getSignedURL apiOpts depVersion (vendoredName dependency)
 
-      pure (Archive (vendoredName dependency) depVersion)
+      _ <- Fossa.archiveUpload signedURL compressedFile
 
-      -- fileHash <- hashFile compressedFile
-      -- case fileHash of
-      --       Nothing -> traceM "No file hash able to be generated"
-      --       Just md5Hash -> do
-      --             uri <- mkURI "https://app.fossa.com"
-      --             response <- Diag.runDiagnostics $ Fossa.getSignedURL (ApiOpts (Just uri) key) (T.pack $ show md5Hash) packageName
-      --             case response of
-      --                   Left err -> traceM $ show err
-      --                   Right res -> do
-      --                         _ <- traceM $ show (Diag.resultValue res)
-      --                         arcUpload <- Diag.runDiagnostics $ Fossa.archiveUpload (Diag.resultValue res) compressedFile
-      --                         case arcUpload of
-      --                               Left err -> traceM $ show err
-      --                               Right arc -> traceM $ show $ Diag.resultValue arc
+      pure $ Archive (vendoredName dependency) depVersion
 
-
-
-archiveUploadSourceUnit :: FilePath -> ApiOpts -> [VendoredDependency] -> IO (Maybe SourceUnit)
+archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m (Maybe SourceUnit)
 archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
-      archives <- withSystemTempDirectory "fossa-temp" (uploadArchives apiOpts vendoredDeps baseDir)
-      
-      arcUpload <- Diag.runDiagnostics $ Fossa.archiveBuildUpload apiOpts (ArchiveComponents archives)
-      case arcUpload of
-            Left err -> traceM $ show err
-            Right arc -> traceM $ show arc
+      archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts vendoredDeps baseDir)
 
-      pure $ Just $ archivesToSourceUnit archives
+      -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
+      _ <- Fossa.archiveBuildUpload apiOpts (ArchiveComponents archives)
 
-      -- Need to programmatically obtain this
-      -- where dir = fromAbsDir testDir <> "user-deps-test"
+      Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts 
+      let archivesWithOrganization = updateArcName (T.pack $ show orgId) <$> archives
+
+      pure $ Just $ archivesToSourceUnit archivesWithOrganization
+
+      where
+        updateArcName :: Text -> Archive -> Archive
+        updateArcName updateText arc = arc {archiveName = updateText <> "/" <> archiveName arc}
 
 archivesNoUploadSourceUnit :: [VendoredDependency] -> Maybe SourceUnit
 archivesNoUploadSourceUnit deps = Just $ archivesToSourceUnit (unsafeVendoredToArchive <$> deps)
@@ -96,18 +68,16 @@ archivesNoUploadSourceUnit deps = Just $ archivesToSourceUnit (unsafeVendoredToA
 unsafeVendoredToArchive :: VendoredDependency -> Archive
 unsafeVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
 
-
 archivesToSourceUnit :: [Archive] -> SourceUnit
 archivesToSourceUnit arcs = do
       let build = toBuildData arcs
           srcUnit = SourceUnit
-            { sourceUnitName = "arc deps",
-              sourceUnitManifest = "arc deps",
+            { sourceUnitName = "archive deps",
+              sourceUnitManifest = "archive deps",
               sourceUnitType = "archive-uploaded-dependencies",
               sourceUnitBuild = Just build,
               additionalData = Nothing
             }
-
       srcUnit
 
 toBuildData :: [Archive] -> SourceUnitBuild
@@ -132,18 +102,18 @@ toBuildData deps =
     addDepList :: Locator -> SourceUnitDependency
     addDepList loc = SourceUnitDependency loc []
 
-compressFile :: FilePath -> FilePath -> FilePath -> IO FilePath
+compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
-      let finalFile = outputDir </> fileToTar
-      entries <- Tar.pack directory [finalFile]
+      let finalFile = fromAbsDir outputDir </> fileToTar
+      traceM $ show finalFile
+      entries <- Tar.pack (fromAbsDir directory) [fileToTar]
       BS.writeFile finalFile $ GZip.compress $ Tar.write entries
       pure finalFile
 
+md5 :: BS.ByteString  -> Digest MD5
+md5 = hashlazy
 
-hashFile :: FilePath -> IO (Maybe (Digest MD5))
+hashFile :: FilePath -> IO Text
 hashFile fileToHash = do
       fileContent <- BS.readFile fileToHash
-      let md5Digest = Just (md5 fileContent)
-      case md5Digest of
-            Nothing -> pure Nothing
-            Just digest -> pure $ Just digest
+      pure . T.pack . show $ md5 fileContent

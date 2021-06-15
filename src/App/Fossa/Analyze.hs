@@ -248,7 +248,7 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
 
   archiveSrcUnit <- case destination of
                           OutputStdout -> pure $ archivesNoUploadSourceUnit vendoredDeps
-                          UploadScan apiOpts _ -> archiveUploadSourceUnit baseDir apiOpts vendoredDeps
+                          UploadScan apiOpts _ -> archiveUploadSourceUnit basedir apiOpts vendoredDeps
 
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
