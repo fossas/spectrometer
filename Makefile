@@ -25,7 +25,7 @@ sandbox: fossa
 replay: fossa fossa.debug.json
 	./fossa analyze --output --debug --replay fossa.debug.json ./sandbox > fossa.replay.json
 
-# Format everything
+# Format everything (don't use this, use your IDE to format)
 # `@command` does not echo the command before running
 fmt:
 	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
@@ -35,7 +35,7 @@ fmt-ck:
 	@fourmolu --mode check ${FMT_OPTS} $(shell find ${FIND_OPTS})
 	@echo "No formatting errors found"
 
-# Lint everything
+# Lint everything (This parses wrong sometimes, use your editor instead)
 lint:
 	hlint src test
 
