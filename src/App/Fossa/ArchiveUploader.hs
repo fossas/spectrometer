@@ -2,7 +2,7 @@
 
 module App.Fossa.ArchiveUploader (
   archiveUploadSourceUnit,
-  archivesNoUploadSourceUnit,
+  archiveNoUploadSourceUnit,
 ) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -10,11 +10,7 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
 import Data.ByteString.Lazy qualified as BS
-import Debug.Trace
 import Path hiding ((</>))
-
--- import Path
-
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.YamlDeps
 import Control.Carrier.Diagnostics qualified as Diag
@@ -33,25 +29,28 @@ compressAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpt
 compressAndUpload apiOpts arcDir tmpDir dependency = do
   compressedFile <- sendIO $ compressFile tmpDir arcDir (T.unpack $ vendoredPath dependency)
 
-  traceM $ show compressedFile
   depVersion <- case vendoredVersion dependency of
     Nothing -> sendIO $ hashFile compressedFile
     Just version -> pure version
 
-  traceM $ show depVersion
   signedURL <- Fossa.getSignedURL apiOpts depVersion (vendoredName dependency)
 
   _ <- Fossa.archiveUpload signedURL compressedFile
 
   pure $ Archive (vendoredName dependency) depVersion
 
+-- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
+-- Using this information, it uploads each vendored dependency and queues a build for the dependency.
 archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m (Maybe SourceUnit)
 archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
   archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts vendoredDeps baseDir)
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
+  -- We don't care about the response here because if the build has already been queued, we get a 401 response.
   _ <- Fossa.archiveBuildUpload apiOpts (ArchiveComponents archives)
 
+  -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
+  -- but not when reading from a source unit.
   Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
   let archivesWithOrganization = updateArcName (T.pack $ show orgId) <$> archives
 
@@ -60,8 +59,9 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
     updateArcName :: Text -> Archive -> Archive
     updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
 
-archivesNoUploadSourceUnit :: [VendoredDependency] -> Maybe SourceUnit
-archivesNoUploadSourceUnit deps = Just $ archivesToSourceUnit (unsafeVendoredToArchive <$> deps)
+-- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
+archiveNoUploadSourceUnit :: [VendoredDependency] -> Maybe SourceUnit
+archiveNoUploadSourceUnit deps = Just $ archivesToSourceUnit (unsafeVendoredToArchive <$> deps)
 
 unsafeVendoredToArchive :: VendoredDependency -> Archive
 unsafeVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
@@ -103,8 +103,9 @@ toBuildData deps =
 
 compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
+  -- Without using `fromAbsDir` for each of these directories, the conversion
+  -- is incorrect. `show outputDir` gives an incorrect result even though it typechecks.
   let finalFile = fromAbsDir outputDir </> fileToTar
-  traceM $ show finalFile
   entries <- Tar.pack (fromAbsDir directory) [fileToTar]
   BS.writeFile finalFile $ GZip.compress $ Tar.write entries
   pure finalFile

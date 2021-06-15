@@ -247,7 +247,7 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   archiveSrcUnit <- case destination of
-                          OutputStdout -> pure $ archivesNoUploadSourceUnit vendoredDeps
+                          OutputStdout -> pure $ archiveNoUploadSourceUnit vendoredDeps
                           UploadScan apiOpts _ -> archiveUploadSourceUnit basedir apiOpts vendoredDeps
 
 
@@ -311,7 +311,6 @@ checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> Maybe SourceUnit ->
 checkForEmptyUpload xs ys unit1 unit2 =
   -- This nested case statement 
   case catMaybes [unit1, unit2] of
-    -- If we have a manual source unit, then there's always something to upload.
     [] -> case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
@@ -320,6 +319,7 @@ checkForEmptyUpload xs ys unit1 unit2 =
       (_, 0) -> FilteredAll filterCount
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
+    -- If we have a manual or archive source unit, then there's always something to upload.
     units -> FoundSome $ NE.fromList (units <> discoveredUnits)
   where
     xlen = length xs

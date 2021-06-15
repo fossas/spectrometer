@@ -49,6 +49,26 @@ instance FromJSON SignedURL where
   parseJSON = withObject "SignedUrl" $ \obj ->
     SignedURL <$> obj .: "signedUrl"
 
+newtype ArchiveComponents = ArchiveComponents
+  { archives :: [Archive]
+ } deriving (Eq, Ord, Show)
+
+data Archive = Archive
+ { archiveName :: Text
+ , archiveVersion :: Text
+ } deriving (Eq, Ord, Show)
+
+instance ToJSON ArchiveComponents where
+ toJSON ArchiveComponents{..} = object
+   [ "archives" .= archives
+   ]
+
+instance ToJSON Archive where
+ toJSON Archive{..} = object
+   [ "packageSpec" .= archiveName
+   , "revision" .= archiveVersion
+   ]
+
 data Issues = Issues
   { issuesCount :: Int
   , issuesIssues :: [Issue]
@@ -219,23 +239,3 @@ useApiOpts opts = case useURI serverURI of
 
 authHeader :: ApiKey -> Option 'Https
 authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))
-
-newtype ArchiveComponents = ArchiveComponents
-  { archives :: [Archive]
- } deriving (Eq, Ord, Show)
-
-data Archive = Archive
- { archiveName :: Text
- , archiveVersion :: Text
- } deriving (Eq, Ord, Show)
-
-instance ToJSON ArchiveComponents where
- toJSON ArchiveComponents{..} = object
-   [ "archives" .= archives
-   ]
-
-instance ToJSON Archive where
- toJSON Archive{..} = object
-   [ "packageSpec" .= archiveName
-   , "revision" .= archiveVersion
-   ]
