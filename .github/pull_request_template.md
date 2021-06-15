@@ -26,8 +26,8 @@ _Example:_ Closes repo/issues#123.
 
 ## Checklist
 
-- [ ] I added tests for this PR's change.
-- [ ] I linted and formatted (via `haskell-language-server`) any files I touched in this PR.
+- [ ] I added tests for this PR's change (or confirmed tests are not viable).
+- [ ] I linted and formatted (via `haskell-language-server`) any haskell files I touched in this PR.
 - [ ] If this PR introduced a user-visible change, I added documentation into `docs/`.
-- [ ] I updated `Changelog.md`. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
-- [ ] I linked this PR to any referenced GitHub issues.
+- [ ] I updated `Changelog.md` if this change is externally facing. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
+- [ ] I linked this PR to any referenced GitHub issues, if they exist.
