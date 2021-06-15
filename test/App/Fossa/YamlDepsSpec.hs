@@ -5,7 +5,7 @@ module App.Fossa.YamlDepsSpec (
 import App.Fossa.YamlDeps (
   CustomDependency (CustomDependency),
   ReferencedDependency (ReferencedDependency),
-  VendoredDependency (VendoredDependency)
+  VendoredDependency (VendoredDependency),
   YamlDependencies (YamlDependencies),
  )
 import Control.Effect.Exception (displayException)

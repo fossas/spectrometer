@@ -4,60 +4,58 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module App.Fossa.FossaAPIV1
-  ( uploadAnalysis,
-    uploadContributors,
-    uploadContainerScan,
-    UploadResponse (..),
-    mkMetadataOpts,
-    FossaError (..),
-    FossaReq (..),
-    Contributors (..),
-    fossaReq,
-    getLatestBuild,
-    Build (..),
-    BuildTask (..),
-    BuildStatus (..),
-    getIssues,
-    Organization (..),
-    getOrganization,
-    getAttribution,
-    getAttributionRaw,
-    getSignedURL,
-    archiveUpload,
-    archiveBuildUpload,
-  )
-where
+module App.Fossa.FossaAPIV1 (
+  uploadAnalysis,
+  uploadContributors,
+  uploadContainerScan,
+  UploadResponse (..),
+  mkMetadataOpts,
+  FossaError (..),
+  FossaReq (..),
+  Contributors (..),
+  fossaReq,
+  getLatestBuild,
+  Build (..),
+  BuildTask (..),
+  BuildStatus (..),
+  getIssues,
+  Organization (..),
+  getOrganization,
+  getAttribution,
+  getAttributionRaw,
+  getSignedURL
+  , archiveUpload,
+  archiveBuildUpload,
+) where
 
-import Prelude
 import App.Fossa.Container (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Types
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as C
 import App.Version (versionNumber)
-import Control.Effect.Diagnostics ( Diagnostics, context, fatal, fatalText, ToDiagnostic(..) )
+import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fatalText)
+import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
+import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Word (Word8)
 import Effect.Logger
+import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
+import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
-import Fossa.API.Types (ApiOpts, Issues, SignedURL, useApiOpts, signedURL, ArchiveComponents)
 import Network.HTTP.Req
 import Network.HTTP.Types qualified as HTTP
 import Srclib.Types
 import Text.URI (URI)
 import Text.URI qualified as URI
-import Fossa.API.Types (ApiOpts, Issues, SignedURL, useApiOpts, signedURL)
-import Network.HTTP.Client qualified as C
-import Data.Word (Word8)
-import Control.Carrier.Empty.Maybe (EmptyC, runEmpty, Empty)
-import Control.Effect.Empty (empty)
+import Prelude
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -76,9 +74,9 @@ instance Has (Lift IO) sig m => MonadIO (FossaReqAllow401 m) where
 
 instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllow401 m) where
   handleHttpException = FossaReqAllow401 . allow401
-        where allow401 :: HttpException -> EmptyC m a
-              allow401 err = maybe empty fatal (allow401' err)
-
+    where
+      allow401 :: HttpException -> EmptyC m a
+      allow401 err = maybe empty fatal (allow401' err)
 
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
@@ -93,7 +91,7 @@ allow401' err = case err of
   VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException resp _)) ->
     case HTTP.responseStatus resp of
       HTTP.Status 401 _ -> Nothing
-      _                 -> Just $ mangleError err
+      _ -> Just $ mangleError err
   _ -> Just $ mangleError err
 
 -- Don't send any version if one doesn't exist
@@ -275,7 +273,6 @@ getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
 
 ---------- Archive build queueing. This Endpoint ensures that after an archive is uploaded, it is scanned.
 
-
 archiveBuildURL :: Url 'Https -> Url 'Https
 archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
 
@@ -284,15 +281,16 @@ archiveBuildUpload ::
   ApiOpts ->
   ArchiveComponents ->
   m (Maybe C.ByteString)
-archiveBuildUpload apiOpts archiveProjects = runEmpty $ fossaReqAllow401 $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
+archiveBuildUpload apiOpts archiveProjects = runEmpty $
+  fossaReqAllow401 $ do
+    (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "dependency" =: True <> "rawLicenseScan" =: True
-      archiveBuildContext = "Queuing a build for an archive project"
-  -- The response appears to either be "Created" for new builds, or an error message for existing builds.
-  -- Making the actual return value of "Created" essentially worthless.
-  resp <- context archiveBuildContext $ req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
-  pure (responseBody resp)
+    let opts = "dependency" =: True <> "rawLicenseScan" =: True
+        archiveBuildContext = "Queuing a build for an archive project"
+    -- The response appears to either be "Created" for new builds, or an error message for existing builds.
+    -- Making the actual return value of "Created" essentially worthless.
+    resp <- context archiveBuildContext $ req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+    pure (responseBody resp)
 
 ---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
 
@@ -322,22 +320,22 @@ archiveUpload ::
   FilePath ->
   m String
 archiveUpload signedArcURI arcFile = fossaReq $ do
-        let arcURL = URI.mkURI $ signedURL signedArcURI
+  let arcURL = URI.mkURI $ signedURL signedArcURI
 
-        case arcURL >>= useHttpsURI of
-              Nothing -> case arcURL of
-                Nothing -> fatalText ("Error attempting to archive upload file: " <> T.pack arcFile <> ". No signed URL supplied")
-                Just resultURL -> fatalText ("Invalid URL: " <> URI.render resultURL)
-              Just (url, options) -> do
-                    let archiveContext = "Attempting to archive upload a project"
-                    res <- context archiveContext $ reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
-                    pure $ show res
+  case arcURL >>= useHttpsURI of
+    Nothing -> case arcURL of
+      Nothing -> fatalText ("Error attempting to archive upload file: " <> T.pack arcFile <> ". No signed URL supplied")
+      Just resultURL -> fatalText ("Invalid URL: " <> URI.render resultURL)
+    Just (url, options) -> do
+      let archiveContext = "Attempting to archive upload a project"
+      res <- context archiveContext $ reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+      pure $ show res
 
--- requestEncoder properly encodes the Request path. 
--- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry. 
+-- requestEncoder properly encodes the Request path.
+-- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.
 -- This is accomplished by passing "True" to "Http.urlEncode" to signify that we want to encode more characters.
 requestEncoder :: C.Request -> C.Request
-requestEncoder r = r { C.path = encoder (C.path r) }
+requestEncoder r = r{C.path = encoder (C.path r)}
 
 encoder :: BS.ByteString -> BS.ByteString
 encoder path = BS.singleton slashWord8 <> joined
