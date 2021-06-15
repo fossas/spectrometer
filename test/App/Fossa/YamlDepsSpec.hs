@@ -30,7 +30,7 @@ theWorks = YamlDependencies references customs vendors
       , CustomDependency "full" "3.2.1" "GPL-3.0" (Just "description for full") (Just "we don't validate url's")
       ]
     vendors =
-      [ VendoredDependency "vendored" "path" Nothing,
+      [ VendoredDependency "vendored" "path" Nothing
       , VendoredDependency "version" "path/to/dep" (Just "2.1.0")
       ]
 
