@@ -1,4 +1,5 @@
-FMT_OPTS = -co -XTypeApplications -o -XImportQualifiedPost 
+FMT_OPTS = -co -XTypeApplications -o -XImportQualifiedPost
+FIND_OPTS = src test -type f -name '*.hs'
 
 build:
 	cabal build
@@ -24,13 +25,17 @@ sandbox: fossa
 replay: fossa fossa.debug.json
 	./fossa analyze --output --debug --replay fossa.debug.json ./sandbox > fossa.replay.json
 
-# 
+# Format everything
+# `@command` does not echo the command before running
 fmt:
-	fourmolu --mode inplace ${FMT_OPTS} $(shell fd --type f '\.hs$$')
+	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
 
+# Confirm everything is formatted without changing anything
 fmt-ck:
-	fourmolu --mode check ${FMT_OPT} $(shell fd --type f '\.hs$$')
+	@fourmolu --mode check ${FMT_OPTS} $(shell find ${FIND_OPTS})
+	@echo "No formatting errors found"
 
+# Lint everything
 lint:
 	hlint src test
 
