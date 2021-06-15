@@ -54,7 +54,6 @@ import Srclib.Types
 import Text.URI (URI)
 import Text.URI qualified as URI
 import Fossa.API.Types (ApiOpts, Issues, SignedURL, useApiOpts, signedURL)
-import Network.HTTP.Req
 import Network.HTTP.Client qualified as C
 import Data.Word (Word8)
 import Control.Carrier.Empty.Maybe (EmptyC, runEmpty, Empty)
@@ -323,12 +322,12 @@ archiveUpload ::
   FilePath ->
   m String
 archiveUpload signedArcURI arcFile = fossaReq $ do
-        let arcURL = mkURI $ signedURL signedArcURI
+        let arcURL = URI.mkURI $ signedURL signedArcURI
 
         case arcURL >>= useHttpsURI of
               Nothing -> case arcURL of
                 Nothing -> fatalText ("Error attempting to archive upload file: " <> T.pack arcFile <> ". No signed URL supplied")
-                Just resultURL -> fatalText ("Invalid URL: " <> render resultURL)
+                Just resultURL -> fatalText ("Invalid URL: " <> URI.render resultURL)
               Just (url, options) -> do
                     let archiveContext = "Attempting to archive upload a project"
                     res <- context archiveContext $ reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
