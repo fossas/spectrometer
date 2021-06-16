@@ -93,8 +93,9 @@ toBuildData deps =
 
 toAdditionalData :: Maybe (NE.NonEmpty CustomDependency) -> Maybe (NE.NonEmpty RemoteDependency) -> Maybe AdditionalDepData
 toAdditionalData customDeps remoteDeps = Just AdditionalDepData{
-  userDefinedDeps = toCustom <$$> NE.toList customDeps,
-  remoteDeps = _ toUrl (NE.toList remoteDeps)
+  -- Note to alex: this slightly simpler than the one we worked out on the call.
+  userDefinedDeps = map toCustom . NE.toList <$> customDeps,
+  remoteDeps = map toUrl . NE.toList <$> remoteDeps
 }
   where
     toCustom CustomDependency{..} =
