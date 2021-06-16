@@ -6,6 +6,7 @@ module Srclib.Types (
   SourceUnitDependency (..),
   AdditionalDepData (..),
   SourceUserDefDep (..),
+  SourceRemoteDep (..),
   Locator (..),
   renderLocator,
   parseLocator,
@@ -43,8 +44,10 @@ data SourceUnitDependency = SourceUnitDependency
   }
   deriving (Eq, Ord, Show)
 
-newtype AdditionalDepData = AdditionalDepData
-  {userDefinedDeps :: [SourceUserDefDep]}
+data AdditionalDepData = AdditionalDepData
+  { userDefinedDeps :: Maybe [SourceUserDefDep]
+  , remoteDeps :: Maybe [SourceRemoteDep]
+  }
   deriving (Eq, Ord, Show)
 
 data SourceUserDefDep = SourceUserDefDep
@@ -53,6 +56,14 @@ data SourceUserDefDep = SourceUserDefDep
   , srcUserDepLicense :: Text
   , srcUserDepDescription :: Maybe Text
   , srcUserDepUrl :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+data SourceRemoteDep = SourceRemoteDep
+  { srcRemoteDepName :: Text
+  , srcRemoteDepVersion :: Text
+  , srcRemoteDepUrl :: Text
+  , srcRemoteDepDescription :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -101,9 +112,11 @@ instance ToJSON SourceUnitDependency where
       ]
 
 instance ToJSON AdditionalDepData where
-  toJSON (AdditionalDepData userdeps) =
+  toJSON AdditionalDepData{..} =
     object
-      ["UserDefinedDependencies" .= userdeps]
+      [ "UserDefinedDependencies" .= userDefinedDeps
+      , "RemoteDependencies" .= remoteDeps
+      ]
 
 instance ToJSON SourceUserDefDep where
   toJSON SourceUserDefDep{..} =
@@ -113,6 +126,15 @@ instance ToJSON SourceUserDefDep where
       , "License" .= srcUserDepLicense
       , "Description" .= srcUserDepDescription
       , "Url" .= srcUserDepUrl
+      ]
+
+instance ToJSON SourceRemoteDep where
+  toJSON SourceRemoteDep{..} =
+    object
+      [ "Name" .= srcRemoteDepName
+      , "Version" .= srcRemoteDepVersion
+      , "Description" .= srcRemoteDepDescription
+      , "Url" .= srcRemoteDepUrl
       ]
 
 instance ToJSON Locator where

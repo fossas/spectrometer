@@ -30,7 +30,7 @@ import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
 import Path
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
+import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), SourceRemoteDep (..))
 
 analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit)
 analyzeFossaDepsYaml root = do
@@ -59,7 +59,7 @@ toSourceUnit root yamldeps@YamlDependencies{..} = do
   when (hasNoDeps yamldeps) $ fatalText "No dependencies found in fossa-deps file"
   let renderedPath = toText root
       build = toBuildData <$> NE.nonEmpty referencedDependencies
-      additional = toAdditionalData <$> NE.nonEmpty customDependencies
+      additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty remoteDependencies)
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
@@ -91,10 +91,13 @@ toBuildData deps =
     addEmptyDep :: Locator -> SourceUnitDependency
     addEmptyDep loc = SourceUnitDependency loc []
 
-toAdditionalData :: NE.NonEmpty CustomDependency -> AdditionalDepData
-toAdditionalData deps = AdditionalDepData{userDefinedDeps = map tosrc $ NE.toList deps}
+toAdditionalData :: Maybe (NE.NonEmpty CustomDependency) -> Maybe (NE.NonEmpty RemoteDependency) -> Maybe AdditionalDepData
+toAdditionalData customDeps remoteDeps = Just AdditionalDepData{
+  userDefinedDeps = toCustom <$$> NE.toList customDeps,
+  remoteDeps = _ toUrl (NE.toList remoteDeps)
+}
   where
-    tosrc CustomDependency{..} =
+    toCustom CustomDependency{..} =
       SourceUserDefDep
         { srcUserDepName = customName
         , srcUserDepVersion = customVersion
@@ -102,13 +105,21 @@ toAdditionalData deps = AdditionalDepData{userDefinedDeps = map tosrc $ NE.toLis
         , srcUserDepDescription = customDescription
         , srcUserDepUrl = customUrl
         }
+    toUrl RemoteDependency{..} =
+      SourceRemoteDep
+        { srcRemoteDepName = remoteName
+        , srcRemoteDepVersion = remoteVersion
+        , srcRemoteDepUrl = remoteUrl
+        , srcRemoteDepDescription = remoteDescription
+        }
 
 hasNoDeps :: YamlDependencies -> Bool
-hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies
+hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies && null remoteDependencies
 
 data YamlDependencies = YamlDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]
+  , remoteDependencies :: [RemoteDependency]
   }
   deriving (Eq, Ord, Show)
 
@@ -128,11 +139,20 @@ data CustomDependency = CustomDependency
   }
   deriving (Eq, Ord, Show)
 
+data RemoteDependency = RemoteDependency
+  { remoteName :: Text
+  , remoteVersion :: Text
+  , remoteUrl :: Text
+  , remoteDescription :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
 instance FromJSON YamlDependencies where
   parseJSON = withObject "YamlDependencies" $ \obj ->
     YamlDependencies <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
       <*> (obj .:? "custom-dependencies" .!= [])
+      <*> (obj .:? "remote-dependencies" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
@@ -159,6 +179,14 @@ instance FromJSON CustomDependency where
       <*> obj .:? "url"
       <* forbidMembers "custom dependencies" ["type"] obj
 
+instance FromJSON RemoteDependency where
+  parseJSON = withObject "RemoteDependency" $ \obj ->
+    RemoteDependency <$> obj .: "name"
+      <*> (unTextLike <$> obj .: "version")
+      <*> obj .: "url"
+      <*> obj .:? "description"
+      <* forbidMembers "remote dependencies" ["license"] obj
+
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType
 depTypeFromText text = case text of
@@ -175,7 +203,6 @@ depTypeFromText text = case text of
   "nuget" -> Just NuGetType
   "pypi" -> Just PipType
   "cocoapods" -> Just PodType
-  "url" -> Just URLType
   _ -> Nothing -- unsupported dep, need to respond with an error and skip this dependency
   -- rpm is an unsupported type. This is because we currently have 2 RPM fetchers
   -- and we should wait for a need to determine which one to use for manually
