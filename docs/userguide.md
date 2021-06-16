@@ -234,7 +234,7 @@ custom-dependencies:
 
 FOSSA also supports dependencies that can't be automatically discovered or identified, but the user has a remote URL that points to an archive where the dependency is hosted.
 
-To do this, you must supply the name, version, and url of the dependency. The FOSSA backend will attempt to download and scan it. Example for a github source dependency: `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. You may also supply a description that will be included inside your report, however this is optional.
+To do this, you must supply the name, version, and url of the dependency. The FOSSA backend will attempt to download and scan the archive hosted at this remote location. Example for a github source dependency: `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. You may also supply a description that will be included inside your report, however this is optional.
 
 ```yaml
 remote-dependencies:
