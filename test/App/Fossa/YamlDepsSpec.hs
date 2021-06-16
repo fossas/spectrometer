@@ -23,7 +23,7 @@ theWorks = YamlDependencies references customs remotes
   where
     references =
       [ ReferencedDependency "one" GemType Nothing
-      , ReferencedDependency "two" URLType $ Just "1.0.0"
+      , ReferencedDependency "two" PipType $ Just "1.0.0"
       ]
     customs =
       [ CustomDependency "hello" "1.2.3" "MIT" Nothing Nothing

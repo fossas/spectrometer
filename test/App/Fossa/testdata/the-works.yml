@@ -1,7 +1,7 @@
 referenced-dependencies:
 - name: one
   type: gem
-- type: url
+- type: pypi
   name: two
   version: 1.0.0
 
