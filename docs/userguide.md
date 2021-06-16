@@ -208,7 +208,6 @@ Supported dependency types:
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
-- `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
 
 ### User-defined dependencies
 
@@ -231,6 +230,26 @@ custom-dependencies:
   description: Provides foo and a helpful interface around foo-like tasks.
 ```
 
+### Remote dependencies
+
+FOSSA also supports dependencies that can't be automatically discovered or identified, but the user has a remote URL that points to an archive where the dependency is hosted.
+
+To do this, you must supply the name, version, and url of the dependency. The FOSSA backend will attempt to download and scan it. Example for a github source dependency: `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. You may also supply a description that will be included inside your report, however this is optional.
+
+```yaml
+remote-dependencies:
+# Remote dependencies need name, version, and url
+- name: foo
+  version: 1.2.3
+  url: https://www.fooarchive.tar.gz
+
+# You can also provide a description
+- name: foo-wrapper
+  version: 1.2.3
+  url: https://www.foowrapper.tar.gz
+  description: Provides foo and a helpful interface around foo-like tasks.
+```
+
 ### Errors in the `fossa-deps` file
 
 The `fossa-deps` scanner tries to report clear error messages when fields are missing, incorrect, or invalid.  For example:
@@ -247,6 +266,11 @@ custom-dependencies:
   name: mydep
   version: "3.14.15"
   license: GPL-3.0
+
+remote-dependencies:
+- name: mydep
+  version: "3.14.15"
+  license: GPL-3.0 # Error! "license" is only allowed for custom-dependencies
 ```
 
 This would return an error with a message explaining what went wrong, and where.  However, we don't check for everything (yet!):

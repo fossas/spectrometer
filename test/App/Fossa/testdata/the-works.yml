@@ -14,3 +14,12 @@ custom-dependencies:
   license: GPL-3.0
   description: description for full
   url: we don't validate url's
+
+remote-dependencies:
+- name: url-dep-one
+  version: 1.2.3
+  description: description for url
+  url: www.url1.tar.gz
+- name: url-dep-two
+  version: 1.2.4
+  url: www.url2.tar.gz

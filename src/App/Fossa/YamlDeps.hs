@@ -6,6 +6,7 @@
 module App.Fossa.YamlDeps (
   CustomDependency (..),
   ReferencedDependency (..),
+  RemoteDependency (..),
   YamlDependencies (..),
   analyzeFossaDepsYaml,
 ) where
