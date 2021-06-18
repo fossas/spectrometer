@@ -23,8 +23,8 @@ module App.Fossa.FossaAPIV1 (
   getOrganization,
   getAttribution,
   getAttributionRaw,
-  getSignedURL
-  , archiveUpload,
+  getSignedURL,
+  archiveUpload,
   archiveBuildUpload,
 ) where
 
@@ -33,12 +33,13 @@ import App.Fossa.Report.Attribution qualified as Attr
 import App.Types
 import App.Version (versionNumber)
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fatalText, fromMaybeText)
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
 import Data.ByteString qualified as BS
+import Data.String.Conversion
 import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -286,10 +287,11 @@ archiveBuildUpload apiOpts archiveProjects = runEmpty $
     (baseUrl, baseOpts) <- useApiOpts apiOpts
 
     let opts = "dependency" =: True <> "rawLicenseScan" =: True
-        archiveBuildContext = "Queuing a build for an archive project"
+
     -- The response appears to either be "Created" for new builds, or an error message for existing builds.
     -- Making the actual return value of "Created" essentially worthless.
-    resp <- context archiveBuildContext $ req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+    resp <- context "Queuing a build for an archive project" $ 
+      req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
     pure (responseBody resp)
 
 ---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
@@ -307,9 +309,9 @@ getSignedURL apiOpts revision packageName = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts = "packageSpec" =: packageName <> "revision" =: revision
-      signedURLContext = "Retrieving a signed S3 URL"
 
-  response <- context signedURLContext $ req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  response <- context "Retrieving a signed S3 URL" $ 
+    req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody response)
 
 ---------- The archive upload function uploads the file it is given directly to the signed URL it is provided.
@@ -322,14 +324,11 @@ archiveUpload ::
 archiveUpload signedArcURI arcFile = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
 
-  case arcURL >>= useHttpsURI of
-    Nothing -> case arcURL of
-      Nothing -> fatalText ("Error attempting to archive upload file: " <> T.pack arcFile <> ". No signed URL supplied")
-      Just resultURL -> fatalText ("Invalid URL: " <> URI.render resultURL)
-    Just (url, options) -> do
-      let archiveContext = "Attempting to archive upload a project"
-      res <- context archiveContext $ reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
-      pure $ show res
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
+  (url, options) <- fromMaybeText ("Invalid HTTPS URI: " <> T.pack (show uri)) (useHttpsURI uri)
+  res <- context "Uploading project archive" $ 
+    reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+  pure $ decodeUtf8 $ responseBody res
 
 -- requestEncoder properly encodes the Request path.
 -- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.
