@@ -3,6 +3,7 @@
 module App.Fossa.ArchiveUploader (
   archiveUploadSourceUnit,
   archiveNoUploadSourceUnit,
+  VendoredDependency(..),
 ) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -12,7 +13,6 @@ import Control.Effect.Path (withSystemTempDir)
 import Data.ByteString.Lazy qualified as BS
 import Path hiding ((</>))
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.YamlDeps
 import Control.Carrier.Diagnostics qualified as Diag
 import Crypto.Hash
 import Data.Maybe (fromMaybe)
@@ -21,6 +21,27 @@ import Data.Text qualified as T
 import Fossa.API.Types
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency))
 import System.FilePath.Posix
+import Data.Aeson (
+  FromJSON (parseJSON),
+  withObject,
+  (.:),
+  (.:?),
+ )
+import Data.Aeson.Extra
+import Data.Functor.Extra ((<$$>))
+
+data VendoredDependency = VendoredDependency
+  { vendoredName :: Text,
+    vendoredPath :: Text,
+    vendoredVersion :: Maybe Text
+  } deriving (Eq, Ord, Show)
+
+instance FromJSON VendoredDependency where
+  parseJSON = withObject "VendoredDependency" $ \obj ->
+    VendoredDependency <$> obj .: "name"
+      <*> obj .: "path"
+      <*> (unTextLike <$$> obj .:? "version")
+      <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
 uploadArchives :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> [VendoredDependency] -> Path Abs Dir -> Path Abs Dir -> m [Archive]
 uploadArchives apiOpts deps arcDir tmpDir = traverse (compressAndUpload apiOpts arcDir tmpDir) deps

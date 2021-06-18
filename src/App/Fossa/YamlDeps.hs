@@ -11,7 +11,6 @@ module App.Fossa.YamlDeps (
   analyzeFossaDepsYaml,
 ) where
 
-import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Monad (when)
 import Data.Aeson (
@@ -21,7 +20,11 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+
+import App.Fossa.ArchiveUploader
+import Control.Effect.Lift
 import Data.Aeson.Extra
+import Data.Maybe
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
@@ -29,20 +32,25 @@ import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
+import Fossa.API.Types
 import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
-analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit, [VendoredDependency])
-analyzeFossaDepsYaml root = do
+-- analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit, [VendoredDependency])
+analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m [SourceUnit]
+analyzeFossaDepsYaml root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
-    Nothing -> pure (Nothing, [])
+    Nothing -> pure []
     -- If the file exists and we have no SourceUnit to report, that's a failure
     Just depsFile -> do
       yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
-      sourceUnits <- context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
-      pure (sourceUnits, vendoredDependencies yamldeps)
+      sourceUnit <- context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
+      archiveSrcUnit <- case maybeApiOpts of
+                             Nothing -> pure $ archiveNoUploadSourceUnit (vendoredDependencies yamldeps)
+                             Just apiOpts -> archiveUploadSourceUnit root apiOpts (vendoredDependencies yamldeps)
+      pure $ catMaybes [sourceUnit, archiveSrcUnit]
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
 findFossaDepsFile root = do
@@ -130,12 +138,6 @@ data CustomDependency = CustomDependency
   }
   deriving (Eq, Ord, Show)
 
-data VendoredDependency = VendoredDependency
-  { vendoredName :: Text,
-    vendoredPath :: Text,
-    vendoredVersion :: Maybe Text
-  } deriving (Eq, Ord, Show)
-
 instance FromJSON YamlDependencies where
   parseJSON = withObject "YamlDependencies" $ \obj ->
     YamlDependencies <$ (obj .:? "version" >>= isMissingOr1)
@@ -167,13 +169,6 @@ instance FromJSON CustomDependency where
       <*> obj .:? "description"
       <*> obj .:? "url"
       <* forbidMembers "custom dependencies" ["type", "path"] obj
-
-instance FromJSON VendoredDependency where
-  parseJSON = withObject "VendoredDependency" $ \obj ->
-    VendoredDependency <$> obj .: "name"
-      <*> obj .: "path"
-      <*> (unTextLike <$$> obj .:? "version")
-      <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType
