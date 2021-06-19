@@ -17,11 +17,13 @@ import Data.List (intersperse)
 import Data.Text qualified as T
 import Effect.Logger
 
-stickyDiag :: (Has AtomicCounter sig m, Has (Lift IO) sig m) => StickyDiagC m a -> m a
+stickyDiag :: (Has Logger sig m, Has AtomicCounter sig m, Has (Lift IO) sig m) => StickyDiagC m a -> m a
 stickyDiag act = do
   taskId <- generateId
-  Sticky.withStickyRegion SevDebug $ \region ->
-    runReader (StickyCtx (TaskId taskId) [] region) . runStickyDiagC $ act
+  Sticky.withStickyRegion SevDebug $ \region -> do
+    res <- runReader (StickyCtx (TaskId taskId) [] region) . runStickyDiagC $ act
+    Sticky.setSticky' region $ "[" <> annotate (color Green) ("TASK " <> pretty taskId) <> "] Done"
+    pure res
 
 data StickyCtx = StickyCtx
   { ctxTaskId :: TaskId
