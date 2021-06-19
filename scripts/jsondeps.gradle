@@ -21,6 +21,27 @@
 //     Project Name -- first-party (sub)projects
 //   | Package Name Version [Dependency]
 
+def fileLogger = [
+    onOutput: {
+        File logfile = new File('gradle.log')
+        logfile << it
+    }
+] as org.gradle.api.logging.StandardOutputListener
+
+// for configure phase
+logging.addStandardOutputListener(fileLogger)
+logging.addStandardErrorListener(fileLogger)
+
+// for execution phase
+gradle.taskGraph.whenReady { taskGraph ->
+    taskGraph.allTasks.each { Task t ->
+        t.doFirst {
+            logging.addStandardOutputListener(fileLogger)
+            logging.addStandardErrorListener(fileLogger)
+        }
+    }
+}
+
 allprojects {
     task jsonDeps {
         doLast {
