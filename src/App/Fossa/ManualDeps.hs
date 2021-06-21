@@ -37,8 +37,8 @@ import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
-data FoundDepsFile = 
-  ManualYaml (Path Abs File)
+data FoundDepsFile
+  = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
 analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
@@ -59,7 +59,7 @@ findFossaDepsFile root = do
   let ymlFile = root </> $(mkRelFile "fossa-deps.yml")
       yamlFile = root </> $(mkRelFile "fossa-deps.yaml")
       jsonFile = root </> $(mkRelFile "fossa-deps.json")
-      multipleFound = fatalText "Found multiple fossa-deps files.  Only one of ('.json', '.yml', and '.yaml') extensions are allowed" 
+      multipleFound = fatalText "Found multiple fossa-deps files.  Only one of ('.json', '.yml', and '.yaml') extensions are allowed"
   ymlExists <- doesFileExist ymlFile
   yamlExists <- doesFileExist yamlFile
   jsonExists <- doesFileExist jsonFile

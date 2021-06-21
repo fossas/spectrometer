@@ -2,14 +2,14 @@ module App.Fossa.ManualDepsSpec (
   spec,
 ) where
 
-import Data.Aeson qualified as Json
 import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
-  ReferencedDependency (ReferencedDependency),
   VendoredDependency (VendoredDependency),
   ManualDependencies (ManualDependencies),
+  ReferencedDependency (ReferencedDependency),
  )
 import Control.Effect.Exception (displayException)
+import Data.Aeson qualified as Json
 import Data.ByteString qualified as BS
 import Data.Yaml qualified as Yaml
 import DepTypes (DepType (..))
