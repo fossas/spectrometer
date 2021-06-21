@@ -191,6 +191,22 @@ referenced-dependencies:
   version: 2.1.7
 ```
 
+We also support json-formatted dependencies:
+
+```json
+{
+  "referenced-dependencies": [
+    {
+      "type": "gem",
+      "name": "iron"
+    }, {
+      "type": "pypi",
+      "name": "Django",
+      "version": "2.1.7"
+    }
+  ]
+}
+
 The `name` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
 
 Supported dependency types:
@@ -210,7 +226,7 @@ Supported dependency types:
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
 - `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
 
-### User-defined dependencies
+### Custom dependencies
 
 FOSSA supports users that have dependencies that can't be automatically discovered or identified, by offering the ability to define new dependencies.
 
