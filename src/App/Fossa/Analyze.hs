@@ -16,7 +16,6 @@ import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadR
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Fossa.YamlDeps (analyzeFossaDepsYaml)
-import App.Fossa.ArchiveUploader
 import App.Types
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
@@ -233,8 +232,8 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
   -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
   let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination]
       apiOpts = case destination of
-                    OutputStdout -> Nothing
-                    UploadScan opts _ -> Just opts
+        OutputStdout -> Nothing
+        UploadScan opts _ -> Just opts
 
   manualSrcUnits <- analyzeFossaDepsYaml basedir apiOpts
 
@@ -305,9 +304,8 @@ data CountedResult
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
 checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> CountedResult
-checkForEmptyUpload xs ys units =
-  -- This nested case statement 
-  case units of
+checkForEmptyUpload xs ys manualUnits =
+  case manualUnits of
     [] -> case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
@@ -317,7 +315,7 @@ checkForEmptyUpload xs ys units =
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
     -- If we have a manual or archive source unit, then there's always something to upload.
-    _ -> FoundSome $ NE.fromList (units <> discoveredUnits)
+    (unit : units) -> FoundSome $ unit NE.:| (units <> discoveredUnits)
   where
     xlen = length xs
     ylen = length ys
@@ -374,13 +372,13 @@ tryUploadContributors baseDir apiOpts locator = do
   uploadContributors apiOpts locator contributors
 
 buildResult :: [SourceUnit] -> [ProjectResult] -> Aeson.Value
-buildResult sourceUnits projects =
+buildResult manualUnits projects =
   Aeson.object
     [ "projects" .= map buildProject projects
-    , "sourceUnits" .= scannedUnits
+    , "sourceUnits" .= (scannedUnits <> manualUnits)
     ]
   where
-    scannedUnits = map Srclib.toSourceUnit projects <> sourceUnits
+    scannedUnits = map Srclib.toSourceUnit projects
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =

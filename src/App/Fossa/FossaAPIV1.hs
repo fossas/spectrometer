@@ -320,15 +320,15 @@ archiveUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   SignedURL ->
   FilePath ->
-  m String
+  m ()
 archiveUpload signedArcURI arcFile = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
 
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
   (url, options) <- fromMaybeText ("Invalid HTTPS URI: " <> T.pack (show uri)) (useHttpsURI uri)
-  res <- context "Uploading project archive" $ 
+  _ <- context "Uploading project archive" $ 
     reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
-  pure $ decodeUtf8 $ responseBody res
+  pure ()
 
 -- requestEncoder properly encodes the Request path.
 -- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.

@@ -24,10 +24,10 @@ import Data.Aeson (
 import App.Fossa.ArchiveUploader
 import Control.Effect.Lift
 import Data.Aeson.Extra
-import Data.Maybe
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe ( catMaybes )
 import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType (..))
@@ -37,7 +37,6 @@ import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
--- analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit, [VendoredDependency])
 analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m [SourceUnit]
 analyzeFossaDepsYaml root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
@@ -48,8 +47,8 @@ analyzeFossaDepsYaml root maybeApiOpts = do
       yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
       sourceUnit <- context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
       archiveSrcUnit <- case maybeApiOpts of
-                             Nothing -> pure $ archiveNoUploadSourceUnit (vendoredDependencies yamldeps)
-                             Just apiOpts -> archiveUploadSourceUnit root apiOpts (vendoredDependencies yamldeps)
+        Nothing -> pure $ archiveNoUploadSourceUnit (vendoredDependencies yamldeps)
+        Just apiOpts -> archiveUploadSourceUnit root apiOpts (vendoredDependencies yamldeps)
       pure $ catMaybes [sourceUnit, archiveSrcUnit]
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
@@ -114,13 +113,14 @@ toAdditionalData deps = AdditionalDepData{userDefinedDeps = map tosrc $ NE.toLis
         }
 
 hasNoDeps :: YamlDependencies -> Bool
-hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies
+hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies
 
 data YamlDependencies = YamlDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]
   , vendoredDependencies :: [VendoredDependency]
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 data ReferencedDependency = ReferencedDependency
   { locDepName :: Text

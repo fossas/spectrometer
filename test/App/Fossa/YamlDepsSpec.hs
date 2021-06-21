@@ -31,7 +31,7 @@ theWorks = YamlDependencies references customs vendors
       ]
     vendors =
       [ VendoredDependency "vendored" "path" Nothing
-      , VendoredDependency "version" "path/to/dep" (Just "2.1.0")
+      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0")
       ]
 
 exceptionContains :: BS.ByteString -> String -> Expectation

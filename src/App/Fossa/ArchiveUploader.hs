@@ -1,26 +1,16 @@
-{-# LANGUAGE DataKinds #-}
-
 module App.Fossa.ArchiveUploader (
   archiveUploadSourceUnit,
   archiveNoUploadSourceUnit,
-  VendoredDependency(..),
+  VendoredDependency (..),
 ) where
 
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
-import Data.ByteString.Lazy qualified as BS
-import Path hiding ((</>))
-import App.Fossa.FossaAPIV1 qualified as Fossa
-import Control.Carrier.Diagnostics qualified as Diag
 import Crypto.Hash
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import Data.Text qualified as T
-import Fossa.API.Types
-import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency))
-import System.FilePath.Posix
 import Data.Aeson (
   FromJSON (parseJSON),
   withObject,
@@ -28,13 +18,23 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Aeson.Extra
+import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
+import Data.Maybe (fromMaybe)
+import Data.String.Conversion
+import Data.Text (Text)
+import Data.Text qualified as T
+import Fossa.API.Types
+import Path hiding ((</>))
+import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency))
+import System.FilePath.Posix
 
 data VendoredDependency = VendoredDependency
-  { vendoredName :: Text,
-    vendoredPath :: Text,
-    vendoredVersion :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  { vendoredName :: Text
+  , vendoredPath :: Text
+  , vendoredVersion :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON VendoredDependency where
   parseJSON = withObject "VendoredDependency" $ \obj ->
@@ -82,10 +82,10 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
 
 -- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
 archiveNoUploadSourceUnit :: [VendoredDependency] -> Maybe SourceUnit
-archiveNoUploadSourceUnit deps = Just $ archivesToSourceUnit (unsafeVendoredToArchive <$> deps)
+archiveNoUploadSourceUnit deps = Just $ archivesToSourceUnit (forceVendoredToArchive <$> deps)
 
-unsafeVendoredToArchive :: VendoredDependency -> Archive
-unsafeVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
+forceVendoredToArchive :: VendoredDependency -> Archive
+forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
 
 archivesToSourceUnit :: [Archive] -> SourceUnit
 archivesToSourceUnit arcs = do
@@ -126,8 +126,10 @@ compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
   -- Without using `fromAbsDir` for each of these directories, the conversion
   -- is incorrect. `show outputDir` gives an incorrect result even though it typechecks.
-  let finalFile = fromAbsDir outputDir </> fileToTar
-  entries <- Tar.pack (fromAbsDir directory) [fileToTar]
+  -- let finalFile = fromAbsDir outputDir </> fileToTar
+  let finalFile = toString outputDir </> fileToTar
+  -- entries <- Tar.pack (fromAbsDir directory) [fileToTar]
+  entries <- Tar.pack (toString directory) [fileToTar]
   BS.writeFile finalFile $ GZip.compress $ Tar.write entries
   pure finalFile
 

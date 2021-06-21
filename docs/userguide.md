@@ -262,7 +262,7 @@ The `fossa-deps` scanner also requires at least one valid dependency if the file
 
 If you see an error message that isn't clear, file an issue in this repository!  Clear error messages are a priority for us, and we want to know where we're lacking.
 
-#### License scanning local dependencies
+### License scanning local dependencies
 
 Fossa offers the ability to license scan your code directly. This is used primarily if a package manager is not yet supported or if you are vendoring dependencies. Using the license scanning feature will allow you to capture the licenses for dependencies that may otherwise be missed from normal fossa analysis that relies on package manager information.
 
@@ -277,7 +277,7 @@ referenced-dependencies:
 vendored-dependencies:
 - name: Django
   path: vendor/Django-3.4.16.zip # path can be either a file or a folder.
-  version: 3.4.16 # revision will be set to the MD5 hash of the filepath is unspecified.
+  version: 3.4.16 # revision will be set to the MD5 hash of the filepath if left unspecified.
 ```
 
 
