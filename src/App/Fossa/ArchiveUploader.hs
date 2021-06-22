@@ -73,32 +73,30 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
   -- but not when reading from a source unit.
   Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
-  let archivesWithOrganization = updateArcName (T.pack $ show orgId) <$> archives
+
+  let updateArcName :: Text -> Archive -> Archive
+      updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
+      archivesWithOrganization = updateArcName (T.pack $ show orgId) <$> archives
 
   pure $ Just $ archivesToSourceUnit archivesWithOrganization
-  where
-    updateArcName :: Text -> Archive -> Archive
-    updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
+
 
 -- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
 archiveNoUploadSourceUnit :: [VendoredDependency] -> Maybe SourceUnit
-archiveNoUploadSourceUnit deps = Just $ archivesToSourceUnit (forceVendoredToArchive <$> deps)
+archiveNoUploadSourceUnit deps = Just . archivesToSourceUnit $ map forceVendoredToArchive deps
 
 forceVendoredToArchive :: VendoredDependency -> Archive
 forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
 
 archivesToSourceUnit :: [Archive] -> SourceUnit
-archivesToSourceUnit arcs = do
-  let build = toBuildData arcs
-      srcUnit =
-        SourceUnit
-          { sourceUnitName = "archive deps"
-          , sourceUnitManifest = "archive deps"
-          , sourceUnitType = "archive-uploaded-dependencies"
-          , sourceUnitBuild = Just build
-          , additionalData = Nothing
-          }
-  srcUnit
+archivesToSourceUnit arcs =
+  SourceUnit
+    { sourceUnitName = "archive deps"
+    , sourceUnitManifest = "archive deps"
+    , sourceUnitType = "archive-uploaded-dependencies"
+    , sourceUnitBuild = Just $ toBuildData arcs
+    , additionalData = Nothing
+    }
 
 toBuildData :: [Archive] -> SourceUnitBuild
 toBuildData deps =
@@ -126,9 +124,7 @@ compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
   -- Without using `fromAbsDir` for each of these directories, the conversion
   -- is incorrect. `show outputDir` gives an incorrect result even though it typechecks.
-  -- let finalFile = fromAbsDir outputDir </> fileToTar
   let finalFile = toString outputDir </> fileToTar
-  -- entries <- Tar.pack (fromAbsDir directory) [fileToTar]
   entries <- Tar.pack (toString directory) [fileToTar]
   BS.writeFile finalFile $ GZip.compress $ Tar.write entries
   pure finalFile
