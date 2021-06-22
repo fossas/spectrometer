@@ -10,7 +10,6 @@ dist-newstyle/
 
 # Development files/directories
 vendor/
-sandbox/
 .vscode/
 
 # Executables

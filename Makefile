@@ -1,6 +1,5 @@
 FMT_OPTS = -co -XTypeApplications -o -XImportQualifiedPost
 FIND_OPTS = src test -type f -name '*.hs'
-SANDBOX_NAME = sandbox
 
 build:
 	cabal build
@@ -18,10 +17,6 @@ fossa:
 
 install-local: fossa
 
-# Run analysis on the sandbox directory
-${SANDBOX_NAME}: fossa
-	./fossa analyze --output --debug --record ./${SANDBOX_NAME} > fossa.json
-
 check: check-fmt lint
 
 # Format everything (if this fails, update FMT_OPTS or use your IDE to format)
@@ -38,4 +33,4 @@ check-fmt:
 lint:
 	hlint src test
 
-.PHONY: build test analyze install-local ${SANDBOX_NAME} replay fmt check check-fmt lint
+.PHONY: build test analyze install-local fmt check check-fmt lint
