@@ -1,5 +1,6 @@
 FMT_OPTS = -co -XTypeApplications -o -XImportQualifiedPost
 FIND_OPTS = src test -type f -name '*.hs'
+SANDBOX_NAME = sandbox
 
 build:
 	cabal build
@@ -18,25 +19,23 @@ fossa:
 install-local: fossa
 
 # Run analysis on the sandbox directory
-sandbox: fossa
-	./fossa analyze --output --debug --record ./sandbox > fossa.json
+${SANDBOX_NAME}: fossa
+	./fossa analyze --output --debug --record ./${SANDBOX_NAME} > fossa.json
 
-# Run the sandbox with replay mode on
-replay: fossa fossa.debug.json
-	./fossa analyze --output --debug --replay fossa.debug.json ./sandbox > fossa.replay.json
+check: check-fmt lint
 
-# Format everything (don't use this, use your IDE to format)
+# Format everything (if this fails, update FMT_OPTS or use your IDE to format)
 # `@command` does not echo the command before running
 fmt:
 	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
 
 # Confirm everything is formatted without changing anything
-fmt-ck:
+check-fmt:
 	@fourmolu --mode check ${FMT_OPTS} $(shell find ${FIND_OPTS})
 	@echo "No formatting errors found"
 
-# Lint everything (This parses wrong sometimes, use your editor instead)
+# Lint everything (If this fails, update .hlint.yaml or report the failure)
 lint:
 	hlint src test
 
-.PHONY: build test analyze install-local sandbox replay fmt fmt-ck lint
+.PHONY: build test analyze install-local ${SANDBOX_NAME} replay fmt check check-fmt lint
