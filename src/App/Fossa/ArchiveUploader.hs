@@ -62,7 +62,7 @@ compressAndUpload apiOpts arcDir tmpDir dependency = do
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.
-archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m SourceUnit
+archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m [Locator]
 archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
   archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts vendoredDeps baseDir)
 
@@ -78,46 +78,22 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
       updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
       archivesWithOrganization = updateArcName (T.pack $ show orgId) <$> archives
 
-  pure $ archivesToSourceUnit archivesWithOrganization
+  pure $ arcToLocator <$> archivesWithOrganization
 
 -- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
-archiveNoUploadSourceUnit :: [VendoredDependency] -> SourceUnit
-archiveNoUploadSourceUnit deps = archivesToSourceUnit $ map forceVendoredToArchive deps
+archiveNoUploadSourceUnit :: [VendoredDependency] -> [Locator]
+archiveNoUploadSourceUnit deps = arcToLocator <$> map forceVendoredToArchive deps
 
 forceVendoredToArchive :: VendoredDependency -> Archive
 forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
 
-archivesToSourceUnit :: [Archive] -> SourceUnit
-archivesToSourceUnit arcs =
-  SourceUnit
-    { sourceUnitName = "archive deps"
-    , sourceUnitManifest = "archive deps"
-    , sourceUnitType = "archive-uploaded-dependencies"
-    , sourceUnitBuild = Just $ toBuildData arcs
-    , additionalData = Nothing
+arcToLocator :: Archive -> Locator
+arcToLocator arc =
+  Locator
+    { locatorFetcher = "archive"
+    , locatorProject = archiveName arc
+    , locatorRevision = Just $ archiveVersion arc
     }
-
-toBuildData :: [Archive] -> SourceUnitBuild
-toBuildData deps =
-  SourceUnitBuild
-    { buildArtifact = "default"
-    , buildSucceeded = True
-    , buildImports = imports
-    , buildDependencies = map addDepList imports
-    }
-  where
-    imports = map arcToLocator deps
-
-    arcToLocator :: Archive -> Locator
-    arcToLocator arc =
-      Locator
-        { locatorFetcher = "archive"
-        , locatorProject = archiveName arc
-        , locatorRevision = Just $ archiveVersion arc
-        }
-
-    addDepList :: Locator -> SourceUnitDependency
-    addDepList loc = SourceUnitDependency loc []
 
 compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
