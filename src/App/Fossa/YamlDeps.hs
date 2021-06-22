@@ -68,23 +68,23 @@ toSourceUnit root YamlDependencies{..} maybeApiOpts = do
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies
       additional = toAdditionalData <$> NE.nonEmpty customDependencies
-      build = toBuildData $ referenceLocators <> archiveLocators
+      build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
       , sourceUnitManifest = renderedPath
       , sourceUnitType = "user-specific-yaml"
-      , sourceUnitBuild = Just build
+      , sourceUnitBuild = build
       , additionalData = additional
       }
 
-toBuildData :: [Locator] -> SourceUnitBuild
+toBuildData :: NE.NonEmpty Locator -> SourceUnitBuild
 toBuildData locators =
   SourceUnitBuild
     { buildArtifact = "default"
     , buildSucceeded = True
-    , buildImports = locators
-    , buildDependencies = map addEmptyDep locators
+    , buildImports = NE.toList locators
+    , buildDependencies = map addEmptyDep $ NE.toList locators
     }
 
 refToLocator :: ReferencedDependency -> Locator
@@ -99,9 +99,9 @@ addEmptyDep :: Locator -> SourceUnitDependency
 addEmptyDep loc = SourceUnitDependency loc []
 
 toAdditionalData :: NE.NonEmpty CustomDependency -> AdditionalDepData
-toAdditionalData deps = AdditionalDepData{userDefinedDeps = map tosrc $ NE.toList deps}
+toAdditionalData deps = AdditionalDepData{userDefinedDeps = map toSrc $ NE.toList deps}
   where
-    tosrc CustomDependency{..} =
+    toSrc CustomDependency{..} =
       SourceUserDefDep
         { srcUserDepName = customName
         , srcUserDepVersion = customVersion
