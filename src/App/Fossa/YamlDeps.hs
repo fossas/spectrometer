@@ -27,7 +27,7 @@ import Data.Aeson.Extra
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe ( catMaybes )
+import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType (..))
@@ -46,10 +46,16 @@ analyzeFossaDepsYaml root maybeApiOpts = do
     Just depsFile -> do
       yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
       sourceUnit <- context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
-      archiveSrcUnit <- case maybeApiOpts of
-        Nothing -> pure $ archiveNoUploadSourceUnit (vendoredDependencies yamldeps)
-        Just apiOpts -> archiveUploadSourceUnit root apiOpts (vendoredDependencies yamldeps)
-      pure $ catMaybes [sourceUnit, archiveSrcUnit]
+
+      archiveSrcUnits <- case vendoredDependencies yamldeps of
+        [] -> pure Nothing
+        archiveDeps -> do
+          arcs <- case maybeApiOpts of
+            Nothing -> pure $ archiveNoUploadSourceUnit archiveDeps
+            Just apiOpts -> archiveUploadSourceUnit root apiOpts archiveDeps
+          pure $ Just arcs
+
+      pure $ catMaybes [sourceUnit, archiveSrcUnits]
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
 findFossaDepsFile root = do
@@ -67,18 +73,18 @@ toSourceUnit :: Has Diagnostics sig m => Path Abs Dir -> YamlDependencies -> m S
 toSourceUnit root yamldeps@YamlDependencies{..} = do
   when (hasNoDeps yamldeps) $ fatalText "No dependencies found in fossa-deps file"
   let renderedPath = toText root
-      build = toBuildData <$> NE.nonEmpty referencedDependencies
+      build = toBuildData referencedDependencies
       additional = toAdditionalData <$> NE.nonEmpty customDependencies
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
       , sourceUnitManifest = renderedPath
       , sourceUnitType = "user-specific-yaml"
-      , sourceUnitBuild = build
+      , sourceUnitBuild = Just build
       , additionalData = additional
       }
 
-toBuildData :: NE.NonEmpty ReferencedDependency -> SourceUnitBuild
+toBuildData :: [ReferencedDependency] -> SourceUnitBuild
 toBuildData deps =
   SourceUnitBuild
     { buildArtifact = "default"
@@ -87,7 +93,7 @@ toBuildData deps =
     , buildDependencies = map addEmptyDep imports
     }
   where
-    imports = map toImport $ NE.toList deps
+    imports = map toImport deps
 
     toImport :: ReferencedDependency -> Locator
     toImport ReferencedDependency{..} =

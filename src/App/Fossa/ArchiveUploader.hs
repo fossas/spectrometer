@@ -62,7 +62,7 @@ compressAndUpload apiOpts arcDir tmpDir dependency = do
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.
-archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m (Maybe SourceUnit)
+archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m SourceUnit
 archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
   archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts vendoredDeps baseDir)
 
@@ -78,12 +78,11 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
       updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
       archivesWithOrganization = updateArcName (T.pack $ show orgId) <$> archives
 
-  pure $ Just $ archivesToSourceUnit archivesWithOrganization
-
+  pure $ archivesToSourceUnit archivesWithOrganization
 
 -- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
-archiveNoUploadSourceUnit :: [VendoredDependency] -> Maybe SourceUnit
-archiveNoUploadSourceUnit deps = Just . archivesToSourceUnit $ map forceVendoredToArchive deps
+archiveNoUploadSourceUnit :: [VendoredDependency] -> SourceUnit
+archiveNoUploadSourceUnit deps = archivesToSourceUnit $ map forceVendoredToArchive deps
 
 forceVendoredToArchive :: VendoredDependency -> Archive
 forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
