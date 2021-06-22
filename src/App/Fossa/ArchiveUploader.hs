@@ -26,7 +26,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Fossa.API.Types
 import Path hiding ((</>))
-import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency))
+import Srclib.Types (Locator (..))
 import System.FilePath.Posix
 
 data VendoredDependency = VendoredDependency
