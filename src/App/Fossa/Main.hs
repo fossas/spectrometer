@@ -42,6 +42,7 @@ import System.Exit (die)
 import System.Info qualified as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
+import System.Console.Concurrent
 
 windowsOsName :: String
 windowsOsName = "mingw32"
@@ -67,7 +68,7 @@ mergeFileCmdConfig cmd file =
     }
 
 appMain :: IO ()
-appMain = do
+appMain = withConcurrentOutput $ do
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   fileConfig <- readConfigFileIO
 
