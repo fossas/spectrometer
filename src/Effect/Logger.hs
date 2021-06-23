@@ -27,6 +27,7 @@ import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
+import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (lift)
 import Data.Kind (Type)
@@ -77,9 +78,9 @@ logError :: Has Logger sig m => Doc AnsiStyle -> m ()
 logError = log SevError
 
 withLogger :: Has (Lift IO) sig m => LogCtx m -> LoggerC m a -> m a
-withLogger ctx act = displayConsoleRegions (runLogger ctx act) <* sendIO flushConcurrentOutput
+withLogger ctx act = displayConsoleRegions (runLogger ctx act)
 
-withDefaultLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
+withDefaultLogger :: (Has (Lift IO) sig m, MonadIO m, MonadMask m) => Severity -> LoggerC m a -> m a
 withDefaultLogger sev act = do
   formatter <- determineDefaultLogFormatter
   let ctx =
@@ -88,7 +89,7 @@ withDefaultLogger sev act = do
           , logCtxFormatter = formatter
           , logCtxWrite = sendIO . errorConcurrent
           }
-  withLogger ctx act
+  withConcurrentOutput $ withLogger ctx act
 
 runLogger :: LogCtx m -> LoggerC m a -> m a
 runLogger act = runReader act . runLoggerC
