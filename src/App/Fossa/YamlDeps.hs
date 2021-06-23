@@ -44,7 +44,6 @@ analyzeFossaDepsYaml root maybeApiOpts = do
     Just depsFile -> do
       yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
       -- If the file exists and we have no dependencies to report, that's a failure.
-      when (hasNoDeps yamldeps) $ fatalText "No dependencies found in fossa-deps file"
       context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps maybeApiOpts
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
@@ -60,7 +59,8 @@ findFossaDepsFile root = do
     (False, False) -> pure Nothing
 
 toSourceUnit :: (Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> YamlDependencies -> Maybe ApiOpts -> m SourceUnit
-toSourceUnit root YamlDependencies{..} maybeApiOpts = do
+toSourceUnit root yamlDeps@YamlDependencies{..} maybeApiOpts = do
+  when (hasNoDeps yamlDeps) $ fatalText "No dependencies found in fossa-deps file"
   archiveLocators <- case maybeApiOpts of
     Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
     Just apiOpts -> archiveUploadSourceUnit root apiOpts vendoredDependencies
