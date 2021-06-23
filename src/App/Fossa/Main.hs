@@ -37,12 +37,12 @@ import Effect.Logger
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Options.Applicative
 import Path
+import System.Console.Concurrent
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import System.Info qualified as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
-import System.Console.Concurrent
 
 windowsOsName :: String
 windowsOsName = "mingw32"

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix an issue with logStdout ([#263](https://github.com/fossas/spectrometer/pull/263))
 - Fix an issue when referenced-dependencies are not being uploaded ([#262](https://github.com/fossas/spectrometer/pull/262))
 - Adds support for `vendored-dependencies` to be licensed scanned ([#257](https://github.com/fossas/spectrometer/pull/257))
 
