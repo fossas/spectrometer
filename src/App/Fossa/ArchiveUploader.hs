@@ -82,7 +82,7 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
 
 -- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
 archiveNoUploadSourceUnit :: [VendoredDependency] -> [Locator]
-archiveNoUploadSourceUnit deps = arcToLocator <$> map forceVendoredToArchive deps
+archiveNoUploadSourceUnit deps = map (arcToLocator . forceVendoredToArchive) deps
 
 forceVendoredToArchive :: VendoredDependency -> Archive
 forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
