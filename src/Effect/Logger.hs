@@ -49,14 +49,17 @@ type LogFormatter = Severity -> Doc AnsiStyle -> Text
 
 data Logger (m :: Type -> Type) k where
   Log :: Severity -> Doc AnsiStyle -> Logger m ()
+  LogStdout :: Logger m ()
 
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
 log severity logLine = send (Log severity logLine)
 
 -- | Log a line to stdout. Usually, you want to use 'log', 'logInfo', ..., instead
-logStdout :: Has (Lift IO) sig m => Text -> m ()
-logStdout = sendIO . outputConcurrent
+logStdout :: (Has Logger sig m, Has (Lift IO) sig m) => Text -> m ()
+logStdout txt = do
+  send LogStdout
+  sendIO $ outputConcurrent txt
 
 data Severity
   = SevDebug
@@ -127,6 +130,7 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (Logge
       when (logCtxSeverity <= sev) $
         lift $ logCtxWrite $ logCtxFormatter sev msg
       pure ctx
+    L (LogStdout) -> pure ctx
     R other -> alg (runLoggerC . hdl) (R other) ctx
 
 newtype IgnoreLoggerC m a = IgnoreLoggerC {runIgnoreLoggerC :: m a}
@@ -138,6 +142,7 @@ ignoreLogger = runIgnoreLoggerC
 instance Algebra sig m => Algebra (Logger :+: sig) (IgnoreLoggerC m) where
   alg hdl sig ctx = IgnoreLoggerC $ case sig of
     L (Log _ _) -> pure ctx
+    L (LogStdout) -> pure ctx
     R other -> alg (runIgnoreLoggerC . hdl) other ctx
 
 renderIt :: Doc AnsiStyle -> Text
