@@ -75,6 +75,7 @@ findFossaDepsFile root = do
 
 toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
 toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
+  -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
   archiveLocators <- case maybeApiOpts of
     Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
