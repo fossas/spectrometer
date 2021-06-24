@@ -145,3 +145,7 @@ an issue in this repository for that scenario, since we may be able to fix that.
 [hlint]: https://github.com/ndmitchell/hlint
 [hls]: https://github.com/haskell/haskell-language-server
 [hoogle]: https://hoogle.haskell.org/
+
+### I'm getting build error "lzma.h no such file or directory"
+
+If you are in an OSX environment, you will need to install Xcode, and agree to its license agreements.
