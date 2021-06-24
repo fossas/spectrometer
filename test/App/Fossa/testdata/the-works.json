@@ -23,5 +23,16 @@
          "description": "description for full",
          "url": "we don't validate url's"
       }
+   ],
+   "vendored-dependencies": [
+      {
+         "name": "vendored",
+         "path": "path"
+      },
+      {
+         "name": "versioned",
+         "path": "path/to/dep",
+         "version": "2.1.0"
+      }
    ]
 }
