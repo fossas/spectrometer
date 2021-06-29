@@ -55,7 +55,7 @@ data SourceUserDefDep = SourceUserDefDep
   , srcUserDepVersion :: Text
   , srcUserDepLicense :: Text
   , srcUserDepDescription :: Maybe Text
-  , srcUserDepUrl :: Maybe Text
+  , srcUserDepHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -64,6 +64,7 @@ data SourceRemoteDep = SourceRemoteDep
   , srcRemoteDepVersion :: Text
   , srcRemoteDepUrl :: Text
   , srcRemoteDepDescription :: Maybe Text
+  , srcRemoteDepHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -125,7 +126,7 @@ instance ToJSON SourceUserDefDep where
       , "Version" .= srcUserDepVersion
       , "License" .= srcUserDepLicense
       , "Description" .= srcUserDepDescription
-      , "Url" .= srcUserDepUrl
+      , "Homepage" .= srcUserDepHomepage
       ]
 
 instance ToJSON SourceRemoteDep where
@@ -133,8 +134,9 @@ instance ToJSON SourceRemoteDep where
     object
       [ "Name" .= srcRemoteDepName
       , "Version" .= srcRemoteDepVersion
-      , "Description" .= srcRemoteDepDescription
       , "Url" .= srcRemoteDepUrl
+      , "Description" .= srcRemoteDepDescription
+      , "Homepage" .= srcRemoteDepHomepage
       ]
 
 instance ToJSON Locator where

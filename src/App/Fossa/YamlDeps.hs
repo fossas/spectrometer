@@ -5,8 +5,10 @@
 
 module App.Fossa.YamlDeps (
   CustomDependency (..),
+  CustomDependencyMetadata (..),
   ReferencedDependency (..),
   RemoteDependency (..),
+  RemoteDependencyMetadata (..),
   YamlDependencies (..),
   analyzeFossaDepsYaml,
 ) where
@@ -21,7 +23,8 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Aeson.Extra
+
+import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
@@ -31,7 +34,7 @@ import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
 import Path
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), SourceRemoteDep (..))
+import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
 analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit)
 analyzeFossaDepsYaml root = do
@@ -93,26 +96,28 @@ toBuildData deps =
     addEmptyDep loc = SourceUnitDependency loc []
 
 toAdditionalData :: Maybe (NE.NonEmpty CustomDependency) -> Maybe (NE.NonEmpty RemoteDependency) -> Maybe AdditionalDepData
-toAdditionalData customDeps remoteDeps = Just AdditionalDepData{
-  -- Note to alex: this slightly simpler than the one we worked out on the call.
-  userDefinedDeps = map toCustom . NE.toList <$> customDeps,
-  remoteDeps = map toUrl . NE.toList <$> remoteDeps
-}
+toAdditionalData customDeps remoteDeps =
+  Just
+    AdditionalDepData
+      { userDefinedDeps = map toCustom . NE.toList <$> customDeps
+      , remoteDeps = map toUrl . NE.toList <$> remoteDeps
+      }
   where
     toCustom CustomDependency{..} =
       SourceUserDefDep
         { srcUserDepName = customName
         , srcUserDepVersion = customVersion
         , srcUserDepLicense = customLicense
-        , srcUserDepDescription = customDescription
-        , srcUserDepUrl = customUrl
+        , srcUserDepDescription = customMetadata >>= customDescription
+        , srcUserDepHomepage = customMetadata >>= customHomepage
         }
     toUrl RemoteDependency{..} =
       SourceRemoteDep
         { srcRemoteDepName = remoteName
         , srcRemoteDepVersion = remoteVersion
         , srcRemoteDepUrl = remoteUrl
-        , srcRemoteDepDescription = remoteDescription
+        , srcRemoteDepDescription = remoteMetadata >>= remoteDescription
+        , srcRemoteDepHomepage = remoteMetadata >>= remoteHomepage
         }
 
 hasNoDeps :: YamlDependencies -> Bool
@@ -136,8 +141,13 @@ data CustomDependency = CustomDependency
   { customName :: Text
   , customVersion :: Text
   , customLicense :: Text
-  , customDescription :: Maybe Text
-  , customUrl :: Maybe Text
+  , customMetadata :: Maybe CustomDependencyMetadata
+  }
+  deriving (Eq, Ord, Show)
+
+data CustomDependencyMetadata = CustomDependencyMetadata
+  { customDescription :: Maybe Text
+  , customHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -145,10 +155,15 @@ data RemoteDependency = RemoteDependency
   { remoteName :: Text
   , remoteVersion :: Text
   , remoteUrl :: Text
-  , remoteDescription :: Maybe Text
+  , remoteMetadata :: Maybe RemoteDependencyMetadata
   }
   deriving (Eq, Ord, Show)
 
+data RemoteDependencyMetadata = RemoteDependencyMetadata
+  { remoteDescription :: Maybe Text
+  , remoteHomepage :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
 instance FromJSON YamlDependencies where
   parseJSON = withObject "YamlDependencies" $ \obj ->
     YamlDependencies <$ (obj .:? "version" >>= isMissingOr1)
@@ -177,17 +192,26 @@ instance FromJSON CustomDependency where
     CustomDependency <$> obj .: "name"
       <*> (unTextLike <$> obj .: "version")
       <*> obj .: "license"
-      <*> obj .:? "description"
-      <*> obj .:? "url"
+      <*> obj .:? "metadata"
       <* forbidMembers "custom dependencies" ["type"] obj
+
+instance FromJSON CustomDependencyMetadata where
+  parseJSON = withObject "metadata" $ \obj ->
+    CustomDependencyMetadata <$> obj .:? "description"
+      <*> obj .:? "homepage"
 
 instance FromJSON RemoteDependency where
   parseJSON = withObject "RemoteDependency" $ \obj ->
     RemoteDependency <$> obj .: "name"
       <*> (unTextLike <$> obj .: "version")
       <*> obj .: "url"
-      <*> obj .:? "description"
+      <*> obj .:? "metadata"
       <* forbidMembers "remote dependencies" ["license"] obj
+
+instance FromJSON RemoteDependencyMetadata where
+  parseJSON = withObject "metadata" $ \obj ->
+    RemoteDependencyMetadata <$> obj .:? "description"
+      <*> obj .:? "homepage"
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType
@@ -205,6 +229,7 @@ depTypeFromText text = case text of
   "nuget" -> Just NuGetType
   "pypi" -> Just PipType
   "cocoapods" -> Just PodType
+  "url" -> Just URLType
   _ -> Nothing -- unsupported dep, need to respond with an error and skip this dependency
   -- rpm is an unsupported type. This is because we currently have 2 RPM fetchers
   -- and we should wait for a need to determine which one to use for manually

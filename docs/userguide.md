@@ -208,6 +208,7 @@ Supported dependency types:
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
+- `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
 
 ### User-defined dependencies
 
@@ -222,12 +223,13 @@ custom-dependencies:
 - name: foo
   version: 1.2.3
   license: "MIT or Apache-2.0"
-# You can also provide a description and/or url
+# You can also provide a description and/or homepage
 - name: foo-wrapper
   version: 1.2.3
   license: MIT
-  url: https://www.foowrapper.com/about
-  description: Provides foo and a helpful interface around foo-like tasks.
+  metadata:
+    homepage: https://www.foowrapper.com/about
+    description: Provides foo and a helpful interface around foo-like tasks.
 ```
 
 ### Remote dependencies
@@ -243,11 +245,13 @@ remote-dependencies:
   version: 1.2.3
   url: https://www.fooarchive.tar.gz
 
-# You can also provide a description
+# You can also provide a description and/or homepage
 - name: foo-wrapper
   version: 1.2.3
   url: https://www.foowrapper.tar.gz
-  description: Provides foo and a helpful interface around foo-like tasks.
+  metadata:
+    description: Provides foo and a helpful interface around foo-like tasks.
+    homepage: https://www.foowrapper-home.com
 ```
 
 ### Errors in the `fossa-deps` file

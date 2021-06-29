@@ -4,8 +4,10 @@ module App.Fossa.YamlDepsSpec (
 
 import App.Fossa.YamlDeps (
   CustomDependency (CustomDependency),
+  CustomDependencyMetadata (CustomDependencyMetadata),
   ReferencedDependency (ReferencedDependency),
   RemoteDependency (RemoteDependency),
+  RemoteDependencyMetadata (RemoteDependencyMetadata),
   YamlDependencies (YamlDependencies),
  )
 import Control.Effect.Exception (displayException)
@@ -26,11 +28,11 @@ theWorks = YamlDependencies references customs remotes
       , ReferencedDependency "two" PipType $ Just "1.0.0"
       ]
     customs =
-      [ CustomDependency "hello" "1.2.3" "MIT" Nothing Nothing
-      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just "description for full") (Just "we don't validate url's")
+      [ CustomDependency "hello" "1.2.3" "MIT" Nothing
+      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (CustomDependencyMetadata (Just "description for full") (Just "we don't validate homepages")))
       ]
     remotes =
-      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just "description for url")
+      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (RemoteDependencyMetadata (Just "description for full") (Just "we don't validate homepages")))
       , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing
       ]
 

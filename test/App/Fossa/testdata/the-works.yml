@@ -12,14 +12,17 @@ custom-dependencies:
 - name: full
   version: 3.2.1
   license: GPL-3.0
-  description: description for full
-  url: we don't validate url's
+  metadata:
+    description: description for full
+    homepage: we don't validate homepages
 
 remote-dependencies:
 - name: url-dep-one
   version: 1.2.3
-  description: description for url
   url: www.url1.tar.gz
+  metadata:
+    description: description for url
+    homepage: we don't validate homepages
 - name: url-dep-two
   version: 1.2.4
   url: www.url2.tar.gz
