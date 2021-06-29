@@ -74,6 +74,7 @@ common deps
     , conduit                      ^>=1.3.2
     , conduit-extra                ^>=1.3.5
     , containers                   ^>=0.6.0
+    , cryptonite                   ^>=0.28
     , cpio-conduit                 ^>=0.7.0
     , directory                    ^>=1.3.6.1
     , exceptions                   ^>=0.10.4
@@ -95,7 +96,7 @@ common deps
     , path-io                      ^>=1.6.0
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
-    , req                          >=3.4      && <3.6
+    , req                          >=3.7      && <3.8
     , semver                       ^>=0.4.0.1
     , split                        ^>=0.2.3.4
     , stm                          ^>=2.5.0
@@ -132,6 +133,7 @@ library
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
+    App.Fossa.ArchiveUploader
     App.Fossa.Compatibility
     App.Fossa.Configuration
     App.Fossa.Container
@@ -141,6 +143,7 @@ library
     App.Fossa.FossaAPIV1
     App.Fossa.ListTargets
     App.Fossa.Main
+    App.Fossa.ManualDeps
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
@@ -154,7 +157,6 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
-    App.Fossa.YamlDeps
     App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
@@ -301,7 +303,7 @@ test-suite unit-tests
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
-    App.Fossa.YamlDepsSpec
+    App.Fossa.ManualDepsSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec

@@ -3,17 +3,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
-module App.Fossa.YamlDeps (
+module App.Fossa.ManualDeps (
   CustomDependency (..),
   CustomDependencyMetadata (..),
   ReferencedDependency (..),
   RemoteDependency (..),
   RemoteDependencyMetadata (..),
-  YamlDependencies (..),
+  VendoredDependency (..),
+  ManualDependencies (..),
+  FoundDepsFile (..),
   analyzeFossaDepsYaml,
 ) where
 
-import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Monad (when)
 import Data.Aeson (
@@ -24,46 +25,69 @@ import Data.Aeson (
   (.:?),
  )
 
-import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
+import App.Fossa.ArchiveUploader
+import Control.Effect.Lift
+import Data.Aeson.Extra
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType (..))
-import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
+import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
+import Fossa.API.Types
 import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
-analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit)
-analyzeFossaDepsYaml root = do
+data FoundDepsFile
+  = ManualYaml (Path Abs File)
+  | ManualJSON (Path Abs File)
+
+analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
+analyzeFossaDepsFile root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
     Nothing -> pure Nothing
-    -- If the file exists and we have no SourceUnit to report, that's a failure
     Just depsFile -> do
-      yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
+      manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
+      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root manualDeps maybeApiOpts
 
-findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
+readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
+readFoundDeps (ManualJSON path) = readContentsJson path
+readFoundDeps (ManualYaml path) = readContentsYaml path
+
+findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe FoundDepsFile)
 findFossaDepsFile root = do
   let ymlFile = root </> $(mkRelFile "fossa-deps.yml")
       yamlFile = root </> $(mkRelFile "fossa-deps.yaml")
+      jsonFile = root </> $(mkRelFile "fossa-deps.json")
+      multipleFound = fatalText "Found multiple fossa-deps files.  Only one of ('.json', '.yml', and '.yaml') extensions are allowed"
   ymlExists <- doesFileExist ymlFile
   yamlExists <- doesFileExist yamlFile
-  case (ymlExists, yamlExists) of
-    (True, True) -> fatalText "Found '.yml' and '.yaml' files when searching for fossa-deps, only one is permitted if present."
-    (True, False) -> pure $ Just ymlFile
-    (False, True) -> pure $ Just yamlFile
-    (False, False) -> pure Nothing
+  jsonExists <- doesFileExist jsonFile
+  case (ymlExists, yamlExists, jsonExists) of
+    -- Allow 0 or 1 files, not multiple
+    (True, True, _) -> multipleFound
+    (_, True, True) -> multipleFound
+    (True, _, True) -> multipleFound
+    (True, _, _) -> pure $ Just $ ManualYaml ymlFile
+    (_, True, _) -> pure $ Just $ ManualYaml yamlFile
+    (_, _, True) -> pure $ Just $ ManualJSON jsonFile
+    (False, False, False) -> pure Nothing
 
-toSourceUnit :: Has Diagnostics sig m => Path Abs Dir -> YamlDependencies -> m SourceUnit
-toSourceUnit root yamldeps@YamlDependencies{..} = do
-  when (hasNoDeps yamldeps) $ fatalText "No dependencies found in fossa-deps file"
+toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
+toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
+  -- If the file exists and we have no dependencies to report, that's a failure.
+  when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
+  archiveLocators <- case maybeApiOpts of
+    Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
+    Just apiOpts -> archiveUploadSourceUnit root apiOpts vendoredDependencies
+
   let renderedPath = toText root
-      build = toBuildData <$> NE.nonEmpty referencedDependencies
+      referenceLocators = refToLocator <$> referencedDependencies
       additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty remoteDependencies)
+      build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
@@ -73,27 +97,25 @@ toSourceUnit root yamldeps@YamlDependencies{..} = do
       , additionalData = additional
       }
 
-toBuildData :: NE.NonEmpty ReferencedDependency -> SourceUnitBuild
-toBuildData deps =
+toBuildData :: NE.NonEmpty Locator -> SourceUnitBuild
+toBuildData locators =
   SourceUnitBuild
     { buildArtifact = "default"
     , buildSucceeded = True
-    , buildImports = imports
-    , buildDependencies = map addEmptyDep imports
+    , buildImports = NE.toList locators
+    , buildDependencies = map addEmptyDep $ NE.toList locators
     }
-  where
-    imports = map toImport $ NE.toList deps
 
-    toImport :: ReferencedDependency -> Locator
-    toImport ReferencedDependency{..} =
-      Locator
-        { locatorFetcher = depTypeToFetcher locDepType
-        , locatorProject = locDepName
-        , locatorRevision = locDepVersion
-        }
+refToLocator :: ReferencedDependency -> Locator
+refToLocator ReferencedDependency{..} =
+  Locator
+    { locatorFetcher = depTypeToFetcher locDepType
+    , locatorProject = locDepName
+    , locatorRevision = locDepVersion
+    }
 
-    addEmptyDep :: Locator -> SourceUnitDependency
-    addEmptyDep loc = SourceUnitDependency loc []
+addEmptyDep :: Locator -> SourceUnitDependency
+addEmptyDep loc = SourceUnitDependency loc []
 
 toAdditionalData :: Maybe (NE.NonEmpty CustomDependency) -> Maybe (NE.NonEmpty RemoteDependency) -> Maybe AdditionalDepData
 toAdditionalData customDeps remoteDeps =
@@ -120,12 +142,13 @@ toAdditionalData customDeps remoteDeps =
         , srcRemoteDepHomepage = remoteMetadata >>= remoteHomepage
         }
 
-hasNoDeps :: YamlDependencies -> Bool
-hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies && null remoteDependencies
+hasNoDeps :: ManualDependencies -> Bool
+hasNoDeps ManualDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies && null remoteDependencies
 
-data YamlDependencies = YamlDependencies
+data ManualDependencies = ManualDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]
+  , vendoredDependencies :: [VendoredDependency]
   , remoteDependencies :: [RemoteDependency]
   }
   deriving (Eq, Ord, Show)
@@ -164,11 +187,13 @@ data RemoteDependencyMetadata = RemoteDependencyMetadata
   , remoteHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
-instance FromJSON YamlDependencies where
-  parseJSON = withObject "YamlDependencies" $ \obj ->
-    YamlDependencies <$ (obj .:? "version" >>= isMissingOr1)
+
+instance FromJSON ManualDependencies where
+  parseJSON = withObject "ManualDependencies" $ \obj ->
+    ManualDependencies <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
       <*> (obj .:? "custom-dependencies" .!= [])
+      <*> (obj .:? "vendored-dependencies" .!= [])
       <*> (obj .:? "remote-dependencies" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
@@ -185,7 +210,7 @@ instance FromJSON ReferencedDependency where
     ReferencedDependency <$> obj .: "name"
       <*> (obj .: "type" >>= depTypeParser)
       <*> (unTextLike <$$> obj .:? "version")
-      <* forbidMembers "referenced dependencies" ["license", "description", "url"] obj
+      <* forbidMembers "referenced dependencies" ["license", "description", "url", "path"] obj
 
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
@@ -193,7 +218,7 @@ instance FromJSON CustomDependency where
       <*> (unTextLike <$> obj .: "version")
       <*> obj .: "license"
       <*> obj .:? "metadata"
-      <* forbidMembers "custom dependencies" ["type"] obj
+      <* forbidMembers "custom dependencies" ["type", "path"] obj
 
 instance FromJSON CustomDependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->

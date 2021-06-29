@@ -14,8 +14,8 @@ import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
+import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
-import App.Fossa.YamlDeps (analyzeFossaDepsYaml)
 import App.Types
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
@@ -231,8 +231,11 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
   -- When running analysis, append the vsi discover function to the end of the discover functions list.
   -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
   let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination]
+      apiOpts = case destination of
+        OutputStdout -> Nothing
+        UploadScan opts _ -> Just opts
 
-  manualSrcUnit <- analyzeFossaDepsYaml basedir
+  manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -244,15 +247,16 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
-  case checkForEmptyUpload projectResults filteredProjects manualSrcUnit of
+  -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
+  case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
     NoneDiscovered -> logError "No projects were discovered" >> sendIO exitFailure
     FilteredAll count -> do
       logError ("Filtered out all " <> pretty count <> " projects due to directory name, no manual deps found")
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnit filteredProjects
-      UploadScan apiOpts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
+      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata override sourceUnits
 
 uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
@@ -300,11 +304,8 @@ data CountedResult
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
 checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> Maybe SourceUnit -> CountedResult
-checkForEmptyUpload xs ys unit =
-  -- This nested case statement
-  case unit of
-    -- If we have a manual source unit, then there's always somthing to upload.
-    Just manual -> FoundSome $ manual NE.:| discoveredUnits
+checkForEmptyUpload xs ys manualUnit =
+  case manualUnit of
     Nothing -> case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
@@ -313,6 +314,8 @@ checkForEmptyUpload xs ys unit =
       (_, 0) -> FilteredAll filterCount
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
+    -- If we have a manual or archive source unit, then there's always something to upload.
+    Just unit -> FoundSome $ unit NE.:| discoveredUnits
   where
     xlen = length xs
     ylen = length ys
