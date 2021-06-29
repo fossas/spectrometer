@@ -12,7 +12,7 @@ module App.Fossa.ManualDeps (
   VendoredDependency (..),
   ManualDependencies (..),
   FoundDepsFile (..),
-  analyzeFossaDepsYaml,
+  analyzeFossaDepsFile,
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)

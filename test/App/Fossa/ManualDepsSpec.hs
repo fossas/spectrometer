@@ -8,7 +8,6 @@ import App.Fossa.ManualDeps (
   ReferencedDependency (ReferencedDependency),
   RemoteDependency (RemoteDependency),
   RemoteDependencyMetadata (RemoteDependencyMetadata),
-  YamlDependencies (YamlDependencies),
   VendoredDependency (VendoredDependency),
   ManualDependencies (ManualDependencies),
  )
