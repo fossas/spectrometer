@@ -134,12 +134,12 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
     $ case recordMode of
       RecordModeNone -> do
         basedir <- sendIO $ validateDir workdir
-        analyze basedir destination project unpackArchives jsonOutput enableVSI filters
+        doAnalyze basedir
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
         (execLogs, (readFSLogs, ())) <-
-          runRecord @Exec . runRecord @ReadFS $
-            analyze basedir destination project unpackArchives jsonOutput enableVSI filters
+          runRecord @Exec . runRecord @ReadFS 
+          $ doAnalyze basedir
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
       RecordModeReplay file -> do
         basedir <- BaseDir <$> P.resolveDir' workdir
@@ -150,7 +150,9 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
             let effects = analyzeEffects journal
             runReplay @ReadFS (effectsReadFS effects)
               . runReplay @Exec (effectsExec effects)
-              $ analyze basedir destination project unpackArchives jsonOutput enableVSI filters
+              $ doAnalyze basedir
+    where
+      doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI filters
 
 -- vsiDiscoverFunc is appended to discoverFuncs during analyze.
 -- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
@@ -259,7 +261,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnit filteredProjects
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
       UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
 
 uploadSuccessfulAnalysis ::

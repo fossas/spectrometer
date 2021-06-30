@@ -88,13 +88,15 @@ appMain = do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
+          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBuildTargetFilters
+
       if analyzeOutput
-        then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBuildTargetFilters
+        then doAnalyze OutputStdout 
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
-          analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts metadata) analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBuildTargetFilters
+          doAnalyze (UploadScan apiOpts metadata)
     --
     TestCommand TestOptions{..} -> do
       baseDir <- validateDir testBaseDir
