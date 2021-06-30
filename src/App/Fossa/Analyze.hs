@@ -391,7 +391,7 @@ buildProjectSummary project projectLocator projectUrl =
           [ "name" .= projectName project
           , "revision" .= projectRevision project
           , "branch" .= projectBranch project
-          , "locator" .= projectLocator
+          , "id" .= projectLocator
           , "url" .= projectUrl
           ]
     ]

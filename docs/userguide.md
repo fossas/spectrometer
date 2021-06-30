@@ -158,7 +158,7 @@ The `--json` flag can be used to print project metadata after running `fossa ana
 fossa analyze --json
 ```
 ```json
-{"project":{"name":"custom@new-project","branch":"master","revision":"123","url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123","locator":"custom+<org-id>/new-project$123"}}
+{"project":{"name":"custom@new-project","branch":"master","revision":"123","url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123","id":"custom+<org-id>/new-project$123"}}
 ```
 
 ### Running in a specific directory
