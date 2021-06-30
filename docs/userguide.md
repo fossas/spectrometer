@@ -150,6 +150,17 @@ The `--output` flag can be used to print projects and dependency graph informati
 fossa analyze --output
 ```
 
+### Printing project metadata
+
+The `--json` flag can be used to print project metadata after running `fossa analyze` successfully. This metadata can be used to reference your project when integrating with the FOSSA API.
+
+```sh
+fossa analyze --json
+```
+```json
+{"project":{"name":"custom@new-project","branch":"master","revision":"123","url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123","locator":"custom+<org-id>/new-project$123"}}
+```
+
 ### Running in a specific directory
 
 ```sh

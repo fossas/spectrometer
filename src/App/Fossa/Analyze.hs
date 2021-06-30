@@ -4,7 +4,7 @@ module App.Fossa.Analyze (
   analyzeMain,
   ScanDestination (..),
   UnpackArchives (..),
-  PrintMetadata (..),
+  JsonOutput (..),
   VSIAnalysisMode (..),
   discoverFuncs,
   RecordMode (..),
@@ -107,7 +107,7 @@ data ScanDestination
 -- | UnpackArchives bool flag
 data UnpackArchives = UnpackArchives
 
-data PrintMetadata = PrintMetadata
+data JsonOutput = JsonOutput
 
 -- | "VSI analysis" modes
 data VSIAnalysisMode
@@ -125,8 +125,8 @@ data RecordMode
   | -- | don't record or replay
     RecordModeNone
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag PrintMetadata -> VSIAnalysisMode -> [BuildTargetFilter] -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives printMetadata enableVSI filters =
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> [BuildTargetFilter] -> IO ()
+analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -134,12 +134,12 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives pr
     $ case recordMode of
       RecordModeNone -> do
         basedir <- sendIO $ validateDir workdir
-        analyze basedir destination project unpackArchives printMetadata enableVSI filters
+        analyze basedir destination project unpackArchives jsonOutput enableVSI filters
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
         (execLogs, (readFSLogs, ())) <-
           runRecord @Exec . runRecord @ReadFS $
-            analyze basedir destination project unpackArchives printMetadata enableVSI filters
+            analyze basedir destination project unpackArchives jsonOutput enableVSI filters
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
       RecordModeReplay file -> do
         basedir <- BaseDir <$> P.resolveDir' workdir
@@ -150,7 +150,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives pr
             let effects = analyzeEffects journal
             runReplay @ReadFS (effectsReadFS effects)
               . runReplay @Exec (effectsExec effects)
-              $ analyze basedir destination project unpackArchives printMetadata enableVSI filters
+              $ analyze basedir destination project unpackArchives jsonOutput enableVSI filters
 
 -- vsiDiscoverFunc is appended to discoverFuncs during analyze.
 -- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
@@ -226,11 +226,11 @@ analyze ::
   ScanDestination ->
   OverrideProject ->
   Flag UnpackArchives ->
-  Flag PrintMetadata ->
+  Flag JsonOutput ->
   VSIAnalysisMode ->
   [BuildTargetFilter] ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives printMetadata enableVSI filters = do
+analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI filters = do
   capabilities <- sendIO getNumCapabilities
   -- When running analysis, append the vsi discover function to the end of the discover functions list.
   -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
@@ -259,8 +259,8 @@ analyze (BaseDir basedir) destination override unpackArchives printMetadata enab
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
-      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata printMetadata override sourceUnits
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnit filteredProjects
+      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
 
 uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
@@ -270,11 +270,11 @@ uploadSuccessfulAnalysis ::
   BaseDir ->
   ApiOpts ->
   ProjectMetadata ->
-  Flag PrintMetadata ->
+  Flag JsonOutput ->
   OverrideProject ->
   NE.NonEmpty SourceUnit ->
   m ()
-uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata printMetadata override units = do
+uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = do
   revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision revision
 
@@ -299,7 +299,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata printMetadata overri
   -- Warn on contributor errors, never fail
   void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
-  if fromFlag PrintMetadata printMetadata then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl else pure ()
+  if fromFlag JsonOutput jsonOutput 
+    then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl 
+    else pure ()
 
 data CountedResult
   = NoneDiscovered
