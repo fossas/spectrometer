@@ -4,11 +4,10 @@
 {-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.ManualDeps (
-  CustomDependency (..),
-  CustomDependencyMetadata (..),
   ReferencedDependency (..),
+  CustomDependency (..),
   RemoteDependency (..),
-  RemoteDependencyMetadata (..),
+  DependencyMetadata (..),
   VendoredDependency (..),
   ManualDependencies (..),
   FoundDepsFile (..),
@@ -130,16 +129,16 @@ toAdditionalData customDeps remoteDeps =
         { srcUserDepName = customName
         , srcUserDepVersion = customVersion
         , srcUserDepLicense = customLicense
-        , srcUserDepDescription = customMetadata >>= customDescription
-        , srcUserDepHomepage = customMetadata >>= customHomepage
+        , srcUserDepDescription = customMetadata >>= depDescription
+        , srcUserDepHomepage = customMetadata >>= depHomepage
         }
     toUrl RemoteDependency{..} =
       SourceRemoteDep
         { srcRemoteDepName = remoteName
         , srcRemoteDepVersion = remoteVersion
         , srcRemoteDepUrl = remoteUrl
-        , srcRemoteDepDescription = remoteMetadata >>= remoteDescription
-        , srcRemoteDepHomepage = remoteMetadata >>= remoteHomepage
+        , srcRemoteDepDescription = remoteMetadata >>= depDescription
+        , srcRemoteDepHomepage = remoteMetadata >>= depHomepage
         }
 
 hasNoDeps :: ManualDependencies -> Bool
@@ -164,13 +163,7 @@ data CustomDependency = CustomDependency
   { customName :: Text
   , customVersion :: Text
   , customLicense :: Text
-  , customMetadata :: Maybe CustomDependencyMetadata
-  }
-  deriving (Eq, Ord, Show)
-
-data CustomDependencyMetadata = CustomDependencyMetadata
-  { customDescription :: Maybe Text
-  , customHomepage :: Maybe Text
+  , customMetadata :: Maybe DependencyMetadata
   }
   deriving (Eq, Ord, Show)
 
@@ -178,13 +171,13 @@ data RemoteDependency = RemoteDependency
   { remoteName :: Text
   , remoteVersion :: Text
   , remoteUrl :: Text
-  , remoteMetadata :: Maybe RemoteDependencyMetadata
+  , remoteMetadata :: Maybe DependencyMetadata
   }
   deriving (Eq, Ord, Show)
 
-data RemoteDependencyMetadata = RemoteDependencyMetadata
-  { remoteDescription :: Maybe Text
-  , remoteHomepage :: Maybe Text
+data DependencyMetadata = DependencyMetadata
+  { depDescription :: Maybe Text
+  , depHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -218,12 +211,7 @@ instance FromJSON CustomDependency where
       <*> (unTextLike <$> obj .: "version")
       <*> obj .: "license"
       <*> obj .:? "metadata"
-      <* forbidMembers "custom dependencies" ["type", "path"] obj
-
-instance FromJSON CustomDependencyMetadata where
-  parseJSON = withObject "metadata" $ \obj ->
-    CustomDependencyMetadata <$> obj .:? "description"
-      <*> obj .:? "homepage"
+      <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
   parseJSON = withObject "RemoteDependency" $ \obj ->
@@ -231,12 +219,14 @@ instance FromJSON RemoteDependency where
       <*> (unTextLike <$> obj .: "version")
       <*> obj .: "url"
       <*> obj .:? "metadata"
-      <* forbidMembers "remote dependencies" ["license"] obj
+      <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
-instance FromJSON RemoteDependencyMetadata where
+-- Dependency "metadata" section for both Remote and Custom Dependencies
+instance FromJSON DependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->
-    RemoteDependencyMetadata <$> obj .:? "description"
+    DependencyMetadata <$> obj .:? "description"
       <*> obj .:? "homepage"
+      <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType

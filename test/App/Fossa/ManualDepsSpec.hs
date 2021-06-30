@@ -4,10 +4,9 @@ module App.Fossa.ManualDepsSpec (
 
 import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
-  CustomDependencyMetadata (CustomDependencyMetadata),
   ReferencedDependency (ReferencedDependency),
   RemoteDependency (RemoteDependency),
-  RemoteDependencyMetadata (RemoteDependencyMetadata),
+  DependencyMetadata (DependencyMetadata),
   VendoredDependency (VendoredDependency),
   ManualDependencies (ManualDependencies),
  )
@@ -31,10 +30,10 @@ theWorks = ManualDependencies references customs vendors remotes
       ]
     customs =
       [ CustomDependency "hello" "1.2.3" "MIT" Nothing
-      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (CustomDependencyMetadata (Just "description for full") (Just "we don't validate homepages")))
+      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom")))
       ]
     remotes =
-      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (RemoteDependencyMetadata (Just "description for full") (Just "we don't validate homepages")))
+      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url")))
       , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing
       ]
     vendors =

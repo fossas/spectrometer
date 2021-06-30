@@ -234,9 +234,13 @@ custom-dependencies:
 
 ### Remote dependencies
 
-FOSSA also supports dependencies that can't be automatically discovered or identified, but the user has a remote URL that points to an archive where the dependency is hosted.
+FOSSA also supports dependencies that can't be automatically discovered or identified, but where the user has a URL where FOSSA can download the source code of the dependency.
 
-To do this, you must supply the name, version, and url of the dependency. The FOSSA backend will attempt to download and scan the archive hosted at this remote location. Example for a github source dependency: `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. You may also supply a description that will be included inside your report, however this is optional.
+To specify a remote dependency, you must provide the name, version, and download URL of the dependency. The FOSSA backend will attempt to download and scan any source code contained in an archive hosted at this URL.
+
+For example, for a dependency released on a GitHub release, your URL might look like: `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`.
+
+You can also optionally add metadata fields ("description" and "homepage") to populate these fields in the FOSSA web UI (these fields can be displayed when generating reports).
 
 ```yaml
 remote-dependencies:
@@ -334,8 +338,10 @@ We also support json-formatted dependencies:
       "name": "foo-wrapper",
       "version": "1.0.2",
       "license": "MIT or Apache-2.0",
-      "description": "Provides a help wrapper for foo-related tasks",
-      "url": "https://foo-project.org/homepage"
+      "metadata": {
+        "description": "Provides a help wrapper for foo-related tasks",
+        "homepage": "https://foo-project.org/homepage"
+      }
     }
   ],
   "vendored-dependencies": [
@@ -346,6 +352,17 @@ We also support json-formatted dependencies:
       "name": "winston",
       "path": "vendor/winston.tar.gz",
       "version": "5.0.0-alpha"
+    }
+  ],
+  "remote-dependencies": [
+    {
+      "name": "foo-url",
+      "version": "1.2.3",
+      "url": "www.foo.tar.gz",
+      "metadata": {
+        "description": "foo archive",
+        "homepage": "https://foo-url.org/homepage"
+      }
     }
   ]
 }
