@@ -2,6 +2,7 @@
 
 ## 2.9.0
 
+- Adds JSON-formatted project information to the output of `fossa analyze` with `--json` ([#255](https://github.com/fossas/spectrometer/pull/255))
 - Fix an issue where stdout doesn't always flush to the console ([#265](https://github.com/fossas/spectrometer/pull/265))
 - Fix an issue when referenced-dependencies are not being uploaded ([#262](https://github.com/fossas/spectrometer/pull/262))
 - Adds support for `fossa-deps.json` ([#261](https://github.com/fossas/spectrometer/pull/261))
@@ -13,7 +14,6 @@
 - Adds support and documentation for user-defined dependencies ([#245](https://github.com/fossas/spectrometer/pull/245))
 - Allows using `.yml` or `.yaml` extensions for `fossa-deps` file, but not both ([#245](https://github.com/fossas/spectrometer/pull/245))
 - `fossa-deps` file is checked before running discovery/analysis, and is no longer run in parallel with other analysis functions ([#245](https://github.com/fossas/spectrometer/pull/245))
-- Adds JSON-formatted project information to the output of `fossa analyze` ([#255](https://github.com/fossas/spectrometer/pull/255))
 
 ## 2.7.2
 
