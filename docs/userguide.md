@@ -223,7 +223,7 @@ custom-dependencies:
 - name: foo
   version: 1.2.3
   license: "MIT or Apache-2.0"
-# You can also provide a description and/or homepage
+# You can also provide a description and/or homepage. These values populate metadata fields in reports in the FOSSA web UI. 
 - name: foo-wrapper
   version: 1.2.3
   license: MIT
@@ -248,8 +248,7 @@ remote-dependencies:
 - name: foo
   version: 1.2.3
   url: https://www.fooarchive.tar.gz
-
-# You can also provide a description and/or homepage
+# You can also provide a description and/or homepage. These values populate metadata fields in reports in the FOSSA web UI.
 - name: foo-wrapper
   version: 1.2.3
   url: https://www.foowrapper.tar.gz
