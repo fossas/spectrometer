@@ -187,7 +187,7 @@ We support the following archive formats:
 
 FOSSA offers a way to manually upload dependencies provided we support the dependency type. Manually specifying dependencies is very helpful in the event your package manager is unsupported or you are using a custom and nonstandard dependency management solution.
 
-The FOSSA CLI will automatically read `fossa-deps.yml` in the root directory (usually the current working directory) when `fossa analyze` is run and parse dependencies from it.
+The FOSSA CLI will automatically read a `fossa-deps.yml` or a `fossa-deps.json` file in the root directory (usually the current working directory) when `fossa analyze` is run and parse dependencies from it. These dependencies will be added to the dependencies that are normally found when `fossa analyze` is run in the directory.
 
 > Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
 
@@ -332,6 +332,7 @@ We also support json-formatted dependencies:
     }
   ]
 }
+```
 
 ## `fossa test`
 

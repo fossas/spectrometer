@@ -138,8 +138,8 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
         (execLogs, (readFSLogs, ())) <-
-          runRecord @Exec . runRecord @ReadFS 
-          $ doAnalyze basedir
+          runRecord @Exec . runRecord @ReadFS $
+            doAnalyze basedir
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
       RecordModeReplay file -> do
         basedir <- BaseDir <$> P.resolveDir' workdir
@@ -151,8 +151,8 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
             runReplay @ReadFS (effectsReadFS effects)
               . runReplay @Exec (effectsExec effects)
               $ doAnalyze basedir
-    where
-      doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI filters
+  where
+    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI filters
 
 -- vsiDiscoverFunc is appended to discoverFuncs during analyze.
 -- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
@@ -301,8 +301,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
   -- Warn on contributor errors, never fail
   void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
-  if fromFlag JsonOutput jsonOutput 
-    then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl 
+  if fromFlag JsonOutput jsonOutput
+    then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl
     else pure ()
 
 data CountedResult
@@ -386,14 +386,11 @@ tryUploadContributors baseDir apiOpts locator = do
 buildProjectSummary :: ProjectRevision -> Text -> Text -> Aeson.Value
 buildProjectSummary project projectLocator projectUrl =
   Aeson.object
-    [ "project"
-        .= Aeson.object
-          [ "name" .= projectName project
-          , "revision" .= projectRevision project
-          , "branch" .= projectBranch project
-          , "id" .= projectLocator
-          , "url" .= projectUrl
-          ]
+    [ "project" .= projectName project
+    , "revision" .= projectRevision project
+    , "branch" .= projectBranch project
+    , "url" .= projectUrl
+    , "id" .= projectLocator
     ]
 
 buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
