@@ -9,12 +9,15 @@ module App.Fossa.Configuration (
   ConfigProject (..),
   ConfigRevision (..),
   ConfigReleaseGroup (..),
+  ConfigTargets (..),
+  ConfigPaths (..),
+  ConfigTarget (..),
 ) where
 
 import App.Types
 import Control.Applicative (Alternative ((<|>)))
 import Control.Carrier.Diagnostics qualified as Diag
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?))
+import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.Text (Text)
 import Effect.ReadFS
 import Path
@@ -26,6 +29,8 @@ data ConfigFile = ConfigFile
   , configApiKey :: Maybe Text
   , configProject :: Maybe ConfigProject
   , configRevision :: Maybe ConfigRevision
+  , configTargets :: Maybe ConfigTargets
+  , configPaths :: Maybe ConfigPaths
   }
   deriving (Eq, Ord, Show)
 
@@ -53,6 +58,24 @@ data ConfigReleaseGroup = ConfigReleaseGroup
   }
   deriving (Eq, Ord, Show)
 
+data ConfigTargets = ConfigTargets
+  { targetsOnly :: [ConfigTarget]
+  , targetsExclude :: [ConfigTarget]
+  }
+  deriving (Eq, Ord, Show)
+
+data ConfigTarget = ConfigTarget
+  { targetType :: Text
+  , targetTarget :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+data ConfigPaths = ConfigPaths
+  { pathsOnly :: [Text]
+  , pathsExclude :: [Text]
+  }
+  deriving (Eq, Ord, Show)
+
 instance FromJSON ConfigFile where
   parseJSON = withObject "ConfigFile" $ \obj ->
     ConfigFile <$> obj .: "version"
@@ -60,6 +83,8 @@ instance FromJSON ConfigFile where
       <*> obj .:? "apiKey"
       <*> obj .:? "project"
       <*> obj .:? "revision"
+      <*> obj .:? "targets"
+      <*> obj .:? "paths"
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->
@@ -81,6 +106,21 @@ instance FromJSON ConfigReleaseGroup where
   parseJSON = withObject "ConfigReleaseGroup" $ \obj ->
     ConfigReleaseGroup <$> obj .:? "name"
       <*> obj .:? "release"
+
+instance FromJSON ConfigTargets where
+  parseJSON = withObject "ConfigTargets" $ \obj ->
+    ConfigTargets <$> (obj .:? "only" .!= [])
+      <*> (obj .:? "exclude" .!= [])
+
+instance FromJSON ConfigTarget where
+  parseJSON = withObject "ConfigTarget" $ \obj ->
+    ConfigTarget <$> obj .: "type"
+      <*> obj .:? "target"
+
+instance FromJSON ConfigPaths where
+  parseJSON = withObject "ConfigPaths" $ \obj ->
+    ConfigPaths <$> (obj .:? "only" .!= [])
+      <*> (obj .:? "exclude" .!= [])
 
 defaultFile :: Path Rel File
 defaultFile = $(mkRelFile ".fossa.yml")

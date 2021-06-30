@@ -116,6 +116,7 @@ appMain = do
             _ -> die "releaseGroup.release and releaseGroup.name must both be specified if you want to associate this project to a release group."
 
           doAnalyze (UploadScan apiOpts metadata)
+
     --
     TestCommand TestOptions{..} -> do
       baseDir <- validateDir testBaseDir

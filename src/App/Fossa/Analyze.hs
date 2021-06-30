@@ -16,6 +16,7 @@ import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
+import App.Fossa.Configuration
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Types
 import App.Util (validateDir)
@@ -127,6 +128,8 @@ data RecordMode
 
 analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> [BuildTargetFilter] -> IO ()
 analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI filters =
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> VSIAnalysisMode -> Maybe ConfigFile -> IO ()
+analyzeMain workdir recordMode logSeverity destination project unpackArchives enableVSI filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -196,25 +199,26 @@ runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has AtomicCounter sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
   BaseDir ->
-  [BuildTargetFilter] ->
+  Maybe ConfigFile ->
   DiscoveredProject (StickyDiagC (Diag.DiagnosticsC m)) ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project =
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
+      logInfo $ pretty $ show $ targets
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
       graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
-applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject n -> Maybe (Set BuildTarget)
+applyFiltersToProject :: Path Abs Dir -> Maybe ConfigFile -> DiscoveredProject n -> Maybe (Set BuildTarget)
 applyFiltersToProject basedir filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
     -- FIXME: this is required for --unpack-archives to continue to work.
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
     -- will always fail
     Nothing -> Just projectBuildTargets
-    Just rel -> applyFilters filters projectType rel projectBuildTargets
+    Just rel -> applyFiltersNew filters projectType rel projectBuildTargets
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -230,7 +234,7 @@ analyze ::
   Flag UnpackArchives ->
   Flag JsonOutput ->
   VSIAnalysisMode ->
-  [BuildTargetFilter] ->
+  Maybe ConfigFile ->
   m ()
 analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI filters = do
   capabilities <- sendIO getNumCapabilities

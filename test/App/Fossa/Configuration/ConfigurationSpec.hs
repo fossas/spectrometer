@@ -19,6 +19,8 @@ expectedConfigFile =
     , configApiKey = Just "123"
     , configProject = Just expectedConfigProject
     , configRevision = Just expectedConfigRevision
+    , configTargets = Nothing
+    , configPaths = Nothing
     }
 
 expectedConfigProject :: ConfigProject
