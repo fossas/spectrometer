@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## 2.10.0
+
+- Added a `remote-dependencies` section in the `fossa-deps` file to support archives at remote locations.
+- Modify the payload for `custom-dependencies` to include optional fields in a new `metadata` section
 ## 2.9.0
 
 - Fix an issue where stdout doesn't always flush to the console ([#265](https://github.com/fossas/spectrometer/pull/265))
