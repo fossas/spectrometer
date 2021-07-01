@@ -1,15 +1,16 @@
 module Discovery.Filters (
   BuildTargetFilter (..),
+  CombinedFilters (..),
   filterParser,
   applyFilter,
   applyFilters,
   applyFiltersNew,
 ) where
 
+import App.Fossa.Configuration
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Semigroup (sconcat)
-import App.Fossa.Configuration
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -19,9 +20,12 @@ import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Types (BuildTarget (..))
-import Debug.Trace
-import App.Fossa.Configuration
-import Data.Maybe (catMaybes)
+
+data CombinedFilters = CombinedFilters
+  { legacyFilters :: [BuildTargetFilter]
+  , targetFilters :: Maybe ConfigTargets
+  , pathFilters :: Maybe ConfigPaths
+  }
 
 data BuildTargetFilter
   = -- | buildtool, directory. if a project matches this filter, all of its
@@ -30,80 +34,51 @@ data BuildTargetFilter
   | -- | buildtool, directory, buildtarget. if a target matches this filter,
     -- only that target will be analyzed
     TargetFilter Text (Path Rel Dir) BuildTarget
-  -- | 
-  --   PathFilter Text
-  -- | 
-  --   NewTargetFilter Text Text
   deriving (Eq, Ord, Show)
 
+applyFiltersNew :: CombinedFilters -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
+applyFiltersNew (CombinedFilters [] targetFilters pathFilters) tool dir targets = do
+  targetFilteredTargets <- NE.nonEmpty $ case targetFilters of
+    Just filters -> do
+      onlyFiltered <- case targetsOnly filters of
+        [] -> pure targets
+        onlyTargets -> mapMaybe (\one -> applyTargetFilter one tool dir targets True) onlyTargets
+      case targetsExclude filters of
+        [] -> pure onlyFiltered
+        excludeTargets -> mapMaybe (\one -> applyTargetFilter one tool dir onlyFiltered False) excludeTargets
+    Nothing -> [targets]
 
-{- New filters workflow with paths and targets
+  filteredTargets <- NE.nonEmpty $ case pathFilters of
+    Just filters -> do
+      onlyFiltered <- case pathsOnly filters of
+        [] -> pure targets
+        onlyPaths -> mapMaybe (\one -> applyPathFilter one dir (sconcat targetFilteredTargets) True) onlyPaths
+      case pathsExclude filters of
+        [] -> pure targets
+        excludePaths -> mapMaybe (\one -> applyPathFilter one dir onlyFiltered False) excludePaths
+    Nothing -> [targets]
 
-1. Get the target
-2. If "only" exists, check if it matches the list of only targets or paths
-3. If "exclude" exists, check if it matches exclude list of only targets or paths and remove it
-4. Return the target
+  pure (sconcat filteredTargets)
+applyFiltersNew (CombinedFilters legacyFilters _ _) tool dir targets = applyFilters legacyFilters tool dir targets
 
+-- Logical xand that handles include and exclude logic.
+-- If include is set and the tool type matches, return all targets.
+-- If exclude is set and nothing matches, return all targets.
+applyTargetFilter :: ConfigTarget -> Text -> Path Rel Dir -> Set BuildTarget -> Bool -> Maybe (Set BuildTarget)
+applyTargetFilter (ConfigTarget configType Nothing) tool _ targets onlyTargets
+  | configType == tool && onlyTargets = Just targets
+  | otherwise = Nothing
+applyTargetFilter (ConfigTarget configType (Just (DirectoryFilter dir))) tool dir' targets onlyTargets
+  | configType == tool && dir == dir' && onlyTargets = Just targets
+  | otherwise = Nothing
+applyTargetFilter (ConfigTarget configType (Just (ExactTargetFilter dir target))) tool dir' targets onlyTargets
+  | configType == tool && dir == dir' && S.member (BuildTarget target) targets && onlyTargets = Just $ S.singleton (BuildTarget target)
+  | otherwise = Nothing
 
-Implementation
-- Parse a list of filters
-- Convert them to internal filter
-  - File path
-  - Target type
-- Iterate over the only list
-- Iterate over the exclude list
-- Return targets
-
-Don't follow what we already have, rip it out and start over.
--}
-
-
-applyFiltersNew :: Maybe ConfigFile -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
-applyFiltersNew Nothing _ _ targets = Just targets
-applyFiltersNew filters tool dir targets = do
-  _ <- traceM "targets"
-  _ <- traceM $ show targets
-  let individualResults = case filters >>= configTargets of
-                            Just targetFilters -> do
-                              onlyFiltered <- case targetsOnly targetFilters of
-                                                [] -> pure targets
-                                                onlyTargets -> mapMaybe (\one -> applyTargetFilter one tool targets True) onlyTargets
-                              case targetsExclude targetFilters of
-                                                [] -> pure onlyFiltered
-                                                excludeTargets -> mapMaybe (\one -> applyTargetFilter one tool targets True) excludeTargets
-                            Nothing -> [targets]
-  _ <- traceM "results"
-  _ <- traceM $ show individualResults
-  setResults <- NE.nonEmpty individualResults
-  _ <- traceM "non empty res"
-  _ <- traceM $ show setResults
-  -- let finalResults = case filters >>= configPaths of
-  --                           Just pathFilters -> do
-  --                             list <- mapMaybe (\one -> applyPathFilter one dir targets True) (pathsOnly pathFilters)
-  --                             _ <- traceM $ show list
-  --                             mapMaybe (\one -> applyPathFilter one dir list False) (pathsExclude pathFilters)
-  --                           Nothing -> [targets]
-  -- successful <- NE.nonEmpty finalResults
-
-  pure (sconcat setResults)
-
-
-applyTargetFilter :: ConfigTarget -> Text -> Set BuildTarget -> Bool -> Maybe (Set BuildTarget)
-applyTargetFilter (ConfigTarget configType Nothing) tool targets onlyTargets
-  -- Logical xand that handles include and exclude logic
-  | configType == tool && onlyTargets = Just targets | otherwise = Nothing
-
-  -- Build out support for this use case 
-applyTargetFilter (ConfigTarget _ _) _ targets _ = Just targets
-
--- need to handle bullshit like `./path` and `path` and `path/`
--- Add tests for this
-applyPathFilter :: Text -> Path Rel Dir -> Set BuildTarget -> Bool -> Maybe (Set BuildTarget)
-applyPathFilter filter dir targets onlyPaths = do
-  _ <- traceM $ show dir 
-  _ <- traceM $ show filter 
-  Just targets
-
+applyPathFilter :: Path Rel Dir -> Path Rel Dir -> Set BuildTarget -> Bool -> Maybe (Set BuildTarget)
+applyPathFilter pathFilter dir targets onlyPaths
+  | dir == pathFilter && onlyPaths = Just targets
+  | otherwise = Nothing
 
 -- | Apply a set of filters determining:
 -- 1. Whether the project should be scanned (@Maybe@)
@@ -115,11 +90,7 @@ applyFilters :: [BuildTargetFilter] -> Text -> Path Rel Dir -> Set BuildTarget -
 applyFilters [] _ _ targets = Just targets
 applyFilters filters tool dir targets = do
   let individualResults = mapMaybe (\one -> applyFilter one tool dir targets) filters
-  
-  traceM $ show individualResults
   successful <- NE.nonEmpty individualResults
-  traceM $ show successful
-
   pure (sconcat successful)
 
 -- | Apply a filter to a set of BuildTargets, returning:

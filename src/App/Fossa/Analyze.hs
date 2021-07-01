@@ -126,10 +126,8 @@ data RecordMode
   | -- | don't record or replay
     RecordModeNone
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> [BuildTargetFilter] -> IO ()
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> CombinedFilters -> IO ()
 analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI filters =
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> VSIAnalysisMode -> Maybe ConfigFile -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives enableVSI filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -199,7 +197,7 @@ runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has AtomicCounter sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
   BaseDir ->
-  Maybe ConfigFile ->
+  CombinedFilters ->
   DiscoveredProject (StickyDiagC (Diag.DiagnosticsC m)) ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project =
@@ -211,7 +209,7 @@ runDependencyAnalysis (BaseDir basedir) filters project =
       graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
-applyFiltersToProject :: Path Abs Dir -> Maybe ConfigFile -> DiscoveredProject n -> Maybe (Set BuildTarget)
+applyFiltersToProject :: Path Abs Dir -> CombinedFilters -> DiscoveredProject n -> Maybe (Set BuildTarget)
 applyFiltersToProject basedir filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
     -- FIXME: this is required for --unpack-archives to continue to work.
@@ -234,7 +232,7 @@ analyze ::
   Flag UnpackArchives ->
   Flag JsonOutput ->
   VSIAnalysisMode ->
-  Maybe ConfigFile ->
+  CombinedFilters ->
   m ()
 analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI filters = do
   capabilities <- sendIO getNumCapabilities

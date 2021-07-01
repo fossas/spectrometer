@@ -12,16 +12,20 @@ module App.Fossa.Configuration (
   ConfigTargets (..),
   ConfigPaths (..),
   ConfigTarget (..),
+  NewBuildTargetFilter (..),
 ) where
 
 import App.Types
-import Control.Applicative (Alternative ((<|>)))
 import Control.Carrier.Diagnostics qualified as Diag
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
+import Data.Aeson.Types (Parser)
 import Data.Text (Text)
+import Data.Void (Void)
 import Effect.ReadFS
 import Path
 import System.Exit (die)
+import Text.Megaparsec
+import Text.Megaparsec.Char
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
@@ -66,13 +70,27 @@ data ConfigTargets = ConfigTargets
 
 data ConfigTarget = ConfigTarget
   { targetType :: Text
-  , targetTarget :: Maybe Text
+  , targetTarget :: Maybe NewBuildTargetFilter
   }
   deriving (Eq, Ord, Show)
 
+{-
+  The following filters separate the difference between the following filters:
+    gomod@./ -> DirectoryFilter
+    gradle@./::test-benchmark -> ExactFilter
+
+  The majority of build targets consist of a strategy type and a directory.
+  However, many Gradle targets consist of a strategy type, a directory, 
+  and an exact gradle target.
+-}
+data NewBuildTargetFilter
+  = DirectoryFilter (Path Rel Dir)
+  | ExactTargetFilter (Path Rel Dir) Text
+  deriving (Eq, Ord, Show)
+
 data ConfigPaths = ConfigPaths
-  { pathsOnly :: [Text]
-  , pathsExclude :: [Text]
+  { pathsOnly :: [Path Rel Dir]
+  , pathsExclude :: [Path Rel Dir]
   }
   deriving (Eq, Ord, Show)
 
@@ -115,7 +133,32 @@ instance FromJSON ConfigTargets where
 instance FromJSON ConfigTarget where
   parseJSON = withObject "ConfigTarget" $ \obj ->
     ConfigTarget <$> obj .: "type"
-      <*> obj .:? "target"
+      <*> (obj .:? "target" >>= filterParser)
+
+type MegaParser = Parsec Void Text
+filterParser :: Maybe Text -> Parser (Maybe NewBuildTargetFilter)
+filterParser Nothing = pure Nothing
+filterParser (Just input) = case runParser targetParser "" input of
+  Left bundle -> fail (errorBundlePretty bundle)
+  Right value -> pure $ Just value
+
+targetParser :: MegaParser NewBuildTargetFilter
+targetParser = (try newTargetFilter <|> directoryFilter) <* eof
+  where
+    newTargetFilter =
+      ExactTargetFilter <$> path <* char ':' <*> target
+    directoryFilter =
+      DirectoryFilter <$> path
+
+    path :: MegaParser (Path Rel Dir)
+    path = do
+      filepath <- some (satisfy (/= ':'))
+      case parseRelDir filepath of
+        Left err -> fail (show err)
+        Right a -> pure a
+
+    target :: MegaParser Text
+    target = takeWhile1P Nothing (const True)
 
 instance FromJSON ConfigPaths where
   parseJSON = withObject "ConfigPaths" $ \obj ->

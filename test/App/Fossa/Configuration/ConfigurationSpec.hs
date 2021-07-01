@@ -19,7 +19,7 @@ expectedConfigFile =
     , configApiKey = Just "123"
     , configProject = Just expectedConfigProject
     , configRevision = Just expectedConfigRevision
-    , configTargets = Nothing
+    , configTargets = Just expectedConfigTargets
     , configPaths = Nothing
     }
 
@@ -49,6 +49,22 @@ expectedReleaseGroup =
     { configReleaseGroupName = Just "test-release"
     , configReleaseGroupRelease = Just "123"
     }
+
+expectedConfigTargets :: ConfigTargets
+expectedConfigTargets =
+  ConfigTargets
+    { targetsOnly = [directoryTarget, simpleTarget, complexTarget]
+    , targetsExclude = []
+    }
+
+simpleTarget :: ConfigTarget
+simpleTarget = ConfigTarget "pip" Nothing
+
+complexTarget :: ConfigTarget
+complexTarget = ConfigTarget "gradle" (Just $ ExactTargetFilter $(mkRelDir "./") ":specific-target")
+
+directoryTarget :: ConfigTarget
+directoryTarget = ConfigTarget "maven" (Just $ DirectoryFilter $(mkRelDir "root"))
 
 testFile :: Path Rel File
 testFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/validconfig.yml")

@@ -33,7 +33,7 @@ import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Discovery.Filters (BuildTargetFilter (..), filterParser)
+import Discovery.Filters (BuildTargetFilter (..), filterParser, CombinedFilters (CombinedFilters))
 import Effect.Logger
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Options.Applicative
@@ -102,7 +102,8 @@ appMain = do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
-          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBuildTargetFilters
+          combinedFilters = CombinedFilters analyzeBuildTargetFilters (fileConfig >>= configTargets) (fileConfig >>= configPaths)
+          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
