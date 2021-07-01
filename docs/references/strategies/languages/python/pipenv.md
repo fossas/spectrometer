@@ -37,7 +37,7 @@ not be able to detect the edges between dependencies.
 
 Pipenv does a lot of work behind the scenes, so even a trivial example is quite large.
 
-`Pipfile`:
+`Pipfile` (created by running `pipenv install requests && pipenv install --dev pytest`):
 
 ```toml
 [[source]]
@@ -53,7 +53,7 @@ requests = "*"
 pytest = "*"
 ```
 
-`Pipfile.lock`:
+`Pipfile.lock` (created at the same time as `Pipfile` above):
 *This file is an example, and may not represent the exact versions you would find if you ran this example yourself.*
 
 ```json
