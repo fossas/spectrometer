@@ -1,4 +1,5 @@
 # Spectrometer Changelog
+
 ## Unreleased
 - Adds support for short flags to mirror CLI v1 commands ([#264](https://github.com/fossas/spectrometer/pull/264))
 - Added a `remote-dependencies` section in the `fossa-deps` file to support archives at remote locations ([#260](https://github.com/fossas/spectrometer/pull/260))
