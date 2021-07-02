@@ -33,7 +33,7 @@ import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Discovery.Filters (BuildTargetFilter (..), filterParser, CombinedFilters (CombinedFilters))
+import Discovery.Filters (BuildTargetFilter (..), CombinedFilters (CombinedFilters), filterParser)
 import Effect.Logger
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Options.Applicative
@@ -101,10 +101,17 @@ appMain = do
     AnalyzeCommand AnalyzeOptions{..} -> do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
+
+      if null analyzeBuildTargetFilters
+        then pure ()
+        else withDefaultLogger logSeverity $ logWarn "The --filter option has been deprecated. Refer to the new target exclusion feature for upgrading. --filter will be removed by v2.20.0"
+
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
-          combinedFilters = if null analyzeOnlyTargets && null analyzeExcludeTargets && null analyzeOnlyPaths && null analyzeExcludePaths 
-                            then CombinedFilters analyzeBuildTargetFilters (fileConfig >>= configTargets) (fileConfig >>= configPaths)
-                            else CombinedFilters analyzeBuildTargetFilters (Just $ ConfigTargets analyzeOnlyTargets analyzeExcludeTargets) (Just $ ConfigPaths analyzeOnlyPaths analyzeExcludePaths)
+          -- If a user enters a single target or path filtering flag, do not use any filters from the configuration file.
+          combinedFilters =
+            if null analyzeOnlyTargets && null analyzeExcludeTargets && null analyzeOnlyPaths && null analyzeExcludePaths
+              then CombinedFilters analyzeBuildTargetFilters (fileConfig >>= configTargets) (fileConfig >>= configPaths)
+              else CombinedFilters analyzeBuildTargetFilters (Just $ ConfigTargets analyzeOnlyTargets analyzeExcludeTargets) (Just $ ConfigPaths analyzeOnlyPaths analyzeExcludePaths)
 
           doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
 
@@ -177,13 +184,13 @@ appMain = do
             then ContainerAnalyze.analyzeMain OutputStdout logSeverity override containerAnalyzeImage
             else do
               let containerOverride = override{overrideBranch = containerBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
-              apikey <- requireKey maybeApiKey
-              let apiOpts = ApiOpts optBaseUrl apikey
+              apiKey <- requireKey maybeApiKey
+              let apiOpts = ApiOpts optBaseUrl apiKey
               let metadata = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) fileConfig
               ContainerAnalyze.analyzeMain (UploadScan apiOpts metadata) logSeverity containerOverride containerAnalyzeImage
         ContainerTest ContainerTestOptions{..} -> do
-          apikey <- requireKey maybeApiKey
-          let apiOpts = ApiOpts optBaseUrl apikey
+          apiKey <- requireKey maybeApiKey
+          let apiOpts = ApiOpts optBaseUrl apiKey
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
         ContainerParseFile path -> parseSyftOutputMain logSeverity path
         ContainerDumpScan ContainerDumpScanOptions{..} -> dumpSyftScanMain logSeverity dumpScanOutputFile dumpScanImage
@@ -205,7 +212,7 @@ requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
 requireKey Nothing = die "A FOSSA API key is required to run this command"
 
--- | Try to fetch FOSSA_API_KEY from env if not supplied from cmdline
+-- | Try to fetch FOSSA_API_KEY from env if not supplied from cmd line.
 checkAPIKey :: Maybe Text -> IO (Maybe ApiKey)
 checkAPIKey key = case key of
   Just key' -> pure . Just $ ApiKey key'
@@ -250,7 +257,7 @@ commands =
           "list-targets"
           ( info
               (ListTargetsCommand <$> baseDirArg)
-              (progDesc "List available analysis-targets in a directory (projects and subprojects)")
+              (progDesc "List available analysis-targets in a directory (projects and sub-projects)")
           )
         <> command
           "vps"
@@ -334,7 +341,7 @@ pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first errorBundlePretty . runParser pathRelDirParser "stdin" . T.pack
 
 targetOpt :: String -> Either String ConfigTarget
-targetOpt = first errorBundlePretty . runParser configTargetParser  "stdin" . T.pack
+targetOpt = first errorBundlePretty . runParser configTargetParser "stdin" . T.pack
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -356,7 +363,7 @@ reportOpts =
     <*> reportCmd
     <*> baseDirArg
 
--- FIXME: make report type a positional argument, rather than a subcommand
+-- FIXME: make report type a positional argument, rather than a sub-command.
 reportCmd :: Parser Report.ReportType
 reportCmd =
   hsubparser $
@@ -396,7 +403,7 @@ vpsAospNoticeOpts =
     <*> strOption (long "ninja-files" <> help "A comma-separated list of ninja files to parse for build graph information.")
     <*> metadataOpts
 
--- FIXME: make report type a positional argument, rather than a subcommand
+-- FIXME: make report type a positional argument, rather than a sub-command.
 vpsReportCmd :: Parser VPSReport.ReportType
 vpsReportCmd =
   hsubparser $

@@ -50,27 +50,28 @@ applyFiltersNew (CombinedFilters [] targetFilters pathFilters) tool dir targets 
   let onlyTargetMatches = case targetsOnly <$> targetFilters of
         Just filters -> mapMaybe (\one -> applyTargetFilter one tool dir targets True) filters
         Nothing -> []
-        
+
   let onlyPathMatches = case pathsOnly <$> pathFilters of
         Just filters -> mapMaybe (\one -> applyPathFilter one dir targets True) filters
         Nothing -> []
 
-  let allOnlyMatches = if null $ onlyPathMatches <> onlyTargetMatches
-                       then [targets]
-                       else onlyPathMatches <> onlyTargetMatches
+  let allOnlyMatches =
+        if null $ onlyPathMatches <> onlyTargetMatches
+          then [targets]
+          else onlyPathMatches <> onlyTargetMatches
 
   onlyMatches <- NE.nonEmpty allOnlyMatches
   let onlyFilteredTargets = sconcat onlyMatches
   excludeTargetMatches <- NE.nonEmpty $ case targetsExclude <$> targetFilters of
-        Nothing -> [onlyFilteredTargets]
-        Just [] -> [onlyFilteredTargets]
-        Just filters -> mapMaybe (\one -> applyTargetFilter one tool dir onlyFilteredTargets False) filters
+    Nothing -> [onlyFilteredTargets]
+    Just [] -> [onlyFilteredTargets]
+    Just filters -> mapMaybe (\one -> applyTargetFilter one tool dir onlyFilteredTargets False) filters
 
   let remainingTargets = sconcat excludeTargetMatches
   excludePathMatches <- NE.nonEmpty $ case pathsExclude <$> pathFilters of
-        Nothing -> [remainingTargets]
-        Just [] -> [remainingTargets]
-        Just filters -> mapMaybe (\one -> applyPathFilter one dir remainingTargets False) filters
+    Nothing -> [remainingTargets]
+    Just [] -> [remainingTargets]
+    Just filters -> mapMaybe (\one -> applyPathFilter one dir remainingTargets False) filters
 
   pure (sconcat excludePathMatches)
 applyFiltersNew (CombinedFilters legacyFilters _ _) tool dir targets = applyFilters legacyFilters tool dir targets

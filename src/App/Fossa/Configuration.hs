@@ -84,7 +84,7 @@ data ConfigTarget = ConfigTarget
     gradle@./::test-benchmark -> ExactFilter
 
   The majority of build targets consist of a strategy type and a directory.
-  However, many Gradle targets consist of a strategy type, a directory, 
+  However, many Gradle targets consist of a strategy type, a directory,
   and an exact gradle target.
 -}
 data NewBuildTargetFilter
