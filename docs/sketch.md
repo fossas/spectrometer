@@ -85,9 +85,11 @@ Topics:
     - How strategies can be specified in configuration
     - How the strategies actually work
       - Running a strategy yourself
+      - Strategy limitations
     - Verifying that you got the right answer
     - How to configure private dependencies
     - Common issues when debugging
+    - Alternative strategies we haven't implemented yet (and whether we plan to, or their limitations)
   - Glossary
 
 # FOSSA CLI
