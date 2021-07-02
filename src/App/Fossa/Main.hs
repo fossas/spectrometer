@@ -102,7 +102,10 @@ appMain = do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
-          combinedFilters = CombinedFilters analyzeBuildTargetFilters (fileConfig >>= configTargets) (fileConfig >>= configPaths)
+          combinedFilters = if null analyzeOnlyTargets && null analyzeExcludeTargets && null analyzeOnlyPaths && null analyzeExcludePaths 
+                            then CombinedFilters analyzeBuildTargetFilters (fileConfig >>= configTargets) (fileConfig >>= configPaths)
+                            else CombinedFilters analyzeBuildTargetFilters (Just $ ConfigTargets analyzeOnlyTargets analyzeExcludeTargets) (Just $ ConfigPaths analyzeOnlyPaths analyzeExcludePaths)
+
           doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
 
       if analyzeOutput
@@ -296,6 +299,10 @@ analyzeOpts =
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
+    <*> many (option (eitherReader targetOpt) (long "only-target" <> help "Only scan these targets. See targets.only in the fossa.yml spec." <> metavar "PATH"))
+    <*> many (option (eitherReader targetOpt) (long "exclude-target" <> help "Exclude these targets from scanning. See targets.exclude in the fossa.yml spec." <> metavar "PATH"))
+    <*> many (option (eitherReader pathOpt) (long "only-path" <> help "Only scan these paths. See paths.only in the fossa.yml spec." <> metavar "PATH"))
+    <*> many (option (eitherReader pathOpt) (long "exclude-path" <> help "Exclude these paths from scanning. See paths.exclude in the fossa.yml spec." <> metavar "PATH"))
     <*> vsiAnalyzeOpt
     <*> monorepoOpts
     <*> analyzeReplayOpt
@@ -322,6 +329,12 @@ monorepoOpts :: Parser MonorepoAnalysisOpts
 monorepoOpts =
   MonorepoAnalysisOpts
     <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
+
+pathOpt :: String -> Either String (Path Rel Dir)
+pathOpt = first errorBundlePretty . runParser pathRelDirParser "stdin" . T.pack
+
+targetOpt :: String -> Either String ConfigTarget
+targetOpt = first errorBundlePretty . runParser configTargetParser  "stdin" . T.pack
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -546,6 +559,10 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
   , analyzeBuildTargetFilters :: [BuildTargetFilter]
+  , analyzeOnlyTargets :: [ConfigTarget]
+  , analyzeExcludeTargets :: [ConfigTarget]
+  , analyzeOnlyPaths :: [Path Rel Dir]
+  , analyzeExcludePaths :: [Path Rel Dir]
   , analyzeVSIMode :: VSIAnalysisMode
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeRecordMode :: RecordMode

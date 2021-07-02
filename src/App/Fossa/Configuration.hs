@@ -5,6 +5,9 @@ module App.Fossa.Configuration (
   mergeFileCmdMetadata,
   readConfigFileIO,
   readConfigFile,
+  targetParser,
+  pathRelDirParser,
+  configTargetParser,
   ConfigFile (..),
   ConfigProject (..),
   ConfigRevision (..),
@@ -20,6 +23,7 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Types (Parser)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Void (Void)
 import Effect.ReadFS
 import Path
@@ -146,19 +150,37 @@ targetParser :: MegaParser NewBuildTargetFilter
 targetParser = (try newTargetFilter <|> directoryFilter) <* eof
   where
     newTargetFilter =
-      ExactTargetFilter <$> path <* char ':' <*> target
+      ExactTargetFilter <$> pathRelDirParser <* char ':' <*> target
     directoryFilter =
-      DirectoryFilter <$> path
-
-    path :: MegaParser (Path Rel Dir)
-    path = do
-      filepath <- some (satisfy (/= ':'))
-      case parseRelDir filepath of
-        Left err -> fail (show err)
-        Right a -> pure a
+      DirectoryFilter <$> pathRelDirParser
 
     target :: MegaParser Text
     target = takeWhile1P Nothing (const True)
+
+pathRelDirParser :: MegaParser (Path Rel Dir)
+pathRelDirParser = do
+  filepath <- some (satisfy (/= ':'))
+  case parseRelDir filepath of
+    Left err -> fail (show err)
+    Right a -> pure a
+
+-- Parse mvn@test::target into a ConfigTarget
+-- Parse mvn@test
+-- Parse mvn
+configTargetParser :: MegaParser ConfigTarget
+configTargetParser = (try targetFilter <|> toolFilter) <* eof
+  where
+    targetFilter = do
+      tool <- buildtool
+      _ <- char '@'
+      ConfigTarget tool . Just <$> targetParser
+
+    toolFilter = do
+      tool <- buildtool
+      pure $ ConfigTarget tool Nothing
+
+    buildtool :: MegaParser Text
+    buildtool = T.pack <$> some alphaNumChar
 
 instance FromJSON ConfigPaths where
   parseJSON = withObject "ConfigPaths" $ \obj ->
