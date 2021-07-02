@@ -1,23 +1,45 @@
 File layout:
-- README.md
-- CONTRIBUTING.md
+- README.md // Leo
+- CONTRIBUTING.md // Leo (should be real quick, mostly points to developer docs)
 - docs/
   - .assets/
   - contributors/
+    - (Developer docs in here, move from devdocs/) // Engineers
   - reference/
-    - commands/
-    - strategies/
-  - guides/
-    - migrating-from-v1.md
-    - debugging-a-strategy.md
-    - integrating-into-ci.md
-  - concepts.md
+    - commands/ // Engineers
+      - (CLI command and flag references in here)
+      - `.fossa.yml` file reference
+      - `fossa-deps.json` file reference
+    - strategies/ // Engineers
+      - (Strategy references in here)
+  - guides/ (Some of these have duplicate info which is okay - guides are denormalized based on anticipated reader needs)
+    - migrating-from-v1.md // Engineers
+    - debugging-an-analysis.md // Leo
+      - General outline for how to debug a strategy
+        - Manually verifying that your build works
+        - Figuring out what targets are running and finding the docs for those targets
+        - "My analysis has extra stuff!"
+        - "My analysis is missing stuff!"
+      - Generating a bug report (making debug logs)
+    - configuring-an-analysis.md // Leo
+      - How to debug an analysis in general
+        - Filtering out extra analysis targets (e.g. build tools, test targets, etc.)
+        - Using `list-targets`
+      - Manually adding dependencies
+        - Vendored dependencies
+    - integrating-into-ci.md // Unsure
+    - adding-dependencies-manually.md
+      - fossa-deps
+      - Vendored dependencies
+  - concepts.md // Leo
     - FOSSA concepts
       - "Project"
       - "Dependency"
     - CLI concepts
       - "Strategy"
-  - user-guide.md
+      - "Tactic"
+  - user-guide.md // Leo
+  - faq.md // Zach
 
 README.md:
 - Intro
@@ -40,6 +62,7 @@ Topics:
     - Dependency
   - CLI
     - Strategy
+      - Strategy lookup table (language, system deps, monorepo tools, etc.)
   - Dependency resolution
     - Why are subgraphs not good enough?
     - Static vs. dynamic analysis
@@ -81,15 +104,18 @@ Topics:
     - Language concepts glossary
       - Examples: Python dependencies, what `go.sum` means, etc.
     - FOSSA concepts glossary
+      - What does "dependency" mean for this strategy?
     - How FOSSA discovers analysis targets for this strategy
-    - How strategies can be specified in configuration
-    - How the strategies actually work
-      - Running a strategy yourself
-      - Strategy limitations
-    - Verifying that you got the right answer
+    - How targets can be specified in configuration
+      - Target type and path format
+    - How the strategy actually works
+      - Running a strategy yourself manually (to verify that your build tool works)
+      - How this strategy falls back between tactics
+      - Limitations of each tactic
+    - Manually verifying that you got the right answer
     - How to configure private dependencies
     - Common issues when debugging
-    - Alternative strategies we haven't implemented yet (and whether we plan to, or their limitations)
+    - Alternative tactics we haven't implemented yet (and whether we plan to, or their limitations)
   - Glossary
 
 # FOSSA CLI
