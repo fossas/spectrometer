@@ -215,7 +215,7 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
     -- will always fail
     Nothing -> Just projectBuildTargets
-    Just rel -> applyFiltersNew filters projectType rel projectBuildTargets
+    Just rel -> applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
   ( Has (Lift IO) sig m

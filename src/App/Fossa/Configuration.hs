@@ -15,7 +15,7 @@ module App.Fossa.Configuration (
   ConfigTargets (..),
   ConfigPaths (..),
   ConfigTarget (..),
-  NewBuildTargetFilter (..),
+  BuildTargetFilter (..),
 ) where
 
 import App.Types
@@ -74,7 +74,7 @@ data ConfigTargets = ConfigTargets
 
 data ConfigTarget = ConfigTarget
   { targetType :: Text
-  , targetTarget :: Maybe NewBuildTargetFilter
+  , targetTarget :: Maybe BuildTargetFilter
   }
   deriving (Eq, Ord, Show)
 
@@ -87,7 +87,7 @@ data ConfigTarget = ConfigTarget
   However, many Gradle targets consist of a strategy type, a directory,
   and an exact gradle target.
 -}
-data NewBuildTargetFilter
+data BuildTargetFilter
   = DirectoryFilter (Path Rel Dir)
   | ExactTargetFilter (Path Rel Dir) Text
   deriving (Eq, Ord, Show)
@@ -140,13 +140,13 @@ instance FromJSON ConfigTarget where
       <*> (obj .:? "target" >>= filterParser)
 
 type MegaParser = Parsec Void Text
-filterParser :: Maybe Text -> Parser (Maybe NewBuildTargetFilter)
+filterParser :: Maybe Text -> Parser (Maybe BuildTargetFilter)
 filterParser Nothing = pure Nothing
 filterParser (Just input) = case runParser targetParser "" input of
   Left bundle -> fail (errorBundlePretty bundle)
   Right value -> pure $ Just value
 
-targetParser :: MegaParser NewBuildTargetFilter
+targetParser :: MegaParser BuildTargetFilter
 targetParser = (try newTargetFilter <|> directoryFilter) <* eof
   where
     newTargetFilter =

@@ -33,7 +33,7 @@ import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Discovery.Filters (BuildTargetFilter (..), CombinedFilters (CombinedFilters), filterParser)
+import Discovery.Filters (BuildTargetFilterOld (..), CombinedFilters (CombinedFilters), filterParser)
 import Effect.Logger
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Options.Applicative
@@ -326,10 +326,10 @@ analyzeReplayOpt =
     <|> (RecordModeReplay <$> strOption (long "replay" <> hidden))
     <|> pure RecordModeNone
 
-filterOpt :: Parser BuildTargetFilter
+filterOpt :: Parser BuildTargetFilterOld
 filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
   where
-    parseFilter :: String -> Either String BuildTargetFilter
+    parseFilter :: String -> Either String BuildTargetFilterOld
     parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack
 
 monorepoOpts :: Parser MonorepoAnalysisOpts
@@ -565,7 +565,7 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
-  , analyzeBuildTargetFilters :: [BuildTargetFilter]
+  , analyzeBuildTargetFilters :: [BuildTargetFilterOld]
   , analyzeOnlyTargets :: [ConfigTarget]
   , analyzeExcludeTargets :: [ConfigTarget]
   , analyzeOnlyPaths :: [Path Rel Dir]
