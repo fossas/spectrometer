@@ -49,8 +49,8 @@ logDiagnostic diag = do
     Right success -> pure $ Just success
 
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
--- | Exits with non-zero if the result is a failure.
--- | Useful for setting up diagnostics from CLI entry points.
+-- Exits with zero if the result is a success, or non-zero if the result is a failure.
+-- Useful for setting up diagnostics from CLI entry points.
 logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
 logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) (const (sendIO exitSuccess))
 
