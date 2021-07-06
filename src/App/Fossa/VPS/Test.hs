@@ -37,7 +37,7 @@ testMain ::
   OverrideProject ->
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  _ <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
+  result <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
     logWithExit_ . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
@@ -73,5 +73,8 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
 
   -- we call exitSuccess/exitFailure in each branch above. the only way we get
   -- here is if we time out
-  hPutStrLn stderr "Timed out while waiting for issues scan"
-  exitFailure
+  case result of
+    Nothing -> pure ()
+    _ -> do
+      hPutStrLn stderr "Timed out while waiting for issues scan"
+      exitFailure

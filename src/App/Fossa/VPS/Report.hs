@@ -51,7 +51,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
+  result <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
     logWithExit_ . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
@@ -76,5 +76,8 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
 
       logStdout . decodeUtf8 $ Aeson.encode jsonValue
 
-  hPutStrLn stderr "Timed out while waiting for build/issues scan"
-  exitFailure
+  case result of 
+    Nothing -> pure ()
+    _ -> do
+      hPutStrLn stderr "Timed out while waiting for build/issues scan"
+      exitFailure
