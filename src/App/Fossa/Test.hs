@@ -10,7 +10,6 @@ import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
-import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
@@ -67,7 +66,7 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
   -- we call exitSuccess/exitFailure in each branch above. the only way we get
   -- here is if we time out
   case result of 
-    Nothing -> pure ()
-    _ -> do
+    Just _ -> pure ()
+    Nothing -> do
       hPutStrLn stderr "Timed out while waiting for issues scan"
       exitFailure

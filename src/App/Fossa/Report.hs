@@ -10,7 +10,6 @@ import App.Types
 import Control.Carrier.Diagnostics
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Data.Aeson qualified as Aeson
-import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
@@ -73,8 +72,8 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
 
       logStdout . decodeUtf8 $ Aeson.encode jsonValue
 
-  case result of
-    Nothing -> pure ()
-    _ -> do
+  case result of 
+    Just _ -> pure ()
+    Nothing -> do
       hPutStrLn stderr "Timed out while waiting for build/issues scan"
       exitFailure

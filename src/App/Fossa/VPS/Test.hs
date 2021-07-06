@@ -73,8 +73,8 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
 
   -- we call exitSuccess/exitFailure in each branch above. the only way we get
   -- here is if we time out
-  case result of
-    Nothing -> pure ()
-    _ -> do
+  case result of 
+    Just _ -> pure ()
+    Nothing -> do
       hPutStrLn stderr "Timed out while waiting for issues scan"
       exitFailure
