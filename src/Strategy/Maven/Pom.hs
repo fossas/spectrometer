@@ -115,13 +115,22 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
         addDep (group, artifact) body = do
-          let interpolatedVersion = classify . interpolateProperties completePom <$> depVersion body
+          let interpolatedGroup :: Group
+              interpolatedGroup = interpolateProperties completePom group
+
+              interpolatedArtifact :: Artifact
+              interpolatedArtifact = interpolateProperties completePom artifact
+
+              interpolatedVersion :: Maybe Text
+              interpolatedVersion = classify . interpolateProperties completePom <$> depVersion body
+
               -- maven classifiers are appended to the end of versions, e.g., 3.0.0 with a classifier
               -- of "sources" would result in "3.0.0-sources"
+              classify :: Version -> Version
               classify version = case depClassifier body of
                 Nothing -> version
                 Just classifier -> version <> "-" <> classifier
-              depPackage = MavenPackage group artifact interpolatedVersion
+              depPackage = MavenPackage interpolatedGroup interpolatedArtifact interpolatedVersion
 
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)
