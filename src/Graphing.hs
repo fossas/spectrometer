@@ -22,6 +22,7 @@ module Graphing (
   filter,
   pruneUnreachable,
   stripRoot,
+  promoteToDirect,
 
   -- * Building simple Graphings
   fromAdjacencyMap,
@@ -118,6 +119,18 @@ direct dep gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
   where
     direct' = S.insert dep (graphingDirect gr)
     adjacent' = AM.overlay (AM.vertex dep) (graphingAdjacent gr)
+
+-- | Promotes dependency as a direct dependency on `Graphing` based on filter function
+promoteToDirect :: Ord ty => (ty -> Bool) -> Graphing ty -> Graphing ty
+promoteToDirect ff gr = gr{graphingDirect = direct', graphingAdjacent = graphingAdjacent gr}
+  where
+    direct' = foldr S.insert (graphingDirect gr) allApplicableVertices
+      where
+        allApplicableVertices = preludeFilter ff $ AM.vertexList (graphingAdjacent gr)
+        preludeFilter _pred [] = []
+        preludeFilter p (x : xs)
+          | p x = x : preludeFilter p xs
+          | otherwise = preludeFilter p xs
 
 -- | Add an edge between two nodes in this Graphing
 edge :: Ord ty => ty -> ty -> Graphing ty -> Graphing ty

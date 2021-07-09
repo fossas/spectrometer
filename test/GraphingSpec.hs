@@ -17,3 +17,11 @@ spec = do
       expectDirect [10] graph
       expectDeps [10, 8, 6, 4, 2, 0] graph
       expectEdges [(10, 8), (8, 6), (6, 4), (4, 2), (2, 0)] graph
+
+  describe "promoteToDirect" $ do
+    it "should promote nodes to direct" $ do
+      let graph :: Graphing Int
+          graph = Graphing.promoteToDirect (< 5) (unfold [10] (\x -> if x > 0 then [x -2] else []) id)
+      expectDirect [0, 2, 4, 10] graph
+      expectDeps [10, 8, 6, 4, 2, 0] graph
+      expectEdges [(10, 8), (8, 6), (6, 4), (4, 2), (2, 0)] graph

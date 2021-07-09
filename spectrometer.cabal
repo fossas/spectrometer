@@ -94,6 +94,7 @@ common deps
     , optparse-applicative         >=0.15     && <0.17
     , path                         ^>=0.8
     , path-io                      ^>=1.6.0
+    , parser-combinators           ^>=1.3
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , req                          >=3.7      && <3.8
@@ -254,6 +255,9 @@ library
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
+    Strategy.Python.Poetry.Common
+    Strategy.Python.Poetry.PyProject
+    Strategy.Python.Poetry.PoetryLock
     Strategy.Python.Pipenv
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
@@ -341,6 +345,8 @@ test-suite unit-tests
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
     Python.PipenvSpec
+    Python.Poetry.PyProjectSpec
+    Python.Poetry.PoetryLockSpec
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
