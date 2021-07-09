@@ -2,7 +2,7 @@
 
 The fossa configuration file, `.fossa.yml`, is an optional file located at the root of a project that can be used to configure project settings. 
 
-The following example is a configuration file with all available fields filled out. All fields except for `version` are optional. Configuration file versions 1 and 2 were used for CLI versions prior to 2.0.0.
+The following example is a configuration file with all available fields filled displayed. All fields except for `version` are optional, configuration file versions 1 and 2 were used for CLI versions prior to 2.0.0.
 
 
 ```yaml
@@ -42,7 +42,7 @@ Default: `https://app.fossa.com`
 ### `apiKey:`
 Sets the [FOSSA API key](https://docs.fossa.com/docs/api-reference#api-tokens) that is required for accessing the FOSSA API and uploading data (e.g. `fossa analyze`) or retrieving information (e.g. `fossa test`) about a project.
 
-> Note: FOSSA strongly recommends setting the API key as an environment variable and NOT in the configuration file for security purposes.
+> Note: FOSSA strongly recommends setting the API key with the `$FOSSA_API_KEY` environment variable and NOT in the configuration file for security purposes.
 
 ### `project:`
 The project fields allow you to configure settings for the project you are interacting with through the FOSSA API.
@@ -52,7 +52,10 @@ The project fields allow you to configure settings for the project you are inter
 #### `id:`
 The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting.
 
-By default, the CLI will look for a `.git/config` file and set the ID to the project's remote "origin" url. We will also attempt to run `svn info` if your project is using Apache Subversion. If your project is not using any VCS (Version control system), the ID will be set to the name of the project's directory.
+Default: 
+- Git: The CLI will look for a `.git/config` file and set the ID to the project's remote "origin" url. 
+- SVN: The CLI will run `svn info` and use the "Repository Root".
+- No VCS (Version control system): The ID will be set to the name of the project's directory.
 
 > Note: A project's ID cannot be modified after a project is created. If you change the ID, you will be interacting with a different project. If the new ID does not exist, a new project will be created for it.
 
@@ -83,12 +86,20 @@ If you choose to associate a project with a release group, you **must** supply b
 The revision fields are used to help FOSSA differentiate between one upload for a project and another, just as GitHub uses commit hashes and branch names.
 
 #### `commit:`
-The revision is used to identify a specific scan for a project (determined by project.id). This is intended to be used identically to how Git treats commit hashes. 
+The commit is used to identify a specific scan for a project (determined by project.id). This is intended to be used identically to how Git treats commit hashes. 
 
-By default, the CLI will parse the current HEAD state in the `.git` directory and use the commit hash of the HEAD branch. For SVN, we will run `svn info` and gather a revision. If no VCS exists, we will set the revision to the current unix timestamp.
+Default: 
+- Git: the CLI will parse the current HEAD state in the `.git` directory and use the commit hash of the HEAD branch
+- SVN: The CLI will run `svn info` and use the "Revision".
+- No VCS: The commit will be set to the unix timestamp.
 
 #### `branch:`
-The project branch is an optional setting used for organizing project revisions in the FOSSA UI. The branch field intended to function similar to how Git defines a branch. By default, the CLI attempts to find the projects current branch from the `.git/config` file.
+The project branch is an optional setting used for organizing project revisions in the FOSSA UI. The branch field is intended to function similar to how Git defines a branch.
+
+Default: 
+- Git: the CLI will attempt to find the project's current branch from the `.git/config` file.
+- SVN: The CLI will run `svn info` and compare the "URL" and "Repository Root" fields in an attempt to determine a branch.
+- No VCS: The CLI will leave the branch field empty.
 
 ## FAQ
 
