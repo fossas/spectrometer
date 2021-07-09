@@ -5,6 +5,7 @@ module Discovery.FiltersSpec (
 ) where
 
 import App.Fossa.Configuration
+import Data.Foldable (traverse_)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Discovery.Filters
@@ -12,7 +13,7 @@ import Path
 import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
-import Types (BuildTarget (..))
+import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets))
 
 spec :: Spec
 spec = do
@@ -148,3 +149,107 @@ spec = do
 
       it "should include target 2 in directory foo/bar" $ do
         applyFilters testFilters "mvn" $(mkRelDir "foo/bar") (S.fromList [BuildTarget "1", BuildTarget "2"]) `shouldBe` Just (S.fromList [BuildTarget "2"])
+
+    -- Include a whole directory
+    -- Include only a sub directory
+    -- Exclude a whole directory
+    -- Exclude a sub directory
+    -- Exclude a target in a sub directory
+    -- Conflict between only target and only directory
+    -- Exclude sub directory of only directory
+    -- Exclude target in only directory
+    {-
+      Directory Structure
+      /foo
+       mvn:[]
+       gradle:[foo, bar]
+       /bar
+        mvn:[]
+        gradle:[foo, bar]
+        /baz
+         mvn:[]
+      /quux
+        mvn:[]
+
+    -}
+    describe "Comb filters" $ do
+      let mvnFoo = ("mvn", $(mkRelDir "foo"), ProjectWithoutTargets)
+          gradleFoo = ("gradle", $(mkRelDir "foo"), FoundTargets (S.fromList [BuildTarget "foo", BuildTarget "bar"]))
+          mvnFooBar = ("mvn", $(mkRelDir "foo/bar"), ProjectWithoutTargets)
+          gradleFooBar = ("gradle", $(mkRelDir "foo/bar"), FoundTargets (S.fromList [BuildTarget "foo", BuildTarget "bar"]))
+          mvnFooBarBaz = ("mvn", $(mkRelDir "foo/bar/baz"), ProjectWithoutTargets)
+          mvnQuux = ("mvn", $(mkRelDir "quux"), ProjectWithoutTargets)
+
+      it "includes an entire directory" $ do
+        let include =
+              Comb
+                { combTargets = []
+                , combPaths = [$(mkRelDir "quux")]
+                }
+            exclude =
+              Comb
+                { combTargets = []
+                , combPaths = []
+                }
+
+        testHarness
+          include
+          exclude
+          [ (mvnFoo, MatchNone)
+          , (gradleFoo, MatchNone)
+          , (mvnFooBar, MatchNone)
+          , (gradleFooBar, MatchNone)
+          , (mvnFooBarBaz, MatchNone)
+          , (mvnQuux, MatchAll)
+          ]
+
+      it "includes a subdirectory" $ do
+        let include =
+              Comb
+                { combTargets = []
+                , combPaths = [$(mkRelDir "foo/bar")]
+                }
+            exclude =
+              Comb
+                { combTargets = []
+                , combPaths = []
+                }
+
+        testHarness
+          include
+          exclude
+          [ (mvnFoo, MatchNone)
+          , (gradleFoo, MatchNone)
+          , (mvnFooBar, MatchAll)
+          , (gradleFooBar, MatchAll)
+          , (mvnFooBarBaz, MatchAll)
+          , (mvnQuux, MatchNone)
+          ]
+
+      it "excludes a directory" $ do
+        let include =
+              Comb
+                { combTargets = []
+                , combPaths = []
+                }
+            exclude =
+              Comb
+                { combTargets = []
+                , combPaths = [$(mkRelDir "foo")]
+                }
+
+        testHarness
+          include
+          exclude
+          [ (mvnFoo, MatchNone)
+          , (gradleFoo, MatchNone)
+          , (mvnFooBar, MatchNone)
+          , (gradleFooBar, MatchNone)
+          , (mvnFooBarBaz, MatchNone)
+          , (mvnQuux, MatchAll)
+          ]
+
+testHarness :: Comb -> Comb -> [((T.Text, Path Rel Dir, FoundTargets), Determination)] -> Expectation
+testHarness include exclude = traverse_ testSingle
+  where
+    testSingle ((buildtool, dir, targets), expected) = apply include exclude buildtool dir targets `shouldBe` expected

@@ -2,6 +2,7 @@
 
 module Types (
   DiscoveredProject (..),
+  FoundTargets (..),
   BuildTarget (..),
   LicenseResult (..),
   License (..),
@@ -18,13 +19,23 @@ import Path
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
 
+-- TODO: NonEmptySet
+data FoundTargets = ProjectWithoutTargets | FoundTargets (Set BuildTarget)
+
+instance Semigroup FoundTargets where
+  (<>) = undefined
+
+instance Monoid FoundTargets where
+  mempty = ProjectWithoutTargets
+
 -- | A project found during project discovery, parameterized by the monad
 -- used to perform dependency analysis
 data DiscoveredProject m = DiscoveredProject
   { projectType :: Text
   , projectPath :: Path Abs Dir
-  , projectBuildTargets :: Set BuildTarget
+  , projectBuildTargets :: FoundTargets
   , projectDependencyGraph :: Set BuildTarget -> m (Graphing Dependency)
+  -- , projectDependencyGraph :: Determination -> m (Graphing Dependency)
   , projectLicenses :: m [LicenseResult]
   }
 

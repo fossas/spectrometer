@@ -158,7 +158,7 @@ mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => Gra
 mkProject project =
   DiscoveredProject
     { projectType = "gradle"
-    , projectBuildTargets = S.map BuildTarget $ gradleProjects project
+    , projectBuildTargets = FoundTargets $ S.map BuildTarget $ gradleProjects project
     , projectDependencyGraph = getDeps project
     , projectPath = gradleDir project
     , projectLicenses = pure []

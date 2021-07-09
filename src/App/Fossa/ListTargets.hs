@@ -47,14 +47,15 @@ listTargetsMain (BaseDir basedir) = do
                 <> "@"
                 <> pretty (toFilePath rel)
 
-            for_ (projectBuildTargets project) $ \target -> do
-              logInfo $
-                "Found target: "
-                  <> pretty (projectType project)
-                  <> "@"
-                  <> pretty (toFilePath rel)
-                  <> ":"
-                  <> pretty (unBuildTarget target)
+            -- FIXME
+            --for_ (projectBuildTargets project) $ \target -> do
+              --logInfo $
+                --"Found target: "
+                  -- <> pretty (projectType project)
+                  -- <> "@"
+                  -- <> pretty (toFilePath rel)
+                  -- <> ":"
+                  -- <> pretty (unBuildTarget target)
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =

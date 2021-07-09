@@ -7,9 +7,14 @@ module Discovery.Filters (
   applyFilter,
   applyFiltersOld,
   applyFilters,
+  TargetTest (..),
+  Comb (..),
+  Determination (..),
+  apply,
 ) where
 
 import App.Fossa.Configuration
+import Data.List (intersect, (\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Semigroup (sconcat)
@@ -18,6 +23,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void (Void)
+import Path
 import Path (Dir, Path, Rel, isProperPrefixOf, parseRelDir)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
@@ -27,7 +33,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char
-import Types (BuildTarget (..))
+import Types (BuildTarget (..), FoundTargets (..))
 
 data CombinedFilters = CombinedFilters
   { legacyFilters :: [BuildTargetFilterOld]
@@ -44,6 +50,152 @@ data BuildTargetFilterOld
     TargetFilter Text (Path Rel Dir) BuildTarget
   deriving (Eq, Ord, Show)
 
+-- two filters:
+-- path-only: dir
+-- buildtarget-only: mvn@foo
+--
+-- project: mvn@foo
+--
+--
+-- concerns:
+-- 1. what about analyzers that always produce an empty set of build targets?
+-- 2. flattening the TargetFilter type (TargetTest)
+-- 3. in an ideal world, what would our filter type be?
+-- 4. how do path filters interact with buildtarget filters?
+-- 5. legacy filters, when present, are the only ones that matter? why?
+-- 6. warning that config file filters are getting ignored
+--
+-- future work to ticket:
+-- - skip directories if filters will never match
+-- - skip analyzers if filters will never match
+--
+-- buildtarget-paths and paths-filters get unioned
+--
+-- to look at:
+-- - command line parser for include/excludes
+--
+-- config file, bunch of filters
+-- --filter mvn@.
+--
+-- getting determination values from the target-only, path-only, target-exclude, path-exclude
+
+data TargetTest = TypeTarget Text | TypeDirTarget Text (Path Rel Dir) | TypeDirTargetTarget Text (Path Rel Dir) BuildTarget
+
+data Comb = Comb
+  { combTargets :: [TargetTest]
+  , combPaths :: [Path Rel Dir]
+  }
+
+combIsEmpty :: Comb -> Bool
+combIsEmpty (Comb [] []) = True
+combIsEmpty _ = False
+
+-- (buildtargetfilters-only `union` pathfilters-only)
+--   `subtract` (buildtargetfilters-exclude `union` pathfilters-exclude)
+apply :: Comb -> Comb -> Text -> Path Rel Dir -> FoundTargets -> Determination
+apply include exclude buildtool dir targets =
+  dSubtract
+    targets
+    (if not (combIsEmpty include) then applyComb include buildtool dir else MatchAll)
+    (applyComb exclude buildtool dir)
+
+applyComb :: Comb -> Text -> Path Rel Dir -> Determination
+applyComb comb buildtool dir =
+  foldMap (\t -> applyTarget t buildtool dir) (combTargets comb)
+    <> foldMap (`applyPath` dir) (combPaths comb)
+
+-- mvn@foo:bar
+
+-- mvn@foo ProjectWithoutTargets -> MatchNone
+--
+-- mvn@foo (FoundTargets xs) -> bar `elem` xs -> MatchSome [bar] otherwise MatchNone
+applyTarget :: TargetTest -> Text -> Path Rel Dir -> Determination
+applyTarget (TypeTarget t) u _ = if t == u then MatchAll else MatchNone
+applyTarget (TypeDirTarget t p) u q = if t == u && p == q then MatchAll else MatchNone
+applyTarget (TypeDirTargetTarget t p target) u q = if t == u && p == q then MatchSome (target NE.:| []) else MatchNone
+
+{-
+applyTarget TypeDirTargetTarget{} _ _ ProjectWithoutTargets = MatchNone
+applyTarget (TypeDirTargetTarget t p target) u q (FoundTargets targets) =
+  if t == u && p == q && S.member target targets
+    then MatchSome (target NE.:| [])
+    else MatchNone
+-}
+
+-- TODO: argument order docs
+applyPath :: Path Rel Dir -> Path Rel Dir -> Determination
+applyPath t u = if isProperPrefixOf t u || t == u then MatchAll else MatchNone
+
+-- MatchNone <> MatchAll = MatchAll is the reason for this order
+instance Semigroup Determination where
+  MatchNone <> t = t
+  t <> MatchNone = t
+  t <> MatchAll = t -- TODO: contentious: should MatchAll override MatchSome?
+  MatchAll <> t = t
+  MatchSome ts <> MatchSome us = MatchSome (ts <> us)
+
+-- only-target: mvn@foo:bar
+-- only-target: mvn@foo
+-- only-path: foo
+-- exclude-target: mvn@foo:baz
+--
+-- my-project: mvn@foo ["bar","baz",15 other targets]
+--
+-- -> MatchAll?
+-- -> MatchSome ["bar"]?
+
+-- only-path: bar
+-- only-target: mvn@bar/foo:baz
+--
+-- my-project: mvn@bar ["quux"] -> MatchAll
+-- my-project: mvn@bar/foo ["baz", "bar", 15 others] -> MatchSome baz
+-- my-project: mvn@bar/baz ["baz", "bar", 15 others] -> MatchAll
+-- my-project: setuptools@bar/foo [] -> MatchAll
+
+instance Monoid Determination where
+  mempty = MatchNone
+
+res =
+  applyTarget
+    (TypeDirTargetTarget "mvn" $(mkRelDir "foo") (BuildTarget "baz"))
+    "mvn"
+    $(mkRelDir "foo")
+res2 =
+  applyTarget
+    (TypeDirTargetTarget "mvn" $(mkRelDir "foo") (BuildTarget "bar"))
+    "mvn"
+    $(mkRelDir "foo")
+res3 =
+  applyTarget
+    (TypeTarget "mvn")
+    "mvn"
+    $(mkRelDir "foo")
+
+-- newtype BuildTarget = BuildTarget String
+-- TODO: NonEmptySet?
+data Determination = MatchNone | MatchAll | MatchSome (NE.NonEmpty BuildTarget)
+  deriving (Eq, Ord, Show)
+
+-- TODO: there are some cases that we'd like to produce warnings
+-- TODO: describe argument order; determination "include" and determination "exclude"
+dSubtract :: FoundTargets -> Determination -> Determination -> Determination
+dSubtract _ _ MatchAll = MatchNone
+dSubtract _ MatchNone _ = MatchNone
+dSubtract _ MatchAll MatchNone = MatchAll
+dSubtract ProjectWithoutTargets MatchAll (MatchSome _) = MatchNone -- TODO: warn user about invalid filter
+dSubtract (FoundTargets targets) MatchAll (MatchSome xs) =
+  case NE.nonEmpty (S.toList targets \\ NE.toList xs) of
+    Nothing -> MatchNone
+    Just zs -> MatchSome zs
+dSubtract _ (MatchSome xs) MatchNone = MatchSome xs
+-- TODO: some targets might not be valid
+dSubtract _ (MatchSome xs) (MatchSome ys) =
+  case NE.nonEmpty (NE.toList xs \\ NE.toList ys) of
+    Nothing -> MatchNone
+    Just zs -> MatchSome zs
+
+-- analyzer: returns empty set of build targets
+
 {-
 Target Filtering Workflow
 1. If any legacy filters exist, apply them and skip the rest of the filtering logic.
@@ -56,7 +208,8 @@ Target Filtering Workflow
 applyFilters :: CombinedFilters -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
 applyFilters (CombinedFilters [] Nothing Nothing) _ _ targets = Just targets
 applyFilters (CombinedFilters [] targetFilters pathFilters) tool dir targets = do
-  let onlyTargetMatches = do
+  let onlyTargetMatches :: Maybe [Set BuildTarget]
+      onlyTargetMatches = do
         filters <- targetsOnly <$> targetFilters
         _ <- NE.nonEmpty filters
         Just $ mapMaybe (\one -> applyTargetFilter one tool dir targets) filters
@@ -67,6 +220,8 @@ applyFilters (CombinedFilters [] targetFilters pathFilters) tool dir targets = d
         Just $ mapMaybe (\one -> applyPathFilter one dir targets) filters
 
   matchesOnly <- validateOnlyTargets onlyTargetMatches onlyPathMatches targets
+  -- [S.empty]
+  -- -> S.empty
   allOnlyMatches <- checkEmptySet $ foldl S.union S.empty matchesOnly
 
   let excludeTargetMatches = fromMaybe allOnlyMatches $ do

@@ -214,8 +214,11 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     -- FIXME: this is required for --unpack-archives to continue to work.
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
     -- will always fail
-    Nothing -> Just projectBuildTargets
-    Just rel -> applyFilters filters projectType rel projectBuildTargets
+    -- FIXME
+    Nothing -> undefined
+    _ -> undefined
+    --Nothing -> Just projectBuildTargets
+    --Just rel -> applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
   ( Has (Lift IO) sig m
