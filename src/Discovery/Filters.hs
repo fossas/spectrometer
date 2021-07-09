@@ -86,23 +86,25 @@ data Comb = Comb
   , combPaths :: [Path Rel Dir]
   }
 
-combIsEmpty :: Comb -> Bool
-combIsEmpty (Comb [] []) = True
-combIsEmpty _ = False
-
 -- (buildtargetfilters-only `union` pathfilters-only)
 --   `subtract` (buildtargetfilters-exclude `union` pathfilters-exclude)
 apply :: Comb -> Comb -> Text -> Path Rel Dir -> FoundTargets -> Determination
 apply include exclude buildtool dir targets =
   dSubtract
     targets
-    (if not (combIsEmpty include) then applyComb include buildtool dir else MatchAll)
-    (applyComb exclude buildtool dir)
+    (fromMaybe MatchAll (applyComb include buildtool dir))
+    (fromMaybe MatchNone (applyComb exclude buildtool dir))
 
-applyComb :: Comb -> Text -> Path Rel Dir -> Determination
+-- Nothing = "Unknown" -- i.e., there were no filters
+applyComb :: Comb -> Text -> Path Rel Dir -> Maybe Determination
 applyComb comb buildtool dir =
-  foldMap (\t -> applyTarget t buildtool dir) (combTargets comb)
-    <> foldMap (`applyPath` dir) (combPaths comb)
+  buildTargetFiltersResult <> pathFiltersResult
+  where
+    buildTargetFiltersResult :: Maybe Determination
+    buildTargetFiltersResult = foldMap' (\t -> applyTarget t buildtool dir) (combTargets comb)
+
+    pathFiltersResult :: Maybe Determination
+    pathFiltersResult = foldMap' (`applyPath` dir) (combPaths comb)
 
 -- mvn@foo:bar
 
@@ -114,15 +116,8 @@ applyTarget (TypeTarget t) u _ = if t == u then MatchAll else MatchNone
 applyTarget (TypeDirTarget t p) u q = if t == u && p == q then MatchAll else MatchNone
 applyTarget (TypeDirTargetTarget t p target) u q = if t == u && p == q then MatchSome (target NE.:| []) else MatchNone
 
-{-
-applyTarget TypeDirTargetTarget{} _ _ ProjectWithoutTargets = MatchNone
-applyTarget (TypeDirTargetTarget t p target) u q (FoundTargets targets) =
-  if t == u && p == q && S.member target targets
-    then MatchSome (target NE.:| [])
-    else MatchNone
--}
-
 -- TODO: argument order docs
+-- (parent path) (child path)
 applyPath :: Path Rel Dir -> Path Rel Dir -> Determination
 applyPath t u = if isProperPrefixOf t u || t == u then MatchAll else MatchNone
 
@@ -133,6 +128,9 @@ instance Semigroup Determination where
   t <> MatchAll = t -- TODO: contentious: should MatchAll override MatchSome?
   MatchAll <> t = t
   MatchSome ts <> MatchSome us = MatchSome (ts <> us)
+
+foldMap' :: Semigroup s => (a -> s) -> [a] -> Maybe s
+foldMap' f xs = sconcat <$> NE.nonEmpty (map f xs)
 
 -- only-target: mvn@foo:bar
 -- only-target: mvn@foo
@@ -152,24 +150,8 @@ instance Semigroup Determination where
 -- my-project: mvn@bar/baz ["baz", "bar", 15 others] -> MatchAll
 -- my-project: setuptools@bar/foo [] -> MatchAll
 
-instance Monoid Determination where
-  mempty = MatchNone
-
-res =
-  applyTarget
-    (TypeDirTargetTarget "mvn" $(mkRelDir "foo") (BuildTarget "baz"))
-    "mvn"
-    $(mkRelDir "foo")
-res2 =
-  applyTarget
-    (TypeDirTargetTarget "mvn" $(mkRelDir "foo") (BuildTarget "bar"))
-    "mvn"
-    $(mkRelDir "foo")
-res3 =
-  applyTarget
-    (TypeTarget "mvn")
-    "mvn"
-    $(mkRelDir "foo")
+--instance Monoid Determination where
+--mempty = MatchNone
 
 -- newtype BuildTarget = BuildTarget String
 -- TODO: NonEmptySet?

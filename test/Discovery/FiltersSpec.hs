@@ -14,6 +14,7 @@ import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
 import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets))
+import qualified Data.List.NonEmpty as NE
 
 spec :: Spec
 spec = do
@@ -150,12 +151,15 @@ spec = do
       it "should include target 2 in directory foo/bar" $ do
         applyFilters testFilters "mvn" $(mkRelDir "foo/bar") (S.fromList [BuildTarget "1", BuildTarget "2"]) `shouldBe` Just (S.fromList [BuildTarget "2"])
 
+-- target-only: gradle@foo:foo
+-- path-only: foo
+
     -- Include a whole directory
     -- Include only a sub directory
     -- Exclude a whole directory
     -- Exclude a sub directory
     -- Exclude a target in a sub directory
-    -- Conflict between only target and only directory
+    -- Conflict between only target and only directory -- come back to this
     -- Exclude sub directory of only directory
     -- Exclude target in only directory
     {-
@@ -247,6 +251,121 @@ spec = do
           , (gradleFooBar, MatchNone)
           , (mvnFooBarBaz, MatchNone)
           , (mvnQuux, MatchAll)
+          ]
+
+      it "excludes a subdirectory" $ do
+        let include =
+              Comb
+                { combTargets = []
+                , combPaths = []
+                }
+            exclude =
+              Comb
+                { combTargets = []
+                , combPaths = [$(mkRelDir "foo/bar")]
+                }
+
+        testHarness
+          include
+          exclude
+          [ (mvnFoo, MatchAll)
+          , (gradleFoo, MatchAll)
+          , (mvnFooBar, MatchNone)
+          , (gradleFooBar, MatchNone)
+          , (mvnFooBarBaz, MatchNone)
+          , (mvnQuux, MatchAll)
+          ]
+
+      it "excludes a target in a subdirectory" $ do
+        let include =
+              Comb
+                { combTargets = []
+                , combPaths = []
+                }
+            exclude =
+              Comb
+                { combTargets = [TypeDirTargetTarget "gradle" $(mkRelDir "foo/bar") (BuildTarget "foo")]
+                , combPaths = []
+                }
+
+        testHarness
+          include
+          exclude
+          [ (mvnFoo, MatchAll)
+          , (gradleFoo, MatchAll)
+          , (mvnFooBar, MatchAll)
+          , (gradleFooBar, MatchSome (NE.fromList [BuildTarget "bar"]))
+          , (mvnFooBarBaz, MatchAll)
+          , (mvnQuux, MatchAll)
+          ]
+
+      it "excludes a subdirectory of an included directory" $ do
+        let include =
+              Comb
+                { combTargets = []
+                , combPaths = [$(mkRelDir "foo")]
+                }
+            exclude =
+              Comb
+                { combTargets = []
+                , combPaths = [$(mkRelDir "foo/bar")]
+                }
+
+        testHarness
+          include
+          exclude
+          [ (mvnFoo, MatchAll)
+          , (gradleFoo, MatchAll)
+          , (mvnFooBar, MatchNone)
+          , (gradleFooBar, MatchNone)
+          , (mvnFooBarBaz, MatchNone)
+          , (mvnQuux, MatchNone)
+          ]
+
+      it "excludes a buildtarget in an included directory" $ do
+        let include =
+              Comb
+                { combTargets = []
+                , combPaths = [$(mkRelDir "foo")]
+                }
+            exclude =
+              Comb
+                { combTargets = [TypeDirTargetTarget "gradle" $(mkRelDir "foo") (BuildTarget "foo")]
+                , combPaths = []
+                }
+
+        testHarness
+          include
+          exclude
+          [ (mvnFoo, MatchAll)
+          , (gradleFoo, MatchSome (NE.fromList [BuildTarget "bar"]))
+          , (mvnFooBar, MatchAll)
+          , (gradleFooBar, MatchAll)
+          , (mvnFooBarBaz, MatchAll)
+          , (mvnQuux, MatchNone)
+          ]
+
+      it "does the thing" $ do
+        let include =
+              Comb
+                { combTargets = [TypeDirTargetTarget "gradle" $(mkRelDir "foo") (BuildTarget "foo")]
+                , combPaths = [$(mkRelDir "foo")]
+                }
+            exclude =
+              Comb
+                { combTargets = []
+                , combPaths = []
+                }
+
+        testHarness
+          include
+          exclude
+          [ (mvnFoo, MatchAll)
+          , (gradleFoo, MatchSome (NE.fromList [BuildTarget "foo"]))
+          , (mvnFooBar, MatchAll)
+          , (gradleFooBar, MatchAll)
+          , (mvnFooBarBaz, MatchAll)
+          , (mvnQuux, MatchNone)
           ]
 
 testHarness :: Comb -> Comb -> [((T.Text, Path Rel Dir, FoundTargets), Determination)] -> Expectation

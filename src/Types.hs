@@ -21,6 +21,7 @@ import Path
 
 -- TODO: NonEmptySet
 data FoundTargets = ProjectWithoutTargets | FoundTargets (Set BuildTarget)
+  deriving (Eq, Ord, Show)
 
 instance Semigroup FoundTargets where
   (<>) = undefined
