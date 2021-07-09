@@ -18,10 +18,10 @@ project:
   policy: custom-cli-policy
   link: fossa.com
   url: github.com/fossas/spectrometer
+  jiraProjectKey: jira-key
   releaseGroup:
     name: release-group-name
     release: 123-release-candidate
-  jiraProjectKey: jira-key
 
 revision:
   commit: "12345"
@@ -47,7 +47,7 @@ Sets the [FOSSA API key](https://docs.fossa.com/docs/api-reference#api-tokens) t
 ### `project:`
 The project fields allow you to configure settings for the project you are interacting with through the FOSSA API.
 
-> Note: `name`, `team`, `policy`, `link`, `url` and `releaseGroup` can only be set when creating a project (running `fossa analyze` for the first time).
+> Note: `name`, `team`, `policy`, `link`, and `url` can only be set when creating a project (running `fossa analyze` for the first time).
 
 #### `id:`
 The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting.
@@ -70,6 +70,9 @@ An external link that will appear in the FOSSA UI for this specific project.
 
 #### `url:`
 The URL of your project that will appear in FOSSA. This URL is intended to be the URL to the repository of this project.
+
+#### `jiraProjectKey:`
+The Jira Project Key to associate with your project for improved issue triage. Refer to the [FOSSA docs](https://docs.fossa.com/docs/atlassian-jira#linking-fossa-projects-to-jira-projects) for more information.
 
 #### `releaseGroup:`
 The `name:` and `release:` of the release group's release to add your project to in the FOSSA dashboard.
