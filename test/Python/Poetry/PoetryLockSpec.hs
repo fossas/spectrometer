@@ -36,7 +36,7 @@ expectedPoetryLock =
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
-            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "git", poetryLockPackageSourceUrl = "https://github.com/someUser/pkgWithGitSource.git", poetryLockPackageSourceResolvedReference = Just "598ac"}
+            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "git", poetryLockPackageSourceUrl = "https://github.com/someUser/pkgWithGitSource.git", poetryLockPackageSourceReference = Just "v1.1.1", poetryLockPackageSourceResolvedReference = Just "598ac"}
             }
         , PoetryLockPackage
             { poetryLockPackageName = PackageName{unPackageName = "pkgSourcedFromFile"}
@@ -45,7 +45,7 @@ expectedPoetryLock =
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
-            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "file", poetryLockPackageSourceUrl = "pkgTwo-1.21.0.tar.gz", poetryLockPackageSourceResolvedReference = Nothing}
+            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "file", poetryLockPackageSourceUrl = "pkgTwo-1.21.0.tar.gz", poetryLockPackageSourceResolvedReference = Nothing, poetryLockPackageSourceReference = Nothing}
             }
         , PoetryLockPackage
             { poetryLockPackageName = PackageName{unPackageName = "pkgSourcedFromUrl"}
@@ -54,7 +54,7 @@ expectedPoetryLock =
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
-            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "url", poetryLockPackageSourceUrl = "https://some-url.com/some-dir/pkgThree-3.92.1.tar.gz", poetryLockPackageSourceResolvedReference = Nothing}
+            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "url", poetryLockPackageSourceUrl = "https://some-url.com/some-dir/pkgThree-3.92.1.tar.gz", poetryLockPackageSourceResolvedReference = Nothing, poetryLockPackageSourceReference = Nothing}
             }
         , PoetryLockPackage
             { poetryLockPackageName = PackageName{unPackageName = "pkgOne"}
@@ -136,7 +136,7 @@ spec = do
               , Dependency
                   { dependencyType = GitType
                   , dependencyName = "https://github.com/someUser/pkgWithGitSource.git"
-                  , dependencyVersion = Just $ CEq "598ac"
+                  , dependencyVersion = Just $ CEq "v1.1.1"
                   , dependencyLocations = []
                   , dependencyEnvironments = [EnvProduction]
                   , dependencyTags = Map.empty

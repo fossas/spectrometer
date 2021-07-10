@@ -55,6 +55,7 @@ poetryMetadataCodec =
 data PoetryLockPackageSource = PoetryLockPackageSource
   { poetryLockPackageSourceType :: Text
   , poetryLockPackageSourceUrl :: Text
+  , poetryLockPackageSourceReference :: Maybe Text
   , poetryLockPackageSourceResolvedReference :: Maybe Text
   }
   deriving (Eq, Ord, Show)
@@ -87,6 +88,7 @@ poetryLockPackageSourceCodec =
   PoetryLockPackageSource
     <$> Toml.text "type" .= poetryLockPackageSourceType
     <*> Toml.text "url" .= poetryLockPackageSourceUrl
+    <*> Toml.dioptional (Toml.text "reference") .= poetryLockPackageSourceReference
     <*> Toml.dioptional (Toml.text "resolved_reference") .= poetryLockPackageSourceResolvedReference
 
 data PoetryLockDependencySpec
@@ -156,7 +158,7 @@ toMap pkgs =
     toDepVersion :: PoetryLockPackage -> Maybe VerConstraint
     toDepVersion pkg = case poetryLockPackageSource pkg of
       Nothing -> Just $ CEq $ poetryLockPackageVersion pkg
-      Just plps -> case poetryLockPackageSourceResolvedReference plps of
+      Just plps -> case poetryLockPackageSourceReference plps of
         Nothing -> Just $ CEq $ poetryLockPackageVersion pkg
         Just txt -> Just $ CEq txt
 
