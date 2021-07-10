@@ -170,7 +170,7 @@ expectedPyProjectGraph = run . evalGrapher $ do
     Dependency
       { dependencyType = PipType
       , dependencyName = "pytest"
-      , dependencyVersion = Just $ CEq "*"
+      , dependencyVersion = Nothing
       , dependencyLocations = []
       , dependencyEnvironments = devEnvs
       , dependencyTags = Map.empty

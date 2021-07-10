@@ -246,7 +246,9 @@ poetryDependencyToDependency depEnvs name deps =
 toDependencyVersion :: Text -> Maybe VerConstraint
 toDependencyVersion dt = case parse parseConstraintExpr "" dt of
   Left _ -> Nothing
-  Right v -> Just v
+  Right v -> case v of
+    CEq "*" -> Nothing
+    vc -> Just vc
 
 toDependnecy :: [DepEnvironment] -> Map Text PoetryDependency -> Map Text Dependency
 toDependnecy depEnvs = M.mapWithKey $ poetryDependencyToDependency depEnvs
