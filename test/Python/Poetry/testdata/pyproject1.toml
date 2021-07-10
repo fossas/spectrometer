@@ -7,6 +7,7 @@ version = "test_version"
 
 # git
 flask = {git = "https://github.com/pallets/flask.git", rev = "38eb5d3b"}
+networkx = {git = "https://github.com/networkx/networkx.git"}
 numpy = {git = "https://github.com/numpy/numpy.git", tag = "v0.13.2"}
 requests = {git = "https://github.com/kennethreitz/requests.git", branch = "next"}
 

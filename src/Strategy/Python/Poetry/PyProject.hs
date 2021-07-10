@@ -10,9 +10,7 @@ module Strategy.Python.Poetry.PyProject (
   pyProjectCodec,
   pyProjectBuildSystemCodec,
   usesPoetryBuildSystem,
-  PyProjectPoetryGitRevDependency (..),
-  PyProjectPoetryGitBranchDependency (..),
-  PyProjectPoetryGitTagDependency (..),
+  PyProjectPoetryGitDependency (..),
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
   PyProjectPoetryDetailedVersionDependency (..),
@@ -74,9 +72,7 @@ data PyProjectPoetry = PyProjectPoetry
 data PoetryDependency
   = PoetryTextVersion Text
   | PyProjectPoetryDetailedVersionDependencySpec PyProjectPoetryDetailedVersionDependency
-  | PyProjectPoetryGitRevDependencySpec PyProjectPoetryGitRevDependency
-  | PyProjectPoetryGitBranchDependencySpec PyProjectPoetryGitBranchDependency
-  | PyProjectPoetryGitTagDependencySpec PyProjectPoetryGitTagDependency
+  | PyProjectPoetryGitDependencySpec PyProjectPoetryGitDependency
   | PyProjectPoetryPathDependencySpec PyProjectPoetryPathDependency
   | PyProjectPoetryUrlDependencySpec PyProjectPoetryUrlDependency
   deriving (Show, Eq, Ord)
@@ -94,9 +90,7 @@ pyProjectPoetryDependencyCodec :: Toml.Key -> TomlCodec PoetryDependency
 pyProjectPoetryDependencyCodec key =
   Toml.dimatch matchPyProjectPoetryTextVersionDependecySpec PoetryTextVersion (Toml.text key)
     <|> Toml.dimatch matchPyProjectPoetryDetailedVersionDependencySpec PyProjectPoetryDetailedVersionDependencySpec (Toml.table pyProjectPoetryDetailedVersionDependencyCodec key)
-    <|> Toml.dimatch matchPyProjectPoetryGitRevDependencySpec PyProjectPoetryGitRevDependencySpec (Toml.table pyProjectPoetryGitRevDependencyCodec key)
-    <|> Toml.dimatch matchPyProjectPoetryGitBranchDependencySpec PyProjectPoetryGitBranchDependencySpec (Toml.table pyProjectPoetryGitBranchDependencyCodec key)
-    <|> Toml.dimatch matchPyProjectPoetryGitTagDependencySpec PyProjectPoetryGitTagDependencySpec (Toml.table pyProjectPoetryGitTagDependencyCodec key)
+    <|> Toml.dimatch matchPyProjectPoetryGitDependencySpec PyProjectPoetryGitDependencySpec (Toml.table pyProjectPoetryGitDependencyCodec key)
     <|> Toml.dimatch matchPyProjectPoetryPathDependencySpec PyProjectPoetryPathDependencySpec (Toml.table pyProjectPoetryPathDependencyCodec key)
     <|> Toml.dimatch matchPyProjectPoetryUrlDependencySpec PyProjectPoetryUrlDependencySpec (Toml.table pyProjectPoetryUrlDependencyCodec key)
 
@@ -108,17 +102,9 @@ matchPyProjectPoetryDetailedVersionDependencySpec :: PoetryDependency -> Maybe P
 matchPyProjectPoetryDetailedVersionDependencySpec (PyProjectPoetryDetailedVersionDependencySpec spec) = Just spec
 matchPyProjectPoetryDetailedVersionDependencySpec _ = Nothing
 
-matchPyProjectPoetryGitRevDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryGitRevDependency
-matchPyProjectPoetryGitRevDependencySpec (PyProjectPoetryGitRevDependencySpec spec) = Just spec
-matchPyProjectPoetryGitRevDependencySpec _ = Nothing
-
-matchPyProjectPoetryGitBranchDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryGitBranchDependency
-matchPyProjectPoetryGitBranchDependencySpec (PyProjectPoetryGitBranchDependencySpec spec) = Just spec
-matchPyProjectPoetryGitBranchDependencySpec _ = Nothing
-
-matchPyProjectPoetryGitTagDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryGitTagDependency
-matchPyProjectPoetryGitTagDependencySpec (PyProjectPoetryGitTagDependencySpec spec) = Just spec
-matchPyProjectPoetryGitTagDependencySpec _ = Nothing
+matchPyProjectPoetryGitDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryGitDependency
+matchPyProjectPoetryGitDependencySpec (PyProjectPoetryGitDependencySpec spec) = Just spec
+matchPyProjectPoetryGitDependencySpec _ = Nothing
 
 matchPyProjectPoetryPathDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryPathDependency
 matchPyProjectPoetryPathDependencySpec (PyProjectPoetryPathDependencySpec spec) = Just spec
@@ -138,42 +124,21 @@ pyProjectPoetryDetailedVersionDependencyCodec =
   PyProjectPoetryDetailedVersionDependency
     <$> Toml.text "version" .= poetryDependencyVersion
 
-data PyProjectPoetryGitRevDependency = PyProjectPoetryGitRevDependency
-  { gitRevUrl :: Text
-  , gitRev :: Text
+data PyProjectPoetryGitDependency = PyProjectPoetryGitDependency
+  { gitUrl :: Text
+  , gitBranch :: Maybe Text
+  , gitRev :: Maybe Text
+  , gitTag :: Maybe Text
   }
   deriving (Show, Eq, Ord)
 
-pyProjectPoetryGitRevDependencyCodec :: TomlCodec PyProjectPoetryGitRevDependency
-pyProjectPoetryGitRevDependencyCodec =
-  PyProjectPoetryGitRevDependency
-    <$> Toml.text "git" .= gitRevUrl
-    <*> Toml.text "rev" .= gitRev
-
-data PyProjectPoetryGitBranchDependency = PyProjectPoetryGitBranchDependency
-  { gitBranchUrl :: Text
-  , gitBranch :: Text
-  }
-  deriving (Show, Eq, Ord)
-
-pyProjectPoetryGitBranchDependencyCodec :: TomlCodec PyProjectPoetryGitBranchDependency
-pyProjectPoetryGitBranchDependencyCodec =
-  PyProjectPoetryGitBranchDependency
-    <$> Toml.text "git" .= gitBranchUrl
-    <*> Toml.text "branch" .= gitBranch
-
-data PyProjectPoetryGitTagDependency = PyProjectPoetryGitTagDependency
-  { gitTagUrl :: Text
-  , gitTag :: Text
-  }
-  deriving (Show, Eq, Ord)
-
-pyProjectPoetryGitTagDependencyCodec :: TomlCodec PyProjectPoetryGitTagDependency
-pyProjectPoetryGitTagDependencyCodec =
-  PyProjectPoetryGitTagDependency
-    <$> Toml.text "git" .= gitTagUrl
-    <*> Toml.text "tag" .= gitTag
-
+pyProjectPoetryGitDependencyCodec :: TomlCodec PyProjectPoetryGitDependency
+pyProjectPoetryGitDependencyCodec =
+  PyProjectPoetryGitDependency
+    <$> Toml.text "git" .= gitUrl
+    <*> Toml.dioptional (Toml.text "branch") .= gitBranch
+    <*> Toml.dioptional (Toml.text "rev") .= gitRev
+    <*> Toml.dioptional (Toml.text "tag") .= gitTag
 newtype PyProjectPoetryPathDependency = PyProjectPoetryPathDependency
   { sourcePath :: Text
   }
@@ -216,27 +181,23 @@ poetryDependencyToDependency depEnvs name deps =
     depType = case deps of
       (PoetryTextVersion _) -> PipType
       (PyProjectPoetryDetailedVersionDependencySpec _) -> PipType
-      (PyProjectPoetryGitRevDependencySpec _) -> GitType
-      (PyProjectPoetryGitBranchDependencySpec _) -> GitType
-      (PyProjectPoetryGitTagDependencySpec _) -> GitType
+      (PyProjectPoetryGitDependencySpec _) -> GitType
       (PyProjectPoetryPathDependencySpec _) -> UserType
       (PyProjectPoetryUrlDependencySpec _) -> URLType
 
     depName = case deps of
       (PoetryTextVersion _) -> name
       (PyProjectPoetryDetailedVersionDependencySpec _) -> name
-      (PyProjectPoetryGitRevDependencySpec ds) -> gitRevUrl ds
-      (PyProjectPoetryGitBranchDependencySpec ds) -> gitBranchUrl ds
-      (PyProjectPoetryGitTagDependencySpec ds) -> gitTagUrl ds
+      (PyProjectPoetryGitDependencySpec ds) -> gitUrl ds
       (PyProjectPoetryUrlDependencySpec ds) -> sourceUrl ds
       (PyProjectPoetryPathDependencySpec ds) -> sourcePath ds
 
     depVersion = case deps of
       (PoetryTextVersion ds) -> toDependencyVersion ds
       (PyProjectPoetryDetailedVersionDependencySpec ds) -> toDependencyVersion (poetryDependencyVersion ds)
-      (PyProjectPoetryGitRevDependencySpec ds) -> Just $ CEq $ gitRev ds
-      (PyProjectPoetryGitBranchDependencySpec ds) -> Just $ CEq $ gitBranch ds
-      (PyProjectPoetryGitTagDependencySpec ds) -> Just $ CEq $ gitTag ds
+      (PyProjectPoetryGitDependencySpec ds) -> case asum [gitTag ds, gitRev ds, gitBranch ds] of
+        Nothing -> Nothing
+        Just version -> Just $ CEq version
       _ -> Nothing
 
     depEnvironment = depEnvs

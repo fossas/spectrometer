@@ -11,9 +11,7 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectBuildSystem (..),
   PyProjectPoetry (..),
   PyProjectPoetryDetailedVersionDependency (..),
-  PyProjectPoetryGitBranchDependency (..),
-  PyProjectPoetryGitRevDependency (..),
-  PyProjectPoetryGitTagDependency (..),
+  PyProjectPoetryGitDependency (..),
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
   parseConstraintExpr,
@@ -37,8 +35,8 @@ parseMatch parser input expected = parse parser "" input `shouldParse` expected
 shouldParseInto :: Text -> VerConstraint -> Expectation
 shouldParseInto = parseMatch parseConstraintExpr
 
-expectedPyProject1 :: PyProject
-expectedPyProject1 =
+expectedPyProject :: PyProject
+expectedPyProject =
   PyProject
     { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = "poetry.core.masonry.api"}
     , pyprojectPoetry =
@@ -51,9 +49,10 @@ expectedPyProject1 =
                 Map.fromList
                   [ ("flake8", PoetryTextVersion "^1.1")
                   , ("python", PoetryTextVersion "^3.9")
-                  , ("flask", PyProjectPoetryGitRevDependencySpec $ PyProjectPoetryGitRevDependency{gitRevUrl = "https://github.com/pallets/flask.git", gitRev = "38eb5d3b"})
-                  , ("numpy", PyProjectPoetryGitTagDependencySpec $ PyProjectPoetryGitTagDependency{gitTagUrl = "https://github.com/numpy/numpy.git", gitTag = "v0.13.2"})
-                  , ("requests", PyProjectPoetryGitBranchDependencySpec $ PyProjectPoetryGitBranchDependency{gitBranchUrl = "https://github.com/kennethreitz/requests.git", gitBranch = "next"})
+                  , ("flask", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/pallets/flask.git", gitRev = Just "38eb5d3b", gitTag = Nothing, gitBranch = Nothing})
+                  , ("networkx", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/networkx/networkx.git", gitRev = Nothing, gitTag = Nothing, gitBranch = Nothing})
+                  , ("numpy", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/numpy/numpy.git", gitRev = Nothing, gitTag = Just "v0.13.2", gitBranch = Nothing})
+                  , ("requests", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/kennethreitz/requests.git", gitRev = Nothing, gitTag = Nothing, gitBranch = Just "next"})
                   , ("my-packageUrl", PyProjectPoetryUrlDependencySpec $ PyProjectPoetryUrlDependency{sourceUrl = "https://example.com/my-package-0.1.0.tar.gz"})
                   , ("my-packageFile", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/dist/my-package-0.1.0.tar.gz"})
                   , ("my-packageDir", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/"})
@@ -65,40 +64,13 @@ expectedPyProject1 =
             }
     }
 
-candidatePyProject :: PyProject
-candidatePyProject =
-  PyProject
-    { pyprojectPoetry =
-        Just $
-          PyProjectPoetry
-            { name = Just "test_name"
-            , version = Just "test_version"
-            , description = Just "test_description"
-            , dependencies =
-                Map.fromList
-                  [ ("flake8", PoetryTextVersion "1.1")
-                  , ("flask", PyProjectPoetryGitRevDependencySpec $ PyProjectPoetryGitRevDependency{gitRevUrl = "https://github.com/pallets/flask.git", gitRev = "38eb5d3b"})
-                  , ("numpy", PyProjectPoetryGitTagDependencySpec $ PyProjectPoetryGitTagDependency{gitTagUrl = "https://github.com/numpy/numpy.git", gitTag = "v0.13.2"})
-                  , ("requests", PyProjectPoetryGitBranchDependencySpec $ PyProjectPoetryGitBranchDependency{gitBranchUrl = "https://github.com/kennethreitz/requests.git", gitBranch = "next"})
-                  , ("my-packageUrl", PyProjectPoetryUrlDependencySpec $ PyProjectPoetryUrlDependency{sourceUrl = "https://example.com/my-package-0.1.0.tar.gz"})
-                  , ("my-packageFile", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/dist/my-package-0.1.0.tar.gz"})
-                  , ("my-packageDir", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/"})
-                  , ("black", PyProjectPoetryDetailedVersionDependencySpec $ PyProjectPoetryDetailedVersionDependency{poetryDependencyVersion = "1.1"})
-                  ]
-            , devDependencies =
-                Map.fromList
-                  [("pytest", PoetryTextVersion "*")]
-            }
-    , pyprojectBuildSystem = Nothing
-    }
-
 expectedPyProjectGraph :: Graphing Dependency
 expectedPyProjectGraph = run . evalGrapher $ do
   direct $
     Dependency
       { dependencyType = PipType
       , dependencyName = "flake8"
-      , dependencyVersion = Just $ CEq "1.1"
+      , dependencyVersion = Just $ CCompatible "1.1"
       , dependencyLocations = []
       , dependencyEnvironments = prodEnvs
       , dependencyTags = Map.empty
@@ -108,6 +80,15 @@ expectedPyProjectGraph = run . evalGrapher $ do
       { dependencyType = GitType
       , dependencyName = "https://github.com/pallets/flask.git"
       , dependencyVersion = Just (CEq "38eb5d3b")
+      , dependencyLocations = []
+      , dependencyEnvironments = prodEnvs
+      , dependencyTags = Map.empty
+      }
+  direct $
+    Dependency
+      { dependencyType = GitType
+      , dependencyName = "https://github.com/networkx/networkx.git"
+      , dependencyVersion = Nothing
       , dependencyLocations = []
       , dependencyEnvironments = prodEnvs
       , dependencyTags = Map.empty
@@ -161,7 +142,7 @@ expectedPyProjectGraph = run . evalGrapher $ do
     Dependency
       { dependencyType = PipType
       , dependencyName = "black"
-      , dependencyVersion = Just $ CEq "1.1"
+      , dependencyVersion = Just $ CEq "19.10b0"
       , dependencyLocations = []
       , dependencyEnvironments = prodEnvs
       , dependencyTags = Map.empty
@@ -191,7 +172,7 @@ spec = do
           case Toml.decode pyProjectCodec nominalContents of
             Left err -> expectationFailure ("decode failed: " <> show err)
             Right pkg -> do
-              pkg `shouldBe` expectedPyProject1
+              pkg `shouldBe` expectedPyProject
 
   describe "usesPoetryBuildSystem" $ do
     context "when provided with poetry build system" $ do
@@ -213,7 +194,7 @@ spec = do
   describe "buildPyProjectGraph" $ do
     it "should build graph of dependencies" $
       do
-        let result = buildPyProjectGraph candidatePyProject
+        let result = buildPyProjectGraph expectedPyProject
         result `shouldBe` expectedPyProjectGraph
 
   describe "parseConstraintExpr" $ do
