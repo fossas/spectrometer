@@ -56,6 +56,9 @@ findProjects = walk' $ \dir _ files -> do
           ]
         , WalkSkipAll
         )
+    -- Without pyproject file, it is unlikely that project is a poetry package. Poetry itself does not work
+    -- without pyproject.toml manifest.
+    (Just _, Nothing) -> context "poetry.lock file found without accompanying pyproject.toml!" $ pure ([], WalkContinue)
     _ -> pure ([], WalkContinue)
 
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PoetryProject -> DiscoveredProject n
@@ -133,14 +136,17 @@ buildGraphWithLock lockProject poetryProject = promoteToDirect (isDirect poetryP
 -- | Builds the Package name graph
 -- In python, package names are unique, and only single version of a package can be used.
 buildPackageNameGraph :: [PoetryLockPackage] -> Graphing PackageName
-buildPackageNameGraph pkgs = foldl addToGraph empty (getPackageNameEdges pkgs)
+buildPackageNameGraph pkgs = foldl addToGraph empty (concatMap getEdgesPairs pkgs)
   where
     addToGraph :: Graphing PackageName -> (PackageName, PackageName) -> Graphing PackageName
     addToGraph g pkgsParentChild = uncurry edge pkgsParentChild g
-    getPackageNameEdges = concatMap getEdgesPairs
-      where
-        getEdgesPairs pkg = concatMap (makeEdge pkg) [allPkgs]
-          where
-            allPkgs = map (\x -> PackageName{unPackageName = x}) (M.keys $ poetryLockPackageDependencies pkg)
-            makeEdge _ [] = []
-            makeEdge parent (x : xs) = (poetryLockPackageName parent, x) : (makeEdge (parent) (xs))
+
+    getEdgesPairs :: PoetryLockPackage -> [(PackageName, PackageName)]
+    getEdgesPairs pkg = concatMap (makeEdge pkg) [allPkgs pkg]
+
+    allPkgs :: PoetryLockPackage -> [PackageName]
+    allPkgs p = map (\x -> PackageName{unPackageName = x}) (M.keys $ poetryLockPackageDependencies p)
+
+    makeEdge :: PoetryLockPackage -> [PackageName] -> [(PackageName, PackageName)]
+    makeEdge _ [] = []
+    makeEdge parent (x : xs) = (poetryLockPackageName parent, x) : (makeEdge (parent) (xs))

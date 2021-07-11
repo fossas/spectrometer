@@ -38,6 +38,7 @@ import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Prelude hiding (filter)
+import Prelude qualified as P
 
 -- | A @Graphing ty@ is a graph of nodes with type @ty@.
 --
@@ -124,13 +125,8 @@ direct dep gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
 promoteToDirect :: Ord ty => (ty -> Bool) -> Graphing ty -> Graphing ty
 promoteToDirect ff gr = gr{graphingDirect = direct', graphingAdjacent = graphingAdjacent gr}
   where
-    direct' = foldr S.insert (graphingDirect gr) allApplicableVertices
-      where
-        allApplicableVertices = preludeFilter ff $ AM.vertexList (graphingAdjacent gr)
-        preludeFilter _pred [] = []
-        preludeFilter p (x : xs)
-          | p x = x : preludeFilter p xs
-          | otherwise = preludeFilter p xs
+    direct' = foldr S.insert (graphingDirect gr) vertices
+    vertices = P.filter ff $ AM.vertexList (graphingAdjacent gr)
 
 -- | Add an edge between two nodes in this Graphing
 edge :: Ord ty => ty -> ty -> Graphing ty -> Graphing ty

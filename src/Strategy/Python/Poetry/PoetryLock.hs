@@ -24,7 +24,7 @@ import Toml qualified
 -- | Content of poetry lock file
 data PoetryLock = PoetryLock
   { poetryLockPackages :: [PoetryLockPackage]
-  , poetryLockMetadata :: !PoetryMetadata
+  , poetryLockMetadata :: PoetryMetadata
   }
   deriving (Eq, Ord, Show)
 
@@ -47,9 +47,9 @@ data PoetryMetadata = PoetryMetadata
 poetryMetadataCodec :: TomlCodec PoetryMetadata
 poetryMetadataCodec =
   PoetryMetadata
-    <$> Toml.diwrap (Toml.text "lock-version") .= poetryMetadataLockVersion
-    <*> Toml.diwrap (Toml.text "content-hash") .= poetryMetadataContentHash
-    <*> Toml.diwrap (Toml.text "python-versions") .= poetryMetadataPythonVersions
+    <$> Toml.text "lock-version" .= poetryMetadataLockVersion
+    <*> Toml.text "content-hash" .= poetryMetadataContentHash
+    <*> Toml.text "python-versions" .= poetryMetadataPythonVersions
 
 -- | Source of poetry pacakge found in lock file.
 data PoetryLockPackageSource = PoetryLockPackageSource
@@ -165,4 +165,6 @@ toMap pkgs =
     toDepEnvironment :: PoetryLockPackage -> [DepEnvironment]
     toDepEnvironment pkg = case poetryLockPackageCategory pkg of
       "dev" -> [EnvDevelopment]
-      _ -> [EnvProduction]
+      "main" -> [EnvProduction]
+      "test" -> [EnvTesting]
+      other -> [EnvOther other]
