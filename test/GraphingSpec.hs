@@ -18,6 +18,14 @@ spec = do
       expectDeps [10, 8, 6, 4, 2, 0] graph
       expectEdges [(10, 8), (8, 6), (6, 4), (4, 2), (2, 0)] graph
 
+  describe "node" $ do
+    it "should add node to graphing" $ do
+      let graph :: Graphing Int
+          graph = Graphing.addNode 5 $ Graphing.edge 2 3 (Graphing.empty)
+      expectDirect [] graph
+      expectDeps [5, 2, 3] graph
+      expectEdges [(2, 3)] graph
+
   describe "promoteToDirect" $ do
     it "should promote nodes to direct" $ do
       let graph :: Graphing Int

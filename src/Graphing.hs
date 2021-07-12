@@ -14,6 +14,7 @@ module Graphing (
   size,
   direct,
   edge,
+  addNode,
 
   -- * Manipulating a Graphing
   gmap,
@@ -133,6 +134,12 @@ edge :: Ord ty => ty -> ty -> Graphing ty -> Graphing ty
 edge parent child gr = gr{graphingAdjacent = adjacent'}
   where
     adjacent' = AM.overlay (AM.edge parent child) (graphingAdjacent gr)
+
+-- | Adds a node in this Gaphing
+addNode :: Ord ty => ty -> Graphing ty -> Graphing ty
+addNode n gr = gr{graphingAdjacent = adjacent'}
+  where
+    adjacent' = AM.overlay (AM.vertex n) (graphingAdjacent gr)
 
 -- | @unfold direct getDeps toDependency@ unfolds a graph, given:
 --
