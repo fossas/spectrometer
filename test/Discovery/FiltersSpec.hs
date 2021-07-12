@@ -13,7 +13,7 @@ import Path
 import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
-import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets))
+import Types (BuildTarget (..))
 import qualified Data.List.NonEmpty as NE
 
 spec :: Spec
@@ -177,12 +177,12 @@ spec = do
 
     -}
     describe "Comb filters" $ do
-      let mvnFoo = ("mvn", $(mkRelDir "foo"), ProjectWithoutTargets)
-          gradleFoo = ("gradle", $(mkRelDir "foo"), FoundTargets (S.fromList [BuildTarget "foo", BuildTarget "bar"]))
-          mvnFooBar = ("mvn", $(mkRelDir "foo/bar"), ProjectWithoutTargets)
-          gradleFooBar = ("gradle", $(mkRelDir "foo/bar"), FoundTargets (S.fromList [BuildTarget "foo", BuildTarget "bar"]))
-          mvnFooBarBaz = ("mvn", $(mkRelDir "foo/bar/baz"), ProjectWithoutTargets)
-          mvnQuux = ("mvn", $(mkRelDir "quux"), ProjectWithoutTargets)
+      let mvnFoo = ("mvn", $(mkRelDir "foo"))
+          gradleFoo = ("gradle", $(mkRelDir "foo"))
+          mvnFooBar = ("mvn", $(mkRelDir "foo/bar"))
+          gradleFooBar = ("gradle", $(mkRelDir "foo/bar"))
+          mvnFooBarBaz = ("mvn", $(mkRelDir "foo/bar/baz"))
+          mvnQuux = ("mvn", $(mkRelDir "quux"))
 
       it "includes an entire directory" $ do
         let include =
@@ -199,12 +199,12 @@ spec = do
         testHarness
           include
           exclude
-          [ (mvnFoo, MatchNone)
-          , (gradleFoo, MatchNone)
-          , (mvnFooBar, MatchNone)
-          , (gradleFooBar, MatchNone)
-          , (mvnFooBarBaz, MatchNone)
-          , (mvnQuux, MatchAll)
+          [ (mvnFoo, ResultNone)
+          , (gradleFoo, ResultNone)
+          , (mvnFooBar, ResultNone)
+          , (gradleFooBar, ResultNone)
+          , (mvnFooBarBaz, ResultNone)
+          , (mvnQuux, ResultAll)
           ]
 
       it "includes a subdirectory" $ do
@@ -222,12 +222,12 @@ spec = do
         testHarness
           include
           exclude
-          [ (mvnFoo, MatchNone)
-          , (gradleFoo, MatchNone)
-          , (mvnFooBar, MatchAll)
-          , (gradleFooBar, MatchAll)
-          , (mvnFooBarBaz, MatchAll)
-          , (mvnQuux, MatchNone)
+          [ (mvnFoo, ResultNone)
+          , (gradleFoo, ResultNone)
+          , (mvnFooBar, ResultAll)
+          , (gradleFooBar, ResultAll)
+          , (mvnFooBarBaz, ResultAll)
+          , (mvnQuux, ResultNone)
           ]
 
       it "excludes a directory" $ do
@@ -245,12 +245,12 @@ spec = do
         testHarness
           include
           exclude
-          [ (mvnFoo, MatchNone)
-          , (gradleFoo, MatchNone)
-          , (mvnFooBar, MatchNone)
-          , (gradleFooBar, MatchNone)
-          , (mvnFooBarBaz, MatchNone)
-          , (mvnQuux, MatchAll)
+          [ (mvnFoo, ResultNone)
+          , (gradleFoo, ResultNone)
+          , (mvnFooBar, ResultNone)
+          , (gradleFooBar, ResultNone)
+          , (mvnFooBarBaz, ResultNone)
+          , (mvnQuux, ResultAll)
           ]
 
       it "excludes a subdirectory" $ do
@@ -268,12 +268,12 @@ spec = do
         testHarness
           include
           exclude
-          [ (mvnFoo, MatchAll)
-          , (gradleFoo, MatchAll)
-          , (mvnFooBar, MatchNone)
-          , (gradleFooBar, MatchNone)
-          , (mvnFooBarBaz, MatchNone)
-          , (mvnQuux, MatchAll)
+          [ (mvnFoo, ResultAll)
+          , (gradleFoo, ResultAll)
+          , (mvnFooBar, ResultNone)
+          , (gradleFooBar, ResultNone)
+          , (mvnFooBarBaz, ResultNone)
+          , (mvnQuux, ResultAll)
           ]
 
       it "excludes a target in a subdirectory" $ do
@@ -291,12 +291,12 @@ spec = do
         testHarness
           include
           exclude
-          [ (mvnFoo, MatchAll)
-          , (gradleFoo, MatchAll)
-          , (mvnFooBar, MatchAll)
-          , (gradleFooBar, MatchSome (NE.fromList [BuildTarget "bar"]))
-          , (mvnFooBarBaz, MatchAll)
-          , (mvnQuux, MatchAll)
+          [ (mvnFoo, ResultAll)
+          , (gradleFoo, ResultAll)
+          , (mvnFooBar, ResultAll)
+          , (gradleFooBar, ResultExclude (NE.fromList [BuildTarget "foo"]))
+          , (mvnFooBarBaz, ResultAll)
+          , (mvnQuux, ResultAll)
           ]
 
       it "excludes a subdirectory of an included directory" $ do
@@ -314,12 +314,12 @@ spec = do
         testHarness
           include
           exclude
-          [ (mvnFoo, MatchAll)
-          , (gradleFoo, MatchAll)
-          , (mvnFooBar, MatchNone)
-          , (gradleFooBar, MatchNone)
-          , (mvnFooBarBaz, MatchNone)
-          , (mvnQuux, MatchNone)
+          [ (mvnFoo, ResultAll)
+          , (gradleFoo, ResultAll)
+          , (mvnFooBar, ResultNone)
+          , (gradleFooBar, ResultNone)
+          , (mvnFooBarBaz, ResultNone)
+          , (mvnQuux, ResultNone)
           ]
 
       it "excludes a buildtarget in an included directory" $ do
@@ -337,12 +337,12 @@ spec = do
         testHarness
           include
           exclude
-          [ (mvnFoo, MatchAll)
-          , (gradleFoo, MatchSome (NE.fromList [BuildTarget "bar"]))
-          , (mvnFooBar, MatchAll)
-          , (gradleFooBar, MatchAll)
-          , (mvnFooBarBaz, MatchAll)
-          , (mvnQuux, MatchNone)
+          [ (mvnFoo, ResultAll)
+          , (gradleFoo, ResultExclude (NE.fromList [BuildTarget "foo"]))
+          , (mvnFooBar, ResultAll)
+          , (gradleFooBar, ResultAll)
+          , (mvnFooBarBaz, ResultAll)
+          , (mvnQuux, ResultNone)
           ]
 
       it "does the thing" $ do
@@ -360,15 +360,15 @@ spec = do
         testHarness
           include
           exclude
-          [ (mvnFoo, MatchAll)
-          , (gradleFoo, MatchSome (NE.fromList [BuildTarget "foo"]))
-          , (mvnFooBar, MatchAll)
-          , (gradleFooBar, MatchAll)
-          , (mvnFooBarBaz, MatchAll)
-          , (mvnQuux, MatchNone)
+          [ (mvnFoo, ResultAll)
+          , (gradleFoo, ResultInclude (NE.fromList [BuildTarget "foo"]))
+          , (mvnFooBar, ResultAll)
+          , (gradleFooBar, ResultAll)
+          , (mvnFooBarBaz, ResultAll)
+          , (mvnQuux, ResultNone)
           ]
 
-testHarness :: Comb -> Comb -> [((T.Text, Path Rel Dir, FoundTargets), Determination)] -> Expectation
+testHarness :: Comb -> Comb -> [((T.Text, Path Rel Dir), FilterResult)] -> Expectation
 testHarness include exclude = traverse_ testSingle
   where
-    testSingle ((buildtool, dir, targets), expected) = apply include exclude buildtool dir targets `shouldBe` expected
+    testSingle ((buildtool, dir), expected) = apply include exclude buildtool dir `shouldBe` expected

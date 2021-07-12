@@ -9,12 +9,13 @@ module Discovery.Filters (
   applyFilters,
   TargetTest (..),
   Comb (..),
-  Determination (..),
+  FilterMatch (..),
+  FilterResult (..),
   apply,
 ) where
 
 import App.Fossa.Configuration
-import Data.List (intersect, (\\))
+import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Semigroup (sconcat)
@@ -24,7 +25,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void (Void)
 import Path
-import Path (Dir, Path, Rel, isProperPrefixOf, parseRelDir)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
   Parsec,
@@ -33,7 +33,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char
-import Types (BuildTarget (..), FoundTargets (..))
+import Types (BuildTarget (..))
 
 data CombinedFilters = CombinedFilters
   { legacyFilters :: [BuildTargetFilterOld]
@@ -88,22 +88,21 @@ data Comb = Comb
 
 -- (buildtargetfilters-only `union` pathfilters-only)
 --   `subtract` (buildtargetfilters-exclude `union` pathfilters-exclude)
-apply :: Comb -> Comb -> Text -> Path Rel Dir -> FoundTargets -> Determination
-apply include exclude buildtool dir targets =
+apply :: Comb -> Comb -> Text -> Path Rel Dir -> FilterResult
+apply include exclude buildtool dir =
   dSubtract
-    targets
     (fromMaybe MatchAll (applyComb include buildtool dir))
     (fromMaybe MatchNone (applyComb exclude buildtool dir))
 
 -- Nothing = "Unknown" -- i.e., there were no filters
-applyComb :: Comb -> Text -> Path Rel Dir -> Maybe Determination
+applyComb :: Comb -> Text -> Path Rel Dir -> Maybe FilterMatch
 applyComb comb buildtool dir =
   buildTargetFiltersResult <> pathFiltersResult
   where
-    buildTargetFiltersResult :: Maybe Determination
+    buildTargetFiltersResult :: Maybe FilterMatch
     buildTargetFiltersResult = foldMap' (\t -> applyTarget t buildtool dir) (combTargets comb)
 
-    pathFiltersResult :: Maybe Determination
+    pathFiltersResult :: Maybe FilterMatch
     pathFiltersResult = foldMap' (`applyPath` dir) (combPaths comb)
 
 -- mvn@foo:bar
@@ -111,24 +110,27 @@ applyComb comb buildtool dir =
 -- mvn@foo ProjectWithoutTargets -> MatchNone
 --
 -- mvn@foo (FoundTargets xs) -> bar `elem` xs -> MatchSome [bar] otherwise MatchNone
-applyTarget :: TargetTest -> Text -> Path Rel Dir -> Determination
+applyTarget :: TargetTest -> Text -> Path Rel Dir -> FilterMatch
 applyTarget (TypeTarget t) u _ = if t == u then MatchAll else MatchNone
 applyTarget (TypeDirTarget t p) u q = if t == u && p == q then MatchAll else MatchNone
 applyTarget (TypeDirTargetTarget t p target) u q = if t == u && p == q then MatchSome (target NE.:| []) else MatchNone
 
 -- TODO: argument order docs
 -- (parent path) (child path)
-applyPath :: Path Rel Dir -> Path Rel Dir -> Determination
+applyPath :: Path Rel Dir -> Path Rel Dir -> FilterMatch
 applyPath t u = if isProperPrefixOf t u || t == u then MatchAll else MatchNone
 
 -- MatchNone <> MatchAll = MatchAll is the reason for this order
-instance Semigroup Determination where
+instance Semigroup FilterMatch where
   MatchNone <> t = t
   t <> MatchNone = t
   t <> MatchAll = t -- TODO: contentious: should MatchAll override MatchSome?
   MatchAll <> t = t
   MatchSome ts <> MatchSome us = MatchSome (ts <> us)
 
+-- | 'foldMap', but only requires a 'Semigroup' instance.
+--
+-- When the provided list is empty, this returns 'Nothing'
 foldMap' :: Semigroup s => (a -> s) -> [a] -> Maybe s
 foldMap' f xs = sconcat <$> NE.nonEmpty (map f xs)
 
@@ -150,31 +152,25 @@ foldMap' f xs = sconcat <$> NE.nonEmpty (map f xs)
 -- my-project: mvn@bar/baz ["baz", "bar", 15 others] -> MatchAll
 -- my-project: setuptools@bar/foo [] -> MatchAll
 
---instance Monoid Determination where
---mempty = MatchNone
-
--- newtype BuildTarget = BuildTarget String
 -- TODO: NonEmptySet?
-data Determination = MatchNone | MatchAll | MatchSome (NE.NonEmpty BuildTarget)
+data FilterMatch = MatchNone | MatchAll | MatchSome (NE.NonEmpty BuildTarget)
   deriving (Eq, Ord, Show)
 
--- TODO: there are some cases that we'd like to produce warnings
--- TODO: describe argument order; determination "include" and determination "exclude"
-dSubtract :: FoundTargets -> Determination -> Determination -> Determination
-dSubtract _ _ MatchAll = MatchNone
-dSubtract _ MatchNone _ = MatchNone
-dSubtract _ MatchAll MatchNone = MatchAll
-dSubtract ProjectWithoutTargets MatchAll (MatchSome _) = MatchNone -- TODO: warn user about invalid filter
-dSubtract (FoundTargets targets) MatchAll (MatchSome xs) =
-  case NE.nonEmpty (S.toList targets \\ NE.toList xs) of
-    Nothing -> MatchNone
-    Just zs -> MatchSome zs
-dSubtract _ (MatchSome xs) MatchNone = MatchSome xs
--- TODO: some targets might not be valid
-dSubtract _ (MatchSome xs) (MatchSome ys) =
-  case NE.nonEmpty (NE.toList xs \\ NE.toList ys) of
-    Nothing -> MatchNone
-    Just zs -> MatchSome zs
+data FilterResult = ResultNone | ResultAll | ResultInclude (NE.NonEmpty BuildTarget) | ResultExclude (NE.NonEmpty BuildTarget)
+  deriving (Eq, Ord, Show)
+
+-- TODO: describe argument order; "include" then "exclude"
+dSubtract :: FilterMatch -> FilterMatch -> FilterResult
+dSubtract _ MatchAll = ResultNone
+dSubtract MatchNone _ = ResultNone
+dSubtract MatchAll MatchNone = ResultAll
+dSubtract MatchAll (MatchSome xs) = ResultExclude xs
+dSubtract (MatchSome xs) MatchNone = ResultInclude xs
+dSubtract (MatchSome xs) (MatchSome ys) = maybe ResultNone ResultInclude (neDifference xs ys)
+
+-- | Compute the difference of two non-empty lists
+neDifference :: Eq a => NE.NonEmpty a -> NE.NonEmpty a -> Maybe (NE.NonEmpty a)
+neDifference xs ys = NE.nonEmpty (NE.toList xs \\ NE.toList ys)
 
 -- analyzer: returns empty set of build targets
 
