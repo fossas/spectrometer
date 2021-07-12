@@ -84,6 +84,19 @@ optional = false
 python-versions = "*"
 version = "1.6.1"
 
+[[package]]
+category = "main"
+description = "A small example package"
+name = "myprivatepkg"
+optional = false
+python-versions = ">=3.6"
+version = "0.0.1"
+
+[package.source]
+reference = 'gitlab'
+type = "legacy"
+url = "https://gitlab.com/api/v4/projects/packages/pypi/simple"
+
 [metadata]
 content-hash = "cf14fd7e0a1a1c6c5a1ee9afe16d0abaaac531ab9d84ad3d1d5276634aa35687"
 lock-version = "1.1"

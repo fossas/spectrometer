@@ -97,6 +97,15 @@ expectedPoetryLock =
             , poetryLockPackagePythonVersions = "*"
             , poetryLockPackageSource = Nothing
             }
+        , PoetryLockPackage
+            { poetryLockPackageName = PackageName{unPackageName = "myprivatepkg"}
+            , poetryLockPackageVersion = "0.0.1"
+            , poetryLockPackageCategory = "main"
+            , poetryLockPackageOptional = False
+            , poetryLockPackageDependencies = Map.empty
+            , poetryLockPackagePythonVersions = ">=3.6"
+            , poetryLockPackageSource = Just $ PoetryLockPackageSource{poetryLockPackageSourceType = "legacy", poetryLockPackageSourceUrl = "https://gitlab.com/api/v4/projects/packages/pypi/simple", poetryLockPackageSourceReference = Just "gitlab", poetryLockPackageSourceResolvedReference = Nothing}
+            }
         ]
     }
 
@@ -172,6 +181,23 @@ spec = do
                   , dependencyName = "pkgTwo-1.21.0.tar.gz"
                   , dependencyVersion = Just $ CEq "1.21.0"
                   , dependencyLocations = []
+                  , dependencyEnvironments = [EnvProduction]
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+    context "when poetry lock dependency is from secondary sources" $ do
+      it "should include url into dependency location" $ do
+        toMap [poetryLockPackages expectedPoetryLock !! 7]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "myprivatepkg"
+              , Dependency
+                  { dependencyType = PipType
+                  , dependencyName = "myprivatepkg"
+                  , dependencyVersion = Just $ CEq "0.0.1"
+                  , dependencyLocations = ["https://gitlab.com/api/v4/projects/packages/pypi/simple"]
                   , dependencyEnvironments = [EnvProduction]
                   , dependencyTags = Map.empty
                   }

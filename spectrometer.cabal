@@ -345,6 +345,7 @@ test-suite unit-tests
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
     Python.PipenvSpec
+    Python.Poetry.CommonSpec
     Python.Poetry.PyProjectSpec
     Python.Poetry.PoetryLockSpec
     Python.ReqTxtSpec

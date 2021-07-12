@@ -3,6 +3,8 @@
 module Strategy.Python.Poetry.Common (
   PoetryProject (..),
   buildPyProjectGraph,
+  buildGraphWithLock,
+  buildPackageNameGraph,
   discover,
 ) where
 
@@ -18,7 +20,7 @@ import Discovery.Walk (
  )
 import Effect.Exec
 import Effect.ReadFS (ReadFS, readContentsToml)
-import Graphing (Graphing, edge, empty, fromList, gmap, promoteToDirect)
+import Graphing (Graphing, addNode, edge, empty, fromList, gmap, promoteToDirect)
 import Path (Abs, Dir, File, Path)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec, toMap)
 import Strategy.Python.Poetry.PyProject (PyProject (..), getDependencies, pyProjectCodec, usesPoetryBuildSystem)
@@ -136,10 +138,16 @@ buildGraphWithLock lockProject poetryProject = promoteToDirect (isDirect poetryP
 -- | Builds the Package name graph
 -- In python, package names are unique, and only single version of a package can be used.
 buildPackageNameGraph :: [PoetryLockPackage] -> Graphing PackageName
-buildPackageNameGraph pkgs = foldl addToGraph empty (concatMap getEdgesPairs pkgs)
+buildPackageNameGraph pkgs = foldl addEdgesToGraph (allNodesToGraph pkgs) (concatMap getEdgesPairs pkgs)
   where
-    addToGraph :: Graphing PackageName -> (PackageName, PackageName) -> Graphing PackageName
-    addToGraph g pkgsParentChild = uncurry edge pkgsParentChild g
+    -- Add all packages to graph
+    -- We do this explicitly to ensure pkg without dependencies are included
+    allNodesToGraph :: [PoetryLockPackage] -> Graphing PackageName
+    allNodesToGraph ps = foldr (addNode . poetryLockPackageName) (empty) ps
+
+    -- Add all edges between pkgs to the graph
+    addEdgesToGraph :: Graphing PackageName -> (PackageName, PackageName) -> Graphing PackageName
+    addEdgesToGraph g pkgsParentChild = uncurry edge pkgsParentChild g
 
     getEdgesPairs :: PoetryLockPackage -> [(PackageName, PackageName)]
     getEdgesPairs pkg = concatMap (makeEdge pkg) [allPkgs pkg]

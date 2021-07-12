@@ -134,7 +134,7 @@ toMap pkgs =
           { dependencyType = toDepType (poetryLockPackageSource pkg)
           , dependencyName = toDepName pkg
           , dependencyVersion = toDepVersion pkg
-          , dependencyLocations = []
+          , dependencyLocations = toDepLocs pkg
           , dependencyEnvironments = toDepEnvironment pkg
           , dependencyTags = M.empty
           }
@@ -145,14 +145,24 @@ toMap pkgs =
     toDepName :: PoetryLockPackage -> Text
     toDepName plp = case (poetryLockPackageSource plp) of
       Nothing -> unPackageName $ poetryLockPackageName plp
-      Just plps -> poetryLockPackageSourceUrl plps
+      Just plps -> case poetryLockPackageSourceType plps of
+        "legacy" -> unPackageName $ poetryLockPackageName plp
+        _ -> poetryLockPackageSourceUrl plps
 
     toDepType :: Maybe PoetryLockPackageSource -> DepType
     toDepType Nothing = PipType
     toDepType (Just plps) = case poetryLockPackageSourceType plps of
       "git" -> GitType
       "url" -> URLType
+      "legacy" -> PipType
       _ -> UserType
+
+    toDepLocs :: PoetryLockPackage -> [Text]
+    toDepLocs pkg = case poetryLockPackageSource pkg of
+      Nothing -> []
+      Just plps -> case poetryLockPackageSourceType plps of
+        "legacy" -> [poetryLockPackageSourceUrl plps]
+        _ -> []
 
     -- Use resolved reference (for git sources), otherwise use resolved reference
     toDepVersion :: PoetryLockPackage -> Maybe VerConstraint
@@ -160,7 +170,9 @@ toMap pkgs =
       Nothing -> Just $ CEq $ poetryLockPackageVersion pkg
       Just plps -> case poetryLockPackageSourceReference plps of
         Nothing -> Just $ CEq $ poetryLockPackageVersion pkg
-        Just txt -> Just $ CEq txt
+        Just txt -> case poetryLockPackageSourceType plps of
+          "legacy" -> Just $ CEq $ poetryLockPackageVersion pkg
+          _ -> Just $ CEq txt
 
     toDepEnvironment :: PoetryLockPackage -> [DepEnvironment]
     toDepEnvironment pkg = case poetryLockPackageCategory pkg of
