@@ -12,6 +12,7 @@ import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
 import App.Fossa.ListTargets (listTargetsMain)
+import App.Fossa.Monorepo
 import App.Fossa.Report qualified as Report
 import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
@@ -84,6 +85,19 @@ appMain = do
           }
 
   case optCommand of
+    AnalyzeCommand AnalyzeOptions{analyzeOutput, analyzeBranch, analyzeMetadata, monorepoAnalysisOpts = (MonorepoAnalysisOpts (Just monorepoAnalysisType) monorepoFollowSymlinks monorepoScanFileFilters), analyzeBaseDir} -> do
+      dieOnWindows "Monorepo analysis is not supported on Windows"
+      if analyzeOutput
+        then die "Monorepo analysis does not support stdout scan destination"
+        else do
+          key <- requireKey maybeApiKey
+          let apiOpts = ApiOpts optBaseUrl key
+          let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
+          let monorepoAnalysisOpts = MonorepoAnalysisOpts (Just monorepoAnalysisType) monorepoFollowSymlinks monorepoScanFileFilters
+          let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
+          basedir <- parseAbsDir analyzeBaseDir
+          monorepoMain (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts metadata analyzeOverride
+    --
     AnalyzeCommand AnalyzeOptions{..} -> do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
@@ -302,7 +316,7 @@ monorepoOpts =
   MonorepoAnalysisOpts
     <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
     <*> switch (long "experimental-monorepo-follow-symlinks" <> help "if enabled, monorepo scans follow symbolic links. Does not protect against link loops.")
-    <*> (FilterExpressions <$> jsonOption (long "experimental-monorepo-file-filters" <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value []))
+    <*> (FilterExpressions <$> jsonOption (long "experimental-monorepo-file-filters" <> metavar "REGEXPS" <> help "JSON encoded array of RE2 regular expressions used to filter scanned paths during monorepo scans" <> value []))
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =

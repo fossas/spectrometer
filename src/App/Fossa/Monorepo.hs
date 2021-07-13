@@ -34,9 +34,9 @@ monorepoScan (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts projectM
   let wigginsOpts = generateWigginsMonorepoOpts basedir monorepoAnalysisOpts logSeverity projectRevision apiOpts projectMeta
 
   logInfo "Running monorepo scan"
-  stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
+  stdout <- context "Monorepo" $ runExecIO $ runWiggins binaryPaths wigginsOpts
   logInfo $ pretty stdout
 
 runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 runWiggins binaryPaths opts = do
-  execWiggins binaryPaths opts
+  context "Running monorepo binary" $ execWiggins binaryPaths opts
