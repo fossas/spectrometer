@@ -13,6 +13,7 @@ Upgrading from FOSSA CLI 1.x to 2.x is a major breaking change. For most users, 
   - [Remove calls to `fossa init`](#remove-calls-to-fossa-init)
   - [Migrate your configuration file](#migrate-your-configuration-file)
   - [Migrate "archive upload" targets](#migrate-archive-upload-targets)
+  - [Getting help with your migration](#getting-help-with-your-migration)
 
 ## What's new in FOSSA 2.x?
 
@@ -34,7 +35,7 @@ This means that `fossa init` is no longer required. `fossa init` is now a no-op 
 
 ### Automatic analysis target strategy selection
 
-In 1.x, modules were manually configured with "strategies" that specified _how_ a module should be analyzed. While `fossa init` attempted to choose the best strategy, manual intervention was sometimes required depending on the project's setup.
+In 1.x, modules could be manually configured with "strategies" that specified _how_ a module should be analyzed. While `fossa init` attempted to choose the best strategy, manual intervention was sometimes required depending on the project's setup.
 
 In 2.x, the CLI now automatically selects the optimal strategy for analysis targets given the current environment (e.g. whether a build tool is available). This is possible because discovery and analysis are now one step, so we can check the suitability of analysis strategies while discovering targets.
 
@@ -64,6 +65,12 @@ For documentation on the new configuration file format, see [here](https://githu
 
 ### Migrate "archive upload" targets
 
-In 1.x, "archive uploads" were a special kind of manually specified module of type `archive` that uploaded source code to the FOSSA backend for license scanning.
+In 1.x, ["archive upload" modules](https://github.com/fossas/fossa-cli/blob/master/docs/integrations/archive.md#archive) were a special kind of manually specified module of type `archive` that uploaded source code to the FOSSA backend for license scanning. They were also known as "raw" modules or "license scan" modules.
 
 In 2.x, archive uploads are no longer a special analysis target type. Instead, you can use our general support for [manually specified dependencies](https://github.com/fossas/spectrometer/blob/master/docs/userguide.md#license-scanning-local-dependencies) to specify local dependencies.
+
+### Getting help with your migration
+
+If you run into migration issues, you can get support by opening a ticket in this repository.
+
+If you are integrating a private project and want to share more details, or if you're a FOSSA customer with priority support, you can also email support@fossa.com or file a ticket at support.fossa.com for assistance.
