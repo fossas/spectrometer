@@ -276,6 +276,7 @@ analyzeOpts =
     <*> metadataOpts
     <*> many filterOpt
     <*> vsiAnalyzeOpt
+    <*> monorepoOpts
     <*> analyzeReplayOpt
     <*> baseDirArg
 
@@ -295,6 +296,9 @@ filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-T
   where
     parseFilter :: String -> Either String BuildTargetFilter
     parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack
+
+monorepoOpts :: Parser MonorepoAnalysisOpts
+monorepoOpts = MonorepoAnalysisOpts <$> optional (strOption (long "experimental-enable-monorepo" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -518,6 +522,7 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeMetadata :: ProjectMetadata
   , analyzeBuildTargetFilters :: [BuildTargetFilter]
   , analyzeVSIMode :: VSIAnalysisMode
+  , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeRecordMode :: RecordMode
   , analyzeBaseDir :: FilePath
   }

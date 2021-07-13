@@ -4,6 +4,7 @@ module App.Types (
   OverrideProject (..),
   ProjectMetadata (..),
   ProjectRevision (..),
+  MonorepoAnalysisOpts (..),
 ) where
 
 import Data.Text (Text)
@@ -26,6 +27,10 @@ data ProjectMetadata = ProjectMetadata
   , projectPolicy :: Maybe Text
   }
   deriving (Eq, Ord, Show)
+
+newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
+  { monorepoAnalysisType :: Maybe String
+  }
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text
