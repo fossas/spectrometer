@@ -29,7 +29,7 @@ data ProjectMetadata = ProjectMetadata
   deriving (Eq, Ord, Show)
 
 newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
-  { monorepoAnalysisType :: Maybe String
+  { monorepoAnalysisType :: Maybe Text
   }
 
 data ProjectRevision = ProjectRevision
