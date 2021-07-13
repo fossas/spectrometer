@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (RecordMode (..), ScanDestination (..), UnpackArchives (..), JsonOutput (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration
 import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, parseSyftOutputMain)
@@ -91,7 +91,7 @@ appMain = do
           doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBuildTargetFilters
 
       if analyzeOutput
-        then doAnalyze OutputStdout 
+        then doAnalyze OutputStdout
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
@@ -121,6 +121,7 @@ appMain = do
     VPSCommand VPSOptions{..} -> do
       apikey <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl apikey
+      withDefaultLogger logSeverity $ logWarn "vps commands are deprecated and will be removed in a future version. Please contact FOSSA for migration steps."
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions{..} -> do
           when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
