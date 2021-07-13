@@ -54,9 +54,9 @@ generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaS
 generateVSIStandaloneOpts :: Path Abs Dir -> ApiOpts -> WigginsOpts
 generateVSIStandaloneOpts scanDir apiOpts = WigginsOpts scanDir $ generateVSIStandaloneArgs apiOpts
 
-generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
-generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts logSeverity projectRevision scanType fileFilters apiOpts metadata =
-  WigginsOpts scanDir $ generateMonorepoArgs monorepoAnalysisOpts logSeverity projectRevision scanType fileFilters apiOpts metadata
+generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> WigginsOpts
+generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts logSeverity projectRevision apiOpts metadata =
+  WigginsOpts scanDir $ generateMonorepoArgs monorepoAnalysisOpts logSeverity projectRevision apiOpts metadata
 
 generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaFilePaths -> [Text]
 generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} ninjaScanId ninjaInputFiles =
@@ -76,8 +76,8 @@ generateVSIStandaloneArgs ApiOpts{..} =
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
     ++ ["."]
 
-generateMonorepoArgs :: MonorepoAnalysisOpts -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
-generateMonorepoArgs MonorepoAnalysisOpts{..} logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
+generateMonorepoArgs :: MonorepoAnalysisOpts -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
+generateMonorepoArgs MonorepoAnalysisOpts{..} logSeverity ProjectRevision{..} ApiOpts{..} ProjectMetadata{..} =
   "monorepo" :
   optMaybeText "-endpoint" (render <$> apiOptsUri)
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
@@ -88,9 +88,9 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} logSeverity ProjectRevision{..} Sc
     ++ optMaybeText "-project-url" projectUrl
     ++ optMaybeText "-team" projectTeam
     ++ optMaybeText "-title" projectTitle
-    ++ optBool "-follow" followSymlinks
+    ++ optBool "-follow" monorepoFollowSymlinks
     ++ optBool "-debug" (logSeverity == SevDebug)
-    ++ optFilterExpressions fileFilters
+    ++ optFilterExpressions monorepoScanFileFilters
     ++ optMaybeText "-type" monorepoAnalysisType
     ++ ["."]
 

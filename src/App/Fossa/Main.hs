@@ -298,7 +298,11 @@ filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-T
     parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack
 
 monorepoOpts :: Parser MonorepoAnalysisOpts
-monorepoOpts = MonorepoAnalysisOpts <$> optional (strOption (long "experimental-enable-monorepo" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
+monorepoOpts =
+  MonorepoAnalysisOpts
+    <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
+    <*> switch (long "experimental-monorepo-follow-symlinks" <> help "if enabled, monorepo scans follow symbolic links. Does not protect against link loops.")
+    <*> (FilterExpressions <$> jsonOption (long "experimental-monorepo-file-filters" <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value []))
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =

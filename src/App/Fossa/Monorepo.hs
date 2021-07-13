@@ -7,7 +7,6 @@ module App.Fossa.Monorepo (
 import App.Fossa.EmbeddedBinary
 import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.RunWiggins
-import App.Fossa.VPS.Types
 import App.Types
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
@@ -32,10 +31,7 @@ monorepoScan (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts projectM
   projectRevision <- mergeOverride projectOverride <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision projectRevision
 
-  -- todo: get (followSymlinks ScanType) and filterExpressions from user input
-  let scanType = ScanType True False False
-  let filterExpressions = FilterExpressions []
-  let wigginsOpts = generateWigginsMonorepoOpts basedir monorepoAnalysisOpts logSeverity projectRevision scanType filterExpressions apiOpts projectMeta
+  let wigginsOpts = generateWigginsMonorepoOpts basedir monorepoAnalysisOpts logSeverity projectRevision apiOpts projectMeta
 
   logInfo "Running monorepo scan"
   stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
