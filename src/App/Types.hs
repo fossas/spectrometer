@@ -7,7 +7,6 @@ module App.Types (
   MonorepoAnalysisOpts (..),
 ) where
 
-import App.Fossa.VPS.Types
 import Data.Text (Text)
 import Path
 
@@ -29,10 +28,8 @@ data ProjectMetadata = ProjectMetadata
   }
   deriving (Eq, Ord, Show)
 
-data MonorepoAnalysisOpts = MonorepoAnalysisOpts
+newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
   { monorepoAnalysisType :: Maybe Text
-  , monorepoFollowSymlinks :: Bool
-  , monorepoScanFileFilters :: FilterExpressions
   }
 
 data ProjectRevision = ProjectRevision

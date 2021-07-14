@@ -85,7 +85,7 @@ appMain = do
           }
 
   case optCommand of
-    AnalyzeCommand AnalyzeOptions{analyzeOutput, analyzeBranch, analyzeMetadata, monorepoAnalysisOpts = (MonorepoAnalysisOpts (Just monorepoAnalysisType) monorepoFollowSymlinks monorepoScanFileFilters), analyzeBaseDir} -> do
+    AnalyzeCommand AnalyzeOptions{analyzeOutput, analyzeBranch, analyzeMetadata, monorepoAnalysisOpts = (MonorepoAnalysisOpts (Just monorepoAnalysisType)), analyzeBaseDir} -> do
       dieOnWindows "Monorepo analysis is not supported on Windows"
       if analyzeOutput
         then die "Monorepo analysis does not support stdout scan destination"
@@ -93,7 +93,7 @@ appMain = do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
-          let monorepoAnalysisOpts = MonorepoAnalysisOpts (Just monorepoAnalysisType) monorepoFollowSymlinks monorepoScanFileFilters
+          let monorepoAnalysisOpts = MonorepoAnalysisOpts (Just monorepoAnalysisType)
           let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           basedir <- parseAbsDir analyzeBaseDir
           monorepoMain (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts metadata analyzeOverride
@@ -315,8 +315,6 @@ monorepoOpts :: Parser MonorepoAnalysisOpts
 monorepoOpts =
   MonorepoAnalysisOpts
     <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
-    <*> switch (long "experimental-monorepo-follow-symlinks" <> help "if enabled, monorepo scans follow symbolic links. Does not protect against link loops.")
-    <*> (FilterExpressions <$> jsonOption (long "experimental-monorepo-file-filters" <> metavar "REGEXPS" <> help "JSON encoded array of RE2 regular expressions used to filter scanned paths during monorepo scans" <> value []))
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =

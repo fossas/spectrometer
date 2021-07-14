@@ -88,9 +88,7 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} logSeverity ProjectRevision{..} Ap
     ++ optMaybeText "-project-url" projectUrl
     ++ optMaybeText "-team" projectTeam
     ++ optMaybeText "-title" projectTitle
-    ++ optBool "-follow" monorepoFollowSymlinks
     ++ optBool "-debug" (logSeverity == SevDebug)
-    ++ optFilterExpressions monorepoScanFileFilters
     ++ optMaybeText "-type" monorepoAnalysisType
     ++ ["."]
 
