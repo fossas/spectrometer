@@ -33,7 +33,7 @@ import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Discovery.Filters (BuildTargetFilterOld (..), AllFilters(..), FilterCombination(..), filterParser, configTargetToFilter)
+import Discovery.Filters (AllFilters (..), BuildTargetFilterOld (..), FilterCombination (..), configTargetToFilter, filterParser)
 import Effect.Logger
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Options.Applicative
@@ -112,7 +112,6 @@ appMain = do
             if null analyzeOnlyTargets && null analyzeExcludeTargets && null analyzeOnlyPaths && null analyzeExcludePaths
               then AllFilters analyzeBuildTargetFilters includeFilters excludeFilters
               else AllFilters analyzeBuildTargetFilters (FilterCombination (configTargetToFilter <$> analyzeOnlyTargets) analyzeOnlyPaths) (FilterCombination (configTargetToFilter <$> analyzeExcludeTargets) analyzeExcludePaths)
-
             where
               includeFilters = FilterCombination includeTargets includePaths
               includePaths = maybe [] pathsOnly (fileConfig >>= configPaths)
