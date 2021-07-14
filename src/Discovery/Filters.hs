@@ -69,7 +69,7 @@ applyFilters (AllFilters legacyFilters _ _) tool dir targets = finalizeResult (a
   where
     legacyOnlyFilters = FilterCombination (legacyFiltersToTargetFilter <$> legacyFilters) []
     legacyFiltersToTargetFilter :: BuildTargetFilterOld -> TargetFilter
-    legacyFiltersToTargetFilter (ProjectFilter t path)  = TypeDirTarget t path
+    legacyFiltersToTargetFilter (ProjectFilter t path) = TypeDirTarget t path
     legacyFiltersToTargetFilter (TargetFilter t path target) = TypeDirTargetTarget t path target
 
 -- finalizeResult combines a FilterResult with the targets that exist in a project and returns the final filtering Result
