@@ -62,6 +62,7 @@ data FilterCombination = FilterCombination
   , combinedPaths :: [Path Rel Dir]
   }
 
+-- applyFilters determines if legacy filters are present and if they need to converted to `TargetFilters` for filtering.
 applyFilters :: AllFilters -> Text -> Path Rel Dir -> FoundTargets -> Maybe FoundTargets
 applyFilters (AllFilters [] onlyFilters excludeFilters) tool dir targets = finalizeResult (apply onlyFilters excludeFilters tool dir) targets
 applyFilters (AllFilters legacyFilters _ _) tool dir targets = finalizeResult (apply legacyOnlyFilters (FilterCombination [] []) tool dir) targets
@@ -71,6 +72,10 @@ applyFilters (AllFilters legacyFilters _ _) tool dir targets = finalizeResult (a
     legacyFiltersToTargetFilter (ProjectFilter t path)  = TypeDirTarget t path
     legacyFiltersToTargetFilter (TargetFilter t path target) = TypeDirTargetTarget t path target
 
+-- finalizeResult combines a FilterResult with the targets that exist in a project and returns the final filtering Result
+-- If the return value is Nothing, that means that no targets remain for scanning.
+-- The second to last cases ensure that the final included targets are intersectioned with the targets that actually exist for a project.
+-- The final case ensures that all excluded targets are removed from a projects final list of targets.
 finalizeResult :: FilterResult -> FoundTargets -> Maybe FoundTargets
 finalizeResult ResultNone _ = Nothing
 finalizeResult _ ProjectWithoutTargets = Just ProjectWithoutTargets
@@ -122,24 +127,6 @@ instance Semigroup FilterMatch where
 -- When the provided list is empty, this returns 'Nothing'
 foldMap' :: Semigroup s => (a -> s) -> [a] -> Maybe s
 foldMap' f xs = sconcat <$> NE.nonEmpty (map f xs)
-
--- only-target: mvn@foo:bar
--- only-target: mvn@foo
--- only-path: foo
--- exclude-target: mvn@foo:baz
---
--- my-project: mvn@foo ["bar","baz",15 other targets]
---
--- -> MatchAll?
--- -> MatchSome ["bar"]?
-
--- only-path: bar
--- only-target: mvn@bar/foo:baz
---
--- my-project: mvn@bar ["quux"] -> MatchAll
--- my-project: mvn@bar/foo ["baz", "bar", 15 others] -> MatchSome baz
--- my-project: mvn@bar/baz ["baz", "bar", 15 others] -> MatchAll
--- my-project: setuptools@bar/foo [] -> MatchAll
 
 data FilterMatch = MatchNone | MatchAll | MatchSome (NE.NonEmpty BuildTarget)
   deriving (Eq, Ord, Show)

@@ -113,13 +113,10 @@ appMain = do
               then AllFilters analyzeBuildTargetFilters includeFilters excludeFilters
               else AllFilters analyzeBuildTargetFilters (FilterCombination (configTargetToFilter <$> analyzeOnlyTargets) analyzeOnlyPaths) (FilterCombination (configTargetToFilter <$> analyzeExcludeTargets) analyzeExcludePaths)
             where
-              includeFilters = FilterCombination includeTargets includePaths
-              includePaths = maybe [] pathsOnly (fileConfig >>= configPaths)
-              includeTargets = configTargetToFilter <$> maybe [] targetsOnly (fileConfig >>= configTargets)
-
-              excludeFilters = FilterCombination excludeTargets excludePaths
-              excludePaths = maybe [] pathsExclude (fileConfig >>= configPaths)
-              excludeTargets = configTargetToFilter <$> maybe [] targetsExclude (fileConfig >>= configTargets)
+              includeFilters = FilterCombination (filterTargets targetsOnly) (filterPaths pathsOnly)
+              excludeFilters = FilterCombination (filterTargets targetsExclude) (filterPaths pathsExclude)
+              filterPaths field = maybe [] field (fileConfig >>= configPaths)
+              filterTargets field = configTargetToFilter <$> maybe [] field (fileConfig >>= configTargets)
 
           doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
 
@@ -335,7 +332,7 @@ analyzeReplayOpt =
     <|> pure RecordModeNone
 
 filterOpt :: Parser BuildTargetFilterOld
-filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
+filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecated) Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
   where
     parseFilter :: String -> Either String BuildTargetFilterOld
     parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack

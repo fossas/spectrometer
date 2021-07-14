@@ -12,7 +12,6 @@ module Types (
 
 import Data.Aeson
 
--- import Data.Set (Set)
 import Data.Set.NonEmpty
 import Data.Text (Text)
 import DepTypes
