@@ -11,6 +11,7 @@ module Types (
 ) where
 
 import Data.Aeson
+
 -- import Data.Set (Set)
 import Data.Set.NonEmpty
 import Data.Text (Text)
@@ -20,7 +21,6 @@ import Path
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
 
--- TODO: NonEmptySet
 data FoundTargets = ProjectWithoutTargets | FoundTargets (NonEmptySet BuildTarget)
   deriving (Eq, Ord, Show)
 

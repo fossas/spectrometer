@@ -49,17 +49,6 @@ data BuildTargetFilterOld
     TargetFilter Text (Path Rel Dir) BuildTarget
   deriving (Eq, Ord, Show)
 
--- future work to ticket:
--- - skip directories if filters will never match
--- - skip analyzers if filters will never match
---
--- buildTarget-paths and paths-filters get unioned
---
--- config file, bunch of filters
--- --filter mvn@.
---
--- getting determination values from the target-only, path-only, target-exclude, path-exclude
-
 data TargetFilter = TypeTarget Text | TypeDirTarget Text (Path Rel Dir) | TypeDirTargetTarget Text (Path Rel Dir) BuildTarget
 
 configTargetToFilter :: ConfigTarget -> TargetFilter
@@ -81,7 +70,6 @@ applyFilters (AllFilters legacyFilters _ _) tool dir targets = finalizeResult (a
     legacyFiltersToTargetFilter :: BuildTargetFilterOld -> TargetFilter
     legacyFiltersToTargetFilter (ProjectFilter t path)  = TypeDirTarget t path
     legacyFiltersToTargetFilter (TargetFilter t path target) = TypeDirTargetTarget t path target
-
 
 finalizeResult :: FilterResult -> FoundTargets -> Maybe FoundTargets
 finalizeResult ResultNone _ = Nothing
@@ -125,7 +113,7 @@ applyPath t u = if isProperPrefixOf t u || t == u then MatchAll else MatchNone
 instance Semigroup FilterMatch where
   MatchNone <> t = t
   t <> MatchNone = t
-  t <> MatchAll = t -- TODO: contentious: should MatchAll override MatchSome?
+  t <> MatchAll = t
   MatchAll <> t = t
   MatchSome ts <> MatchSome us = MatchSome (ts <> us)
 
@@ -153,14 +141,14 @@ foldMap' f xs = sconcat <$> NE.nonEmpty (map f xs)
 -- my-project: mvn@bar/baz ["baz", "bar", 15 others] -> MatchAll
 -- my-project: setuptools@bar/foo [] -> MatchAll
 
--- TODO: NonEmptySet?
 data FilterMatch = MatchNone | MatchAll | MatchSome (NE.NonEmpty BuildTarget)
   deriving (Eq, Ord, Show)
 
 data FilterResult = ResultNone | ResultAll | ResultInclude (NE.NonEmpty BuildTarget) | ResultExclude (NE.NonEmpty BuildTarget)
   deriving (Eq, Ord, Show)
 
--- TODO: describe argument order; "include" then "exclude"
+-- dSubtract -> IncludeMatches -> ExcludeMatches -> FilterResult
+-- dSubtract defines how different types of include and exclude matches are merged to create a FilterResult.
 dSubtract :: FilterMatch -> FilterMatch -> FilterResult
 dSubtract _ MatchAll = ResultNone
 dSubtract MatchNone _ = ResultNone
