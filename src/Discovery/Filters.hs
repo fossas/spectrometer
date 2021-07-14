@@ -2,13 +2,12 @@
 
 module Discovery.Filters (
   BuildTargetFilterOld (..),
-  CombinedFilters (..),
+  AllFilters (..),
   filterParser,
-  applyFilter,
-  applyFiltersOld,
   applyFilters,
-  TargetTest (..),
-  Comb (..),
+  configTargetToFilter,
+  TargetFilter (..),
+  FilterCombination (..),
   FilterMatch (..),
   FilterResult (..),
   apply,
@@ -17,10 +16,10 @@ module Discovery.Filters (
 import App.Fossa.Configuration
 import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Semigroup (sconcat)
-import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Set.NonEmpty
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void (Void)
@@ -33,12 +32,12 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char
-import Types (BuildTarget (..))
+import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets))
 
-data CombinedFilters = CombinedFilters
+data AllFilters = AllFilters
   { legacyFilters :: [BuildTargetFilterOld]
-  , targetFilters :: Maybe ConfigTargets
-  , pathFilters :: Maybe ConfigPaths
+  , includeFilters :: FilterCombination
+  , excludeFilters :: FilterCombination
   }
 
 data BuildTargetFilterOld
@@ -50,72 +49,74 @@ data BuildTargetFilterOld
     TargetFilter Text (Path Rel Dir) BuildTarget
   deriving (Eq, Ord, Show)
 
--- two filters:
--- path-only: dir
--- buildtarget-only: mvn@foo
---
--- project: mvn@foo
---
---
--- concerns:
--- 1. what about analyzers that always produce an empty set of build targets?
--- 2. flattening the TargetFilter type (TargetTest)
--- 3. in an ideal world, what would our filter type be?
--- 4. how do path filters interact with buildtarget filters?
--- 5. legacy filters, when present, are the only ones that matter? why?
--- 6. warning that config file filters are getting ignored
---
 -- future work to ticket:
 -- - skip directories if filters will never match
 -- - skip analyzers if filters will never match
 --
--- buildtarget-paths and paths-filters get unioned
---
--- to look at:
--- - command line parser for include/excludes
+-- buildTarget-paths and paths-filters get unioned
 --
 -- config file, bunch of filters
 -- --filter mvn@.
 --
 -- getting determination values from the target-only, path-only, target-exclude, path-exclude
 
-data TargetTest = TypeTarget Text | TypeDirTarget Text (Path Rel Dir) | TypeDirTargetTarget Text (Path Rel Dir) BuildTarget
+data TargetFilter = TypeTarget Text | TypeDirTarget Text (Path Rel Dir) | TypeDirTargetTarget Text (Path Rel Dir) BuildTarget
 
-data Comb = Comb
-  { combTargets :: [TargetTest]
-  , combPaths :: [Path Rel Dir]
+configTargetToFilter :: ConfigTarget -> TargetFilter
+configTargetToFilter (ConfigTarget toolType target) = case target of
+  Nothing -> TypeTarget toolType
+  Just (DirectoryFilter dir) -> TypeDirTarget toolType dir
+  Just (ExactTargetFilter dir exactTarget) -> TypeDirTargetTarget toolType dir (BuildTarget exactTarget)
+
+data FilterCombination = FilterCombination
+  { combinedTargets :: [TargetFilter]
+  , combinedPaths :: [Path Rel Dir]
   }
 
--- (buildtargetfilters-only `union` pathfilters-only)
---   `subtract` (buildtargetfilters-exclude `union` pathfilters-exclude)
-apply :: Comb -> Comb -> Text -> Path Rel Dir -> FilterResult
+applyFilters :: AllFilters -> Text -> Path Rel Dir -> FoundTargets -> Maybe FoundTargets
+applyFilters (AllFilters [] onlyFilters excludeFilters) tool dir targets = finalizeResult (apply onlyFilters excludeFilters tool dir) targets
+applyFilters (AllFilters legacyFilters _ _) tool dir targets = finalizeResult (apply legacyOnlyFilters (FilterCombination [] []) tool dir) targets
+  where
+    legacyOnlyFilters = FilterCombination (legacyFiltersToTargetFilter <$> legacyFilters) []
+    legacyFiltersToTargetFilter :: BuildTargetFilterOld -> TargetFilter
+    legacyFiltersToTargetFilter (ProjectFilter t path)  = TypeDirTarget t path
+    legacyFiltersToTargetFilter (TargetFilter t path target) = TypeDirTargetTarget t path target
+
+
+finalizeResult :: FilterResult -> FoundTargets -> Maybe FoundTargets
+finalizeResult ResultNone _ = Nothing
+finalizeResult _ ProjectWithoutTargets = Just ProjectWithoutTargets
+finalizeResult ResultAll targets = Just targets
+finalizeResult (ResultInclude found) (FoundTargets targets) = (Just . FoundTargets) =<< nonEmpty (S.intersection (toSet targets) $ S.fromList $ NE.toList found)
+finalizeResult (ResultExclude found) (FoundTargets targets) = (Just . FoundTargets) =<< nonEmpty (S.difference (toSet targets) $ S.fromList $ NE.toList found)
+
+-- (buildTargetFilters-only `union` pathFilters-only)
+--   `subtract` (buildTargetFilters-exclude `union` pathFilters-exclude)
+apply :: FilterCombination -> FilterCombination -> Text -> Path Rel Dir -> FilterResult
 apply include exclude buildtool dir =
   dSubtract
     (fromMaybe MatchAll (applyComb include buildtool dir))
     (fromMaybe MatchNone (applyComb exclude buildtool dir))
 
 -- Nothing = "Unknown" -- i.e., there were no filters
-applyComb :: Comb -> Text -> Path Rel Dir -> Maybe FilterMatch
+applyComb :: FilterCombination -> Text -> Path Rel Dir -> Maybe FilterMatch
 applyComb comb buildtool dir =
   buildTargetFiltersResult <> pathFiltersResult
   where
     buildTargetFiltersResult :: Maybe FilterMatch
-    buildTargetFiltersResult = foldMap' (\t -> applyTarget t buildtool dir) (combTargets comb)
+    buildTargetFiltersResult = foldMap' (\t -> applyTarget t buildtool dir) (combinedTargets comb)
 
     pathFiltersResult :: Maybe FilterMatch
-    pathFiltersResult = foldMap' (`applyPath` dir) (combPaths comb)
+    pathFiltersResult = foldMap' (`applyPath` dir) (combinedPaths comb)
 
 -- mvn@foo:bar
-
 -- mvn@foo ProjectWithoutTargets -> MatchNone
---
 -- mvn@foo (FoundTargets xs) -> bar `elem` xs -> MatchSome [bar] otherwise MatchNone
-applyTarget :: TargetTest -> Text -> Path Rel Dir -> FilterMatch
+applyTarget :: TargetFilter -> Text -> Path Rel Dir -> FilterMatch
 applyTarget (TypeTarget t) u _ = if t == u then MatchAll else MatchNone
 applyTarget (TypeDirTarget t p) u q = if t == u && p == q then MatchAll else MatchNone
 applyTarget (TypeDirTargetTarget t p target) u q = if t == u && p == q then MatchSome (target NE.:| []) else MatchNone
 
--- TODO: argument order docs
 -- (parent path) (child path)
 applyPath :: Path Rel Dir -> Path Rel Dir -> FilterMatch
 applyPath t u = if isProperPrefixOf t u || t == u then MatchAll else MatchNone
@@ -171,112 +172,6 @@ dSubtract (MatchSome xs) (MatchSome ys) = maybe ResultNone ResultInclude (neDiff
 -- | Compute the difference of two non-empty lists
 neDifference :: Eq a => NE.NonEmpty a -> NE.NonEmpty a -> Maybe (NE.NonEmpty a)
 neDifference xs ys = NE.nonEmpty (NE.toList xs \\ NE.toList ys)
-
--- analyzer: returns empty set of build targets
-
-{-
-Target Filtering Workflow
-1. If any legacy filters exist, apply them and skip the rest of the filtering logic.
-2. Get targets that match the targets.only filters.
-3. Get targets that match the paths.only filters.
-4. Combine the results from step 2 & 3. If they are empty, then default to all targets allowed.
-5. Remove the targets from step 4 match targets.exclude
-6. Remove the targets from step 5 that match paths.exclude
--}
-applyFilters :: CombinedFilters -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
-applyFilters (CombinedFilters [] Nothing Nothing) _ _ targets = Just targets
-applyFilters (CombinedFilters [] targetFilters pathFilters) tool dir targets = do
-  let onlyTargetMatches :: Maybe [Set BuildTarget]
-      onlyTargetMatches = do
-        filters <- targetsOnly <$> targetFilters
-        _ <- NE.nonEmpty filters
-        Just $ mapMaybe (\one -> applyTargetFilter one tool dir targets) filters
-
-  let onlyPathMatches = do
-        filters <- pathsOnly <$> pathFilters
-        _ <- NE.nonEmpty filters
-        Just $ mapMaybe (\one -> applyPathFilter one dir targets) filters
-
-  matchesOnly <- validateOnlyTargets onlyTargetMatches onlyPathMatches targets
-  -- [S.empty]
-  -- -> S.empty
-  allOnlyMatches <- checkEmptySet $ foldl S.union S.empty matchesOnly
-
-  let excludeTargetMatches = fromMaybe allOnlyMatches $ do
-        filters <- targetsExclude <$> targetFilters
-        let remove = mapMaybe (\one -> applyTargetFilter one tool dir allOnlyMatches) filters
-        pure $ S.difference allOnlyMatches $ foldl S.union S.empty remove
-
-  _ <- checkEmptySet excludeTargetMatches
-  let finalTargets = fromMaybe excludeTargetMatches $ do
-        filters <- pathsExclude <$> pathFilters
-        let remove = mapMaybe (\one -> applyPathFilter one dir excludeTargetMatches) filters
-        pure $ S.difference excludeTargetMatches $ foldl S.union S.empty remove
-
-  checkEmptySet finalTargets
-  where
-    checkEmptySet :: Set BuildTarget -> Maybe (Set BuildTarget)
-    checkEmptySet set = if S.null set then Nothing else Just set
-
-    -- If both are Nothing, then we can keep the default list of targets.
-    -- If even one is an array, we need to validate that it has elements.
-    validateOnlyTargets :: Maybe [Set BuildTarget] -> Maybe [Set BuildTarget] -> Set BuildTarget -> Maybe [Set BuildTarget]
-    validateOnlyTargets Nothing Nothing base = Just [base]
-    validateOnlyTargets (Just first) Nothing _ = checkEmptyList first
-    validateOnlyTargets Nothing (Just second) _ = checkEmptyList second
-    validateOnlyTargets (Just first) (Just second) _ = checkEmptyList $ first <> second
-
-    checkEmptyList :: [a] -> Maybe [a]
-    checkEmptyList [] = Nothing
-    checkEmptyList l = Just l
-applyFilters (CombinedFilters legacyFilters _ _) tool dir targets = applyFiltersOld legacyFilters tool dir targets
-
--- If include is set and the tool type matches, return all targets.
--- If exclude is set and nothing matches, return all targets.
-applyTargetFilter :: ConfigTarget -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
-applyTargetFilter (ConfigTarget configType Nothing) tool _ targets
-  | configType == tool = Just targets
-  | otherwise = Nothing
-applyTargetFilter (ConfigTarget configType (Just (DirectoryFilter dir))) tool dir' targets
-  | configType == tool && dir == dir' = Just targets
-  | otherwise = Nothing
-applyTargetFilter (ConfigTarget configType (Just (ExactTargetFilter dir target))) tool dir' targets
-  | configType == tool && dir == dir' && S.member (BuildTarget target) targets = Just $ S.singleton (BuildTarget target)
-  | otherwise = Nothing
-
-applyPathFilter :: Path Rel Dir -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
-applyPathFilter pathFilter dir targets
-  | (pathFilter `isProperPrefixOf` dir) || (pathFilter == dir) = Just targets
-  | otherwise = Nothing
-
--- | Apply a set of filters determining:
--- 1. Whether the project should be scanned (@Maybe@)
--- 2. The build targets that should be scanned (@Set BuildTarget@)
---
--- This is the same as using 'applyFilter' on each filter in the list, unioning
--- the successful results. If all filters fail, this returns @Nothing@
-applyFiltersOld :: [BuildTargetFilterOld] -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
-applyFiltersOld [] _ _ targets = Just targets
-applyFiltersOld filters tool dir targets = do
-  let individualResults = mapMaybe (\one -> applyFilter one tool dir targets) filters
-  successful <- NE.nonEmpty individualResults
-  pure (sconcat successful)
-
--- | Apply a filter to a set of BuildTargets, returning:
--- 1. Whether the targets should be scanned (@Maybe@)
--- 2. The BuildTargets that should be scanned (@Set BuildTarget@)
-applyFilter :: BuildTargetFilterOld -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
-applyFilter (ProjectFilter tool dir) tool' dir' targets
-  | tool == tool'
-    , dir == dir' =
-    Just targets
-  | otherwise = Nothing
-applyFilter (TargetFilter tool dir target) tool' dir' targets
-  | tool == tool'
-    , dir == dir'
-    , S.member target targets =
-    Just $ S.singleton target
-  | otherwise = Nothing
 
 type Parser = Parsec Void Text
 

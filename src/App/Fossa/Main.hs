@@ -33,7 +33,7 @@ import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Discovery.Filters (BuildTargetFilterOld (..), CombinedFilters (CombinedFilters), filterParser)
+import Discovery.Filters (BuildTargetFilterOld (..), AllFilters(..), FilterCombination(..), filterParser, configTargetToFilter)
 import Effect.Logger
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Options.Applicative
@@ -110,8 +110,17 @@ appMain = do
           -- If a user enters a single target or path filtering flag, do not use any filters from the configuration file.
           combinedFilters =
             if null analyzeOnlyTargets && null analyzeExcludeTargets && null analyzeOnlyPaths && null analyzeExcludePaths
-              then CombinedFilters analyzeBuildTargetFilters (fileConfig >>= configTargets) (fileConfig >>= configPaths)
-              else CombinedFilters analyzeBuildTargetFilters (Just $ ConfigTargets analyzeOnlyTargets analyzeExcludeTargets) (Just $ ConfigPaths analyzeOnlyPaths analyzeExcludePaths)
+              then AllFilters analyzeBuildTargetFilters includeFilters excludeFilters
+              else AllFilters analyzeBuildTargetFilters (FilterCombination (configTargetToFilter <$> analyzeOnlyTargets) analyzeOnlyPaths) (FilterCombination (configTargetToFilter <$> analyzeExcludeTargets) analyzeExcludePaths)
+
+            where
+              includeFilters = FilterCombination includeTargets includePaths
+              includePaths = maybe [] pathsOnly (fileConfig >>= configPaths)
+              includeTargets = configTargetToFilter <$> maybe [] targetsOnly (fileConfig >>= configTargets)
+
+              excludeFilters = FilterCombination excludeTargets excludePaths
+              excludePaths = maybe [] pathsExclude (fileConfig >>= configPaths)
+              excludeTargets = configTargetToFilter <$> maybe [] targetsExclude (fileConfig >>= configTargets)
 
           doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
 

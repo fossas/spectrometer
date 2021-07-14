@@ -11,7 +11,8 @@ module Types (
 ) where
 
 import Data.Aeson
-import Data.Set (Set)
+-- import Data.Set (Set)
+import Data.Set.NonEmpty
 import Data.Text (Text)
 import DepTypes
 import Graphing
@@ -20,7 +21,7 @@ import Path
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
 
 -- TODO: NonEmptySet
-data FoundTargets = ProjectWithoutTargets | FoundTargets (Set BuildTarget)
+data FoundTargets = ProjectWithoutTargets | FoundTargets (NonEmptySet BuildTarget)
   deriving (Eq, Ord, Show)
 
 instance Semigroup FoundTargets where
@@ -35,8 +36,7 @@ data DiscoveredProject m = DiscoveredProject
   { projectType :: Text
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
-  , projectDependencyGraph :: Set BuildTarget -> m (Graphing Dependency)
-  -- , projectDependencyGraph :: Determination -> m (Graphing Dependency)
+  , projectDependencyGraph :: FoundTargets -> m (Graphing Dependency)
   , projectLicenses :: m [LicenseResult]
   }
 

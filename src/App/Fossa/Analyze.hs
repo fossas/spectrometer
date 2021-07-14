@@ -41,7 +41,6 @@ import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
-import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
@@ -125,7 +124,7 @@ data RecordMode
   | -- | don't record or replay
     RecordModeNone
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> CombinedFilters -> IO ()
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> AllFilters -> IO ()
 analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
@@ -196,29 +195,27 @@ runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has AtomicCounter sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
   BaseDir ->
-  CombinedFilters ->
+  AllFilters ->
   DiscoveredProject (StickyDiagC (Diag.DiagnosticsC m)) ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project =
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
-      logInfo $ pretty $ show $ targets
+      logInfo $ pretty $ show targets
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
       graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
-applyFiltersToProject :: Path Abs Dir -> CombinedFilters -> DiscoveredProject n -> Maybe (Set BuildTarget)
+applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
     -- FIXME: this is required for --unpack-archives to continue to work.
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
     -- will always fail
-    -- FIXME
-    Nothing -> undefined
-    _ -> undefined
-    --Nothing -> Just projectBuildTargets
-    --Just rel -> applyFilters filters projectType rel projectBuildTargets
+    Nothing -> Just projectBuildTargets
+    Just rel -> applyFilters filters projectType rel projectBuildTargets
+
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -234,7 +231,7 @@ analyze ::
   Flag UnpackArchives ->
   Flag JsonOutput ->
   VSIAnalysisMode ->
-  CombinedFilters ->
+  AllFilters ->
   m ()
 analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI filters = do
   capabilities <- sendIO getNumCapabilities
