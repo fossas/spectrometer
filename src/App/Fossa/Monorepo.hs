@@ -9,13 +9,11 @@ import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Types
 import Control.Carrier.Diagnostics
-import Control.Effect.Lift (Lift, sendIO)
-import Data.String.Conversion (toText)
+import Control.Effect.Lift (Lift)
 import Data.Text
 import Effect.Exec
 import Effect.Logger
 import Fossa.API.Types
-import System.Exit (exitFailure)
 
 monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> IO ()
 monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject = withDefaultLogger logSeverity $ do
