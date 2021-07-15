@@ -19,12 +19,7 @@ import System.Exit (exitFailure)
 
 monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> IO ()
 monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject = withDefaultLogger logSeverity $ do
-  result <- runDiagnostics $ withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject
-  case result of
-    Left failure -> do
-      logStdout $ toText $ show $ renderFailureBundle failure
-      sendIO exitFailure
-    Right _ -> pure ()
+  logWithExit_ $ withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject
 
 monorepoScan :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> BinaryPaths -> m ()
 monorepoScan (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts projectMeta projectOverride binaryPaths = do
