@@ -1,4 +1,6 @@
 example
+|-- pkgX (/Users/some/dir/) *override*
+|   `-- pkgY ~> 1.5 or ~> 2.0 (Hex package)
 |-- one (https://github.com/dep/one.git)
 |   |-- one_one ~r/.*/ (https://github.com/dep/one_one - 2.11.0) *override*
 |   `-- one_two ~r/.*/ (https://github.com/dep/one_two - 1.8.0) *override*

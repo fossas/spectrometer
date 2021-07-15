@@ -36,6 +36,7 @@ import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, takeWhileP, try),
   Parsec,
   anySingle,
+  between,
   choice,
   chunk,
   empty,
@@ -48,7 +49,7 @@ import Text.Megaparsec (
   takeP,
   (<|>),
  )
-import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, string)
+import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, space, string)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 missingDepVersionsMsg :: Text
@@ -74,7 +75,7 @@ newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Or
 data DepManager = Mix | Rebar3 | Rebar | Make deriving (Eq, Show, Ord)
 
 -- | Source Control Manager (SCM) - e.g. git, hex
-data DepSCM = Hex | Git Text (Maybe Text) | Other deriving (Eq, Show, Ord)
+data DepSCM = Hex | LocalPath Text | Git Text (Maybe Text) | Other deriving (Eq, Show, Ord)
 
 -- | Mix Dependency (Unresolved - i.e. without versioning)
 data MixDep = MixDep
@@ -127,7 +128,7 @@ parseDepManager =
 
 -- | Parses Source Control Manager
 parseDepSCM :: Parser DepSCM
-parseDepSCM = (try parseDepHex <|> parseDepSCMGit)
+parseDepSCM = (try (try parseDepHex <|> parseDepSCMGit) <|> parseDepSCMLocalPath)
   where
     parseDepHex :: Parser DepSCM
     parseDepHex = do
@@ -145,6 +146,11 @@ parseDepSCM = (try parseDepHex <|> parseDepSCMGit)
         return (git_ref)
 
       pure (Git (uri <> addr) (reference))
+
+    parseDepSCMLocalPath :: Parser DepSCM
+    parseDepSCMLocalPath = do
+      path <- takeWhileP (Just "local path") (/= ')')
+      pure (LocalPath path)
 
 type Parser = Parsec Void Text
 
@@ -165,37 +171,29 @@ mixDepsCmdOutputParser = M.fromList <$> (parseDep `sepBy` char '*') <* eof
 
     parseDep :: Parser (PackageName, MixDepResolved)
     parseDep = do
-      _ <- chunk "* " <|> chunk " "
+      _ <- (chunk "*" <|> " ") <* space
 
       -- pkg name
-      name <- findName
-      _ <- chunk " "
+      name <- findName <* space
 
       -- If dependencies are not resolved, version won't be printed
       -- This can occur if lock file is missing
-      version <- optional . try $ do
-        v <- findVersion
-        _ <- chunk " "
-        return (CEq v)
+      version <- optional . try $ do CEq <$> findVersion
 
-      -- Source of pkg - e.g. git, hex
-      _ <- chunk "("
-      scm <- parseDepSCM
-      _ <- chunk ")"
+      -- Source control manager of the pkg - e.g. git, hex
+      scm <- space *> between (char '(') (char ')') parseDepSCM
 
       -- If dependencies are not resolved, build manager won't be printed
       -- This can occur if lock file is missing.
       manager <- optional . try $ do
-        _ <- chunk " ("
-        m <- parseDepManager
-        _ <- chunk ")"
+        m <- space *> between (char '(') (char ')') parseDepManager
         return (m)
 
       _ <- newline
 
       -- If dependencies are not resolved, locked reference won't be printed
       ref <- optional . try $ do
-        _ <- chunk "  locked at "
+        _ <- space *> "locked at" <* space
         CEq <$> findVersion
 
       -- Ignore status line, and rest until next entry
@@ -234,17 +232,13 @@ mixTreeParser = concat <$> ((try (mixDep 0) <|> ignoredLine) `sepBy` eol) <* eof
     mixDep :: Int -> Parser [MixDep]
     mixDep depth = do
       _ <- takeP (Just "spacing ~ one of (`), (|), ( )") (1 + depth * 4)
-      _ <- chunk "-- "
-      dep <- findName
 
-      _ <- chunk " "
+      dep <- chunk "--" *> space *> findName <* space
       version <- optional . try $ do findRequirement
 
-      _ <- chunk "("
-      location <- parseDepSCM
-      _ <- chunk ")"
-
+      location <- between (char '(') (char ')') parseDepSCM
       _ <- takeWhileP (Just "ignored") (not . isEndLine)
+
       deps <- many $ try $ mixRecurse $ depth + 1
       pure [MixDep (PackageName dep) (toDependencyVersion =<< version) location (concat deps)]
 
@@ -258,13 +252,19 @@ buildGraph deps depsResolved depsEnvs = unfold deps subDeps toDependency
   where
     toDependency md =
       Dependency
-        { dependencyType = if (depLocation md) == Hex then HexType else GitType
+        { dependencyType = dType md
         , dependencyName = dName md depsResolved
         , dependencyVersion = dVersion md depsResolved
         , dependencyLocations = []
         , dependencyEnvironments = fromMaybe [] $ M.lookup (depName md) depsEnvs
         , dependencyTags = M.empty
         }
+
+    dType :: MixDep -> DepType
+    dType m = case (depLocation m) of
+      Hex -> HexType
+      Git _ _ -> GitType
+      _ -> UserType
 
     dName :: MixDep -> M.Map PackageName MixDepResolved -> Text
     dName m dr = fromMaybe (reqsName) (resolvedGitUrl)

@@ -31,6 +31,22 @@ parseMatch parser input expected = parse parser "" input `shouldParse` expected
 shouldParseInto :: Text -> VerConstraint -> Expectation
 shouldParseInto = parseMatch parseConstraintExpr
 
+depZero :: MixDep
+depZero =
+  MixDep
+    { depName = PackageName "pkgX"
+    , depVersion = Nothing
+    , depLocation = LocalPath "/Users/some/dir/"
+    , subDeps =
+        [ MixDep
+            { depName = PackageName "pkgY"
+            , depVersion = Just $ COr (CCompatible "1.5") (CCompatible "2.0")
+            , depLocation = Hex
+            , subDeps = []
+            }
+        ]
+    }
+
 depOne :: MixDep
 depOne =
   MixDep
@@ -124,7 +140,7 @@ spec = do
     it "should parse mix deps.tree output" $ do
       case runParser mixTreeCmdOutputParser "" mixDepsTreeContent of
         Left failCode -> expectationFailure $ show failCode
-        Right result -> result `shouldMatchList` [depOne, depTwo, depThree]
+        Right result -> result `shouldMatchList` [depZero, depOne, depTwo, depThree]
 
   describe "mix deps parser" $ do
     it "should parse mix deps output" $ do
@@ -151,6 +167,16 @@ spec = do
                     , depResolvedSCM = Git "https://github.com/some-url.git" (Nothing)
                     , depResolvedRef = Just $ CEq "2a08250"
                     , depResolvedManager = Just Rebar3
+                    }
+                )
+              ,
+                ( PackageName "pkgX"
+                , MixDepResolved
+                    { depResolvedName = PackageName "pkgX"
+                    , depResolvedVersion = Just $ CEq "1.0.3"
+                    , depResolvedSCM = LocalPath "/Users/some/dir/"
+                    , depResolvedRef = Nothing
+                    , depResolvedManager = Just Mix
                     }
                 )
               ,
