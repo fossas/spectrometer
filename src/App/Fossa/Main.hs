@@ -88,7 +88,7 @@ appMain = do
     AnalyzeCommand AnalyzeOptions{analyzeOutput, analyzeBranch, analyzeMetadata, monorepoAnalysisOpts = (MonorepoAnalysisOpts (Just monorepoAnalysisType)), analyzeBaseDir} -> do
       dieOnWindows "Monorepo analysis is not supported on Windows"
       if analyzeOutput
-        then die "Monorepo analysis does not support stdout scan destination"
+        then die "Monorepo analysis does not support the `--output` flag"
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
