@@ -8,6 +8,11 @@
 ## v2.11.0
 
 - Adds poetry support for python projects ([#284](https://github.com/fossas/spectrometer/pull/284))
+## v2.10.3
+
+- Deprecate `fossa vps` subcommands.
+- Add `--experimental-enable-monorepo` and other associated flags to `fossa analyze`, which enables experimental monorepo support.
+  Monorepo flags are only used with support from FOSSA engineering, and are experimental while we build robust support for monorepo projects with FOSSA partners.
 
 ## v2.10.2
 
