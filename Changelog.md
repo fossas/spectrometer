@@ -4,6 +4,10 @@
 
 - Support HTTP endpoints for archive uploads ([#276](https://github.com/fossas/spectrometer/pull/276))
 
+## v2.10.3
+
+- Adds poetry support for python projects ([#284](https://github.com/fossas/spectrometer/pull/284))
+
 ## v2.10.2
 
 - Fixes an issue where some `fossa` commands (including `fossa test`) would exit non-zero on success ([#278](https://github.com/fossas/spectrometer/pull/278)).
