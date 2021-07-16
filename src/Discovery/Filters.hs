@@ -1,29 +1,25 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Discovery.Filters (
-  BuildTargetFilterOld (..),
   AllFilters (..),
-  filterParser,
+  targetFilterParser,
   applyFilters,
-  configTargetToFilter,
-  TargetFilter (..),
   FilterCombination (..),
   FilterMatch (..),
   FilterResult (..),
   apply,
 ) where
 
-import App.Fossa.Configuration
 import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Semigroup (sconcat)
 import Data.Set qualified as S
-import Data.Set.NonEmpty
+import Data.Set.NonEmpty ( nonEmpty, toSet )
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Void (Void)
-import Path
+import Path (Dir, Path, Rel, isProperPrefixOf, parseRelDir)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
   Parsec,
@@ -31,31 +27,14 @@ import Text.Megaparsec (
   some,
   (<|>),
  )
-import Text.Megaparsec.Char
-import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets))
+import Text.Megaparsec.Char (alphaNumChar, char)
+import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
 
 data AllFilters = AllFilters
-  { legacyFilters :: [BuildTargetFilterOld]
+  { legacyFilters :: [TargetFilter]
   , includeFilters :: FilterCombination
   , excludeFilters :: FilterCombination
   }
-
-data BuildTargetFilterOld
-  = -- | buildtool, directory. if a project matches this filter, all of its
-    -- build targets will be analyzed
-    ProjectFilter Text (Path Rel Dir)
-  | -- | buildtool, directory, build target. if a target matches this filter,
-    -- only that target will be analyzed
-    TargetFilter Text (Path Rel Dir) BuildTarget
-  deriving (Eq, Ord, Show)
-
-data TargetFilter = TypeTarget Text | TypeDirTarget Text (Path Rel Dir) | TypeDirTargetTarget Text (Path Rel Dir) BuildTarget
-
-configTargetToFilter :: ConfigTarget -> TargetFilter
-configTargetToFilter (ConfigTarget toolType target) = case target of
-  Nothing -> TypeTarget toolType
-  Just (DirectoryFilter dir) -> TypeDirTarget toolType dir
-  Just (ExactTargetFilter dir exactTarget) -> TypeDirTargetTarget toolType dir (BuildTarget exactTarget)
 
 data FilterCombination = FilterCombination
   { combinedTargets :: [TargetFilter]
@@ -64,24 +43,19 @@ data FilterCombination = FilterCombination
 
 -- applyFilters determines if legacy filters are present and if they need to converted to `TargetFilters` for filtering.
 applyFilters :: AllFilters -> Text -> Path Rel Dir -> FoundTargets -> Maybe FoundTargets
-applyFilters (AllFilters [] onlyFilters excludeFilters) tool dir targets = finalizeResult (apply onlyFilters excludeFilters tool dir) targets
-applyFilters (AllFilters legacyFilters _ _) tool dir targets = finalizeResult (apply legacyOnlyFilters (FilterCombination [] []) tool dir) targets
-  where
-    legacyOnlyFilters = FilterCombination (legacyFiltersToTargetFilter <$> legacyFilters) []
-    legacyFiltersToTargetFilter :: BuildTargetFilterOld -> TargetFilter
-    legacyFiltersToTargetFilter (ProjectFilter t path) = TypeDirTarget t path
-    legacyFiltersToTargetFilter (TargetFilter t path target) = TypeDirTargetTarget t path target
+applyFilters (AllFilters [] onlyFilters excludeFilters) tool dir targets = filterFoundTargets (apply onlyFilters excludeFilters tool dir) targets
+applyFilters (AllFilters legacyFilters _ _) tool dir targets = filterFoundTargets (apply (FilterCombination legacyFilters []) (FilterCombination [] []) tool dir) targets
 
 -- finalizeResult combines a FilterResult with the targets that exist in a project and returns the final filtering Result
 -- If the return value is Nothing, that means that no targets remain for scanning.
 -- The second to last cases ensure that the final included targets are intersectioned with the targets that actually exist for a project.
 -- The final case ensures that all excluded targets are removed from a projects final list of targets.
-finalizeResult :: FilterResult -> FoundTargets -> Maybe FoundTargets
-finalizeResult ResultNone _ = Nothing
-finalizeResult _ ProjectWithoutTargets = Just ProjectWithoutTargets
-finalizeResult ResultAll targets = Just targets
-finalizeResult (ResultInclude found) (FoundTargets targets) = (Just . FoundTargets) =<< nonEmpty (S.intersection (toSet targets) $ S.fromList $ NE.toList found)
-finalizeResult (ResultExclude found) (FoundTargets targets) = (Just . FoundTargets) =<< nonEmpty (S.difference (toSet targets) $ S.fromList $ NE.toList found)
+filterFoundTargets :: FilterResult -> FoundTargets -> Maybe FoundTargets
+filterFoundTargets ResultNone _ = Nothing
+filterFoundTargets _ ProjectWithoutTargets = Just ProjectWithoutTargets
+filterFoundTargets ResultAll targets = Just targets
+filterFoundTargets (ResultInclude found) (FoundTargets targets) = FoundTargets <$> nonEmpty (S.intersection (toSet targets) $ S.fromList $ NE.toList found)
+filterFoundTargets (ResultExclude found) (FoundTargets targets) = FoundTargets <$> nonEmpty (S.difference (toSet targets) $ S.fromList $ NE.toList found)
 
 -- (buildTargetFilters-only `union` pathFilters-only)
 --   `subtract` (buildTargetFilters-exclude `union` pathFilters-exclude)
@@ -91,7 +65,7 @@ apply include exclude buildtool dir =
     (fromMaybe MatchAll (applyComb include buildtool dir))
     (fromMaybe MatchNone (applyComb exclude buildtool dir))
 
--- Nothing = "Unknown" -- i.e., there were no filters
+-- Nothing = "Unknown" -- i.e., there were no filters that matched the buildtool + directories.
 applyComb :: FilterCombination -> Text -> Path Rel Dir -> Maybe FilterMatch
 applyComb comb buildtool dir =
   buildTargetFiltersResult <> pathFiltersResult
@@ -102,9 +76,6 @@ applyComb comb buildtool dir =
     pathFiltersResult :: Maybe FilterMatch
     pathFiltersResult = foldMap' (`applyPath` dir) (combinedPaths comb)
 
--- mvn@foo:bar
--- mvn@foo ProjectWithoutTargets -> MatchNone
--- mvn@foo (FoundTargets xs) -> bar `elem` xs -> MatchSome [bar] otherwise MatchNone
 applyTarget :: TargetFilter -> Text -> Path Rel Dir -> FilterMatch
 applyTarget (TypeTarget t) u _ = if t == u then MatchAll else MatchNone
 applyTarget (TypeDirTarget t p) u q = if t == u && p == q then MatchAll else MatchNone
@@ -115,6 +86,9 @@ applyPath :: Path Rel Dir -> Path Rel Dir -> FilterMatch
 applyPath t u = if isProperPrefixOf t u || t == u then MatchAll else MatchNone
 
 -- MatchNone <> MatchAll = MatchAll is the reason for this order
+-- (MatchSome <> MatchAll) and (MatchAll <> MatchSome) outputs the results in MatchSome.
+-- The implications of this are that if a TypeTargetFilter matches all targets and
+-- a TypeDirTargetTargetFilter matches a specific target we will prefer the specific target.
 instance Semigroup FilterMatch where
   MatchNone <> t = t
   t <> MatchNone = t
@@ -150,15 +124,15 @@ neDifference xs ys = NE.nonEmpty (NE.toList xs \\ NE.toList ys)
 
 type Parser = Parsec Void Text
 
-filterParser :: Parser BuildTargetFilterOld
-filterParser = (try targetFilter <|> projectFilter) <* eof
+targetFilterParser :: Parser TargetFilter
+targetFilterParser = (try targetFilter <|> try projectFilter <|> typeFilter) <* eof
   where
-    targetFilter =
-      TargetFilter <$> buildtool <* char '@' <*> path <* char ':' <*> target
-    projectFilter =
-      ProjectFilter <$> buildtool <* char '@' <*> path
+    targetFilter = TypeDirTargetTarget <$> buildtool <* char '@' <*> path <* char ':' <*> target
+    projectFilter = TypeDirTarget <$> buildtool <* char '@' <*> path
+    typeFilter = TypeTarget <$> buildtool
+
     buildtool :: Parser Text
-    buildtool = T.pack <$> some alphaNumChar
+    buildtool = Text.pack <$> some alphaNumChar
 
     path :: Parser (Path Rel Dir)
     path = do

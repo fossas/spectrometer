@@ -22,7 +22,8 @@ revision:
 targets:
   only:
     - type: maven
-      target: root
+      path: root
     - type: pip
     - type: gradle
-      target: ./::specific-target
+      path: .
+      target: specific-target

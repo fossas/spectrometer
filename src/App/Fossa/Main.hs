@@ -6,7 +6,22 @@ module App.Fossa.Main (
 
 import App.Fossa.Analyze (JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
-import App.Fossa.Configuration
+import App.Fossa.Configuration (
+  ConfigFile (
+    configApiKey,
+    configPaths,
+    configProject,
+    configRevision,
+    configServer,
+    configTargets
+  ),
+  ConfigPaths (pathsExclude, pathsOnly),
+  ConfigProject (configProjID),
+  ConfigRevision (configBranch, configCommit),
+  ConfigTargets (targetsExclude, targetsOnly),
+  mergeFileCmdMetadata,
+  readConfigFileIO,
+ )
 import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, parseSyftOutputMain)
 import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
@@ -16,13 +31,23 @@ import App.Fossa.Monorepo
 import App.Fossa.Report qualified as Report
 import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
-import App.Fossa.VPS.NinjaGraph
+import App.Fossa.VPS.NinjaGraph (ninjaGraphMain)
 import App.Fossa.VPS.Report qualified as VPSReport
 import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.Test qualified as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
-import App.OptionExtensions
-import App.Types
+import App.OptionExtensions (jsonOption, uriOption)
+import App.Types (
+  BaseDir (unBaseDir),
+  NinjaGraphCLIOptions (NinjaGraphCLIOptions),
+  OverrideProject (
+    OverrideProject,
+    overrideBranch,
+    overrideName,
+    overrideRevision
+  ),
+  ProjectMetadata (ProjectMetadata),
+ )
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
 import Control.Monad (unless, when)
@@ -33,16 +58,57 @@ import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Discovery.Filters (AllFilters (..), BuildTargetFilterOld (..), FilterCombination (..), configTargetToFilter, filterParser)
-import Effect.Logger
+import Discovery.Filters (AllFilters (..), FilterCombination (..), targetFilterParser)
+import Effect.Logger (
+  Severity (SevDebug, SevInfo),
+  logWarn,
+  withDefaultLogger,
+ )
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
-import Options.Applicative
-import Path
+import Options.Applicative (
+  Alternative (many, (<|>)),
+  Parser,
+  ParserPrefs,
+  argument,
+  auto,
+  command,
+  customExecParser,
+  eitherReader,
+  flag,
+  flag',
+  fullDesc,
+  header,
+  help,
+  helpShowGlobals,
+  helper,
+  hidden,
+  hsubparser,
+  info,
+  infoOption,
+  internal,
+  long,
+  metavar,
+  option,
+  optional,
+  prefs,
+  progDesc,
+  short,
+  showHelpOnError,
+  str,
+  strOption,
+  subparser,
+  subparserInline,
+  switch,
+  value,
+  (<**>),
+ )
+import Path (Abs, Dir, File, Path, Rel, parseRelDir)
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import System.Info qualified as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
+import Types (TargetFilter)
 
 windowsOsName :: String
 windowsOsName = "mingw32"
@@ -110,13 +176,21 @@ appMain = do
           -- If a user enters a single target or path filtering flag, do not use any filters from the configuration file.
           combinedFilters =
             if null analyzeOnlyTargets && null analyzeExcludeTargets && null analyzeOnlyPaths && null analyzeExcludePaths
-              then AllFilters analyzeBuildTargetFilters includeFilters excludeFilters
-              else AllFilters analyzeBuildTargetFilters (FilterCombination (configTargetToFilter <$> analyzeOnlyTargets) analyzeOnlyPaths) (FilterCombination (configTargetToFilter <$> analyzeExcludeTargets) analyzeExcludePaths)
+              then
+                AllFilters
+                  analyzeBuildTargetFilters
+                  (FilterCombination (filterTargets targetsOnly) (filterPaths pathsOnly))
+                  (FilterCombination (filterTargets targetsExclude) (filterPaths pathsExclude))
+              else
+                AllFilters
+                  analyzeBuildTargetFilters
+                  (FilterCombination (analyzeOnlyTargets) analyzeOnlyPaths)
+                  (FilterCombination (analyzeExcludeTargets) analyzeExcludePaths)
             where
-              includeFilters = FilterCombination (filterTargets targetsOnly) (filterPaths pathsOnly)
-              excludeFilters = FilterCombination (filterTargets targetsExclude) (filterPaths pathsExclude)
+              filterPaths :: (ConfigPaths -> [Path Rel Dir]) -> [Path Rel Dir]
               filterPaths field = maybe [] field (fileConfig >>= configPaths)
-              filterTargets field = configTargetToFilter <$> maybe [] field (fileConfig >>= configTargets)
+              filterTargets :: (ConfigTargets -> [TargetFilter]) -> [TargetFilter]
+              filterTargets field = maybe [] field (fileConfig >>= configTargets)
 
           doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
 
@@ -331,11 +405,11 @@ analyzeReplayOpt =
     <|> (RecordModeReplay <$> strOption (long "replay" <> hidden))
     <|> pure RecordModeNone
 
-filterOpt :: Parser BuildTargetFilterOld
+filterOpt :: Parser TargetFilter
 filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecated) Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
   where
-    parseFilter :: String -> Either String BuildTargetFilterOld
-    parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack
+    parseFilter :: String -> Either String TargetFilter
+    parseFilter = first errorBundlePretty . runParser targetFilterParser "stdin" . T.pack
 
 monorepoOpts :: Parser MonorepoAnalysisOpts
 monorepoOpts =
@@ -343,10 +417,13 @@ monorepoOpts =
     <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
 
 pathOpt :: String -> Either String (Path Rel Dir)
-pathOpt = first errorBundlePretty . runParser pathRelDirParser "stdin" . T.pack
+pathOpt s = do
+  case parseRelDir s of
+    Left err -> Left $ show err
+    Right path -> Right path
 
-targetOpt :: String -> Either String ConfigTarget
-targetOpt = first errorBundlePretty . runParser configTargetParser "stdin" . T.pack
+targetOpt :: String -> Either String TargetFilter
+targetOpt = first errorBundlePretty . runParser targetFilterParser "stdin" . T.pack
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -570,9 +647,9 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
-  , analyzeBuildTargetFilters :: [BuildTargetFilterOld]
-  , analyzeOnlyTargets :: [ConfigTarget]
-  , analyzeExcludeTargets :: [ConfigTarget]
+  , analyzeBuildTargetFilters :: [TargetFilter]
+  , analyzeOnlyTargets :: [TargetFilter]
+  , analyzeExcludeTargets :: [TargetFilter]
   , analyzeOnlyPaths :: [Path Rel Dir]
   , analyzeExcludePaths :: [Path Rel Dir]
   , analyzeVSIMode :: VSIAnalysisMode

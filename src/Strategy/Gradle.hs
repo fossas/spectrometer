@@ -56,7 +56,7 @@ gradleJsonDepsCmd :: Text -> FP.FilePath -> Command
 gradleJsonDepsCmd baseCmd initScriptFilepath =
   Command
     { cmdName = baseCmd
-    , cmdArgs = ["-I", T.pack initScriptFilepath] ++ [T.pack "jsonDeps"]
+    , cmdArgs = ["-I", T.pack initScriptFilepath, "jsonDeps"]
     , cmdAllowErr = Never
     }
 

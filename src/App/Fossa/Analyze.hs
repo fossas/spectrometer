@@ -17,7 +17,12 @@ import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadR
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
-import App.Types
+import App.Types (
+  BaseDir (..),
+  OverrideProject,
+  ProjectMetadata,
+  ProjectRevision (projectBranch, projectName, projectRevision),
+ )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -28,9 +33,9 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Diagnostics ((<||>))
-import Control.Effect.Exception
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
-import Control.Effect.Record
+import Control.Effect.Record (runRecord)
 import Control.Effect.Replay (runReplay)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
@@ -47,11 +52,11 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec
+import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
-import Effect.ReadFS
+import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
-import Path
+import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
@@ -86,7 +91,7 @@ import Strategy.Scala qualified as Scala
 import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
-import Types
+import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 
 type TaskEffs sig m =
@@ -214,8 +219,8 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
     -- will always fail
     Nothing -> Just projectBuildTargets
-    Just rel -> applyFilters filters projectType rel projectBuildTargets
-
+    Just rel -> do
+      applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
   ( Has (Lift IO) sig m
