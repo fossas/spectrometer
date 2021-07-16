@@ -24,8 +24,8 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
-import Data.Set.NonEmpty
 import Data.Set qualified as S
+import Data.Set.NonEmpty
 import Data.String.Conversion (decodeUtf8, encodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -44,16 +44,16 @@ newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, 
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show, FromJSON)
 
-gradleJsonDepsCmdTargets :: Text -> FP.FilePath -> Set BuildTarget -> Command
-gradleJsonDepsCmdTargets baseCmd initScriptFilepath targets =
+gradleJsonDepsCmdTargets :: FP.FilePath -> Set BuildTarget -> Text -> Command
+gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
   Command
     { cmdName = baseCmd
     , cmdArgs = ["-I", T.pack initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (S.toList targets)
     , cmdAllowErr = Never
     }
 
-gradleJsonDepsCmd :: Text -> FP.FilePath -> Command
-gradleJsonDepsCmd baseCmd initScriptFilepath =
+gradleJsonDepsCmd :: FP.FilePath -> Text -> Command
+gradleJsonDepsCmd initScriptFilepath baseCmd =
   Command
     { cmdName = baseCmd
     , cmdArgs = ["-I", T.pack initScriptFilepath, "jsonDeps"]
@@ -190,16 +190,17 @@ analyze ::
 analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
   context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
+
+  let cmd :: Text -> Command
+      cmd = case foundTargets of
+        FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
+        ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
+
   stdout <-
-    context "Running gradle script" $ case foundTargets of
-      FoundTargets targets ->
-        execThrow dir (gradleJsonDepsCmdTargets (pathToText dir <> "gradlew") initScriptFilepath (toSet targets))
-          <||> execThrow dir (gradleJsonDepsCmdTargets (pathToText dir <> "gradlew.bat") initScriptFilepath (toSet targets))
-          <||> execThrow dir (gradleJsonDepsCmdTargets "gradle" initScriptFilepath (toSet targets))
-      ProjectWithoutTargets ->
-        execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath)
-          <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath)
-          <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath)
+    context "Running gradle script" $
+      execThrow dir (cmd (pathToText dir <> "gradlew"))
+        <||> execThrow dir (cmd (pathToText dir <> "gradlew.bat"))
+        <||> execThrow dir (cmd "gradle")
 
   let text = decodeUtf8 $ BL.toStrict stdout
       textLines :: [Text]
