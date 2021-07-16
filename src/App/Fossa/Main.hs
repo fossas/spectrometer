@@ -417,10 +417,7 @@ monorepoOpts =
     <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
 
 pathOpt :: String -> Either String (Path Rel Dir)
-pathOpt s = do
-  case parseRelDir s of
-    Left err -> Left $ show err
-    Right path -> Right path
+pathOpt = first show . parseRelDir
 
 targetOpt :: String -> Either String TargetFilter
 targetOpt = first errorBundlePretty . runParser targetFilterParser "stdin" . T.pack
