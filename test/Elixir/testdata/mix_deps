@@ -11,3 +11,6 @@
   ok
 * pkgD (Hex package)
   the dependency is not available, run "mix deps.get"
+* privatepkg 0.1.0 (Hex package) (mix)
+  locked at 0.1.0 (hexpm:privateorg/privatepkg) 4964996d
+  ok

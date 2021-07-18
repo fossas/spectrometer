@@ -12,6 +12,7 @@ module Strategy.Elixir.MixTree (
   mixTreeCmdOutputParser,
   mixDepsCmdOutputParser,
   parseConstraintExpr,
+  toDependencyVersion,
 
   -- * Graphs and Analyzers
   buildGraph,
@@ -72,7 +73,7 @@ data MixEnvAtom = Prod | Test | Dev deriving (Show, Eq, Ord)
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord)
 
 -- | Build Manager (:mix, :rebar, :make, :rebar3)
-data DepManager = Mix | Rebar3 | Rebar | Make deriving (Eq, Show, Ord)
+data DepManager = Mix | Rebar3 | Rebar | Make | OtherBuildManager deriving (Eq, Show, Ord)
 
 -- | Source Control Manager (SCM) - e.g. git, hex
 data DepSCM = Hex | LocalPath Text | Git Text (Maybe Text) | Other deriving (Eq, Show, Ord)
@@ -201,7 +202,6 @@ mixDepsCmdOutputParser = M.fromList <$> (parseDep `sepBy` char '*') <* eof
       pure (PackageName name, MixDepResolved (PackageName name) version scm ref manager)
 
 -- | Parses mix deps.tree raw output
--- First line is always project name, ignore, and parse rest of the tree
 mixTreeCmdOutputParser :: Parser [MixDep]
 mixTreeCmdOutputParser = manyTill anySingle newline *> mixTreeParser
 
@@ -292,7 +292,7 @@ buildGraph deps depsResolved depsEnvs = unfold deps subDeps toDependency
           Git _ (Just ref) -> Just $ CEq ref
           _ -> depVersion m
 
--- | Operators used in mix requirements
+-- | Operators used in the mix requirements
 data MixConstraintOperators
   = GreaterThanOrEqual
   | GreaterThan
@@ -328,14 +328,14 @@ parseVerConstraint = do
   operator <- whitespaceOrTab *> parseConstraintOperator <* whitespaceOrTab
   versionText <- findVersionText <* whitespaceOrTab
   case operator of
-    (Equal) -> return $ CEq versionText
-    (NotEqual) -> return $ CNot versionText
-    (GreaterThanOrEqual) -> return $ CGreaterOrEq versionText
-    (GreaterThan) -> return $ CGreater versionText
-    (LessThanOrEqual) -> return $ CLessOrEq versionText
-    (LessThan) -> return $ CLess versionText
-    (Compatible) -> return $ CCompatible versionText
-    (WildcardAny) -> return $ CEq "*"
+    Equal -> pure $ CEq versionText
+    NotEqual -> pure $ CNot versionText
+    GreaterThanOrEqual -> pure $ CGreaterOrEq versionText
+    GreaterThan -> pure $ CGreater versionText
+    LessThanOrEqual -> pure $ CLessOrEq versionText
+    LessThan -> pure $ CLess versionText
+    Compatible -> pure $ CCompatible versionText
+    WildcardAny -> pure $ CEq "*"
   where
     findVersionText :: Parser Text
     findVersionText = T.pack <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '*' <|> char '+')

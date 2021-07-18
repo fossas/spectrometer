@@ -1,15 +1,14 @@
-# Erlang Analysis
+# Elixir Analysis
 
-When developing in Elixir, [Mix](https://www.rebar3.org/) and [Hex]() are most commonly used to manage dependencies. Dependencies are specified in a `mix.exs` by users which are used by the `mix` tool to build a dependency graph and download the correct dependencies.
+When developing in Elixir, [Mix](https://hexdocs.pm/mix/Mix.html) and [Hex](https://hex.pm/) are most commonly used to manage dependencies. 
 
-
-| Strategy | Direct Deps | Deep Deps | Edges |
-| -------- | ----------- | --------- | ----- |
-| mix deps | ✅           | ✅         | ✅     |
+| Strategy | Direct Deps        | Deep Deps          | Edges              |
+| -------- | ------------------ | ------------------ | ------------------ |
+| mix deps | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 ## Project Discovery
 
-In order to find elixir projects, we look for `mix.exs` file which specify the root of a elixir project. Once we find a `mix.exs` file we quit walking the file tree. 
+In order to find elixir projects, we look for `mix.exs` file which specify the root of a elixir project. 
 
 ## Analysis
 
@@ -23,6 +22,25 @@ In order to find elixir projects, we look for `mix.exs` file which specify the r
 ```
 2. Run `mix deps --all` and generate output similar to:
 ```
+* one 1.0.0 (Hex package) (mix)
+  locked at 1.0.0 (one) 3ad58ae7
+  ok
+* two 1.0.0 (Hex package) (mix)
+  locked at 1.0.0 (two) eaf3c2aa
+  ok
+* three 1.0.0 (Hex package) (mix)
+  locked at 1.0.0 (three) ce708e5f
+  ok
+* four 1.0.0 (Hex package) (mix)
+  locked at 1.0.0 (four) 08eb32d6
+  ok
+* four 4.0.0 (https://github.com/dep/four) (mix)
+  locked at 9554589
+  ok
+* five 1.0.0 (Hex package) (mix)
+  locked at 1.0.0 (five) 4964996d
+  ok
+  .....
 ```
 3. Parse these outputs to determine the dependency graph and the locations of each dependency. 
 

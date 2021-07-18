@@ -199,6 +199,16 @@ spec = do
                     , depResolvedManager = Nothing
                     }
                 )
+              ,
+                ( PackageName "privatepkg"
+                , MixDepResolved
+                    { depResolvedName = PackageName "privatepkg"
+                    , depResolvedVersion = Just $ CEq "0.1.0"
+                    , depResolvedSCM = Hex
+                    , depResolvedRef = Just $ CEq "0.1.0"
+                    , depResolvedManager = Just Mix
+                    }
+                )
               ]
 
   describe "buildGraph" $ do
