@@ -80,7 +80,7 @@ findProjects = walk' $ \dir _ files -> do
     -- Without pyproject file, it is unlikely that project is a poetry project. Poetry itself does not work
     -- without [pyproject.toml manifest](https://python-poetry.org/docs/pyproject/).
     (Just _, Nothing) -> context "poetry.lock file found without accompanying pyproject.toml!" $ pure ([], WalkContinue)
-    _ -> pure ([], WalkContinue)
+    (Nothing, Nothing) -> pure ([], WalkContinue)
 
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PoetryProject -> DiscoveredProject n
 mkProject project =
