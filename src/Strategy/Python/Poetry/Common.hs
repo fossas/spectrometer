@@ -17,7 +17,7 @@ import Discovery.Walk (
   findFileNamed,
   walk',
  )
-import Effect.Exec (Has)
+import Control.Algebra (Has)
 import Effect.ReadFS (ReadFS, readContentsToml)
 import Graphing (Graphing, deep, edge, empty, fromList, gmap, promoteToDirect)
 import Path (Abs, Dir, File, Path)
