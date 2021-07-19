@@ -9,5 +9,4 @@ version = "test_version"
 generate-setup-file = false
 
 [build-system]
-build-backend = "test_build_backend"
 requires = ["poetry-core>=1.0.0"]

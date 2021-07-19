@@ -2,31 +2,46 @@
 
 [Poetry](https://python-poetry.org/) is a tool for dependency management and packaging in Python.
 
+*Poetry Referemces*
+
+* [Poetry Source Code](https://github.com/python-poetry/poetry)
+* [Poetry Documentation](https://python-poetry.org/docs/)
+
 ## Project Discovery
 
-Find all files named `pyproject.toml` and `poetry.lock`. Pyproject must use poetry for the build system.
+Find files named `pyproject.toml` and `poetry.lock`. Pyproject must also use poetry for the [build system](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517). If Pyproject does not use poetry build system - project will not be discovered.
 
 ## Analysis
 
-We parse `pyproject.toml` -- to find direct dependencies and thier [version constraints](https://python-poetry.org/docs/dependency-specification/):
+We parse `pyproject.toml` to find direct dependencies and their [version constraints](https://python-poetry.org/docs/dependency-specification/):
 
 - `[tool.poetry.dependencies]` - production dependencies
 - `[tool.poetry.dev-dependencies]` - development dependencies
 
-To infer resolved version of direct and sub dependencies, we parse `poetry.lock` file. In this file we find,
+If `poetry.lock` file is discovered, following will be analyzed from lockfile to supplement the analyses:
 
 - `[package.dependencies]` - package's dependencies 
 - `package.category` - package's environment (dev, test, etc.)
 - `package.name` - name of the package
 - `package.version` - resolved version of the package
 
-For projects, where `poetry.lock` file is not discovered, we fallback to reporting only direct dependencies parsed from `pyproject.toml`. 
+If `poetry.lock` file is not discovered, we fallback to reporting only direct dependencies parsed from `pyproject.toml`. 
+
+| [poetry][poetry] (poetry)                         | Direct Deps        | Deep Deps          | Edges              |
+| ------------------------------------------------- | ------------------ | ------------------ | ------------------ |
+| `pyproject.toml` and `poetry.lock` are discovered | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| Only `pyproject.toml` is discovered               | :heavy_check_mark: | :x:                | :x:                |
+| Only `poetry.lock` is discovered                  | :x:                | :x:                | :x:                |
+
+Where, 
+
+* :heavy_check_mark: - Supported in all projects
+* :x: - Not Supported
 
 ### Limitations
 
-* For poetry project, build system's `build-backend` must be set to `poetry.core.masonry.api` in `pyproject.toml` 
-* All extras specified in `[tool.poetry.extras]` are currently not reported.
-* Package names are case insensitive.
+* For poetry project, build system's `build-backend` must be set to `poetry.core.masonry.api` in `pyproject.toml`. If not done so, it will not discover this project. Refer to [Poetry and PEP-517](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517) for more details. 
+* All extras specified in `[tool.poetry.extras]` are currently not reported. 
 
 # Example 
 
@@ -34,7 +49,7 @@ For projects, where `poetry.lock` file is not discovered, we fallback to reporti
 
 ```toml
 [tool.poetry]
-authors = ["Megh <megh@fossa.com>"]
+authors = ["User <user@example.com>"]
 description = "Example poetry usage"
 name = "example-poetry-usage"
 version = "0.1.0"
@@ -513,4 +528,4 @@ If only, `pyproject.toml` is discovered, following dependency graph will be prod
 ![Without poetry.lock file](poetry-without-lock.svg)
 _Dependencies highlighted in yellow boxes are direct dependencies, rest are deep dependencies._
 
-Note, without `poetry.lock` we are not able to identify sub dependencies and dependency's resolved versions.
+Note, without `poetry.lock` we are not able to identify deep dependencies and dependency's resolved version.

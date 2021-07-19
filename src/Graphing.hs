@@ -14,7 +14,7 @@ module Graphing (
   size,
   direct,
   edge,
-  addNode,
+  deep,
 
   -- * Manipulating a Graphing
   gmap,
@@ -39,7 +39,7 @@ import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Prelude hiding (filter)
-import Prelude qualified as P
+import Prelude qualified as P (filter)
 
 -- | A @Graphing ty@ is a graph of nodes with type @ty@.
 --
@@ -122,12 +122,13 @@ direct dep gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
     direct' = S.insert dep (graphingDirect gr)
     adjacent' = AM.overlay (AM.vertex dep) (graphingAdjacent gr)
 
--- | Promotes dependency as a direct dependency on `Graphing` based on filter function
+-- | Mark dependencies that pass a predicate as direct dependencies.
+-- Dependencies that are already marked as "direct" are unaffected.
 promoteToDirect :: Ord ty => (ty -> Bool) -> Graphing ty -> Graphing ty
-promoteToDirect ff gr = gr{graphingDirect = direct', graphingAdjacent = graphingAdjacent gr}
+promoteToDirect f gr = gr{graphingDirect = direct', graphingAdjacent = graphingAdjacent gr}
   where
     direct' = foldr S.insert (graphingDirect gr) vertices
-    vertices = P.filter ff $ AM.vertexList (graphingAdjacent gr)
+    vertices = P.filter f $ AM.vertexList (graphingAdjacent gr)
 
 -- | Add an edge between two nodes in this Graphing
 edge :: Ord ty => ty -> ty -> Graphing ty -> Graphing ty
@@ -135,9 +136,9 @@ edge parent child gr = gr{graphingAdjacent = adjacent'}
   where
     adjacent' = AM.overlay (AM.edge parent child) (graphingAdjacent gr)
 
--- | Adds a node in this Gaphing
-addNode :: Ord ty => ty -> Graphing ty -> Graphing ty
-addNode n gr = gr{graphingAdjacent = adjacent'}
+-- | Adds a node to this graph as a deep dependency.
+deep :: Ord ty => ty -> Graphing ty -> Graphing ty
+deep n gr = gr{graphingAdjacent = adjacent'}
   where
     adjacent' = AM.overlay (AM.vertex n) (graphingAdjacent gr)
 

@@ -68,7 +68,7 @@ runGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty, a)
 runGrapher = interpretState G.empty $ \case
   Direct ty -> modify (G.direct ty)
   Edge parent child -> modify (G.edge parent child)
-  Node n -> modify (G.addNode n)
+  Node n -> modify (G.deep n)
 
 ----- Labeling
 

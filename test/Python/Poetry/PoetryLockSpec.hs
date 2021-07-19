@@ -4,7 +4,6 @@ module Python.Poetry.PoetryLockSpec (
 
 import Data.Map qualified as Map
 import Data.Text.IO qualified as TIO
-import DepTypes
 import Strategy.Python.Poetry.PoetryLock (
   ObjectVersion (..),
   PackageName (..),
@@ -14,9 +13,14 @@ import Strategy.Python.Poetry.PoetryLock (
   PoetryLockPackageSource (..),
   PoetryMetadata (..),
   poetryLockCodec,
-  toMap,
  )
-import Test.Hspec
+import Test.Hspec (
+  Spec,
+  describe,
+  it,
+  runIO,
+  shouldBe,
+ )
 import Toml qualified
 
 expectedPoetryLock :: PoetryLock
@@ -24,54 +28,80 @@ expectedPoetryLock =
   PoetryLock
     { poetryLockMetadata =
         PoetryMetadata
-          { poetryMetadataLockVersion = "1.1"
-          , poetryMetadataContentHash = "cf14fd7e0a1a1c6c5a1ee9afe16d0abaaac531ab9d84ad3d1d5276634aa35687"
-          , poetryMetadataPythonVersions = "^3.8"
-          }
+          "1.1"
+          "cf14fd7e0a1a1c6c5a1ee9afe16d0abaaac531ab9d84ad3d1d5276634aa35687"
+          "^3.8"
     , poetryLockPackages =
         [ PoetryLockPackage
-            { poetryLockPackageName = PackageName{unPackageName = "pkgWithGitSource"}
+            { poetryLockPackageName = PackageName "pkgWithGitSource"
             , poetryLockPackageVersion = "5.22.0.post0"
             , poetryLockPackageCategory = "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
-            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "git", poetryLockPackageSourceUrl = "https://github.com/someUser/pkgWithGitSource.git", poetryLockPackageSourceReference = Just "v1.1.1", poetryLockPackageSourceResolvedReference = Just "598ac"}
+            , poetryLockPackageSource =
+                Just
+                  ( PoetryLockPackageSource
+                      "git"
+                      "https://github.com/someUser/pkgWithGitSource.git"
+                      (Just "v1.1.1")
+                      (Just "598ac")
+                  )
             }
         , PoetryLockPackage
-            { poetryLockPackageName = PackageName{unPackageName = "pkgSourcedFromFile"}
+            { poetryLockPackageName = PackageName "pkgSourcedFromFile"
             , poetryLockPackageVersion = "1.21.0"
             , poetryLockPackageCategory = "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
-            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "file", poetryLockPackageSourceUrl = "pkgTwo-1.21.0.tar.gz", poetryLockPackageSourceResolvedReference = Nothing, poetryLockPackageSourceReference = Nothing}
+            , poetryLockPackageSource =
+                Just
+                  ( PoetryLockPackageSource
+                      "file"
+                      "pkgTwo-1.21.0.tar.gz"
+                      Nothing
+                      Nothing
+                  )
             }
         , PoetryLockPackage
-            { poetryLockPackageName = PackageName{unPackageName = "pkgSourcedFromUrl"}
+            { poetryLockPackageName = PackageName "pkgSourcedFromUrl"
             , poetryLockPackageVersion = "3.92.1"
             , poetryLockPackageCategory = "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
-            , poetryLockPackageSource = Just PoetryLockPackageSource{poetryLockPackageSourceType = "url", poetryLockPackageSourceUrl = "https://some-url.com/some-dir/pkgThree-3.92.1.tar.gz", poetryLockPackageSourceResolvedReference = Nothing, poetryLockPackageSourceReference = Nothing}
+            , poetryLockPackageSource =
+                Just
+                  ( PoetryLockPackageSource
+                      "url"
+                      "https://some-url.com/some-dir/pkgThree-3.92.1.tar.gz"
+                      Nothing
+                      Nothing
+                  )
             }
         , PoetryLockPackage
-            { poetryLockPackageName = PackageName{unPackageName = "pkgOne"}
+            { poetryLockPackageName = PackageName "pkgOne"
             , poetryLockPackageVersion = "1.21.0"
             , poetryLockPackageCategory = "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies =
                 Map.fromList
                   [ ("pkgOneChildofOne", TextVersion "*")
-                  , ("pkgTwoChildofOne", ObjectVersionSpec ObjectVersion{unObjectVersion = "5.4"})
-                  , ("pkgThreeChildofOne", MultipleObjectVersionSpec [ObjectVersion{unObjectVersion = ">=1.0,<2.0"}, ObjectVersion{unObjectVersion = ">=1.6,<2.0"}])
+                  , ("pkgTwoChildofOne", ObjectVersionSpec $ ObjectVersion "5.4")
+                  ,
+                    ( "pkgThreeChildofOne"
+                    , MultipleObjectVersionSpec
+                        [ ObjectVersion ">=1.0,<2.0"
+                        , ObjectVersion ">=1.6,<2.0"
+                        ]
+                    )
                   ]
             , poetryLockPackagePythonVersions = ">=3.7"
             , poetryLockPackageSource = Nothing
             }
         , PoetryLockPackage
-            { poetryLockPackageName = PackageName{unPackageName = "pkgOneChildofOne"}
+            { poetryLockPackageName = PackageName "pkgOneChildofOne"
             , poetryLockPackageVersion = "11.4"
             , poetryLockPackageCategory = "main"
             , poetryLockPackageOptional = False
@@ -80,7 +110,7 @@ expectedPoetryLock =
             , poetryLockPackageSource = Nothing
             }
         , PoetryLockPackage
-            { poetryLockPackageName = PackageName{unPackageName = "pkgTwoChildofOne"}
+            { poetryLockPackageName = PackageName "pkgTwoChildofOne"
             , poetryLockPackageVersion = "5.4"
             , poetryLockPackageCategory = "main"
             , poetryLockPackageOptional = False
@@ -89,7 +119,7 @@ expectedPoetryLock =
             , poetryLockPackageSource = Nothing
             }
         , PoetryLockPackage
-            { poetryLockPackageName = PackageName{unPackageName = "pkgThreeChildofOne"}
+            { poetryLockPackageName = PackageName "pkgThreeChildofOne"
             , poetryLockPackageVersion = "1.6.1"
             , poetryLockPackageCategory = "main"
             , poetryLockPackageOptional = False
@@ -98,13 +128,20 @@ expectedPoetryLock =
             , poetryLockPackageSource = Nothing
             }
         , PoetryLockPackage
-            { poetryLockPackageName = PackageName{unPackageName = "myprivatepkg"}
+            { poetryLockPackageName = PackageName "myprivatepkg"
             , poetryLockPackageVersion = "0.0.1"
             , poetryLockPackageCategory = "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = ">=3.6"
-            , poetryLockPackageSource = Just $ PoetryLockPackageSource{poetryLockPackageSourceType = "legacy", poetryLockPackageSourceUrl = "https://gitlab.com/api/v4/projects/packages/pypi/simple", poetryLockPackageSourceReference = Just "gitlab", poetryLockPackageSourceResolvedReference = Nothing}
+            , poetryLockPackageSource =
+                Just
+                  ( PoetryLockPackageSource
+                      "legacy"
+                      "https://gitlab.com/api/v4/projects/packages/pypi/simple"
+                      (Just "gitlab")
+                      Nothing
+                  )
             }
         ]
     }
@@ -114,92 +151,4 @@ spec = do
   contents <- runIO (TIO.readFile "test/Python/Poetry/testdata/poetry.lock")
   describe "poetryLockCodec" $
     it "should produce expected output" $ do
-      case Toml.decode poetryLockCodec contents of
-        Left err -> expectationFailure ("decode failed: " <> show err)
-        Right pkg -> do
-          pkg `shouldBe` expectedPoetryLock
-
-  describe "toMap" $ do
-    it "should map poetry lock package to dependency" $ do
-      toMap [poetryLockPackages expectedPoetryLock !! 3]
-        `shouldBe` Map.fromList
-          [
-            ( PackageName "pkgone"
-            , Dependency
-                { dependencyType = PipType
-                , dependencyName = "pkgOne"
-                , dependencyVersion = Just $ CEq "1.21.0"
-                , dependencyLocations = []
-                , dependencyEnvironments = [EnvProduction]
-                , dependencyTags = Map.empty
-                }
-            )
-          ]
-
-    context "when poetry lock dependency is from git source" $ do
-      it "should replace poetry lock package name to git url" $ do
-        toMap [head (poetryLockPackages expectedPoetryLock)]
-          `shouldBe` Map.fromList
-            [
-              ( PackageName "pkgwithgitsource"
-              , Dependency
-                  { dependencyType = GitType
-                  , dependencyName = "https://github.com/someUser/pkgWithGitSource.git"
-                  , dependencyVersion = Just $ CEq "v1.1.1"
-                  , dependencyLocations = []
-                  , dependencyEnvironments = [EnvProduction]
-                  , dependencyTags = Map.empty
-                  }
-              )
-            ]
-
-    context "when poetry lock dependency is from url source" $ do
-      it "should replace poetry lock package name to url" $ do
-        toMap [poetryLockPackages expectedPoetryLock !! 2]
-          `shouldBe` Map.fromList
-            [
-              ( PackageName "pkgsourcedfromurl"
-              , Dependency
-                  { dependencyType = URLType
-                  , dependencyName = "https://some-url.com/some-dir/pkgThree-3.92.1.tar.gz"
-                  , dependencyVersion = Just $ CEq "3.92.1"
-                  , dependencyLocations = []
-                  , dependencyEnvironments = [EnvProduction]
-                  , dependencyTags = Map.empty
-                  }
-              )
-            ]
-
-    context "when poetry lock dependency is from file source" $ do
-      it "should replace poetry lock package name to filepath" $ do
-        toMap [poetryLockPackages expectedPoetryLock !! 1]
-          `shouldBe` Map.fromList
-            [
-              ( PackageName "pkgsourcedfromfile"
-              , Dependency
-                  { dependencyType = UserType
-                  , dependencyName = "pkgTwo-1.21.0.tar.gz"
-                  , dependencyVersion = Just $ CEq "1.21.0"
-                  , dependencyLocations = []
-                  , dependencyEnvironments = [EnvProduction]
-                  , dependencyTags = Map.empty
-                  }
-              )
-            ]
-
-    context "when poetry lock dependency is from secondary sources" $ do
-      it "should include url into dependency location" $ do
-        toMap [poetryLockPackages expectedPoetryLock !! 7]
-          `shouldBe` Map.fromList
-            [
-              ( PackageName "myprivatepkg"
-              , Dependency
-                  { dependencyType = PipType
-                  , dependencyName = "myprivatepkg"
-                  , dependencyVersion = Just $ CEq "0.0.1"
-                  , dependencyLocations = ["https://gitlab.com/api/v4/projects/packages/pypi/simple"]
-                  , dependencyEnvironments = [EnvProduction]
-                  , dependencyTags = Map.empty
-                  }
-              )
-            ]
+      Toml.decode poetryLockCodec contents `shouldBe` Right expectedPoetryLock
