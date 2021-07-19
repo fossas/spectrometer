@@ -1,4 +1,4 @@
-module Python.Poetry.CommonSpec (
+module Python.PoetrySpec (
   spec,
 ) where
 
@@ -6,7 +6,7 @@ import Data.Map qualified as Map
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
 import Effect.Grapher (addNode, direct, edge, evalGrapher, run)
 import Graphing (Graphing)
-import Strategy.Python.Poetry.Common (buildGraphWithLock, buildPackageNameGraph, toMap)
+import Strategy.Python.Poetry (buildGraphWithLock, buildPackageNameGraph, toMap)
 import Strategy.Python.Poetry.PoetryLock (
   ObjectVersion (..),
   PackageName (..),

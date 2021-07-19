@@ -1,4 +1,4 @@
-module Strategy.Python.Poetry.Common (
+module Strategy.Python.Poetry (
   PoetryProject (..),
   buildGraphWithLock,
   buildPackageNameGraph,

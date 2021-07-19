@@ -257,7 +257,7 @@ library
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
-    Strategy.Python.Poetry.Common
+    Strategy.Python.Poetry
     Strategy.Python.Poetry.PyProject
     Strategy.Python.Poetry.PoetryLock
     Strategy.Python.Pipenv
@@ -348,7 +348,7 @@ test-suite unit-tests
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
     Python.PipenvSpec
-    Python.Poetry.CommonSpec
+    Python.PoetrySpec
     Python.Poetry.PyProjectSpec
     Python.Poetry.PoetryLockSpec
     Python.ReqTxtSpec

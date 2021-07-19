@@ -80,7 +80,7 @@ import Strategy.NuGet.Paket qualified as Paket
 import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
 import Strategy.NuGet.ProjectJson qualified as ProjectJson
 import Strategy.Python.Pipenv qualified as Pipenv
-import Strategy.Python.Poetry.Common qualified as Poetry
+import Strategy.Python.Poetry qualified as Poetry
 import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3

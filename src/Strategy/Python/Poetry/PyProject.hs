@@ -59,6 +59,10 @@ import Toml qualified
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show)
 
+-- | Represents Pyproject.
+--
+-- Both `pyprojectBuildSystem` and `pyprojectPoetry` can be `Nothing`,
+-- when pyproject does not use poetry for build or has no dependencies.
 data PyProject = PyProject
   { pyprojectBuildSystem :: Maybe PyProjectBuildSystem
   , pyprojectPoetry :: Maybe PyProjectPoetry
@@ -233,15 +237,15 @@ getDependencies project = filter notNamedPython $ map snd allDeps
     -- pyproject typically includes python as dependency that has to be ignored
     notNamedPython = (/= "python") . dependencyName
 
-    toDependnecy :: [DepEnvironment] -> Map Text PoetryDependency -> Map Text Dependency
-    toDependnecy depEnvs = Map.mapWithKey $ poetryDependencyToDependency depEnvs
+    toDependency :: [DepEnvironment] -> Map Text PoetryDependency -> Map Text Dependency
+    toDependency depEnvs = Map.mapWithKey $ poetryDependencyToDependency depEnvs
 
     allDeps = case pyprojectPoetry project of
       Nothing -> []
       Just pp -> Map.toList prodDeps ++ Map.toList devDeps
         where
-          prodDeps = toDependnecy [EnvProduction] $ dependencies pp
-          devDeps = toDependnecy [EnvDevelopment] $ devDependencies pp
+          prodDeps = toDependency [EnvProduction] $ dependencies pp
+          devDeps = toDependency [EnvDevelopment] $ devDependencies pp
 
 type Parser = Parsec Void Text
 
