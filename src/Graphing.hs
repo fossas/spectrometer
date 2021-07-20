@@ -35,11 +35,11 @@ import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
+import Data.List qualified as List (filter)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Prelude hiding (filter)
-import Prelude qualified as P (filter)
 
 -- | A @Graphing ty@ is a graph of nodes with type @ty@.
 --
@@ -128,7 +128,7 @@ promoteToDirect :: Ord ty => (ty -> Bool) -> Graphing ty -> Graphing ty
 promoteToDirect f gr = gr{graphingDirect = direct', graphingAdjacent = graphingAdjacent gr}
   where
     direct' = foldr S.insert (graphingDirect gr) vertices
-    vertices = P.filter f $ AM.vertexList (graphingAdjacent gr)
+    vertices = List.filter f $ AM.vertexList (graphingAdjacent gr)
 
 -- | Add an edge between two nodes in this Graphing
 edge :: Ord ty => ty -> ty -> Graphing ty -> Graphing ty
@@ -138,9 +138,9 @@ edge parent child gr = gr{graphingAdjacent = adjacent'}
 
 -- | Adds a node to this graph as a deep dependency.
 deep :: Ord ty => ty -> Graphing ty -> Graphing ty
-deep n gr = gr{graphingAdjacent = adjacent'}
+deep dep gr = gr{graphingAdjacent = adjacent'}
   where
-    adjacent' = AM.overlay (AM.vertex n) (graphingAdjacent gr)
+    adjacent' = AM.overlay (AM.vertex dep) (graphingAdjacent gr)
 
 -- | @unfold direct getDeps toDependency@ unfolds a graph, given:
 --
