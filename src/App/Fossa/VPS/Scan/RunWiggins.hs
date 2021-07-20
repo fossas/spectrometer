@@ -95,8 +95,8 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} MonorepoFilters{..} logSeverity Pr
     ++ optMaybeText "-team" projectTeam
     ++ optMaybeText "-title" projectTitle
     ++ optMaybeText "-branch" projectBranch
-    ++ optJsonArray "-only-paths" onlyPaths
-    ++ optJsonArray "-exclude-paths" excludePaths
+    ++ optExplodeText "-only-paths" (T.pack . toFilePath <$> onlyPaths)
+    ++ optExplodeText "-exclude-paths" (T.pack . toFilePath <$> excludePaths)
     ++ optBool "-debug" (logSeverity == SevDebug)
     ++ optMaybeText "-type" monorepoAnalysisType
     ++ ["."]
@@ -132,9 +132,10 @@ optMaybeText :: Text -> Maybe Text -> [Text]
 optMaybeText _ Nothing = []
 optMaybeText flag (Just value) = [flag, value]
 
-optJsonArray :: (ToJSON a) => Text -> [a] -> [Text]
-optJsonArray _ [] = []
-optJsonArray flag a = flag : [decodeUtf8 $ BL.toStrict $ encode (toJSON <$> a)]
+optExplodeText :: Text -> [Text] -> [Text]
+optExplodeText _ [] = []
+optExplodeText flag [a] = [flag, a]
+optExplodeText flag (a : as) = [flag, a] ++ optExplodeText flag as
 
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
