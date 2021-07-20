@@ -21,4 +21,4 @@ nonEmpty s
 toSet :: NonEmptySet a -> S.Set a
 toSet = unEmptySet
 
-newtype NonEmptySet a = NonEmptySet {unEmptySet :: S.Set a} deriving (Eq, Ord, Show)
+newtype NonEmptySet a = NonEmptySet {unEmptySet :: S.Set a} deriving (Eq, Ord, Show, Semigroup)

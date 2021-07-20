@@ -22,8 +22,7 @@ import Data.Aeson (
  )
 
 import Data.Aeson.Types (Parser)
-import Data.Set qualified as S
-import Data.Set.NonEmpty (NonEmptySet, nonEmpty, toSet)
+import Data.Set.NonEmpty (NonEmptySet)
 import Data.Text (Text)
 import Data.Text qualified as T
 import DepTypes (
@@ -44,10 +43,10 @@ data FoundTargets = ProjectWithoutTargets | FoundTargets (NonEmptySet BuildTarge
   deriving (Eq, Ord, Show)
 
 instance Semigroup FoundTargets where
-  (FoundTargets a) <> ProjectWithoutTargets = FoundTargets a
-  ProjectWithoutTargets <> (FoundTargets a) = FoundTargets a
-  (FoundTargets a) <> (FoundTargets b) = maybe ProjectWithoutTargets FoundTargets (nonEmpty (S.union (toSet a) (toSet b)))
-  ProjectWithoutTargets <> ProjectWithoutTargets = ProjectWithoutTargets
+  a <> ProjectWithoutTargets = a
+  ProjectWithoutTargets <> a = a
+  (FoundTargets a) <> (FoundTargets b) = FoundTargets (a <> b)
+  
 
 instance Monoid FoundTargets where
   mempty = ProjectWithoutTargets
