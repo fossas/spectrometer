@@ -4,43 +4,26 @@ module Strategy.Python.Poetry.PyProject (
   PyProjectBuildSystem (..),
   PoetryDependency (..),
   pyProjectCodec,
-  pyProjectBuildSystemCodec,
-  getPoetryBuildSystem,
-  PyProjectPoetryGitDependency (..),
   PyProjectPoetryPathDependency (..),
+  PyProjectPoetryGitDependency (..),
   PyProjectPoetryUrlDependency (..),
   PyProjectPoetryDetailedVersionDependency (..),
+
+  -- * for testing only
   parseConstraintExpr,
-  getDependencies,
+  toDependencyVersion,
 ) where
 
+import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Foldable (asum)
+import Data.Functor (void)
 import Data.Map (Map)
-import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as T
-import Text.Megaparsec (
-  MonadParsec (takeWhileP),
-  Parsec,
-  empty,
-  many,
-  noneOf,
-  optional,
-  parse,
-  some,
-  (<|>),
- )
-import Text.Megaparsec.Char (char)
-
-import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
-import Data.Functor (void)
-import Data.Maybe (fromMaybe)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (
-  DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (GitType, PipType, URLType, UserType),
-  Dependency (..),
   VerConstraint (
     CAnd,
     CCompatible,
@@ -53,9 +36,23 @@ import DepTypes (
     COr
   ),
  )
+import Text.Megaparsec (
+  Parsec,
+  empty,
+  many,
+  noneOf,
+  optional,
+  parse,
+  some,
+  takeWhileP,
+  (<|>),
+ )
+import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Toml (TomlCodec, (.=))
 import Toml qualified
+
+type Parser = Parsec Void Text
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show)
 
@@ -185,69 +182,11 @@ pyProjectPoetryUrlDependencyCodec =
   PyProjectPoetryUrlDependency
     <$> Toml.text "url" .= sourceUrl
 
-getPoetryBuildSystem :: PyProject -> Maybe Text
-getPoetryBuildSystem project = buildBackend <$> pyprojectBuildSystem project
-
-poetryDependencyToDependency :: [DepEnvironment] -> Text -> PoetryDependency -> Dependency
-poetryDependencyToDependency depEnvs name deps =
-  Dependency
-    { dependencyType = depType
-    , dependencyName = depName
-    , dependencyVersion = depVersion
-    , dependencyLocations = depLocations
-    , dependencyEnvironments = depEnvironment
-    , dependencyTags = depTags
-    }
-  where
-    depType = case deps of
-      PoetryTextVersion _ -> PipType
-      PyProjectPoetryDetailedVersionDependencySpec _ -> PipType
-      PyProjectPoetryGitDependencySpec _ -> GitType
-      PyProjectPoetryPathDependencySpec _ -> UserType
-      PyProjectPoetryUrlDependencySpec _ -> URLType
-
-    depName = case deps of
-      PoetryTextVersion _ -> name
-      PyProjectPoetryDetailedVersionDependencySpec _ -> name
-      PyProjectPoetryGitDependencySpec ds -> gitUrl ds
-      PyProjectPoetryUrlDependencySpec ds -> sourceUrl ds
-      PyProjectPoetryPathDependencySpec ds -> sourcePath ds
-
-    depVersion = case deps of
-      PoetryTextVersion ds -> toDependencyVersion ds
-      PyProjectPoetryDetailedVersionDependencySpec ds -> toDependencyVersion (poetryDependencyVersion ds)
-      PyProjectPoetryGitDependencySpec ds -> case asum [gitTag ds, gitRev ds, gitBranch ds] of
-        Nothing -> Nothing
-        Just version -> Just $ CEq version
-      _ -> Nothing
-
-    depEnvironment = depEnvs
-    depLocations = []
-    depTags = Map.empty
-
 toDependencyVersion :: Text -> Maybe VerConstraint
 toDependencyVersion dt = case parse parseConstraintExpr "" dt of
   Left _ -> Nothing
   Right (CEq "*") -> Nothing
   Right v -> Just v
-
-getDependencies :: PyProject -> [Dependency]
-getDependencies project = filter notNamedPython $ map snd allDeps
-  where
-    -- pyproject typically includes python as dependency that has to be ignored
-    notNamedPython = (/= "python") . dependencyName
-
-    toDependency :: [DepEnvironment] -> Map Text PoetryDependency -> Map Text Dependency
-    toDependency depEnvs = Map.mapWithKey $ poetryDependencyToDependency depEnvs
-
-    allDeps = case pyprojectPoetry project of
-      Nothing -> []
-      Just pp -> Map.toList prodDeps ++ Map.toList devDeps
-        where
-          prodDeps = toDependency [EnvProduction] $ dependencies pp
-          devDeps = toDependency [EnvDevelopment] $ devDependencies pp
-
-type Parser = Parsec Void Text
 
 symbol :: Text -> Parser Text
 symbol = Lexer.symbol sc
@@ -278,7 +217,7 @@ parseVerConstraint :: Parser VerConstraint
 parseVerConstraint = do
   operator <- whitespaceOrTab *> parseConstraintOperator <* whitespaceOrTab
   versionText <- many (noneOf [andOperatorChar, orOperatorChar] <* whitespaceOrTab)
-  let v = T.pack versionText
+  let v = Text.pack versionText
   case operator of
     Equal -> pure $ CEq v
     NotEqual -> pure $ CNot v

@@ -1,12 +1,14 @@
 module Strategy.Python.Poetry.PoetryLock (
   PoetryLock (..),
-  PoetryMetadata (..),
   PoetryLockPackage (..),
   PackageName (..),
   PoetryLockPackageSource (..),
   PoetryLockDependencySpec (..),
-  ObjectVersion (..),
   poetryLockCodec,
+
+  -- * for testing only
+  ObjectVersion (..),
+  PoetryMetadata (..),
 ) where
 
 import Control.Applicative (Alternative ((<|>)))
@@ -46,7 +48,7 @@ poetryMetadataCodec =
     <*> Toml.text "python-versions" .= poetryMetadataPythonVersions
 
 -- | A PoetryLockPackageSource represents [package.source] field in poetry.lock.
--- Source indicates, from where the package was retrieved.
+-- Source indicates from where the package was retrieved.
 data PoetryLockPackageSource = PoetryLockPackageSource
   { poetryLockPackageSourceType :: Text
   , poetryLockPackageSourceUrl :: Text

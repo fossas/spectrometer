@@ -15,20 +15,22 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectPoetryGitDependency (..),
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
-  getDependencies,
-  getPoetryBuildSystem,
   parseConstraintExpr,
   pyProjectCodec,
  )
-import Test.Hspec
+import Test.Hspec (
+  Expectation,
+  Spec,
+  describe,
+  it,
+  runIO,
+  shouldBe,
+ )
 import Toml qualified
 
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes (
-  DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (GitType, PipType, URLType, UserType),
-  Dependency (Dependency),
   VerConstraint (
     CAnd,
     CCompatible,
@@ -41,8 +43,8 @@ import DepTypes (
     COr
   ),
  )
-import Test.Hspec.Megaparsec hiding (err)
-import Text.Megaparsec
+import Test.Hspec.Megaparsec (shouldParse)
+import Text.Megaparsec (Parsec, parse)
 
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
@@ -79,51 +81,14 @@ expectedPyProject =
             }
     }
 
-expectedDeps :: [Dependency]
-expectedDeps =
-  [ dep PipType "flake8" (Just $ CCompatible "1.1") prodEnvs
-  , dep GitType "https://github.com/pallets/flask.git" (Just $ CEq "38eb5d3b") prodEnvs
-  , dep GitType "https://github.com/networkx/networkx.git" Nothing prodEnvs
-  , dep GitType "https://github.com/numpy/numpy.git" (Just $ CEq "v0.13.2") prodEnvs
-  , dep GitType "https://github.com/kennethreitz/requests.git" (Just $ CEq "next") prodEnvs
-  , dep URLType "https://example.com/my-package-0.1.0.tar.gz" Nothing prodEnvs
-  , dep UserType "../my-package/dist/my-package-0.1.0.tar.gz" Nothing prodEnvs
-  , dep UserType "../my-package/" Nothing prodEnvs
-  , dep PipType "black" (Just $ CEq "19.10b0") $ prodEnvs
-  , dep PipType "pytest" Nothing devEnvs
-  ]
-  where
-    dep :: DepType -> Text -> Maybe VerConstraint -> [DepEnvironment] -> Dependency
-    dep t n v e = Dependency t n v [] e Map.empty
-    prodEnvs :: [DepEnvironment]
-    prodEnvs = [EnvProduction]
-    devEnvs :: [DepEnvironment]
-    devEnvs = [EnvDevelopment]
-
 spec :: Spec
 spec = do
   nominalContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject1.toml")
-  emptyContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject2.toml")
 
   describe "pyProjectCodec" $ do
     describe "when provided with all possible types of dependency sources" $ do
       it "should parse pyrproject file with all source types" $
         Toml.decode pyProjectCodec nominalContents `shouldBe` Right expectedPyProject
-
-  describe "getDependencies" $ do
-    it "should get all dependencies" $
-      getDependencies expectedPyProject `shouldMatchList` expectedDeps
-
-  describe "getPoetryBuildSystem" $ do
-    describe "when provided with poetry build system" $ do
-      it "should return true" $
-        getPoetryBuildSystem <$> (Toml.decode pyProjectCodec nominalContents)
-          `shouldBe` Right (Just "poetry.core.masonry.api")
-
-    describe "when not provided with any build system" $ do
-      it "should return nothing" $
-        getPoetryBuildSystem <$> Toml.decode pyProjectCodec emptyContents
-          `shouldBe` Right Nothing
 
   describe "parseConstraintExpr" $ do
     it "should parse equality constraint" $ do

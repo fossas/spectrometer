@@ -1,28 +1,31 @@
 module Strategy.Python.Poetry (
-  PoetryProject (..),
+  discover,
+
+  -- * for testing only
   buildGraphWithLock,
   buildPackageNameGraph,
-  discover,
-  toMap,
+  PoetryProject (..),
 ) where
 
+import Control.Algebra (Has)
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Data.Foldable (asum)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, toLower)
-import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
+import DepTypes (DepType (..), Dependency (..))
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
   walk',
  )
-import Control.Algebra (Has)
+import Effect.Logger (Logger (..))
 import Effect.ReadFS (ReadFS, readContentsToml)
 import Graphing (Graphing, deep, edge, empty, fromList, gmap, promoteToDirect)
 import Path (Abs, Dir, File, Path)
-import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryLockPackageSource (..), poetryLockCodec)
-import Strategy.Python.Poetry.PyProject (PyProject (..), getDependencies, getPoetryBuildSystem, pyProjectCodec)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toMap)
+import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
+import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
 import Types (DiscoveredProject (..))
 
 newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show)
@@ -36,7 +39,7 @@ data PoetryProject = PoetryProject
   }
   deriving (Show, Eq, Ord)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger rsig run, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Poetry" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -61,16 +64,16 @@ findProjects = walk' $ \dir _ files -> do
     (poetry, Just pyproject) -> do
       poetryProject <- readContentsToml pyProjectCodec pyproject
       let project = PoetryProject (ProjectDir dir) (PyProjectTomlFile pyproject) (PoetryLockFile <$> poetry)
-      let poetryBuildSystem = getPoetryBuildSystem poetryProject
+      let pyprojectBuildBackend = getPoetryBuildBackend poetryProject
 
-      case poetryBuildSystem of
+      case pyprojectBuildBackend of
         Nothing -> pure ([], WalkContinue)
         Just pbs ->
           if pbs == poetryBuildBackendIdentifier
             then pure ([project], WalkSkipAll)
             else
               context
-                ( "pyproject.toml does not use poetry build system. It uses: "
+                ( "pyproject.toml does not use poetry build backend. It uses: "
                     <> pbs
                     <> "\n"
                     <> poetryBuildBackendIdentifierHelpText
@@ -82,7 +85,7 @@ findProjects = walk' $ \dir _ files -> do
     (Just _, Nothing) -> context "poetry.lock file found without accompanying pyproject.toml!" $ pure ([], WalkContinue)
     (Nothing, Nothing) -> pure ([], WalkContinue)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PoetryProject -> DiscoveredProject n
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n, Has Logger sig n) => PoetryProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "poetry"
@@ -92,7 +95,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PoetryProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PoetryProject -> m (Graphing Dependency)
 getDeps project = do
   context "Poetry" $ context "Static analysis" $ analyze project
 
@@ -100,6 +103,7 @@ getDeps project = do
 analyze ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   ) =>
   PoetryProject ->
   m (Graphing Dependency)
@@ -107,9 +111,10 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
   pyproject <- readContentsToml pyProjectCodec (pyProjectTomlPath pyProjectToml)
   case poetryLock of
     Just lockPath -> do
-      poetryL <- readContentsToml poetryLockCodec (poetryLockPath lockPath)
-      context "Building dependency graph from pyproject.toml and poetry.lock" $ pure $ buildGraphWithLock poetryL pyproject
-    Nothing -> context "Building dependency graph from only pyproject.toml" $ pure $ Graphing.fromList $ getDependencies pyproject
+      poetryLockProject <- readContentsToml poetryLockCodec (poetryLockPath lockPath)
+      _ <- logIgnoredDeps pyproject (Just poetryLockProject)
+      context "Building dependency graph from pyproject.toml and poetry.lock" $ pure $ buildGraphWithLock poetryLockProject pyproject
+    Nothing -> context "Building dependency graph from only pyproject.toml" $ pure $ Graphing.fromList $ pyProjectDeps pyproject
 
 -- | Build graph of `Dependency` only from `PyProject` and `PoetryLock`.
 buildGraphWithLock :: PoetryLock -> PyProject -> Graphing Dependency
@@ -119,7 +124,10 @@ buildGraphWithLock lockProject poetryProject = promoteToDirect isDirect graph
     isDirect :: Dependency -> Bool
     isDirect dep = case pyprojectPoetry poetryProject of
       Nothing -> False
-      Just _ -> any (\n -> dependencyName n == (dependencyName dep)) (getDependencies poetryProject)
+      Just _ -> any (\n -> dependencyName n == dependencyName dep) (pyProjectDeps poetryProject)
+
+    lowerCasedPkgName :: PackageName -> PackageName
+    lowerCasedPkgName name = PackageName <$> toLower $ unPackageName name
 
     graph = gmap pkgNameToDependency (buildPackageNameGraph $ poetryLockPackages lockProject)
     mapOfDependency = toMap $ poetryLockPackages lockProject
@@ -152,12 +160,8 @@ buildGraphWithLock lockProject poetryProject = promoteToDirect isDirect graph
             , dependencyTags = Map.empty
             }
         )
-        $ asum
-          [ Map.lookup name mapOfDependency
-          , Map.lookup lowerCasePkgName mapOfDependency
-          ]
-      where
-        lowerCasePkgName = PackageName <$> toLower $ unPackageName name
+        $ Map.lookup name mapOfDependency
+          <|> Map.lookup (lowerCasedPkgName name) mapOfDependency
 
 -- | Builds the Package Name Graph.
 -- In python, package names are unique, and only single version of a package can be used.
@@ -174,59 +178,4 @@ buildPackageNameGraph pkgs = foldr deep edges pkgsNoDeps
     edgeOf p = (poetryLockPackageName p,) <$> (PackageName <$> Map.keys (poetryLockPackageDependencies p))
 
     edges :: Graphing PackageName
-    edges = foldr (uncurry edge) (empty) (concatMap edgeOf depsWithEdges)
-
--- | Maps poetry lock package to map of package name and associated dependency.
-toMap :: [PoetryLockPackage] -> Map.Map PackageName Dependency
-toMap pkgs = Map.fromList $ (\x -> (lowerCasePkgName x, toDependency x)) <$> pkgs
-  where
-    lowerCasePkgName :: PoetryLockPackage -> PackageName
-    lowerCasePkgName pkg = PackageName (toLower $ unPackageName $ poetryLockPackageName pkg)
-
-    toDependency :: PoetryLockPackage -> Dependency
-    toDependency pkg =
-      Dependency
-        { dependencyType = toDepType (poetryLockPackageSource pkg)
-        , dependencyName = toDepName pkg
-        , dependencyVersion = toDepVersion pkg
-        , dependencyLocations = toDepLocs pkg
-        , dependencyEnvironments = toDepEnvironment pkg
-        , dependencyTags = Map.empty
-        }
-
-    toDepName :: PoetryLockPackage -> Text
-    toDepName plp = case (poetryLockPackageSource plp) of
-      Nothing -> unPackageName $ poetryLockPackageName plp
-      Just plps -> case poetryLockPackageSourceType plps of
-        "legacy" -> unPackageName $ poetryLockPackageName plp
-        _ -> poetryLockPackageSourceUrl plps
-
-    toDepType :: Maybe PoetryLockPackageSource -> DepType
-    toDepType Nothing = PipType
-    toDepType (Just plps) = case poetryLockPackageSourceType plps of
-      "git" -> GitType
-      "url" -> URLType
-      "legacy" -> PipType
-      _ -> UserType
-
-    toDepLocs :: PoetryLockPackage -> [Text]
-    toDepLocs pkg = case poetryLockPackageSource pkg of
-      Nothing -> []
-      Just plps -> case poetryLockPackageSourceType plps of
-        "legacy" -> [poetryLockPackageSourceUrl plps]
-        _ -> []
-
-    toDepVersion :: PoetryLockPackage -> Maybe VerConstraint
-    toDepVersion pkg = Just $
-      CEq $
-        fromMaybe (poetryLockPackageVersion pkg) $ do
-          plps <- poetryLockPackageSource pkg
-          ref <- poetryLockPackageSourceReference plps
-          if poetryLockPackageSourceType plps /= "legacy" then Just ref else Nothing
-
-    toDepEnvironment :: PoetryLockPackage -> [DepEnvironment]
-    toDepEnvironment pkg = case poetryLockPackageCategory pkg of
-      "dev" -> [EnvDevelopment]
-      "main" -> [EnvProduction]
-      "test" -> [EnvTesting]
-      other -> [EnvOther other]
+    edges = foldr (uncurry edge) empty (concatMap edgeOf depsWithEdges)
