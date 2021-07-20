@@ -27,7 +27,7 @@ jobs:
           - os: macos-latest
             os-name: macOS
             project-file: cabal.project.ci.macos
-            ghc: '8.10.5'
+            ghc: '8.10.4'
 
           - os: windows-latest
             os-name: Windows
