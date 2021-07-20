@@ -1,5 +1,7 @@
 module App.Fossa.Monorepo (
   monorepoMain,
+  toMonorepoFilters,
+  MonorepoFilters (..),
 ) where
 
 import App.Fossa.EmbeddedBinary
@@ -14,16 +16,20 @@ import Effect.Exec
 import Effect.Logger
 import Fossa.API.Types
 
-monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> AllFilters -> IO ()
-monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject filters = withDefaultLogger logSeverity $ do
-  logWithExit_ $ withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject
+-- Monorepo scans support a subset of AllFilters: specifically, target filters are not supported as monorepo scans do not have the concept of targets.
+toMonorepoFilters :: AllFilters -> MonorepoFilters
+toMonorepoFilters AllFilters{includeFilters, excludeFilters} = MonorepoFilters (combinedPaths includeFilters) (combinedPaths excludeFilters)
 
-monorepoScan :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> BinaryPaths -> m ()
-monorepoScan (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts projectMeta projectOverride binaryPaths = do
+monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> MonorepoFilters -> IO ()
+monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject filters = withDefaultLogger logSeverity $ do
+  logWithExit_ $ withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts filters logSeverity apiOpts projectMeta overrideProject
+
+monorepoScan :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => BaseDir -> MonorepoAnalysisOpts -> MonorepoFilters -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> BinaryPaths -> m ()
+monorepoScan (BaseDir basedir) monorepoAnalysisOpts filters logSeverity apiOpts projectMeta projectOverride binaryPaths = do
   projectRevision <- mergeOverride projectOverride <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision projectRevision
 
-  let wigginsOpts = generateWigginsMonorepoOpts basedir monorepoAnalysisOpts logSeverity projectRevision apiOpts projectMeta
+  let wigginsOpts = generateWigginsMonorepoOpts basedir monorepoAnalysisOpts filters logSeverity projectRevision apiOpts projectMeta
 
   logInfo "Running monorepo scan"
   stdout <- context "Monorepo" $ runExecIO $ runWiggins binaryPaths wigginsOpts

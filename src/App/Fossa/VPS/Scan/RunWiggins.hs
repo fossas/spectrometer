@@ -9,6 +9,7 @@ module App.Fossa.VPS.Scan.RunWiggins (
   generateWigginsMonorepoOpts,
   WigginsOpts (..),
   ScanType (..),
+  MonorepoFilters (..),
 ) where
 
 import App.Fossa.EmbeddedBinary
@@ -43,6 +44,11 @@ data WigginsOpts = WigginsOpts
   , spectrometerArgs :: [Text]
   }
 
+data MonorepoFilters = MonorepoFilters
+  { onlyPaths :: [Path Rel Dir]
+  , excludePaths :: [Path Rel Dir]
+  }
+
 generateWigginsScanOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
 generateWigginsScanOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
   WigginsOpts scanDir $ generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata
@@ -54,9 +60,9 @@ generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaS
 generateVSIStandaloneOpts :: Path Abs Dir -> ApiOpts -> WigginsOpts
 generateVSIStandaloneOpts scanDir apiOpts = WigginsOpts scanDir $ generateVSIStandaloneArgs apiOpts
 
-generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> WigginsOpts
-generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts logSeverity projectRevision apiOpts metadata =
-  WigginsOpts scanDir $ generateMonorepoArgs monorepoAnalysisOpts logSeverity projectRevision apiOpts metadata
+generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> MonorepoFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> WigginsOpts
+generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata =
+  WigginsOpts scanDir $ generateMonorepoArgs monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata
 
 generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaFilePaths -> [Text]
 generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} ninjaScanId ninjaInputFiles =
@@ -76,8 +82,8 @@ generateVSIStandaloneArgs ApiOpts{..} =
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
     ++ ["."]
 
-generateMonorepoArgs :: MonorepoAnalysisOpts -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
-generateMonorepoArgs MonorepoAnalysisOpts{..} logSeverity ProjectRevision{..} ApiOpts{..} ProjectMetadata{..} =
+generateMonorepoArgs :: MonorepoAnalysisOpts -> MonorepoFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
+generateMonorepoArgs MonorepoAnalysisOpts{..} MonorepoFilters{..} logSeverity ProjectRevision{..} ApiOpts{..} ProjectMetadata{..} =
   "monorepo" :
   optMaybeText "-endpoint" (render <$> apiOptsUri)
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
@@ -89,6 +95,8 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} logSeverity ProjectRevision{..} Ap
     ++ optMaybeText "-team" projectTeam
     ++ optMaybeText "-title" projectTitle
     ++ optMaybeText "-branch" projectBranch
+    ++ optJsonArray "-only-paths" onlyPaths
+    ++ optJsonArray "-exclude-paths" excludePaths
     ++ optBool "-debug" (logSeverity == SevDebug)
     ++ optMaybeText "-type" monorepoAnalysisType
     ++ ["."]
@@ -123,6 +131,10 @@ optBool _ False = []
 optMaybeText :: Text -> Maybe Text -> [Text]
 optMaybeText _ Nothing = []
 optMaybeText flag (Just value) = [flag, value]
+
+optJsonArray :: (ToJSON a) => Text -> [a] -> [Text]
+optJsonArray _ [] = []
+optJsonArray flag a = flag : [decodeUtf8 $ BL.toStrict $ encode (toJSON <$> a)]
 
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
