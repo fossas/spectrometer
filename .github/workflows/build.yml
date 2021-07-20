@@ -114,6 +114,31 @@ jobs:
         name: ${{ runner.os }}-binaries
         path: release
 
+  # Run linter and format checker indpendently, so you see errors from both.
+  linter-check:
+    name: linter-check
+    runs-on: ubuntu-latest
+    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run hlint
+      run: |
+        make hlint
+  
+  format-check:
+    name: formatter-check
+    runs-on: ubuntu-latest
+    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: run fourmolu
+      run: |
+        make check-fmt
+
   create-release:
     name: create-release
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
