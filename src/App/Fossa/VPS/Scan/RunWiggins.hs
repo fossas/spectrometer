@@ -9,7 +9,7 @@ module App.Fossa.VPS.Scan.RunWiggins (
   generateWigginsMonorepoOpts,
   WigginsOpts (..),
   ScanType (..),
-  MonorepoFilters (..),
+  PathFilters (..),
 ) where
 
 import App.Fossa.EmbeddedBinary
@@ -44,7 +44,7 @@ data WigginsOpts = WigginsOpts
   , spectrometerArgs :: [Text]
   }
 
-data MonorepoFilters = MonorepoFilters
+data PathFilters = PathFilters
   { onlyPaths :: [Path Rel Dir]
   , excludePaths :: [Path Rel Dir]
   }
@@ -60,7 +60,7 @@ generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaS
 generateVSIStandaloneOpts :: Path Abs Dir -> ApiOpts -> WigginsOpts
 generateVSIStandaloneOpts scanDir apiOpts = WigginsOpts scanDir $ generateVSIStandaloneArgs apiOpts
 
-generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> MonorepoFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> WigginsOpts
+generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> WigginsOpts
 generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata =
   WigginsOpts scanDir $ generateMonorepoArgs monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata
 
@@ -82,8 +82,8 @@ generateVSIStandaloneArgs ApiOpts{..} =
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
     ++ ["."]
 
-generateMonorepoArgs :: MonorepoAnalysisOpts -> MonorepoFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
-generateMonorepoArgs MonorepoAnalysisOpts{..} MonorepoFilters{..} logSeverity ProjectRevision{..} ApiOpts{..} ProjectMetadata{..} =
+generateMonorepoArgs :: MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
+generateMonorepoArgs MonorepoAnalysisOpts{..} PathFilters{..} logSeverity ProjectRevision{..} ApiOpts{..} ProjectMetadata{..} =
   "monorepo" :
   optMaybeText "-endpoint" (render <$> apiOptsUri)
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]

@@ -157,7 +157,7 @@ appMain = do
       if analyzeOutput
         then die "Monorepo analysis does not support the `--output` flag"
         else do
-          filters <- monorepoFilters analyzeOptions
+          filters <- pathFilters analyzeOptions
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
@@ -166,10 +166,10 @@ appMain = do
           basedir <- parseAbsDir analyzeBaseDir
           monorepoMain (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts metadata analyzeOverride filters
       where
-        monorepoFilters :: AnalyzeOptions -> IO (MonorepoFilters)
-        monorepoFilters AnalyzeOptions{analyzeBuildTargetFilters = [], analyzeExcludeTargets = [], analyzeOnlyTargets = []} = pure (toMonorepoFilters $ normalizedFilters fileConfig analyzeOptions)
-        monorepoFilters AnalyzeOptions{analyzeBuildTargetFilters = []} = die "The --only-target and --exclude-target options are invalid for monorepo projects. Instead use --only-path and/or --exclude-path to control which paths are scanned"
-        monorepoFilters _ = die "The --filter option is invalid for monorepo projects. Refer to the new path exclusion feature for how to filter monorepo project files. --filter will be removed by v2.20.0"
+        pathFilters :: AnalyzeOptions -> IO (PathFilters)
+        pathFilters AnalyzeOptions{analyzeBuildTargetFilters = [], analyzeExcludeTargets = [], analyzeOnlyTargets = []} = pure (toPathFilters $ normalizedFilters fileConfig analyzeOptions)
+        pathFilters AnalyzeOptions{analyzeBuildTargetFilters = []} = die "The --only-target and --exclude-target options are invalid for monorepo projects. Instead use --only-path and/or --exclude-path to control which paths are scanned"
+        pathFilters _ = die "The --filter option is invalid for monorepo projects. Refer to the new path exclusion feature for how to filter monorepo project files. --filter will be removed by v2.20.0"
     --
     AnalyzeCommand analyzeOptions@AnalyzeOptions{..} -> do
       -- The branch override needs to be set here rather than above to preserve
