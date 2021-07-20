@@ -165,7 +165,7 @@ appMain = do
           basedir <- parseAbsDir analyzeBaseDir
           monorepoMain (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts metadata analyzeOverride
     --
-    AnalyzeCommand AnalyzeOptions{..} -> do
+    AnalyzeCommand analyzeOptions@AnalyzeOptions{..} -> do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
 
@@ -174,25 +174,7 @@ appMain = do
         else withDefaultLogger logSeverity $ logWarn "The --filter option has been deprecated. Refer to the new target exclusion feature for upgrading. --filter will be removed by v2.20.0"
 
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
-          -- If a user enters a single target or path filtering flag, do not use any filters from the configuration file.
-          combinedFilters =
-            if null analyzeOnlyTargets && null analyzeExcludeTargets && null analyzeOnlyPaths && null analyzeExcludePaths
-              then
-                AllFilters
-                  analyzeBuildTargetFilters
-                  (FilterCombination (filterTargets targetsOnly) (filterPaths pathsOnly))
-                  (FilterCombination (filterTargets targetsExclude) (filterPaths pathsExclude))
-              else
-                AllFilters
-                  analyzeBuildTargetFilters
-                  (FilterCombination (analyzeOnlyTargets) analyzeOnlyPaths)
-                  (FilterCombination (analyzeExcludeTargets) analyzeExcludePaths)
-            where
-              filterPaths :: (ConfigPaths -> [Path Rel Dir]) -> [Path Rel Dir]
-              filterPaths field = maybe [] field (fileConfig >>= configPaths)
-              filterTargets :: (ConfigTargets -> [TargetFilter]) -> [TargetFilter]
-              filterTargets field = maybe [] field (fileConfig >>= configTargets)
-
+          combinedFilters = normalizedFilters fileConfig analyzeOptions
           doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
 
       if analyzeOutput
@@ -281,6 +263,23 @@ appMain = do
     DumpBinsCommand dir -> do
       basedir <- validateDir dir
       for_ Embed.allBins $ Embed.dumpEmbeddedBinary $ unBaseDir basedir
+
+normalizedFilters :: Maybe ConfigFile -> AnalyzeOptions -> AllFilters
+normalizedFilters fileConfig AnalyzeOptions{analyzeOnlyTargets = [], analyzeExcludeTargets = [], analyzeOnlyPaths = [], analyzeExcludePaths = [], analyzeBuildTargetFilters} =
+  AllFilters
+    analyzeBuildTargetFilters
+    (FilterCombination (filterTargets targetsOnly) (filterPaths pathsOnly))
+    (FilterCombination (filterTargets targetsExclude) (filterPaths pathsExclude))
+  where
+    filterPaths :: (ConfigPaths -> [Path Rel Dir]) -> [Path Rel Dir]
+    filterPaths field = maybe [] field (fileConfig >>= configPaths)
+    filterTargets :: (ConfigTargets -> [TargetFilter]) -> [TargetFilter]
+    filterTargets field = maybe [] field (fileConfig >>= configTargets)
+normalizedFilters _ AnalyzeOptions{..} =
+  AllFilters
+    analyzeBuildTargetFilters
+    (FilterCombination (analyzeOnlyTargets) analyzeOnlyPaths)
+    (FilterCombination (analyzeExcludeTargets) analyzeExcludePaths)
 
 dieOnWindows :: String -> IO ()
 dieOnWindows op = when (SysInfo.os == windowsOsName) $ die $ "Operation is not supported on Windows: " <> op
