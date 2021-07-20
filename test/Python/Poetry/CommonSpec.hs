@@ -130,7 +130,7 @@ expectedDeps =
   , dep GitType "https://github.com/numpy/numpy.git" (Just $ CEq "v0.13.2") prodEnvs
   , dep GitType "https://github.com/kennethreitz/requests.git" (Just $ CEq "next") prodEnvs
   , dep URLType "https://example.com/my-package-0.1.0.tar.gz" Nothing prodEnvs
-  , dep PipType "black" (Just $ CEq "19.10b0") $ prodEnvs
+  , dep PipType "black" (Just $ CEq "19.10b0") prodEnvs
   , dep PipType "pytest" Nothing devEnvs
   ]
   where
