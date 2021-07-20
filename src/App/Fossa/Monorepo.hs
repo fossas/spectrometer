@@ -9,12 +9,13 @@ import App.Types
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift)
 import Data.Text
+import Discovery.Filters
 import Effect.Exec
 import Effect.Logger
 import Fossa.API.Types
 
-monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> IO ()
-monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject = withDefaultLogger logSeverity $ do
+monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> AllFilters -> IO ()
+monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject filters = withDefaultLogger logSeverity $ do
   logWithExit_ $ withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject
 
 monorepoScan :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> BinaryPaths -> m ()

@@ -152,18 +152,22 @@ appMain = do
           }
 
   case optCommand of
-    AnalyzeCommand AnalyzeOptions{analyzeOutput, analyzeBranch, analyzeMetadata, monorepoAnalysisOpts = (MonorepoAnalysisOpts (Just monorepoAnalysisType)), analyzeBaseDir} -> do
+    AnalyzeCommand analyzeOptions@AnalyzeOptions{analyzeOutput, analyzeBranch, analyzeMetadata, monorepoAnalysisOpts = (MonorepoAnalysisOpts (Just monorepoAnalysisType)), analyzeBaseDir, analyzeBuildTargetFilters} -> do
       dieOnWindows "Monorepo analysis is not supported on Windows"
       if analyzeOutput
         then die "Monorepo analysis does not support the `--output` flag"
-        else do
-          key <- requireKey maybeApiKey
-          let apiOpts = ApiOpts optBaseUrl key
-          let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
-          let monorepoAnalysisOpts = MonorepoAnalysisOpts (Just monorepoAnalysisType)
-          let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
-          basedir <- parseAbsDir analyzeBaseDir
-          monorepoMain (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts metadata analyzeOverride
+        else
+          if not $ null analyzeBuildTargetFilters
+            then die "The --filter option is invalid for monorepo projects. Refer to the new path exclusion feature for how to filter monorepo project files. --filter will be removed by v2.20.0"
+            else do
+              let filters = normalizedFilters fileConfig analyzeOptions
+              key <- requireKey maybeApiKey
+              let apiOpts = ApiOpts optBaseUrl key
+              let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
+              let monorepoAnalysisOpts = MonorepoAnalysisOpts (Just monorepoAnalysisType)
+              let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
+              basedir <- parseAbsDir analyzeBaseDir
+              monorepoMain (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts metadata analyzeOverride filters
     --
     AnalyzeCommand analyzeOptions@AnalyzeOptions{..} -> do
       -- The branch override needs to be set here rather than above to preserve
