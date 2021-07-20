@@ -125,7 +125,7 @@ jobs:
 
     - name: Run hlint
       run: |
-        make hlint
+        make lint
   
   format-check:
     name: formatter-check
@@ -135,9 +135,15 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    # Run the formatter
     - name: run fourmolu
       run: |
-        make check-fmt
+        make fmt
+
+    # If git has chages, then the formatter check fails.
+    - name: check git status
+      run: |
+        git diff --name-only --exit-code
 
   create-release:
     name: create-release
