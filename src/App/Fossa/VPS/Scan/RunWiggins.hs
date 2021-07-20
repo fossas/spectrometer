@@ -7,6 +7,7 @@ module App.Fossa.VPS.Scan.RunWiggins (
   generateWigginsAOSPNoticeOpts,
   generateVSIStandaloneOpts,
   generateWigginsMonorepoOpts,
+  toPathFilters,
   WigginsOpts (..),
   ScanType (..),
   PathFilters (..),
@@ -27,6 +28,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
+import Discovery.Filters
 import Effect.Exec
 import Effect.Logger
 import Fossa.API.Types
@@ -49,6 +51,12 @@ data PathFilters = PathFilters
   , excludePaths :: [Path Rel Dir]
   }
 
+toText :: Path a b -> Text
+toText = T.pack . toFilePath
+
+toPathFilters :: AllFilters -> PathFilters
+toPathFilters AllFilters{includeFilters, excludeFilters} = PathFilters (combinedPaths includeFilters) (combinedPaths excludeFilters)
+
 generateWigginsScanOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
 generateWigginsScanOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
   WigginsOpts scanDir $ generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata
@@ -57,8 +65,8 @@ generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> ApiOpts -> ProjectR
 generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles =
   WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles
 
-generateVSIStandaloneOpts :: Path Abs Dir -> ApiOpts -> WigginsOpts
-generateVSIStandaloneOpts scanDir apiOpts = WigginsOpts scanDir $ generateVSIStandaloneArgs apiOpts
+generateVSIStandaloneOpts :: Path Abs Dir -> PathFilters -> ApiOpts -> WigginsOpts
+generateVSIStandaloneOpts scanDir filters apiOpts = WigginsOpts scanDir $ generateVSIStandaloneArgs apiOpts filters
 
 generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> WigginsOpts
 generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata =
@@ -75,11 +83,13 @@ generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} n
     ++ ["."]
     ++ (T.pack . toFilePath <$> unNinjaFilePaths ninjaInputFiles)
 
-generateVSIStandaloneArgs :: ApiOpts -> [Text]
-generateVSIStandaloneArgs ApiOpts{..} =
+generateVSIStandaloneArgs :: ApiOpts -> PathFilters -> [Text]
+generateVSIStandaloneArgs ApiOpts{..} PathFilters{..} =
   "vsi-direct" :
   optMaybeText "-endpoint" (render <$> apiOptsUri)
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
+    ++ optExplodeText "-only-path" (toText <$> onlyPaths)
+    ++ optExplodeText "-exclude-path" (toText <$> excludePaths)
     ++ ["."]
 
 generateMonorepoArgs :: MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
@@ -95,8 +105,8 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} PathFilters{..} logSeverity Projec
     ++ optMaybeText "-team" projectTeam
     ++ optMaybeText "-title" projectTitle
     ++ optMaybeText "-branch" projectBranch
-    ++ optExplodeText "-only-path" (T.pack . toFilePath <$> onlyPaths)
-    ++ optExplodeText "-exclude-path" (T.pack . toFilePath <$> excludePaths)
+    ++ optExplodeText "-only-path" (toText <$> onlyPaths)
+    ++ optExplodeText "-exclude-path" (toText <$> excludePaths)
     ++ optBool "-debug" (logSeverity == SevDebug)
     ++ optMaybeText "-type" monorepoAnalysisType
     ++ ["."]

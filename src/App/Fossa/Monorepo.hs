@@ -5,20 +5,20 @@ module App.Fossa.Monorepo (
 ) where
 
 import App.Fossa.EmbeddedBinary
-import App.Fossa.ProjectInference
+import App.Fossa.ProjectInference (
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+  saveRevision,
+ )
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Types
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift)
 import Data.Text
-import Discovery.Filters
 import Effect.Exec
 import Effect.Logger
 import Fossa.API.Types
-
--- Monorepo scans support a subset of AllFilters: specifically, target filters are not supported as monorepo scans do not have the concept of targets.
-toPathFilters :: AllFilters -> PathFilters
-toPathFilters AllFilters{includeFilters, excludeFilters} = PathFilters (combinedPaths includeFilters) (combinedPaths excludeFilters)
 
 monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> PathFilters -> IO ()
 monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject filters = withDefaultLogger logSeverity $ do
