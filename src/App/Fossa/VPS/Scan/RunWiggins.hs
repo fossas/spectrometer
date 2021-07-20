@@ -95,8 +95,8 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} MonorepoFilters{..} logSeverity Pr
     ++ optMaybeText "-team" projectTeam
     ++ optMaybeText "-title" projectTitle
     ++ optMaybeText "-branch" projectBranch
-    ++ optExplodeText "-only-paths" (T.pack . toFilePath <$> onlyPaths)
-    ++ optExplodeText "-exclude-paths" (T.pack . toFilePath <$> excludePaths)
+    ++ optExplodeText "-only-path" (T.pack . toFilePath <$> onlyPaths)
+    ++ optExplodeText "-exclude-path" (T.pack . toFilePath <$> excludePaths)
     ++ optBool "-debug" (logSeverity == SevDebug)
     ++ optMaybeText "-type" monorepoAnalysisType
     ++ ["."]
