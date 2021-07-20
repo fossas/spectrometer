@@ -299,22 +299,21 @@ parseConstraintOperator = fromMaybe Equal <$> optional (asum (map symbol operato
   where
     operatorList = [">=", "<=", "~=", ">", "<", "^", "==", "===", "!=", "~", "*", "="] :: [Text]
 
--- | Constructs `PoetryConstraintOperators` from textual representation (==, >=, etc.) of operators.
-textToPoetryVersion :: (MonadFail m) => Text -> m PoetryConstraintOperators
-textToPoetryVersion = \case
-  "===" -> pure Equal
-  "==" -> pure Equal
-  "!=" -> pure NotEqual
-  ">=" -> pure GreaterThanOrEqual
-  "<=" -> pure LessThanOrEqual
-  "~=" -> pure MinorCompatible
-  "=" -> pure Equal
-  ">" -> pure GreaterThan
-  "<" -> pure LessThan
-  "^" -> pure MajorCompatible
-  "~" -> pure MinorCompatible
-  "*" -> pure WildcardAny
-  other -> fail ("Could not recognize poetry constraint operator: " <> toString other)
+    textToPoetryVersion :: (MonadFail m) => Text -> m PoetryConstraintOperators
+    textToPoetryVersion = \case
+      "===" -> pure Equal
+      "==" -> pure Equal
+      "!=" -> pure NotEqual
+      ">=" -> pure GreaterThanOrEqual
+      "<=" -> pure LessThanOrEqual
+      "~=" -> pure MinorCompatible
+      "=" -> pure Equal
+      ">" -> pure GreaterThan
+      "<" -> pure LessThan
+      "^" -> pure MajorCompatible
+      "~" -> pure MinorCompatible
+      "*" -> pure WildcardAny
+      other -> fail ("Could not recognize poetry constraint operator: " <> toString other)
 
 -- | Parses [poetry constraint expression](https://python-poetry.org/docs/dependency-specification/)
 -- found in Pyproject.toml into `VerConstraint`.
