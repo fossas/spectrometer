@@ -146,31 +146,31 @@ spec = do
   nominalContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject1.toml")
   emptyContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject2.toml")
 
-  describe "getDependencies" $ do
+  describe "getDependencies" $
     it "should get all dependencies" $
       pyProjectDeps expectedPyProject `shouldMatchList` expectedDeps
 
-  describe "supportedPyProjectDep" $ do
+  describe "supportedPyProjectDep" $
     it "should return false when dependency is sourced from local path" $
       supportedPyProjectDep notSupportedPyProjectDependency `shouldBe` False
 
-  describe "supportedPoetryLockDep" $ do
+  describe "supportedPoetryLockDep" $
     it "should return false when dependency is sourced from local path" $
       supportedPoetryLockDep notSupportedPoetryLockDependency `shouldBe` False
 
   describe "getPoetryBuildBackend" $ do
-    describe "when provided with poetry build backend" $ do
+    describe "when provided with poetry build backend" $
       it "should return true" $
         getPoetryBuildBackend <$> (Toml.decode pyProjectCodec nominalContents)
           `shouldBe` Right (Just "poetry.core.masonry.api")
 
-    describe "when not provided with any build system" $ do
+    describe "when not provided with any build system" $
       it "should return nothing" $
         getPoetryBuildBackend <$> Toml.decode pyProjectCodec emptyContents
           `shouldBe` Right Nothing
 
   describe "toMap" $ do
-    it "should map poetry lock package to dependency" $ do
+    it "should map poetry lock package to dependency" $
       toMap
         [ PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgOne"
@@ -201,8 +201,8 @@ spec = do
             )
           ]
 
-    describe "when poetry lock dependency is from git source" $ do
-      it "should replace poetry lock package name to git url" $ do
+    describe "when poetry lock dependency is from git source" $
+      it "should replace poetry lock package name to git url" $
         toMap
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgWithGitSource"
@@ -228,8 +228,8 @@ spec = do
               )
             ]
 
-    describe "when poetry lock dependency is from url source" $ do
-      it "should replace poetry lock package name to url" $ do
+    describe "when poetry lock dependency is from url source" $
+      it "should replace poetry lock package name to url" $
         toMap
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgSourcedFromUrl"
@@ -255,8 +255,8 @@ spec = do
               )
             ]
 
-    describe "when poetry lock dependency is from file source" $ do
-      it "should replace poetry lock package name to filepath" $ do
+    describe "when poetry lock dependency is from file source" $
+      it "should replace poetry lock package name to filepath" $
         toMap
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgSourcedFromFile"
@@ -270,8 +270,8 @@ spec = do
           ]
           `shouldBe` Map.empty
 
-    describe "when poetry lock dependency is from secondary sources" $ do
-      it "should include url into dependency location" $ do
+    describe "when poetry lock dependency is from secondary sources" $
+      it "should include url into dependency location" $
         toMap
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "myprivatepkg"
