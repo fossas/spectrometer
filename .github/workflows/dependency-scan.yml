@@ -5,6 +5,9 @@ jobs:
   dependency-scan:
     name: dependency-scan
     runs-on: ubuntu-latest
+    env:
+      # GH is weird about permissions, so we're just moving to a location we control
+      BINDIR: ${{ env.HOME/.local/bin }}
 
     steps:
       - uses: actions/checkout@v2
