@@ -21,19 +21,23 @@ rm -f vendor/*
 mkdir -p vendor
 
 ASSET_POSTFIX=""
+ASSET_POSTFIX_WITH_ARCHITECTURE=""
 OS_WINDOWS=false
 case "$(uname -s)" in
   Darwin)
     ASSET_POSTFIX="darwin"
+    ASSET_POSTFIX_WITH_ARCHITECTURE="darwin-amd64"
     ;;
 
   Linux)
     ASSET_POSTFIX="linux"
+    ASSET_POSTFIX_WITH_ARCHITECTURE="linux-amd64"
     ;;
-  
+
   *)
     echo "Warn: Assuming $(uname -s) is Windows"
     ASSET_POSTFIX="windows.exe"
+    ASSET_POSTFIX_WITH_ARCHITECTURE="windows-amd64.exe"
     OS_WINDOWS=true
     ;;
 esac
@@ -41,7 +45,7 @@ esac
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-WIGGINS_TAG="2021-07-16-39ef825"
+WIGGINS_TAG="testing-2021-07-20-ea676a2"
 echo "Downloading wiggins binary"
 echo "Using wiggins release: $WIGGINS_TAG"
 WIGGINS_RELEASE_JSON=vendor/wiggins-release.json
@@ -51,11 +55,13 @@ curl -sSL \
     api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
 
 WIGGINS_TAG=$(jq -cr ".name" $WIGGINS_RELEASE_JSON)
-FILTER=".name == \"wiggins-$ASSET_POSTFIX\""
+FILTER=".name == \"scotland_yard-wiggins-$ASSET_POSTFIX_WITH_ARCHITECTURE\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $WIGGINS_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
-  OUTPUT=vendor/${NAME%"-$ASSET_POSTFIX"}
+  echo "asset postfix with architecture: $ASSET_POSTFIX_WITH_ARCHITECTURE"
+  echo "NAME: $NAME"
+  OUTPUT="$(echo vendor/$NAME | sed 's/scotland_yard-//' | sed 's/-'$ASSET_POSTFIX_WITH_ARCHITECTURE'//')"
 
   echo "Downloading '$NAME' to '$OUTPUT'"
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
