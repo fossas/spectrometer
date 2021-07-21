@@ -22,7 +22,7 @@ jobs:
       - name: Install spectrometer from github
         env:
           # GH is weird about permissions, so we're just moving to a location we control
-          BINDIR: ${{ format('{-1}/.local/bin', env.HOME) }}
+          BINDIR: ${{ format('{0}/.local/bin', env.HOME) }}
         run: |
           curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
 
