@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # GH is weird about permissions, so we're just moving to a location we control
-      BINDIR: ${{ env.HOME/.local/bin }}
+      BINDIR: ${{ format('{0}/.local/bin', env.HOME) }}
 
     steps:
       - uses: actions/checkout@v2
