@@ -21,8 +21,8 @@ jobs:
 
       - name: Install spectrometer from github
         env:
-          # GH is weird about permissions, so we're just moving to a location we control
-          BINDIR: ${{ format('{0}/.local/bin', env.HOME) }}
+          # GH is weird about permissions, so we're just moving to a location we have access to
+          BINDIR: ${{ env.GITHUB_WORKSPACE }}
         run: |
           curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
 
@@ -37,7 +37,7 @@ jobs:
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
-          fossa analyze --filter cabal@.
+          $GITHUB_WORKSPACE/fossa analyze --filter cabal@.
 
       - name: Check for scan results
         env:
