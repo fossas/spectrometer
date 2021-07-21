@@ -21,7 +21,7 @@ jobs:
 
       - name: Install spectrometer from github
         run: |
-          BINDIR=$GITHUB_WORKSPACE curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash -- -b $GITHUB_WORKSPACE
 
       - name: Use Spectrometer's GHC and Cabal
         run: |
@@ -35,9 +35,10 @@ jobs:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
           $GITHUB_WORKSPACE/fossa analyze --filter cabal@.
+          false
 
       - name: Check for scan results
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
-          fossa test
+          $GITHUB_WORKSPACE/fossa test
