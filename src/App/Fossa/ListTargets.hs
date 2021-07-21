@@ -21,7 +21,7 @@ import Effect.Logger
 import Effect.ReadFS
 import Path (toFilePath)
 import Path.IO (makeRelative)
-import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets(..))
+import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
 type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC (LoggerC IO)))
 
