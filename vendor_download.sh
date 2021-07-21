@@ -59,8 +59,6 @@ FILTER=".name == \"scotland_yard-wiggins-$ASSET_POSTFIX_WITH_ARCHITECTURE\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $WIGGINS_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
-  echo "asset postfix with architecture: $ASSET_POSTFIX_WITH_ARCHITECTURE"
-  echo "NAME: $NAME"
   OUTPUT="$(echo vendor/$NAME | sed 's/scotland_yard-//' | sed 's/-'$ASSET_POSTFIX_WITH_ARCHITECTURE'//')"
 
   echo "Downloading '$NAME' to '$OUTPUT'"
