@@ -24,7 +24,7 @@ jobs:
           # GH is weird about permissions, so we're just moving to a location we have access to
           # BINDIR: ${{ env. }}
         run: |
-          env
+          env | sort
           false
           
         # curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
