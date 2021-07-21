@@ -127,7 +127,7 @@ buildGraphWithLock lockProject poetryProject = promoteToDirect isDirect graph
       Just _ -> any (\n -> dependencyName n == dependencyName dep) (pyProjectDeps poetryProject)
 
     lowerCasedPkgName :: PackageName -> PackageName
-    lowerCasedPkgName name = PackageName <$> toLower $ unPackageName name
+    lowerCasedPkgName name = PackageName . toLower $ unPackageName name
 
     graph = gmap pkgNameToDependency (buildPackageNameGraph $ poetryLockPackages lockProject)
     mapOfDependency = toMap $ poetryLockPackages lockProject
