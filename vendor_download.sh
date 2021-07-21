@@ -21,24 +21,23 @@ rm -f vendor/*
 mkdir -p vendor
 
 ASSET_POSTFIX=""
-ASSET_POSTFIX_WITH_ARCHITECTURE=""
+WIGGINS_ASSET_POSTFIX=""
 OS_WINDOWS=false
-# case "$(uname -s)" in
-case "Windows" in
+case "$(uname -s)" in
   Darwin)
     ASSET_POSTFIX="darwin"
-    ASSET_POSTFIX_WITH_ARCHITECTURE="darwin-amd64"
+    WIGGINS_ASSET_POSTFIX="darwin-amd64"
     ;;
 
   Linux)
     ASSET_POSTFIX="linux"
-    ASSET_POSTFIX_WITH_ARCHITECTURE="linux-amd64"
+    WIGGINS_ASSET_POSTFIX="linux-amd64"
     ;;
 
   *)
     echo "Warn: Assuming $(uname -s) is Windows"
     ASSET_POSTFIX="windows.exe"
-    ASSET_POSTFIX_WITH_ARCHITECTURE="windows-amd64.exe"
+    WIGGINS_ASSET_POSTFIX="windows-amd64"
     OS_WINDOWS=true
     ;;
 esac
@@ -47,7 +46,7 @@ TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
 # TODO: Update this to the latest release before merging and after the new basis release process has been merged into master on Basis
-WIGGINS_TAG="testing-2021-07-20-02735a4"
+WIGGINS_TAG="testing-2021-07-20-ea676a2"
 echo "Downloading wiggins binary"
 echo "Using wiggins release: $WIGGINS_TAG"
 WIGGINS_RELEASE_JSON=vendor/wiggins-release.json
@@ -57,11 +56,11 @@ curl -sSL \
     api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
 
 WIGGINS_TAG=$(jq -cr ".name" $WIGGINS_RELEASE_JSON)
-FILTER=".name == \"scotland_yard-wiggins-$ASSET_POSTFIX_WITH_ARCHITECTURE\""
+FILTER=".name == \"scotland_yard-wiggins-$WIGGINS_ASSET_POSTFIX\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $WIGGINS_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
-  OUTPUT="$(echo vendor/$NAME | sed 's/scotland_yard-//' | sed 's/-'$ASSET_POSTFIX_WITH_ARCHITECTURE'$//')"
+  OUTPUT="$(echo vendor/$NAME | sed 's/scotland_yard-//' | sed 's/-'$WIGGINS_ASSET_POSTFIX'$//')"
 
   echo "Downloading '$NAME' to '$OUTPUT'"
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
