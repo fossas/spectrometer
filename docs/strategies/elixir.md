@@ -12,7 +12,7 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 
 ## Analysis
 
-1. Run `mix deps.tree --format plain` and generate output similar to:
+1. Run `mix deps.tree --format plain --only prod` and generate output similar to:
 ```
 ├─ one─1.0.0 (https://github.com/dep/one)
 │  ├─ two─2.0.0 (hex package)
