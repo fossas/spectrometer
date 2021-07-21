@@ -23,7 +23,8 @@ mkdir -p vendor
 ASSET_POSTFIX=""
 ASSET_POSTFIX_WITH_ARCHITECTURE=""
 OS_WINDOWS=false
-case "$(uname -s)" in
+# case "$(uname -s)" in
+case "Windows" in
   Darwin)
     ASSET_POSTFIX="darwin"
     ASSET_POSTFIX_WITH_ARCHITECTURE="darwin-amd64"
@@ -60,7 +61,7 @@ FILTER=".name == \"scotland_yard-wiggins-$ASSET_POSTFIX_WITH_ARCHITECTURE\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $WIGGINS_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
-  OUTPUT="$(echo vendor/$NAME | sed 's/scotland_yard-//' | sed 's/-'$ASSET_POSTFIX_WITH_ARCHITECTURE'//')"
+  OUTPUT="$(echo vendor/$NAME | sed 's/scotland_yard-//' | sed 's/-'$ASSET_POSTFIX_WITH_ARCHITECTURE'$//')"
 
   echo "Downloading '$NAME' to '$OUTPUT'"
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
