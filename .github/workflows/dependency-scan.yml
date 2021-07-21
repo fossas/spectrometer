@@ -19,9 +19,10 @@ jobs:
       #   run: |
       #     cabal update
 
+      # To fix this, we need to override the current script that runs
       - name: Install spectrometer from github
         run: |
-          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash -s -- -d
+          ./install.sh | bash -s -- -d
           echo intentional fail && false
 
       - name: Use Spectrometer's GHC and Cabal
