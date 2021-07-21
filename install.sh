@@ -47,7 +47,7 @@ execute() {
   # hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   srcdir="${tmpdir}"
   (cd "${tmpdir}" && unzip -o "${TARBALL}")
-  install -d -m 775 "${BINDIR}" 2> /dev/null || install -d "${BINDIR}"
+  install -d -m 775 "${BINDIR}" 2> /dev/null || sudo install -d "${BINDIR}"
   for binexe in "fossa" ; do
     if [ "$OS" = "windows" ]; then
       binexe="${binexe}.exe"

@@ -15,13 +15,14 @@ jobs:
           cabal --version || echo "no cabal"
           ghcup --version || echo "no ghcup"
 
-      - name: Update cabal cache for spectrometer run
-        run: |
-          cabal update
+      # - name: Update cabal cache for spectrometer run
+      #   run: |
+      #     cabal update
 
       - name: Install spectrometer from github
         run: |
-          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash -s -- -b $GITHUB_WORKSPACE
+          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+          echo intentional fail && false
 
       - name: Use Spectrometer's GHC and Cabal
         run: |
@@ -34,10 +35,10 @@ jobs:
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
-          $GITHUB_WORKSPACE/fossa analyze --filter cabal@.
+          fossa analyze --filter cabal@.
 
       - name: Check for scan results
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
-          $GITHUB_WORKSPACE/fossa test
+          fossa test
