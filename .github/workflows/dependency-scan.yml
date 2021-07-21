@@ -15,14 +15,15 @@ jobs:
           cabal --version || echo "no cabal"
           ghcup --version || echo "no ghcup"
 
-      - name: Update cabal cache for spectrometer run
-        run: |
-          cabal update
+      # Ignore for CI testing
+      # - name: Update cabal cache for spectrometer run
+      #   run: |
+      #     cabal update
 
       - name: Install spectrometer from github
-        # env:
+        env:
           # GH is weird about permissions, so we're just moving to a location we have access to
-          # BINDIR: ${{ env. }}
+          FOO_VAR: ${{ env.GITHUB_WORKSPACE }}
         run: |
           env | sort
           false
