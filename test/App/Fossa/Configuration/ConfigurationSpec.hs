@@ -10,7 +10,7 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Effect.ReadFS
 import Path
 import Test.Hspec qualified as T
-import Types (TargetFilter(..), BuildTarget(..))
+import Types (BuildTarget (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
@@ -61,10 +61,10 @@ expectedConfigTargets =
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"
 
-complexTarget :: TargetFilter 
+complexTarget :: TargetFilter
 complexTarget = TypeDirTargetTarget "gradle" $(mkRelDir "./") (BuildTarget "specific-target")
 
-directoryTarget :: TargetFilter 
+directoryTarget :: TargetFilter
 directoryTarget = TypeDirTarget "maven" $(mkRelDir "root")
 
 testFile :: Path Rel File

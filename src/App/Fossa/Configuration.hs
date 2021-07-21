@@ -64,8 +64,6 @@ data ConfigTargets = ConfigTargets
   }
   deriving (Eq, Ord, Show)
 
- 
-
 data ConfigPaths = ConfigPaths
   { pathsOnly :: [Path Rel Dir]
   , pathsExclude :: [Path Rel Dir]
