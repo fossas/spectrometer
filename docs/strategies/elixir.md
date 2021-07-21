@@ -8,7 +8,7 @@ When developing in Elixir, [Mix](https://hexdocs.pm/mix/Mix.html) and [Hex](http
 
 ## Project Discovery
 
-In order to find elixir projects, we look for `mix.exs` file which specify the root of a elixir project. 
+In order to find elixir projects, we look for `mix.exs` file which specify the root of a elixir project. We skip `deps` and `_build` directories. 
 
 ## Analysis
 

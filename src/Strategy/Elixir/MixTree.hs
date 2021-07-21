@@ -1,6 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 module Strategy.Elixir.MixTree (
   PackageName (..),
   MixDep (..),
@@ -19,17 +16,32 @@ module Strategy.Elixir.MixTree (
   analyze',
 ) where
 
-import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Foldable (asum)
-import Data.Map.Strict qualified as M
-import Data.Maybe (fromMaybe, isNothing)
-import Data.String.Conversion (ToText (toText), toString)
-import Data.Text (Text, toLower)
-import Data.Text qualified as T
+import Data.Functor (($>), (<&>))
+import Data.Map (Map)
+import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe, isNothing, mapMaybe)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
-import DepTypes
+import DepTypes (
+  DepType (GitType, HexType),
+  Dependency (..),
+  VerConstraint (
+    CAnd,
+    CCompatible,
+    CEq,
+    CGreater,
+    CGreaterOrEq,
+    CLess,
+    CLessOrEq,
+    CNot,
+    COr
+  ),
+ )
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Graphing (Graphing, unfold)
 import Path
@@ -59,41 +71,37 @@ missingDepVersionsMsg = "Some of dependencies versions were not resolved from `m
 analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
 analyze' dir = do
   -- Get all dependencies
-  depsAllEnvTree <- context "Identifying relationship among dependencies" $ execParser mixTreeCmdOutputParser dir $ mixDepTreeCmd (Nothing)
-  depsAllResolved <- context "Inferring dependencies versioning" $ execParser mixDepsCmdOutputParser dir mixDepCmd
+  depsAllEnvTree <- context "Identifying relationship among dependencies" $ execParser mixTreeCmdOutputParser dir mixDepTreeCmd <&> supportedMixDeps
+  depsAllResolved <- context "Inferring dependencies versioning" $ execParser mixDepsCmdOutputParser dir mixDepCmd <&> Map.filter (supportedSCM <$> depResolvedSCM)
 
   -- Reminder to get and compile dependencies, if not already done so.
   _ <- if missingResolvedVersions depsAllResolved then context missingDepVersionsMsg $ pure () else pure ()
-  context "Building dependency graph" $ pure (buildGraph depsAllEnvTree depsAllResolved M.empty)
+  context "Building dependency graph" $ pure $ buildGraph depsAllEnvTree depsAllResolved
 
--- | Supported Env atoms of mix
-data MixEnvAtom = Prod | Test | Dev deriving (Show, Eq, Ord)
-
--- | Name of the Pkg
+-- | Name of the Package.
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord)
 
--- | Build Manager (:mix, :rebar, :make, :rebar3)
-data DepManager = Mix | Rebar3 | Rebar | Make | OtherBuildManager deriving (Eq, Show, Ord)
+-- | Build Manager (:mix, :rebar, :make, :rebar3).
+data DepManager = Mix | Rebar3 | Rebar | Make | OtherBuildManager Text deriving (Eq, Show, Ord)
 
--- | Source Control Manager (SCM) - e.g. git, hex
-data DepSCM = Hex | LocalPath Text | Git Text (Maybe Text) | Other deriving (Eq, Show, Ord)
+-- | Source Control Manager (SCM) - e.g. git, hex.
+data DepSCM = Hex | Git Text (Maybe Text) | Other Text deriving (Eq, Show, Ord)
 
--- | Mix Dependency (Unresolved - i.e. without versioning)
+-- | Mix Dependency (Unresolved - i.e. without versioning).
 data MixDep = MixDep
   { depName :: PackageName
   , depVersion :: Maybe VerConstraint
-  , depLocation :: DepSCM
+  , depSCM :: DepSCM
   , subDeps :: [MixDep]
   }
   deriving (Eq, Ord, Show)
 
--- | Mix Dependency (Resolved - i.e. resolved scm, lock ref, and version)
+-- | Mix Dependency (Resolved - i.e. resolved scm, lock ref, and version).
 data MixDepResolved = MixDepResolved
   { depResolvedName :: PackageName
   , depResolvedVersion :: Maybe VerConstraint
   , depResolvedSCM :: DepSCM
   , depResolvedRef :: Maybe VerConstraint
-  , depResolvedManager :: Maybe DepManager
   }
   deriving (Show, Ord, Eq)
 
@@ -106,18 +114,16 @@ mixDepCmd =
     , cmdAllowErr = Never
     }
 
--- | mix deps.tree --format plain (--only applied to env atom if any)
-mixDepTreeCmd :: Maybe MixEnvAtom -> Command
-mixDepTreeCmd env =
+-- | mix deps.tree --format plain.
+mixDepTreeCmd :: Command
+mixDepTreeCmd =
   Command
     { cmdName = "mix"
-    , cmdArgs = case env of
-        Nothing -> ["deps.tree", "--format", "plain"]
-        Just e -> ["deps.tree", "--format", "plain", "--only", toLower $ toText (show e)]
+    , cmdArgs = ["deps.tree", "--format", "plain", "--only", "prod"]
     , cmdAllowErr = Never
     }
 
--- | Parses Dep build manager
+-- | Parses Dep build manager.
 parseDepManager :: Parser DepManager
 parseDepManager =
   choice
@@ -127,9 +133,31 @@ parseDepManager =
     , Make <$ string "make"
     ]
 
+supportedSCM :: DepSCM -> Bool
+supportedSCM Hex = True
+supportedSCM (Git _ _) = True
+supportedSCM (Other _) = False
+
+-- | Gives only mix dependencies that can be reported.
+-- It ignores path dependencies, since they cannot be fetched.
+supportedMixDeps :: [MixDep] -> [MixDep]
+supportedMixDeps = mapMaybe isSupported
+  where
+    isSupported m =
+      if supportedSCM $ depSCM m
+        then
+          Just
+            MixDep
+              { depName = depName m
+              , depVersion = depVersion m
+              , depSCM = depSCM m
+              , subDeps = supportedMixDeps (subDeps m)
+              }
+        else Nothing
+
 -- | Parses Source Control Manager
 parseDepSCM :: Parser DepSCM
-parseDepSCM = (try (try parseDepHex <|> parseDepSCMGit) <|> parseDepSCMLocalPath)
+parseDepSCM = try parseDepHex <|> parseDepSCMGit <|> parseDepSCMOther
   where
     parseDepHex :: Parser DepSCM
     parseDepHex = do
@@ -138,68 +166,60 @@ parseDepSCM = (try (try parseDepHex <|> parseDepSCMGit) <|> parseDepSCMLocalPath
 
     parseDepSCMGit :: Parser DepSCM
     parseDepSCMGit = do
-      uri <- chunk "http://" <|> chunk "https://" <|> chunk "git://"
-      addr <- takeWhileP (Just "git address") (\c -> c /= ' ' && c /= ')')
+      uriScheme <- chunk "http://" <|> chunk "https://" <|> chunk "git://"
+      uriRest <- takeWhileP (Just "git address") (\c -> c /= ' ' && c /= ')')
 
       reference <- optional . try $ do
         _ <- chunk " - "
-        git_ref <- T.pack <$> some (alphaNumChar <|> char '.')
-        return (git_ref)
+        Text.pack <$> some (alphaNumChar <|> char '.')
 
-      pure (Git (uri <> addr) (reference))
+      pure $ Git (uriScheme <> uriRest) reference
 
-    parseDepSCMLocalPath :: Parser DepSCM
-    parseDepSCMLocalPath = do
-      path <- takeWhileP (Just "local path") (/= ')')
-      pure (LocalPath path)
+    parseDepSCMOther :: Parser DepSCM
+    parseDepSCMOther = Other <$> takeWhileP (Just "OtherSCM") (/= ')')
 
 type Parser = Parsec Void Text
 
 -- | True if a version is not resolved in `MixDepResolved`, otherwise False.
 -- This can happen, if dependencies are not retrieved or compiled.
-missingResolvedVersions :: M.Map PackageName MixDepResolved -> Bool
-missingResolvedVersions mdr = any isNothing (depResolvedVersion <$> map snd (M.toList mdr))
+missingResolvedVersions :: Map PackageName MixDepResolved -> Bool
+missingResolvedVersions mdr = any isNothing (depResolvedVersion <$> map snd (Map.toList mdr))
 
 -- Parses `mix deps` output
-mixDepsCmdOutputParser :: Parser (M.Map PackageName MixDepResolved)
-mixDepsCmdOutputParser = M.fromList <$> (parseDep `sepBy` char '*') <* eof
+mixDepsCmdOutputParser :: Parser (Map PackageName MixDepResolved)
+mixDepsCmdOutputParser = Map.fromList <$> (parseDep `sepBy` char '*') <* eof
   where
     findName :: Parser Text
     findName = takeWhileP (Just "dep") (/= ' ')
 
     findVersion :: Parser Text
-    findVersion = T.pack <$> some (alphaNumChar <|> char '.' <|> char '-')
+    findVersion = Text.pack <$> some (alphaNumChar <|> char '.' <|> char '-')
 
     parseDep :: Parser (PackageName, MixDepResolved)
     parseDep = do
       _ <- (chunk "*" <|> " ") <* space
 
-      -- pkg name
+      -- Package name
       name <- findName <* space
 
       -- If dependencies are not resolved, version won't be printed
       -- This can occur if lock file is missing
-      version <- optional . try $ do CEq <$> findVersion
+      version <- optional . try $ CEq <$> findVersion
 
-      -- Source control manager of the pkg - e.g. git, hex
+      -- Source control manager of the package - e.g. git, hex
       scm <- space *> between (char '(') (char ')') parseDepSCM
 
       -- If dependencies are not resolved, build manager won't be printed
       -- This can occur if lock file is missing.
-      manager <- optional . try $ do
-        m <- space *> between (char '(') (char ')') parseDepManager
-        return (m)
-
+      _ <- optional . try $ space *> between (char '(') (char ')') parseDepManager
       _ <- newline
 
       -- If dependencies are not resolved, locked reference won't be printed
-      ref <- optional . try $ do
-        _ <- space *> "locked at" <* space
-        CEq <$> findVersion
+      ref <- optional . try $ CEq <$> (space *> "locked at" <* space *> findVersion)
 
       -- Ignore status line, and rest until next entry
       _ <- takeWhileP (Just "ignored") (/= '*')
-      pure (PackageName name, MixDepResolved (PackageName name) version scm ref manager)
+      pure (PackageName name, MixDepResolved (PackageName name) version scm ref)
 
 -- | Parses mix deps.tree raw output
 mixTreeCmdOutputParser :: Parser [MixDep]
@@ -214,14 +234,11 @@ mixTreeParser = concat <$> ((try (mixDep 0) <|> ignoredLine) `sepBy` eol) <* eof
     isEndLine '\r' = True
     isEndLine _ = False
 
-    -- ignore content until the end of the line
+    ignoredLine :: Parser [MixDep]
+    ignoredLine = ignored $> []
+
     ignored :: Parser ()
     ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
-
-    ignoredLine :: Parser [MixDep]
-    ignoredLine = do
-      ignored
-      pure []
 
     findName :: Parser Text
     findName = takeWhileP (Just "dependency name") (/= ' ')
@@ -233,22 +250,25 @@ mixTreeParser = concat <$> ((try (mixDep 0) <|> ignoredLine) `sepBy` eol) <* eof
     mixDep depth = do
       _ <- takeP (Just "spacing ~ one of (`), (|), ( )") (1 + depth * 4)
 
+      -- Dependency's name
       dep <- chunk "--" *> space *> findName <* space
-      version <- optional . try $ do findRequirement
 
-      location <- between (char '(') (char ')') parseDepSCM
+      -- Dependency's version
+      version <- optional . try $ findRequirement
+
+      -- Dependency's scm
+      scm <- between (char '(') (char ')') parseDepSCM
       _ <- takeWhileP (Just "ignored") (not . isEndLine)
 
-      deps <- many $ try $ mixRecurse $ depth + 1
-      pure [MixDep (PackageName dep) (toDependencyVersion =<< version) location (concat deps)]
+      -- Deep Dependencies
+      deps <- many $ try $ mixRecurse (depth + 1)
+      pure [MixDep (PackageName dep) (toDependencyVersion =<< version) scm (concat deps)]
 
     mixRecurse :: Int -> Parser [MixDep]
-    mixRecurse depth = do
-      _ <- chunk "\n"
-      mixDep depth
+    mixRecurse depth = chunk "\n" *> mixDep depth
 
-buildGraph :: [MixDep] -> (M.Map PackageName MixDepResolved) -> (M.Map PackageName [DepEnvironment]) -> Graphing Dependency
-buildGraph deps depsResolved depsEnvs = unfold deps subDeps toDependency
+buildGraph :: [MixDep] -> (Map PackageName MixDepResolved) -> Graphing Dependency
+buildGraph deps depsResolved = unfold deps subDeps toDependency
   where
     toDependency md =
       Dependency
@@ -256,39 +276,38 @@ buildGraph deps depsResolved depsEnvs = unfold deps subDeps toDependency
         , dependencyName = dName md depsResolved
         , dependencyVersion = dVersion md depsResolved
         , dependencyLocations = []
-        , dependencyEnvironments = fromMaybe [] $ M.lookup (depName md) depsEnvs
-        , dependencyTags = M.empty
+        , dependencyEnvironments = []
+        , dependencyTags = Map.empty
         }
 
     dType :: MixDep -> DepType
-    dType m = case (depLocation m) of
-      Hex -> HexType
+    dType m = case (depSCM m) of
       Git _ _ -> GitType
-      _ -> UserType
+      _ -> HexType
 
-    dName :: MixDep -> M.Map PackageName MixDepResolved -> Text
+    dName :: MixDep -> Map PackageName MixDepResolved -> Text
     dName m dr = fromMaybe (reqsName) (resolvedGitUrl)
       where
         resolvedGitUrl :: Maybe Text
-        resolvedGitUrl = case depResolvedSCM <$> M.lookup (depName m) dr of
+        resolvedGitUrl = case depResolvedSCM <$> Map.lookup (depName m) dr of
           Just (Git url _) -> Just url
           _ -> Nothing
 
         reqsName :: Text
-        reqsName = case depLocation m of
+        reqsName = case depSCM m of
           Git url _ -> url
           _ -> unPackageName $ depName m
 
     -- Favors in order of locked reference, resolved version, and requirement constraint
-    dVersion :: MixDep -> M.Map PackageName MixDepResolved -> Maybe VerConstraint
+    dVersion :: MixDep -> Map PackageName MixDepResolved -> Maybe VerConstraint
     dVersion m dr =
       asum
-        [ M.lookup (depName m) dr >>= depResolvedVersion
-        , M.lookup (depName m) dr >>= depResolvedRef
+        [ Map.lookup (depName m) dr >>= depResolvedVersion
+        , Map.lookup (depName m) dr >>= depResolvedRef
         , rawVersion
         ]
       where
-        rawVersion = case (depLocation m) of
+        rawVersion = case (depSCM m) of
           Git _ (Just ref) -> Just $ CEq ref
           _ -> depVersion m
 
@@ -306,9 +325,8 @@ data MixConstraintOperators
 toDependencyVersion :: Text -> Maybe VerConstraint
 toDependencyVersion dt = case parse parseConstraintExpr "" dt of
   Left _ -> Nothing
-  Right v -> case v of
-    CEq "*" -> Nothing
-    vc -> Just vc
+  Right (CEq "*") -> Nothing
+  Right vc -> Just vc
 
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
@@ -338,29 +356,27 @@ parseVerConstraint = do
     WildcardAny -> pure $ CEq "*"
   where
     findVersionText :: Parser Text
-    findVersionText = T.pack <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '*' <|> char '+')
+    findVersionText = Text.pack <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '*' <|> char '+')
 
--- | Parse mix constraint operator
-parseConstraintOperator :: Parser MixConstraintOperators
-parseConstraintOperator = fromMaybe Equal <$> optional (asum (map symbol operatorList) >>= textToMixVersion)
-  where
-    operatorList = [">=", "<=", ">", "<", "==", "!=", "~>", "="] :: [Text]
+    parseConstraintOperator :: Parser MixConstraintOperators
+    parseConstraintOperator = fromMaybe Equal <$> optional (asum (map symbol operatorList) >>= textToMixVersion)
+      where
+        operatorList = [">=", "<=", ">", "<", "==", "!=", "~>", "="] :: [Text]
 
--- | Constructs `MixConstraintOperators` from textual representation (==, >=, etc.) of operators.
-textToMixVersion :: (MonadFail m) => Text -> m MixConstraintOperators
-textToMixVersion = \case
-  "==" -> pure Equal
-  "!=" -> pure NotEqual
-  ">=" -> pure GreaterThanOrEqual
-  "<=" -> pure LessThanOrEqual
-  ">" -> pure GreaterThan
-  "<" -> pure LessThan
-  "~>" -> pure Compatible
-  "*" -> pure WildcardAny
-  "=" -> pure Equal
-  other -> fail ("Could not recognize mix constraint operator: (" <> toString other <> ")")
+    textToMixVersion :: (MonadFail m) => Text -> m MixConstraintOperators
+    textToMixVersion = \case
+      "==" -> pure Equal
+      "!=" -> pure NotEqual
+      ">=" -> pure GreaterThanOrEqual
+      "<=" -> pure LessThanOrEqual
+      ">" -> pure GreaterThan
+      "<" -> pure LessThan
+      "~>" -> pure Compatible
+      "*" -> pure WildcardAny
+      "=" -> pure Equal
+      other -> fail ("Could not recognize mix constraint operator: (" <> Text.unpack other <> ")")
 
--- | Parses [mix constraint expression](https://hexdocs.pm/elixir/1.12/Version.html)
+-- | Parses [mix constraint expression](https://hexdocs.pm/elixir/1.12/Version.html).
 parseConstraintExpr :: Parser VerConstraint
 parseConstraintExpr = makeExprParser parseVerConstraint operatorTable
   where

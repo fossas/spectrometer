@@ -2,14 +2,25 @@ module Elixir.MixTreeSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
-import Text.Megaparsec
-
-import DepTypes
+import DepTypes (
+  DepType (GitType, HexType),
+  Dependency (Dependency),
+  VerConstraint (
+    CAnd,
+    CCompatible,
+    CEq,
+    CGreater,
+    CGreaterOrEq,
+    CLess,
+    CLessOrEq,
+    CNot,
+    COr
+  ),
+ )
 import GraphUtil (expectDep, expectDeps, expectDirect, expectEdges)
 import Strategy.Elixir.MixTree (
-  DepManager (..),
   DepSCM (..),
   MixDep (..),
   MixDepResolved (..),
@@ -19,6 +30,7 @@ import Strategy.Elixir.MixTree (
   mixTreeCmdOutputParser,
   parseConstraintExpr,
  )
+import Text.Megaparsec
 
 import Data.Text (Text)
 import Data.Void (Void)
@@ -36,12 +48,12 @@ depZero =
   MixDep
     { depName = PackageName "pkgX"
     , depVersion = Nothing
-    , depLocation = LocalPath "/Users/some/dir/"
+    , depSCM = Other "/Users/some/dir/"
     , subDeps =
         [ MixDep
             { depName = PackageName "pkgY"
             , depVersion = Just $ COr (CCompatible "1.5") (CCompatible "2.0")
-            , depLocation = Hex
+            , depSCM = Hex
             , subDeps = []
             }
         ]
@@ -52,18 +64,18 @@ depOne =
   MixDep
     { depName = PackageName "one"
     , depVersion = Nothing
-    , depLocation = Git "https://github.com/dep/one.git" Nothing
+    , depSCM = Git "https://github.com/dep/one.git" Nothing
     , subDeps =
         [ MixDep
             { depName = PackageName "one_one"
             , depVersion = Nothing
-            , depLocation = Git "https://github.com/dep/one_one" $ Just "2.11.0"
+            , depSCM = Git "https://github.com/dep/one_one" $ Just "2.11.0"
             , subDeps = []
             }
         , MixDep
             { depName = PackageName "one_two"
             , depVersion = Nothing
-            , depLocation = Git "https://github.com/dep/one_two" $ Just "1.8.0"
+            , depSCM = Git "https://github.com/dep/one_two" $ Just "1.8.0"
             , subDeps = []
             }
         ]
@@ -74,17 +86,17 @@ depTwo =
   MixDep
     { depName = PackageName "two"
     , depVersion = Just $ CCompatible "2.0"
-    , depLocation = Hex
+    , depSCM = Hex
     , subDeps =
         [ MixDep
             { depName = PackageName "pkg"
             , depVersion = Just $ CCompatible "1.1"
-            , depLocation = Hex
+            , depSCM = Hex
             , subDeps =
                 [ MixDep
                     { depName = PackageName "pkgC"
                     , depVersion = Just $ CCompatible "1.5"
-                    , depLocation = Hex
+                    , depSCM = Hex
                     , subDeps =
                         []
                     }
@@ -93,12 +105,12 @@ depTwo =
         , MixDep
             { depName = PackageName "pkgE"
             , depVersion = Just $ CCompatible "0.13.0"
-            , depLocation = Hex
+            , depSCM = Hex
             , subDeps =
                 [ MixDep
                     { depName = PackageName "makeup"
                     , depVersion = Just $ CCompatible "1.0"
-                    , depLocation = Hex
+                    , depSCM = Hex
                     , subDeps =
                         []
                     }
@@ -112,19 +124,19 @@ depThree =
   MixDep
     { depName = PackageName "pkg"
     , depVersion = Just $ CAnd (CGreaterOrEq "0.8.1") (CLess "3.0.0")
-    , depLocation = Hex
+    , depSCM = Hex
     , subDeps =
         [ MixDep
             { depName = PackageName "pkgC"
             , depVersion = Just $ CCompatible "1.1"
-            , depLocation = Hex
+            , depSCM = Hex
             , subDeps =
                 []
             }
         , MixDep
             { depName = PackageName "pkgD"
             , depVersion = Just $ CCompatible "1.0"
-            , depLocation = Hex
+            , depSCM = Hex
             , subDeps =
                 []
             }
@@ -148,7 +160,7 @@ spec = do
         Left failCode -> expectationFailure $ show failCode
         Right result ->
           result
-            `shouldBe` M.fromList
+            `shouldBe` Map.fromList
               [
                 ( PackageName "pkgA"
                 , MixDepResolved
@@ -156,7 +168,6 @@ spec = do
                     , depResolvedVersion = Just $ CEq "1.0.4"
                     , depResolvedSCM = Hex
                     , depResolvedRef = Just $ CEq "1.0.4"
-                    , depResolvedManager = Just Mix
                     }
                 )
               ,
@@ -166,7 +177,6 @@ spec = do
                     , depResolvedVersion = Just $ CEq "2.9.0"
                     , depResolvedSCM = Git "https://github.com/some-url.git" (Nothing)
                     , depResolvedRef = Just $ CEq "2a08250"
-                    , depResolvedManager = Just Rebar3
                     }
                 )
               ,
@@ -174,9 +184,8 @@ spec = do
                 , MixDepResolved
                     { depResolvedName = PackageName "pkgX"
                     , depResolvedVersion = Just $ CEq "1.0.3"
-                    , depResolvedSCM = LocalPath "/Users/some/dir/"
+                    , depResolvedSCM = Other "/Users/some/dir/"
                     , depResolvedRef = Nothing
-                    , depResolvedManager = Just Mix
                     }
                 )
               ,
@@ -186,7 +195,6 @@ spec = do
                     , depResolvedVersion = Just $ CEq "2.11.0"
                     , depResolvedSCM = Git "https://github.com/some-id/some" (Just "2.11.0")
                     , depResolvedRef = Just $ CEq "e9448e5"
-                    , depResolvedManager = Just Rebar3
                     }
                 )
               ,
@@ -196,7 +204,6 @@ spec = do
                     , depResolvedVersion = Nothing
                     , depResolvedSCM = Hex
                     , depResolvedRef = Nothing
-                    , depResolvedManager = Nothing
                     }
                 )
               ,
@@ -206,54 +213,51 @@ spec = do
                     , depResolvedVersion = Just $ CEq "0.1.0"
                     , depResolvedSCM = Hex
                     , depResolvedRef = Just $ CEq "0.1.0"
-                    , depResolvedManager = Just Mix
                     }
                 )
               ]
 
   describe "buildGraph" $ do
-    it "should identify dependency type" $ do
+    it "should identify dependency type correctly" $ do
       expectDep
-        (Dependency GitType "https://github.com/dep/one.git" Nothing ([]) ([]) M.empty)
+        (Dependency GitType "https://github.com/dep/one.git" Nothing ([]) ([]) Map.empty)
         ( buildGraph
             [ MixDep
                 { depName = PackageName "one"
                 , depVersion = Nothing
-                , depLocation = Git "https://github.com/dep/one.git" Nothing
+                , depSCM = Git "https://github.com/dep/one.git" Nothing
                 , subDeps = []
                 }
             ]
-            M.empty
-            M.empty
+            Map.empty
         )
 
       expectDep
-        (Dependency HexType "pkgZ" Nothing ([]) ([]) M.empty)
+        (Dependency HexType "pkgZ" Nothing ([]) ([]) Map.empty)
         ( buildGraph
             [ MixDep
                 { depName = PackageName "pkgZ"
                 , depVersion = Nothing
-                , depLocation = Hex
+                , depSCM = Hex
                 , subDeps = []
                 }
             ]
-            M.empty
-            M.empty
+            Map.empty
         )
 
     it "should use git ref for version, when dependency is GitType" $ do
       expectDep
-        (Dependency GitType "https://github.com/some-url.git" (Just $ CEq "2a08250") ([]) ([]) M.empty)
+        (Dependency GitType "https://github.com/some-url.git" (Just $ CEq "2a08250") ([]) ([]) Map.empty)
         ( buildGraph
             ( [ MixDep
                   { depName = PackageName "pkgY"
                   , depVersion = Nothing
-                  , depLocation = Git "https://github.com/some-url.git" Nothing
+                  , depSCM = Git "https://github.com/some-url.git" Nothing
                   , subDeps = []
                   }
               ]
             )
-            ( M.fromList
+            ( Map.fromList
                 [
                   ( PackageName "pkgY"
                   , MixDepResolved
@@ -261,27 +265,25 @@ spec = do
                       , depResolvedVersion = Nothing
                       , depResolvedSCM = Hex
                       , depResolvedRef = Just $ CEq "2a08250"
-                      , depResolvedManager = Just Mix
                       }
                   )
                 ]
             )
-            M.empty
         )
 
     it "should use locked ref for version, when locked ref exists" $ do
       expectDep
-        (Dependency HexType "pkgX" (Just $ CEq "2.0.1") ([]) ([]) M.empty)
+        (Dependency HexType "pkgX" (Just $ CEq "2.0.1") ([]) ([]) Map.empty)
         ( buildGraph
             ( [ MixDep
                   { depName = PackageName "pkgX"
                   , depVersion = Just $ CCompatible "2.0"
-                  , depLocation = Hex
+                  , depSCM = Hex
                   , subDeps = []
                   }
               ]
             )
-            ( M.fromList
+            ( Map.fromList
                 [
                   ( PackageName "pkgX"
                   , MixDepResolved
@@ -289,27 +291,25 @@ spec = do
                       , depResolvedVersion = Nothing
                       , depResolvedSCM = Hex
                       , depResolvedRef = Just $ CEq "2.0.1"
-                      , depResolvedManager = Just Mix
                       }
                   )
                 ]
             )
-            M.empty
         )
 
     it "should use version constraint for version, when locked ref or resolved version does not exists" $ do
       expectDep
-        (Dependency HexType "pkgW" (Just $ CCompatible "2.0") ([]) ([]) M.empty)
+        (Dependency HexType "pkgW" (Just $ CCompatible "2.0") ([]) ([]) Map.empty)
         ( buildGraph
             ( [ MixDep
                   { depName = PackageName "pkgW"
                   , depVersion = Just $ CCompatible "2.0"
-                  , depLocation = Hex
+                  , depSCM = Hex
                   , subDeps = []
                   }
               ]
             )
-            ( M.fromList
+            ( Map.fromList
                 [
                   ( PackageName "pkgW"
                   , MixDepResolved
@@ -317,12 +317,10 @@ spec = do
                       , depResolvedVersion = Nothing
                       , depResolvedSCM = Hex
                       , depResolvedRef = Nothing
-                      , depResolvedManager = Just Mix
                       }
                   )
                 ]
             )
-            M.empty
         )
 
     it "should build graph correctly" $ do
@@ -331,18 +329,18 @@ spec = do
               [ MixDep
                   { depName = PackageName "pkgParentA"
                   , depVersion = Nothing
-                  , depLocation = Hex
+                  , depSCM = Hex
                   , subDeps =
                       [ MixDep
                           { depName = PackageName "pkgChildC"
                           , depVersion = Nothing
-                          , depLocation = Hex
+                          , depSCM = Hex
                           , subDeps = []
                           }
                       , MixDep
                           { depName = PackageName "pkgParentB"
                           , depVersion = Nothing
-                          , depLocation = Hex
+                          , depSCM = Hex
                           , subDeps = []
                           }
                       ]
@@ -350,24 +348,24 @@ spec = do
               , MixDep
                   { depName = PackageName "pkgParentB"
                   , depVersion = Nothing
-                  , depLocation = Hex
+                  , depSCM = Hex
                   , subDeps =
                       [ MixDep
                           { depName = PackageName "pkgChildC"
                           , depVersion = Nothing
-                          , depLocation = Hex
+                          , depSCM = Hex
                           , subDeps = []
                           }
                       , MixDep
                           { depName = PackageName "pkgChildD"
                           , depVersion = Nothing
-                          , depLocation = Hex
+                          , depSCM = Hex
                           , subDeps = []
                           }
                       ]
                   }
               ]
-              ( M.fromList
+              ( Map.fromList
                   [
                     ( PackageName "pkgParentA"
                     , MixDepResolved
@@ -375,7 +373,6 @@ spec = do
                         , depResolvedVersion = Just $ CEq "A"
                         , depResolvedSCM = Hex
                         , depResolvedRef = Nothing
-                        , depResolvedManager = Just Mix
                         }
                     )
                   ,
@@ -385,7 +382,6 @@ spec = do
                         , depResolvedVersion = Just $ CEq "B"
                         , depResolvedSCM = Hex
                         , depResolvedRef = Nothing
-                        , depResolvedManager = Just Mix
                         }
                     )
                   ,
@@ -395,7 +391,6 @@ spec = do
                         , depResolvedVersion = Just $ CEq "C"
                         , depResolvedSCM = Hex
                         , depResolvedRef = Nothing
-                        , depResolvedManager = Just Mix
                         }
                     )
                   ,
@@ -405,18 +400,16 @@ spec = do
                         , depResolvedVersion = Just $ CEq "D"
                         , depResolvedSCM = Hex
                         , depResolvedRef = Nothing
-                        , depResolvedManager = Just Mix
                         }
                     )
                   ]
               )
-              M.empty
 
       let expectedDeps =
-            [ (Dependency HexType "pkgParentA" (Just $ CEq "A") ([]) ([]) M.empty)
-            , (Dependency HexType "pkgParentB" (Just $ CEq "B") ([]) ([]) M.empty)
-            , (Dependency HexType "pkgChildC" (Just $ CEq "C") ([]) ([]) M.empty)
-            , (Dependency HexType "pkgChildD" (Just $ CEq "D") ([]) ([]) M.empty)
+            [ Dependency HexType "pkgParentA" (Just $ CEq "A") [] [] Map.empty
+            , Dependency HexType "pkgParentB" (Just $ CEq "B") [] [] Map.empty
+            , Dependency HexType "pkgChildC" (Just $ CEq "C") [] [] Map.empty
+            , Dependency HexType "pkgChildD" (Just $ CEq "D") [] [] Map.empty
             ]
       let expectedEdges =
             [ (head expectedDeps, expectedDeps !! 1)
