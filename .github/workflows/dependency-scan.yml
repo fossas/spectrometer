@@ -15,15 +15,13 @@ jobs:
           cabal --version || echo "no cabal"
           ghcup --version || echo "no ghcup"
 
-      # - name: Update cabal cache for spectrometer run
-      #   run: |
-      #     cabal update
+      - name: Update cabal cache for spectrometer run
+        run: |
+          cabal update
 
-      # To fix this, we need to override the script that runs
       - name: Install spectrometer from github
         run: |
           ./install.sh -d
-          echo intentional fail && false
 
       - name: Use Spectrometer's GHC and Cabal
         run: |
