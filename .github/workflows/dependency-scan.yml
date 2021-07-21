@@ -24,6 +24,7 @@ jobs:
           # GH is weird about permissions, so we're just moving to a location we have access to
           BINDIR: ${{ env.GITHUB_WORKSPACE }}
         run: |
+          echo '$BINDIR='"$BINDIR" 
           curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash -x
 
       - name: Use Spectrometer's GHC and Cabal
