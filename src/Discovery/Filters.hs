@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Discovery.Filters (
   AllFilters (..),
   targetFilterParser,
@@ -15,7 +13,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Semigroup (sconcat)
 import Data.Set qualified as S
-import Data.Set.NonEmpty ( nonEmpty, toSet )
+import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)

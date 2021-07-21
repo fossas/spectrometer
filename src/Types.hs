@@ -46,7 +46,6 @@ instance Semigroup FoundTargets where
   a <> ProjectWithoutTargets = a
   ProjectWithoutTargets <> a = a
   (FoundTargets a) <> (FoundTargets b) = FoundTargets (a <> b)
-  
 
 instance Monoid FoundTargets where
   mempty = ProjectWithoutTargets
