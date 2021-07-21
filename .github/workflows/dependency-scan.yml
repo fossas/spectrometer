@@ -35,7 +35,6 @@ jobs:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
           $GITHUB_WORKSPACE/fossa analyze --filter cabal@.
-          false
 
       - name: Check for scan results
         env:
