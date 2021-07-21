@@ -15,17 +15,13 @@ jobs:
           cabal --version || echo "no cabal"
           ghcup --version || echo "no ghcup"
 
-      # Ignore for CI testing
-      # - name: Update cabal cache for spectrometer run
-      #   run: |
-      #     cabal update
+      - name: Update cabal cache for spectrometer run
+        run: |
+          cabal update
 
       - name: Install spectrometer from github
         run: |
-          BINDIR=$GITHUB_WORKSPACE env | sort
-          false
-          
-        # BINDIR=$GITHUB_WORKSPACE curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+          BINDIR=$GITHUB_WORKSPACE curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
 
       - name: Use Spectrometer's GHC and Cabal
         run: |
