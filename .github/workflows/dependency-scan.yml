@@ -20,12 +20,14 @@ jobs:
           cabal update
 
       - name: Install spectrometer from github
-        env:
+        # env:
           # GH is weird about permissions, so we're just moving to a location we have access to
-          BINDIR: ${{ env.GITHUB_WORKSPACE }}
+          # BINDIR: ${{ env. }}
         run: |
-          pwd
-          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash -x
+          env
+          false
+          
+        # curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
 
       - name: Use Spectrometer's GHC and Cabal
         run: |
