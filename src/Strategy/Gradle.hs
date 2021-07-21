@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- TODO: finish
+-- Here's how the module works
 module Strategy.Gradle (
   discover,
   buildGraph,

@@ -1,3 +1,7 @@
+
+// TODO: finish
+// You can manually debug this by running `gradle -I etc.`
+
 // A gradle init script to add a `jsonDeps` task.
 // This task outputs project dependency trees as JSON.
 //
@@ -48,6 +52,9 @@ allprojects {
                             if (childResolvedDep.moduleArtifacts.size() > 0) {
                                 def result = depToJSON childResolvedDep
                                 childResults << result
+                            } else {
+                                println "DEP WITH NO MODULES"
+                                println childResolvedDep
                             }
                         }
                     }
@@ -87,8 +94,8 @@ allprojects {
                     println config
                     try {
                         def result = configToKeyValue config
-                        println "RESULT"
-                        println result
+                        // println "RESULT"
+                        // println result
                         jsonConfigs << result
                     } catch (IllegalStateException e) {
                         if (e.getMessage().contains("canBeResolved=false")) {
@@ -102,8 +109,8 @@ allprojects {
                         // ignored.printStackTrace()
                     }
                 }
-                println "JSON CONFIGS"
-                println jsonConfigs
+                // println "JSON CONFIGS"
+                // println jsonConfigs
                 def combined = jsonConfigs.join(",")
                 return "{${combined}}"
             }
