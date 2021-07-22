@@ -341,28 +341,28 @@ parseVerConstraint = do
   operator <- whitespaceOrTab *> parseConstraintOperator <* whitespaceOrTab
   versionText <-  findVersionText <* whitespaceOrTab
   case operator of
-    Just "==" -> return $ CEq versionText
-    Just "=" -> return $ CEq versionText
-    Just "!=" -> return $ CNot versionText
-    Just ">=" -> return $ CGreaterOrEq versionText
-    Just ">" -> return $ CGreater versionText
-    Just "<=" -> return $ CLessOrEq versionText
-    Just "<" -> return $ CLess versionText
-    Just "~>" -> return $ CCompatible versionText
-    Just "*" -> return $ CEq "*"
+    Just "==" -> pure $ CEq versionText
+    Just "=" -> pure $ CEq versionText
+    Just "!=" -> pure $ CNot versionText
+    Just ">=" -> pure $ CGreaterOrEq versionText
+    Just ">" -> pure $ CGreater versionText
+    Just "<=" -> pure $ CLessOrEq versionText
+    Just "<" -> pure $ CLess versionText
+    Just "~>" -> pure $ CCompatible versionText
+    Just "*" -> pure $ CEq "*"
     Just _ -> fail ("Could not recognize mix constraint operator:")
-    Nothing -> return $ CEq versionText
+    Nothing -> pure $ CEq versionText
   where
     whitespaceOrTab :: Parser Text
     whitespaceOrTab = takeWhileP (Just "whitespaceOrTab") (\c -> c == ' ' || c == '\t')
 
     parseConstraintOperator :: Parser (Maybe Text)
-    parseConstraintOperator = optional (asum (map symbol operatorList))
+    parseConstraintOperator = optional . asum $ map symbol operatorList
       where
         operatorList = [">=", "<=", ">", "<", "==", "!=", "~>", "="] :: [Text]
 
     findVersionText :: Parser Text
-    findVersionText = Text.pack <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '*' <|> char '+')
+    findVersionText = toText <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '*' <|> char '+')
 
 
 -- | Parses [mix constraint expression](https://hexdocs.pm/elixir/1.12/Version.html).
