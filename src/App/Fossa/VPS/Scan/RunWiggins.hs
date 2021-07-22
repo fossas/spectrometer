@@ -25,6 +25,7 @@ import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.String.Conversion
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
@@ -50,9 +51,6 @@ data PathFilters = PathFilters
   { onlyPaths :: [Path Rel Dir]
   , excludePaths :: [Path Rel Dir]
   }
-
-toText :: Path a b -> Text
-toText = T.pack . toFilePath
 
 toPathFilters :: AllFilters -> PathFilters
 toPathFilters AllFilters{includeFilters, excludeFilters} = PathFilters (combinedPaths includeFilters) (combinedPaths excludeFilters)
