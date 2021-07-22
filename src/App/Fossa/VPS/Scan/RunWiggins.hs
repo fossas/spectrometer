@@ -25,7 +25,7 @@ import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.String.Conversion
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
