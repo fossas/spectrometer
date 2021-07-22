@@ -3,6 +3,7 @@
 ## v2.12.0
 
 - Adds poetry support for python projects ([#284](https://github.com/fossas/spectrometer/pull/284))
+
 ## v2.11.0
 - Analysis target configuration ([#273](https://github.com/fossas/spectrometer/pull/273))
 - Support `fossa test` and `fossa report` for monorepo projects ([#290](https://github.com/fossas/spectrometer/pull/290))
