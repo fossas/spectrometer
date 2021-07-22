@@ -176,7 +176,7 @@ buildPackageNameGraph pkgs = foldr deep edges pkgsNoDeps
 
     edgeOf :: PoetryLockPackage -> [(PackageName, PackageName)]
     edgeOf p = map tuplify . Map.keys $ (poetryLockPackageDependencies p)
-      where 
+      where
         tuplify :: Text -> (PackageName, PackageName)
         tuplify x = (poetryLockPackageName p, PackageName x)
 
