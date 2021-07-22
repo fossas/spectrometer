@@ -13,7 +13,7 @@ Find files named `pyproject.toml` and `poetry.lock`. Pyproject must also use poe
 
 ## Analysis
 
-We parse `pyproject.toml` to find direct dependencies and their [version constraints](https://python-poetry.org/docs/dependency-specification/):
+We parse `pyproject.toml` to find direct dependencies and their [version constraints](https://python-poetry.org/docs/dependency-specification/): 
 
 - `[tool.poetry.dependencies]` - production dependencies
 - `[tool.poetry.dev-dependencies]` - development dependencies
