@@ -329,17 +329,6 @@ buildGraph deps depsResolved = unfold deps subDeps toDependency
           Git _ (Just ref) -> Just $ CEq ref
           _ -> depVersion m
 
--- | Operators used in the mix requirements
-data MixConstraintOperators
-  = GreaterThanOrEqual
-  | GreaterThan
-  | LessThanOrEqual
-  | LessThan
-  | Equal
-  | NotEqual
-  | WildcardAny
-  | Compatible
-
 toDependencyVersion :: Text -> Maybe VerConstraint
 toDependencyVersion dt = case parse parseConstraintExpr "" dt of
   Left _ -> Nothing
@@ -350,42 +339,31 @@ toDependencyVersion dt = case parse parseConstraintExpr "" dt of
 parseVerConstraint :: Parser VerConstraint
 parseVerConstraint = do
   operator <- whitespaceOrTab *> parseConstraintOperator <* whitespaceOrTab
-  versionText <- findVersionText <* whitespaceOrTab
+  versionText <-  findVersionText <* whitespaceOrTab
   case operator of
-    Equal -> pure $ CEq versionText
-    NotEqual -> pure $ CNot versionText
-    GreaterThanOrEqual -> pure $ CGreaterOrEq versionText
-    GreaterThan -> pure $ CGreater versionText
-    LessThanOrEqual -> pure $ CLessOrEq versionText
-    LessThan -> pure $ CLess versionText
-    Compatible -> pure $ CCompatible versionText
-    WildcardAny -> pure $ CEq "*"
+    Just "==" -> return $ CEq versionText
+    Just "=" -> return $ CEq versionText
+    Just "!=" -> return $ CNot versionText
+    Just ">=" -> return $ CGreaterOrEq versionText
+    Just ">" -> return $ CGreater versionText
+    Just "<=" -> return $ CLessOrEq versionText
+    Just "<" -> return $ CLess versionText
+    Just "~>" -> return $ CCompatible versionText
+    Just "*" -> return $ CEq "*"
+    Just _ -> fail ("Could not recognize mix constraint operator:")
+    Nothing -> return $ CEq versionText
   where
-
     whitespaceOrTab :: Parser Text
     whitespaceOrTab = takeWhileP (Just "whitespaceOrTab") (\c -> c == ' ' || c == '\t')
 
+    parseConstraintOperator :: Parser (Maybe Text)
+    parseConstraintOperator = optional (asum (map symbol operatorList))
+      where
+        operatorList = [">=", "<=", ">", "<", "==", "!=", "~>", "="] :: [Text]
+
     findVersionText :: Parser Text
-    findVersionText = toText <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '*' <|> char '+')
+    findVersionText = Text.pack <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '*' <|> char '+')
 
-    operatorList :: [Text]
-    operatorList = [">=", "<=", ">", "<", "==", "!=", "~>", "="]
-
-    parseConstraintOperator :: Parser MixConstraintOperators
-    parseConstraintOperator = fromMaybe Equal <$> optional (asum (map symbol operatorList) >>= textToMixVersion)
-
-    textToMixVersion :: (MonadFail m) => Text -> m MixConstraintOperators
-    textToMixVersion = \case
-      "==" -> pure Equal
-      "!=" -> pure NotEqual
-      ">=" -> pure GreaterThanOrEqual
-      "<=" -> pure LessThanOrEqual
-      ">" -> pure GreaterThan
-      "<" -> pure LessThan
-      "~>" -> pure Compatible
-      "*" -> pure WildcardAny
-      "=" -> pure Equal
-      other -> fail ("Could not recognize mix constraint operator: (" <> Text.unpack other <> ")")
 
 -- | Parses [mix constraint expression](https://hexdocs.pm/elixir/1.12/Version.html).
 parseConstraintExpr :: Parser VerConstraint
