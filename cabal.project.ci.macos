@@ -1,5 +1,5 @@
 tests: True
-optimization: 2
+optimization: 1
 jobs: $ncpus
 
 packages: .
