@@ -85,8 +85,8 @@ spec :: Spec
 spec = do
   nominalContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject1.toml")
 
-  describe "pyProjectCodec" $ do
-    describe "when provided with all possible types of dependency sources" $ do
+  describe "pyProjectCodec" $
+    describe "when provided with all possible types of dependency sources" $
       it "should parse pyrproject file with all source types" $
         Toml.decode pyProjectCodec nominalContents `shouldBe` Right expectedPyProject
 

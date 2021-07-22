@@ -150,5 +150,5 @@ spec :: Spec
 spec = do
   contents <- runIO (TIO.readFile "test/Python/Poetry/testdata/poetry.lock")
   describe "poetryLockCodec" $
-    it "should produce expected output" $ do
+    it "should produce expected output" $
       Toml.decode poetryLockCodec contents `shouldBe` Right expectedPoetryLock
