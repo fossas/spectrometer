@@ -82,9 +82,14 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
     - name: Build
+      # Occasionally, we run out of memory on the build process.
+      # Since cabal uses incremental compilation, we can retry from where we left off
+      #   by simply re-running cabal if we fail.
+      env:
+        RUN_CMD: cabal build --project-file=${{ matrix.project-file }} all
       run: |
         cabal update
-        cabal build --project-file=${{ matrix.project-file }} all
+        $RUN_CMD || $RUN_CMD
 
     - name: Run tests
       run: |
