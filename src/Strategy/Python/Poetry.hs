@@ -19,7 +19,7 @@ import Discovery.Walk (
   findFileNamed,
   walk',
  )
-import Effect.Logger (Logger (..))
+import Effect.Logger (Logger (..), Pretty (pretty), logWarn)
 import Effect.ReadFS (ReadFS, readContentsToml)
 import Graphing (Graphing, deep, edge, empty, fromList, gmap, promoteToDirect)
 import Path (Abs, Dir, File, Path)
@@ -39,7 +39,7 @@ data PoetryProject = PoetryProject
   }
   deriving (Show, Eq, Ord)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger rsig run, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has Logger rsig run, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Poetry" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -53,9 +53,17 @@ poetryBuildBackendIdentifier = "poetry.core.masonry.api"
 poetryBuildBackendIdentifierHelpText :: Text
 poetryBuildBackendIdentifierHelpText = "Poetry project must use poetry build backend. Please refer to https://python-poetry.org/docs/pyproject/#poetry-and-pep-517."
 
+warnIncorrectBuildBackend :: Has Logger sig m => Text -> m ()
+warnIncorrectBuildBackend currentBackend =
+  (logWarn . pretty) $
+    "pyproject.toml does not use poetry build backend. It uses: "
+      <> currentBackend
+      <> "\n"
+      <> poetryBuildBackendIdentifierHelpText
+
 -- | Finds poetry project by searching for pyrpoject.toml.
 -- If poetry.lock file is also discovered, it is used as a supplement.
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PoetryProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [PoetryProject]
 findProjects = walk' $ \dir _ files -> do
   let poetryLockFile = findFileNamed "poetry.lock" files
   let pyprojectFile = findFileNamed "pyproject.toml" files
@@ -71,14 +79,9 @@ findProjects = walk' $ \dir _ files -> do
         Just pbs ->
           if pbs == poetryBuildBackendIdentifier
             then pure ([project], WalkSkipAll)
-            else
-              context
-                ( "pyproject.toml does not use poetry build backend. It uses: "
-                    <> pbs
-                    <> "\n"
-                    <> poetryBuildBackendIdentifierHelpText
-                )
-                $ pure ([], WalkContinue)
+            else do
+              _ <- (warnIncorrectBuildBackend pbs)
+              pure ([], WalkContinue)
 
     -- Without pyproject file, it is unlikely that project is a poetry project. Poetry itself does not work
     -- without [pyproject.toml manifest](https://python-poetry.org/docs/pyproject/).

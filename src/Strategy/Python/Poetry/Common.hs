@@ -9,7 +9,7 @@ module Strategy.Python.Poetry.Common (
   supportedPoetryLockDep,
 ) where
 
-import Data.Foldable (asum)
+import Data.Foldable (asum, for_)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -47,7 +47,7 @@ supportedPyProjectDep _ = True
 
 -- | Logs all ignored dependencies for debugger.
 logIgnoredDeps :: Has Logger sig m => PyProject -> Maybe PoetryLock -> m ()
-logIgnoredDeps pyproject poetryLock = sequence_ $ (logDebug . pretty) <$> notSupportedDepsMsgs
+logIgnoredDeps pyproject poetryLock = for_ notSupportedDepsMsgs (logDebug . pretty)
   where
     notSupportedDepsMsgs :: [Text]
     notSupportedDepsMsgs = (<> ": ignored in poetry project. Dependency's source is not supported!") <$> notSupportedDeps
