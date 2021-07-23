@@ -10,7 +10,6 @@ module Strategy.Python.Poetry.Common (
 ) where
 
 import Data.Foldable (asum)
-import Data.Functor ((<&>))
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -51,7 +50,7 @@ logIgnoredDeps :: Has Logger sig m => PyProject -> Maybe PoetryLock -> m ()
 logIgnoredDeps pyproject poetryLock = sequence_ $ (logDebug . pretty) <$> notSupportedDepsMsgs
   where
     notSupportedDepsMsgs :: [Text]
-    notSupportedDepsMsgs = notSupportedDeps <&> (<> ": ignored in poetry project. Dependency's source is not supported!")
+    notSupportedDepsMsgs = (<> ": ignored in poetry project. Dependency's source is not supported!") <$> notSupportedDeps
 
     notSupportedDeps :: [Text]
     notSupportedDeps = case poetryLock of
@@ -66,7 +65,7 @@ logIgnoredDeps pyproject poetryLock = sequence_ $ (logDebug . pretty) <$> notSup
     notSupportedPyProjectDeps :: [Text]
     notSupportedPyProjectDeps =
       Map.keys $
-        Map.filter (not . supportedPyProjectDep) $ maybe Map.empty devDependencies (pyprojectPoetry pyproject)
+        Map.filter (not . supportedPyProjectDep) $ maybe Map.empty dependencies (pyprojectPoetry pyproject)
 
 -- | Not supported poetry lock package.
 supportedPoetryLockDep :: PoetryLockPackage -> Bool
