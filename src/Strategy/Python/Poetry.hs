@@ -19,7 +19,7 @@ import Discovery.Walk (
   findFileNamed,
   walk',
  )
-import Effect.Logger (Logger (..), Pretty (pretty), logWarn)
+import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsToml)
 import Graphing (Graphing, deep, edge, empty, fromList, gmap, promoteToDirect)
 import Path (Abs, Dir, File, Path)
@@ -55,7 +55,7 @@ poetryBuildBackendIdentifierHelpText = "Poetry project must use poetry build bac
 
 warnIncorrectBuildBackend :: Has Logger sig m => Text -> m ()
 warnIncorrectBuildBackend currentBackend =
-  (logWarn . pretty) $
+  (logDebug . pretty) $
     "pyproject.toml does not use poetry build backend. It uses: "
       <> currentBackend
       <> "\n"
