@@ -46,7 +46,7 @@ import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger (Logger, logWarn)
 import Graphing (Graphing, unfold)
 import Path
-import Prettyprinter.Internal (pretty)
+import Prettyprinter (pretty)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, takeWhileP, try),
   Parsec,
@@ -178,9 +178,7 @@ parseDepSCM :: Parser DepSCM
 parseDepSCM = try parseDepHex <|> parseDepSCMGit <|> parseDepSCMOther
   where
     parseDepHex :: Parser DepSCM
-    parseDepHex = do
-      _ <- chunk "Hex package"
-      pure (Hex)
+    parseDepHex = Hex <$ chunk "Hex package"
 
     parseDepSCMGit :: Parser DepSCM
     parseDepSCMGit = do
