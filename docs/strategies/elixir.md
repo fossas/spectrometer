@@ -134,3 +134,33 @@ Corresponding mix.lock file should now be generated in the project directory (ex
 Here is the dependency graph produced from the above project. Dependencies in yellow are direct dependencies. 
 
 ![Mix Dependency Graph](mix-resolved-graph.svg)
+
+## F.A.Q
+
+### How do I exclude downloaded rebar3 dependency artifacts from the analyses?
+
+You can explicitly specify analyses target in `.fossa.yml` file. 
+
+Example below, will exclude all analyses targets except mix. 
+
+```yaml
+# .fossa.yml 
+
+version: 3
+targets:
+  only:
+    - type: mix
+```
+
+Or, you can exclude all rebar3 targets under specific directory.
+
+```yaml
+# .fossa.yml 
+# Exclude rebar3 targets found in ./deps/ directory from the analyses. 
+
+version: 3
+targets:
+  exclude:
+    - type: rebar3
+      target: ./deps/
+```
