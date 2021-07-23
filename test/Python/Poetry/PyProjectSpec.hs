@@ -3,9 +3,22 @@ module Python.Poetry.PyProjectSpec (
 ) where
 
 import Data.Map qualified as Map
+import Data.Text (Text)
 import Data.Text.IO qualified as TIO
-
--- import Strategy.Python.Poetry.Common (buildPyProjectGraph)
+import Data.Void (Void)
+import DepTypes (
+  VerConstraint (
+    CAnd,
+    CCompatible,
+    CEq,
+    CGreater,
+    CGreaterOrEq,
+    CLess,
+    CLessOrEq,
+    CNot,
+    COr
+  ),
+ )
 import Strategy.Python.Poetry.PyProject (
   PoetryDependency (..),
   PyProject (..),
@@ -26,24 +39,9 @@ import Test.Hspec (
   runIO,
   shouldBe,
  )
-import Toml qualified
-import Data.Text (Text)
-import Data.Void (Void)
-import DepTypes (
-  VerConstraint (
-    CAnd,
-    CCompatible,
-    CEq,
-    CGreater,
-    CGreaterOrEq,
-    CLess,
-    CLessOrEq,
-    CNot,
-    COr
-  ),
- )
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
+import Toml qualified
 
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
