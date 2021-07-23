@@ -26,6 +26,20 @@ project:
 revision:
   commit: "12345"
   branch: master
+
+targets:
+  only:
+    - type: maven
+      path: foo/bar
+  exclude:
+    - type: bundler
+
+paths:
+  only:
+    - ./vendor/django
+    - ./test
+  exclude:
+    - ./vendor/django/test
 ```
 
 
@@ -49,7 +63,7 @@ The project fields allow you to configure settings for the project you are inter
 
 > Note: `name`, `team`, `policy`, `link`, `url`, and `jiraProjectKey` can only be set when creating a project (running `fossa analyze` for the first time).
 
-#### `id:`
+### `project.id:`
 The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting.
 
 Default: 
@@ -59,25 +73,25 @@ Default:
 
 > Note: A project's ID cannot be modified after a project is created. If you change the ID, you will be interacting with a different project. If the new ID does not exist, a new project will be created for it.
 
-#### `name:`
+### `project.name:`
 The name field sets the projects visible name in the FOSSA dashboard. By default, this will be set to the project's ID.
 
-#### `team:`
+### `project.team:`
 The name of the team in your FOSSA organization to associate this project with.
 
-#### `policy:`
+### `project.policy:`
 The name of the policy in your FOSSA organization to associate this project with.
 
-#### `link:`
+### `project.link:`
 An external link that will appear in the FOSSA UI for this specific project.
 
-#### `url:`
+### `project.url:`
 The URL of your project that will appear in FOSSA. This URL is intended to be the URL to the repository of this project.
 
-#### `jiraProjectKey:`
+### `project.jiraProjectKey:`
 The Jira Project Key to associate with your project for improved issue triage. Refer to the [FOSSA docs](https://docs.fossa.com/docs/atlassian-jira#linking-fossa-projects-to-jira-projects) for more information.
 
-#### `releaseGroup:`
+### `project.releaseGroup:`
 The `name:` and `release:` of the release group's release to add your project to in the FOSSA dashboard.
 
 If you choose to associate a project with a release group, you **must** supply both name and release.
@@ -85,7 +99,7 @@ If you choose to associate a project with a release group, you **must** supply b
 ### `revision:`
 The revision fields are used to help FOSSA differentiate between one upload for a project and another, just as GitHub uses commit hashes and branch names.
 
-#### `commit:`
+### `revision.commit:`
 The commit is used to identify a specific scan for a project (determined by project.id). This is intended to be used identically to how Git treats commit hashes. 
 
 Default: 
@@ -93,13 +107,121 @@ Default:
 - SVN: The CLI will run `svn info` and use the "Revision".
 - No VCS: The commit will be set to the unix timestamp.
 
-#### `branch:`
-The project branch is an optional setting used for organizing project revisions in the FOSSA UI. The branch field is intended to function similar to how Git defines a branch.
+### `revision.branch:`
+ project branch is an optional setting used for organizing project revisions in the FOSSA UI. The branch field is intended to function similar to how Git defines a branch.
 
 Default: 
 - Git: the CLI will attempt to find the project's current branch from the `.git/config` file.
 - SVN: The CLI will run `svn info` and compare the "URL" and "Repository Root" fields in an attempt to determine a branch.
 - No VCS: The CLI will leave the branch field empty.
+
+
+### `targets:`
+The targets filtering section allows you to specify the exact targets which be should be scanned. 
+
+Targets can be are listed in the following formats for both `only` and `exclude` lists.
+```yaml
+    - type: maven
+      path: foo/bar
+    - type: pipenv (all pipenv type targets at any path)
+```
+
+### `targets.only:`
+The list of `only` targets that should be scanned. When used alongside `paths.only`, the list of targets to be scanned are unioned.
+
+### `targets.exclude:`
+The list of `exclude` targets which should be excluded from scanning. The targets listed in the exclude section will override the targets listed in the only sections. This feature is used most effectively to remove specific targets from a directory that has targets which should be scanned. 
+
+Example: You have a directory called `docker` which contains 3 different targets but you would like to omit the one with type `bundler`. You can do this with the following configuration:
+
+```yaml
+targets:
+  exclude:
+    - type: bundler
+      path: prod/docker
+```
+
+### `paths:`
+The paths filtering section allows you to specify which paths should be scanned and which should not. The paths should be written as their location from the root of your project.
+
+```yaml
+paths:
+  only:
+    - prod
+  exclude:
+    - prod/vendor
+```
+
+### `paths.only:`
+The list of paths to only allow scanning within.
+
+This section is most commonly used when you would like to restrict scanning to a few certain directories from the root of your project. If you have a directory structure such as the following and would only like to scan targets located in the `production` directory, `paths.only` enables this:
+```
+/production
+/development
+/test
+```
+
+### `paths.exclude:`
+The list of paths to exclude from scanning in your directory.
+
+This section is intended to be used as the inverse to `paths.only`. If you have a certain directory such as `development` you wish to exclude, `paths.exclude` enables you to do this.
+
+### Analysis target configuration
+Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `target` and `path` sections allow users to configure exactly which targets and directories they would like to be scanned. This can be useful if you have a custom test directory or any portions of your directory that are used for development purposes. 
+
+Analysis target configuration happens in the following order:
+1. Targets that match the `only.targets` and `only.paths` sections are unioned to create a list of targets to be scanned.
+2. Targets remaining after the `only` step that match the `exclude.targets` and `exclude.paths` sections are removed from the list of targets to be scanned.
+    -  If no targets were listed in the `only` sections, `exclude` will remove targets from the list of all available targets.
+3. Analysis is run on the remaining targets.
+
+The following is an example of how to configure a very complex project.
+
+First, run the command `fossa list-targets` to determine the analysis targets present in your project. The output will look something similar to the following with the targets in format `type@path` (You may see that duplicated lines for "Found target" and "Found project"):
+
+```
+Found target: bundler@prod/docker
+Found target: bundler@prod
+Found target: yarn@prod
+Found target: yarn@prod/docker
+Found target: yarn@prod/vendor
+Found target: pipenv@prod
+Found target: pipenv@prod/vendor
+Found target: pipenv@dev
+```
+
+From here we need to identify the parts of the project we want to scan:
+- We ONLY want targets located in the in the `prod` directory. In this case that means omitting the `dev` directory. (`paths.only: prod`)
+  - Except for the vendored dependencies. (`paths.exclude: prod/vendor`)
+- We want the targets inside `prod/docker`, except for `bundler@prod/docker` which is used to build the image. 
+    ```yaml
+    - type: bundler
+      path: prod/docker
+    ```
+
+Putting these individual filters together, we end up with the following configuration:
+
+```yaml
+targets:
+  exclude:
+    - type: bundler
+      path: prod/docker
+
+paths:
+  only:
+    - prod
+  exclude:
+    - prod/vendor
+```
+
+The above configuration and list of targets will result in the following targets being scanned:
+```
+Found target: bundler@prod
+Found target: yarn@prod
+Found target: yarn@prod/docker
+Found target: pipenv@prod
+```
 
 ## FAQ
 
