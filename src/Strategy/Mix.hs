@@ -12,8 +12,8 @@ import Discovery.Walk (
   walk',
  )
 import Effect.Exec (Exec, Has)
+import Effect.Logger (Logger (..))
 import Effect.ReadFS (ReadFS)
-import Effect.Logger (Logger(..))
 import Graphing (Graphing)
 import Path
 import Strategy.Elixir.MixTree qualified as MixTree

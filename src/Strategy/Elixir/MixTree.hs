@@ -194,7 +194,6 @@ parseDepSCM = try parseDepHex <|> parseDepSCMGit <|> parseDepSCMOther
     parseDepSCMOther :: Parser DepSCM
     parseDepSCMOther = Other <$> takeWhileP (Just "OtherSCM") (/= ')')
 
-
 -- | True if a version is not resolved in `MixDepResolved`, otherwise False.
 -- This can happen, if dependencies are not retrieved or compiled.
 missingResolvedVersions :: Map PackageName MixDepResolved -> Bool
@@ -336,7 +335,7 @@ toDependencyVersion dt = case parse parseConstraintExpr "" dt of
 parseVerConstraint :: Parser VerConstraint
 parseVerConstraint = do
   operator <- whitespaceOrTab *> parseConstraintOperator <* whitespaceOrTab
-  versionText <-  findVersionText <* whitespaceOrTab
+  versionText <- findVersionText <* whitespaceOrTab
   case operator of
     Just "==" -> pure $ CEq versionText
     Just "=" -> pure $ CEq versionText
@@ -360,7 +359,6 @@ parseVerConstraint = do
 
     findVersionText :: Parser Text
     findVersionText = toText <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '*' <|> char '+')
-
 
 -- | Parses [mix constraint expression](https://hexdocs.pm/elixir/1.12/Version.html).
 parseConstraintExpr :: Parser VerConstraint
