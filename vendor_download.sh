@@ -45,8 +45,7 @@ esac
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-# TODO: Update this to the latest release before merging and after the new basis release process has been merged into master on Basis
-WIGGINS_TAG="testing-2021-07-20-ea676a2"
+WIGGINS_TAG="2021-07-23-b23c980"
 echo "Downloading wiggins binary"
 echo "Using wiggins release: $WIGGINS_TAG"
 WIGGINS_RELEASE_JSON=vendor/wiggins-release.json
