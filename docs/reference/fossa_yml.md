@@ -130,7 +130,7 @@ Targets can be are listed in the following formats for both `only` and `exclude`
 The list of `only` targets that should be scanned. When used alongside `paths.only`, the list of targets to be scanned are unioned.
 
 ### `targets.exclude:`
-The list of `exclude` targets which should be excluded from scanning. The targets listed in the exclude section will override the targets listed in the only sections. This feature is used most effectively to remove specific targets from a directory that has targets which should be scanned. 
+The list of `exclude` targets which should be excluded from scanning. The targets listed in the exclude section will override the targets listed in the only sections. This feature is used most effectively to remove specific targets from a directory. 
 
 Example: You have a directory called `docker` which contains 3 different targets but you would like to omit the one with type `bundler`. You can do this with the following configuration:
 
@@ -142,7 +142,7 @@ targets:
 ```
 
 ### `paths:`
-The paths filtering section allows you to specify which paths should be scanned and which should not. The paths should be written as their location from the root of your project.
+The paths filtering section allows you to specify which paths should be scanned and which should not. The paths should be listed as their location from the root of your project.
 
 ```yaml
 paths:
@@ -155,7 +155,7 @@ paths:
 ### `paths.only:`
 The list of paths to only allow scanning within.
 
-This section is most commonly used when you would like to restrict scanning to a few certain directories from the root of your project. If you have a directory structure such as the following and would only like to scan targets located in the `production` directory, `paths.only` enables this:
+This section is most commonly used when you would like to restrict scanning to a certain list of directories from the root of your project. If you have a directory structure such as the following and would only like to scan targets located in the `production` directory, `paths.only` enables this:
 ```
 /production
 /development
@@ -168,17 +168,17 @@ The list of paths to exclude from scanning in your directory.
 This section is intended to be used as the inverse to `paths.only`. If you have a certain directory such as `development` you wish to exclude, `paths.exclude` enables you to do this.
 
 ### Analysis target configuration
-Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `target` and `path` sections allow users to configure exactly which targets and directories they would like to be scanned. This can be useful if you have a custom test directory or any portions of your directory that are used for development purposes. 
+Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `target` and `path` sections allow users to configure which targets and directories should be scanned. This is useful if you have a custom test directory or development projects within the root project. 
 
-Analysis target configuration happens in the following order:
+Analysis target configuration determines which targets should be scanned with the following logic:
 1. Targets that match the `only.targets` and `only.paths` sections are unioned to create a list of targets to be scanned.
 2. Targets remaining after the `only` step that match the `exclude.targets` and `exclude.paths` sections are removed from the list of targets to be scanned.
     -  If no targets were listed in the `only` sections, `exclude` will remove targets from the list of all available targets.
 3. Analysis is run on the remaining targets.
 
-The following is an example of how to configure a very complex project.
+#### Project target configuration example
 
-First, run the command `fossa list-targets` to determine the analysis targets present in your project. The output will look something similar to the following with the targets in format `type@path` (You may see that duplicated lines for "Found target" and "Found project"):
+Run the command `fossa list-targets` to determine the analysis targets present in your project. The output will look similar to the following with the targets in format `type@path` (You may see that duplicated lines for "Found target" and "Found project"):
 
 ```
 Found target: bundler@prod/docker
@@ -191,16 +191,17 @@ Found target: pipenv@prod/vendor
 Found target: pipenv@dev
 ```
 
-From here we need to identify the parts of the project we want to scan:
-- We ONLY want targets located in the in the `prod` directory. In this case that means omitting the `dev` directory. (`paths.only: prod`)
+From here, we identify the parts of this example project that we want to scan:
+- We ONLY want targets located in the `prod` directory. This would also ensure that the the `dev` directory is never scanned. (`paths.only: prod`)
   - Except for the vendored dependencies. (`paths.exclude: prod/vendor`)
 - We want the targets inside `prod/docker`, except for `bundler@prod/docker` which is used to build the image. 
     ```yaml
-    - type: bundler
-      path: prod/docker
+    exclude:
+      - type: bundler
+        path: prod/docker
     ```
 
-Putting these individual filters together, we end up with the following configuration:
+Combining these individual filters together results in the following configuration:
 
 ```yaml
 targets:
