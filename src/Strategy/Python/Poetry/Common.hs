@@ -50,12 +50,12 @@ logIgnoredDeps :: Has Logger sig m => PyProject -> Maybe PoetryLock -> m ()
 logIgnoredDeps pyproject poetryLock = for_ notSupportedDepsMsgs (logDebug . pretty)
   where
     notSupportedDepsMsgs :: [Text]
-    notSupportedDepsMsgs = (<> ": ignored in poetry project. Dependency's source is not supported!") <$> notSupportedDeps
+    notSupportedDepsMsgs = map (<> ": ignored in poetry project. Dependency's source is not supported!") notSupportedDeps
 
     notSupportedDeps :: [Text]
     notSupportedDeps = case poetryLock of
-      Nothing -> notSupportedPyProjectDevDeps ++ notSupportedPyProjectDeps
-      Just pl -> (unPackageName . poetryLockPackageName) <$> filter (not . supportedPoetryLockDep) (poetryLockPackages pl)
+      Nothing -> notSupportedPyProjectDevDeps <> notSupportedPyProjectDeps
+      Just pl -> map (unPackageName . poetryLockPackageName) $ filter (not . supportedPoetryLockDep) (poetryLockPackages pl)
 
     notSupportedPyProjectDevDeps :: [Text]
     notSupportedPyProjectDevDeps =
@@ -134,7 +134,7 @@ toMap :: [PoetryLockPackage] -> Map.Map PackageName Dependency
 toMap pkgs = Map.fromList $ (\x -> (lowerCasePkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
   where
     lowerCasePkgName :: PoetryLockPackage -> PackageName
-    lowerCasePkgName pkg = PackageName (toLower $ unPackageName $ poetryLockPackageName pkg)
+    lowerCasePkgName pkg = PackageName $ toLower $ unPackageName $ poetryLockPackageName pkg
 
     toDependency :: PoetryLockPackage -> Dependency
     toDependency pkg =

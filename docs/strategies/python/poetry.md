@@ -2,11 +2,6 @@
 
 [Poetry](https://python-poetry.org/) is a tool for dependency management and packaging in Python.
 
-*Poetry References*
-
-* [Poetry Source Code](https://github.com/python-poetry/poetry)
-* [Poetry Documentation](https://python-poetry.org/docs/)
-
 ## Project Discovery
 
 Find files named `pyproject.toml` and `poetry.lock`. Pyproject must also use poetry for the [build system](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517). If Pyproject does not use poetry build system - project will not be discovered.
@@ -27,7 +22,7 @@ If `poetry.lock` file is discovered, following will be analyzed from lockfile to
 
 If `poetry.lock` file is not discovered, we fallback to reporting only direct dependencies parsed from `pyproject.toml`. 
 
-| [poetry][poetry] (poetry)                         | Direct Deps        | Deep Deps          | Edges              |
+| Strategy                                          | Direct Deps        | Deep Deps          | Edges              |
 | ------------------------------------------------- | ------------------ | ------------------ | ------------------ |
 | `pyproject.toml` and `poetry.lock` are discovered | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | Only `pyproject.toml` is discovered               | :heavy_check_mark: | :x:                | :x:                |
@@ -187,3 +182,8 @@ If only, `pyproject.toml` is discovered, following dependency graph will be prod
 _Dependencies highlighted in yellow boxes are direct dependencies, rest are deep dependencies._
 
 Without `poetry.lock` we are not able to identify any deep dependencies. We are also unable to locally resolve dependency when version ranges are provided, like `loguru = "^0.5"`.
+
+### References
+
+* [Poetry Source Code](https://github.com/python-poetry/poetry)
+* [Poetry Documentation](https://python-poetry.org/docs/)

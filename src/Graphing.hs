@@ -125,7 +125,7 @@ direct dep gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
 -- | Mark dependencies that pass a predicate as direct dependencies.
 -- Dependencies that are already marked as "direct" are unaffected.
 promoteToDirect :: Ord ty => (ty -> Bool) -> Graphing ty -> Graphing ty
-promoteToDirect f gr = gr{graphingDirect = direct', graphingAdjacent = graphingAdjacent gr}
+promoteToDirect f gr = gr{graphingDirect = direct'}
   where
     direct' = foldr S.insert (graphingDirect gr) vertices
     vertices = List.filter f $ AM.vertexList (graphingAdjacent gr)

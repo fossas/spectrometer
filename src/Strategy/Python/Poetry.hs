@@ -61,7 +61,7 @@ warnIncorrectBuildBackend currentBackend =
       <> "\n"
       <> poetryBuildBackendIdentifierHelpText
 
--- | Finds poetry project by searching for pyrpoject.toml.
+-- | Finds poetry project by searching for pyproject.toml.
 -- If poetry.lock file is also discovered, it is used as a supplement.
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [PoetryProject]
 findProjects = walk' $ \dir _ files -> do
@@ -79,9 +79,7 @@ findProjects = walk' $ \dir _ files -> do
         Just pbs ->
           if pbs == poetryBuildBackendIdentifier
             then pure ([project], WalkSkipAll)
-            else do
-              _ <- (warnIncorrectBuildBackend pbs)
-              pure ([], WalkContinue)
+            else ([], WalkContinue) <$ warnIncorrectBuildBackend pbs
 
     -- Without pyproject file, it is unlikely that project is a poetry project. Poetry itself does not work
     -- without [pyproject.toml manifest](https://python-poetry.org/docs/pyproject/).
@@ -132,7 +130,7 @@ buildGraphWithLock lockProject poetryProject = promoteToDirect isDirect graph
     lowerCasedPkgName :: PackageName -> PackageName
     lowerCasedPkgName name = PackageName . toLower $ unPackageName name
 
-    graph = gmap pkgNameToDependency (buildPackageNameGraph $ poetryLockPackages lockProject)
+    graph = gmap pkgNameToDependency $ buildPackageNameGraph $ poetryLockPackages lockProject
     mapOfDependency = toMap $ poetryLockPackages lockProject
 
     -- Pip packages are [case insensitive](https://www.python.org/dev/peps/pep-0508/#id21), but poetry.lock may use
