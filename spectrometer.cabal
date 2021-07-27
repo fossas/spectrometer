@@ -55,9 +55,10 @@ common lang
     TypeSynonymInstances
 
   ghc-options:
-    -Wall -Wincomplete-uni-patterns -Wcompat
-    -Wincomplete-record-updates -Wmissing-home-modules
-    -Wmissing-export-lists -Wredundant-constraints
+    -Wcompat -Wall -Wincomplete-uni-patterns
+    -Wincomplete-record-updates -Wmissing-exported-signatures
+    -Wmissing-export-lists -Wmissing-import-lists
+    -Wmissing-home-modules -Widentities -Wredundant-constraints
 
 -- TODO: base16-bytestring isn't a direct dep, but we need to add version bounds because cpio-conduit fails to compile with a newer version. Remove the dependency on base16-bytestring once we fix or bump cpio-conduit
 -- TODO: Switch `semver` back to `versions` once https://github.com/fosskers/versions/issues/47 is fixed? This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
@@ -196,8 +197,8 @@ library
     Data.Flag
     Data.Functor.Extra
     Data.List.Extra
-    Data.String.Conversion
     Data.Set.NonEmpty
+    Data.String.Conversion
     Data.Text.Extra
     DepTypes
     Discovery.Archive
