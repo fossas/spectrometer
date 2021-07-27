@@ -13,7 +13,6 @@ Gradle users generally specify their builds using a `build.gradle` file, written
 
 - [Concepts](#concepts)
   - [Subprojects and configurations](#subprojects-and-configurations)
-  - [Dependencies and artifacts](#dependencies-and-artifacts)
   - [Gradle wrappers](#gradle-wrappers)
 - [Running Gradle](#running-gradle)
 - [Discovery](#discovery)
@@ -31,15 +30,39 @@ Gradle users generally specify their builds using a `build.gradle` file, written
 
 ### Subprojects and configurations
 
-TODO: finish
+Most sizable Gradle builds organize their dependencies with two concepts: subprojects and configurations.
 
-### Dependencies and artifacts
+#### Subprojects
 
-TODO: finish
+_Subprojects_ are used when you have multiple "projects" in a single Gradle build (e.g. having multiple projects in a single repository managed by a single `build.gradle`). Gradle calls these "multi-projects". Gradle multi-projects have one root project, and one or more subprojects.
+
+A single subproject roughly corresponds to a single set of outputs. Hence, we treat subprojects as separate analysis targets.
+
+For details, see [Creating a multi-project build](https://docs.gradle.org/current/userguide/multi_project_builds.html#authoring-multi-project-builds).
+
+#### Configurations
+
+Within a single subproject, Gradle builds can declare dependencies for different "scopes" (i.e. different contexts, such as compilation, test execution, or runtime execution).
+
+Gradle calls these scopes _configurations_. Examples of configurations include `implementation`, `testRuntime`, or `compileClasspath`.
+
+Different subprojects can have different configurations. Configurations are specific to a subproject, although there are many common configurations (e.g. `compileClasspath`) that most subprojects have.
+
+For more details, see [What are dependency configurations](https://docs.gradle.org/current/userguide/declaring_dependencies.html#sec:what-are-dependency-configurations).
+
+#### Relationship to analysis targets
+
+Each pair of `(subproject, configuration)` corresponds to one dependency graph.
+
+Ideally, each `(subproject, configuration)` pair would be a separate analysis target. For technical reasons, the current implementation treats separate subprojects as analysis targets, and treats each subproject as the union of all of its configurations.
+
+In practice, this should not affect returned dependency results.
 
 ### Gradle wrappers
 
-TODO: finish
+Instead of invoking `gradle` directly, most Gradle projects use a "Gradle wrapper", which is a shell script vendored in the project that selects and downloads the correct version of Gradle. See [The Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html) for details.
+
+Because of this, the Gradle analyzer has logic for selecting which `gradle` executable to actually use. See [Running Gradle](#running-gradle) for details.
 
 ## Running Gradle
 
@@ -80,8 +103,7 @@ The order of tactics for this strategy is:
 | ------------------ | ---------------------------------------------------------------------------------------- |
 | :heavy_check_mark: | This tactic reports dependencies for all subprojects.                                    |
 | :heavy_check_mark: | This tactic provides a graph for subproject dependencies.                                |
-| :warning:          | This tactic requires dynamic analysis.                                                   | . |
-| :warning:          | This tactic only reports dependencies in the `default` configuration of each subproject. |
+| :warning:          | This tactic requires dynamic analysis.                                                   |
 
 This tactic runs a Gradle [init script](https://docs.gradle.org/current/userguide/init_scripts.html) to output the dependencies in each Gradle subproject. Mechanically, this tactic:
 
