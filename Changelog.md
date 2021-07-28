@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## Unreleased
+
+- Support for Graph Breadth Tagging
 ## v2.11.1
 
 - Support CPAN deps in the fossa-deps file ([#296](https://github.com/fossas/spectrometer/pull/296)) 
