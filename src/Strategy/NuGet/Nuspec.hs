@@ -26,12 +26,13 @@ import Graphing (Graphing)
 import Graphing qualified
 import Parse.XML
 import Path
-import Types
-    ( LicenseType(..),
-      License(License),
-      LicenseResult(LicenseResult),
-      DiscoveredProject(..),
-      GraphBreadth(Partial) )
+import Types (
+  DiscoveredProject (..),
+  GraphBreadth (Partial),
+  License (License),
+  LicenseResult (LicenseResult),
+  LicenseType (..),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Nuspec" $ do

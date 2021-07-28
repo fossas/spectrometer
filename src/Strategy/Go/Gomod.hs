@@ -334,7 +334,7 @@ analyze' ::
   Path Abs File ->
   m (Graphing Dependency, GraphBreadth)
 analyze' file = do
-  graph <-graphingGolang $ do
+  graph <- graphingGolang $ do
     gomod <- readContentsParser gomodParser file
 
     context "Building dependency graph" $ buildGraph gomod

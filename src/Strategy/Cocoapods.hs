@@ -64,7 +64,7 @@ analyzePodfile project = do
   graph <- Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project) >>= Podfile.analyze'
   pure (graph, Partial)
 
-analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (Graphing Dependency, GraphBreadth )
+analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (Graphing Dependency, GraphBreadth)
 analyzePodfileLock project = do
   graph <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project) >>= PodfileLock.analyze'
   pure (graph, Complete)
