@@ -21,7 +21,7 @@ jobs:
 
       - name: Install spectrometer from github
         run: |
-          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+          ./install.sh -d
 
       - name: Use Spectrometer's GHC and Cabal
         run: |
