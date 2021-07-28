@@ -24,7 +24,7 @@ data SourceUnit = SourceUnit
   , -- | path to manifest file
     sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
-  , sourceUnitGraphType :: GraphBreadth
+  , sourceUnitGraphBreadth :: GraphBreadth
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)
@@ -95,7 +95,7 @@ instance ToJSON SourceUnit where
       , "Type" .= sourceUnitType
       , "Manifest" .= sourceUnitManifest
       , "Build" .= sourceUnitBuild
-      , "GraphBreadth" .= sourceUnitGraphType
+      , "GraphBreadth" .= sourceUnitGraphBreadth
       , "AdditionalDependencyData" .= additionalData
       ]
 

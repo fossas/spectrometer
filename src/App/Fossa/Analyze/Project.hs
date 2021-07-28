@@ -25,14 +25,14 @@ mkResult project graphResults =
         if S.null (Graphing.graphingDirect graph)
           then graph
           else Graphing.pruneUnreachable graph
-    , projectResultGraphType = graphType
+    , projectResultGraphBreadth = graphBreadth
     }
   where
-    (graph, graphType) = graphResults
+    (graph, graphBreadth) = graphResults
 
 data ProjectResult = ProjectResult
   { projectResultType :: Text
   , projectResultPath :: Path Abs Dir
   , projectResultGraph :: Graphing Dependency
-  , projectResultGraphType :: GraphBreadth
+  , projectResultGraphBreadth :: GraphBreadth
   }

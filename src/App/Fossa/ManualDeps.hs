@@ -94,7 +94,7 @@ toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
       , sourceUnitManifest = renderedPath
       , sourceUnitType = "user-specific-yaml"
       , sourceUnitBuild = build
-      , sourceUnitGraphType = Complete
+      , sourceUnitGraphBreadth = Complete
       , additionalData = additional
       }
 
