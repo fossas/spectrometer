@@ -2,14 +2,15 @@ module Strategy.Python.Poetry (
   discover,
 
   -- * for testing only
-  buildGraphWithLock,
-  buildPackageNameGraph,
+  graphFromLockFile,
+  setGraphDirectsFromPyproject,
   PoetryProject (..),
 ) where
 
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, toLower)
@@ -114,24 +115,48 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
     Just lockPath -> do
       poetryLockProject <- readContentsToml poetryLockCodec (poetryLockPath lockPath)
       _ <- logIgnoredDeps pyproject (Just poetryLockProject)
-      context "Building dependency graph from pyproject.toml and poetry.lock" $ pure $ buildGraphWithLock poetryLockProject pyproject
+      context "Building dependency graph from pyproject.toml and poetry.lock" $ pure $ setGraphDirectsFromPyproject (graphFromLockFile poetryLockProject) pyproject
     Nothing -> context "Building dependency graph from only pyproject.toml" $ pure $ Graphing.fromList $ pyProjectDeps pyproject
 
--- | Build graph of `Dependency` only from `PyProject` and `PoetryLock`.
-buildGraphWithLock :: PoetryLock -> PyProject -> Graphing Dependency
-buildGraphWithLock lockProject poetryProject = promoteToDirect isDirect graph
+-- | Use a `pyproject.toml` to set the direct dependencies of a graph created from `poetry.lock`.
+setGraphDirectsFromPyproject :: Graphing Dependency -> PyProject -> Graphing Dependency
+setGraphDirectsFromPyproject graph pyproject = promoteToDirect isDirect graph
   where
     -- Dependencies in `poetry.lock` are direct if they're specified in `pyproject.toml`.
     isDirect :: Dependency -> Bool
-    isDirect dep = case pyprojectPoetry poetryProject of
+    isDirect dep = case pyprojectPoetry pyproject of
       Nothing -> False
-      Just _ -> any (\n -> dependencyName n == dependencyName dep) (pyProjectDeps poetryProject)
+      Just _ -> any (\n -> dependencyName n == dependencyName dep) (pyProjectDeps pyproject)
+
+-- | Using a Poetry lockfile, build the graph of packages.
+-- The resulting graph contains edges, but does not distinguish between direct and deep dependencies,
+-- since `poetry.lock` does not indicate which dependencies are direct.
+graphFromLockFile :: PoetryLock -> Graphing Dependency
+graphFromLockFile poetryLock = gmap pkgNameToDependency (foldr deep edges pkgsNoDeps)
+  where
+    pkgs :: [PoetryLockPackage]
+    pkgs = poetryLockPackages poetryLock
+
+    pkgsNoDeps :: [PackageName]
+    pkgsNoDeps = poetryLockPackageName <$> filter (null . poetryLockPackageDependencies) pkgs
+
+    depsWithEdges :: [PoetryLockPackage]
+    depsWithEdges = filter (not . null . poetryLockPackageDependencies) pkgs
+
+    edgeOf :: PoetryLockPackage -> [(PackageName, PackageName)]
+    edgeOf p = map tuplify . Map.keys $ poetryLockPackageDependencies p
+      where
+        tuplify :: Text -> (PackageName, PackageName)
+        tuplify x = (poetryLockPackageName p, PackageName x)
+
+    edges :: Graphing PackageName
+    edges = foldr (uncurry edge) empty (concatMap edgeOf depsWithEdges)
 
     lowerCasedPkgName :: PackageName -> PackageName
     lowerCasedPkgName name = PackageName . toLower $ unPackageName name
 
-    graph = gmap pkgNameToDependency $ buildPackageNameGraph $ poetryLockPackages lockProject
-    mapOfDependency = toMap $ poetryLockPackages lockProject
+    mapOfDependency :: Map PackageName Dependency
+    mapOfDependency = toMap pkgs
 
     -- Pip packages are [case insensitive](https://www.python.org/dev/peps/pep-0508/#id21), but poetry.lock may use
     -- non-canonical name for reference. Try to lookup with provided casing, otherwise fallback to lower casing.
@@ -150,6 +175,7 @@ buildGraphWithLock lockProject poetryProject = promoteToDirect isDirect graph
     -- ```
     --
     -- TODO: Better approach to handle casing scenarios with poetry.lock file.
+    pkgNameToDependency :: PackageName -> Dependency
     pkgNameToDependency name =
       fromMaybe
         ( Dependency
@@ -163,23 +189,3 @@ buildGraphWithLock lockProject poetryProject = promoteToDirect isDirect graph
         )
         $ Map.lookup name mapOfDependency
           <|> Map.lookup (lowerCasedPkgName name) mapOfDependency
-
--- | Builds the Package Name Graph.
--- In python, package names are unique, and only single version of a package can be used.
-buildPackageNameGraph :: [PoetryLockPackage] -> Graphing PackageName
-buildPackageNameGraph pkgs = foldr deep edges pkgsNoDeps
-  where
-    pkgsNoDeps :: [PackageName]
-    pkgsNoDeps = poetryLockPackageName <$> filter (null . poetryLockPackageDependencies) pkgs
-
-    depsWithEdges :: [PoetryLockPackage]
-    depsWithEdges = filter (not . null . poetryLockPackageDependencies) pkgs
-
-    edgeOf :: PoetryLockPackage -> [(PackageName, PackageName)]
-    edgeOf p = map tuplify . Map.keys $ poetryLockPackageDependencies p
-      where
-        tuplify :: Text -> (PackageName, PackageName)
-        tuplify x = (poetryLockPackageName p, PackageName x)
-
-    edges :: Graphing PackageName
-    edges = foldr (uncurry edge) empty (concatMap edgeOf depsWithEdges)

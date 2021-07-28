@@ -6,7 +6,7 @@ import Data.Map qualified as Map
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
 import Effect.Grapher (addNode, direct, edge, evalGrapher, run)
 import Graphing (Graphing)
-import Strategy.Python.Poetry (buildGraphWithLock, buildPackageNameGraph)
+import Strategy.Python.Poetry (graphFromLockFile, setGraphDirectsFromPyproject)
 import Strategy.Python.Poetry.PoetryLock (
   PackageName (..),
   PoetryLock (..),
@@ -18,6 +18,9 @@ import Strategy.Python.Poetry.PoetryLock (
 import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectPoetry (..))
 import Test.Hspec
 
+newPoetryLock :: [PoetryLockPackage] -> PoetryLock
+newPoetryLock pkgs = PoetryLock pkgs $ PoetryMetadata "some-version" "some-hash" "some-poetry-version"
+
 candidatePyProject :: PyProject
 candidatePyProject =
   PyProject
@@ -26,7 +29,7 @@ candidatePyProject =
 
 candidatePoetryLock :: PoetryLock
 candidatePoetryLock =
-  PoetryLock
+  newPoetryLock
     [ PoetryLockPackage
         { poetryLockPackageName = PackageName "flow_pipes"
         , poetryLockPackageVersion = "1.21.0"
@@ -46,50 +49,37 @@ candidatePoetryLock =
         , poetryLockPackageSource = Nothing
         }
     ]
-    $ PoetryMetadata "some-version" "some-hash" "some-poetry-version"
 
 expectedGraph :: Graphing Dependency
 expectedGraph = run . evalGrapher $ do
-  edge (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty) (Dependency PipType "flow_pipes_gravity" (Just $ CEq "1.1.1") [] [EnvProduction] Map.empty)
+  edge
+    (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
+    (Dependency PipType "flow_pipes_gravity" (Just $ CEq "1.1.1") [] [EnvProduction] Map.empty)
   direct (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
+
+expectedGraphWithNoDeps :: Graphing Dependency
+expectedGraphWithNoDeps = run . evalGrapher $ do
+  addNode (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
+
+expectedGraphWithDeps :: Graphing Dependency
+expectedGraphWithDeps = run . evalGrapher $ do
+  edge
+    (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
+    (Dependency PipType "pkgOneChildOne" (Just $ CEq "1.22.0") [] [EnvProduction] Map.empty)
 
 spec :: Spec
 spec = do
-  describe "buildGraphWithLock" $
-    it "should create graph with lock" $
-      buildGraphWithLock candidatePoetryLock candidatePyProject `shouldBe` expectedGraph
+  describe "setGraphDirectsFromPyproject" $
+    it "should should promote direct dependencies and create valid graph" $
+      setGraphDirectsFromPyproject (graphFromLockFile candidatePoetryLock) candidatePyProject `shouldBe` expectedGraph
 
-  describe "buildPackageNameGraph" $ do
+  describe "graphFromLockFile" $ do
     describe "when package has no transitive dependencies" $ do
-      it "should produce pkg name graph with no edges" $ do
-        let candidatePoetryPkgs =
-              [ PoetryLockPackage
-                  { poetryLockPackageName = PackageName "somePkg"
-                  , poetryLockPackageVersion = "1.21.0"
-                  , poetryLockPackageCategory = "main"
-                  , poetryLockPackageOptional = False
-                  , poetryLockPackageDependencies = Map.empty
-                  , poetryLockPackagePythonVersions = "*"
-                  , poetryLockPackageSource = Nothing
-                  }
-              ]
-        let expectedPkgNameGraph = run . evalGrapher $ addNode $ PackageName "somePkg"
-        buildPackageNameGraph candidatePoetryPkgs `shouldBe` expectedPkgNameGraph
-
-      describe "when package has deep dependencies" $ do
-        it "should produce package name graph with edges" $ do
-          let candidatePoetryPkgs =
+      it "should produce graph with no edges" $ do
+        let poetryLock =
+              newPoetryLock
                 [ PoetryLockPackage
                     { poetryLockPackageName = PackageName "somePkg"
-                    , poetryLockPackageVersion = "1.21.0"
-                    , poetryLockPackageCategory = "main"
-                    , poetryLockPackageOptional = False
-                    , poetryLockPackageDependencies = Map.fromList [("pkgOneChildOne", TextVersion "*")]
-                    , poetryLockPackagePythonVersions = "*"
-                    , poetryLockPackageSource = Nothing
-                    }
-                , PoetryLockPackage
-                    { poetryLockPackageName = PackageName "pkgOneChildOne"
                     , poetryLockPackageVersion = "1.21.0"
                     , poetryLockPackageCategory = "main"
                     , poetryLockPackageOptional = False
@@ -98,5 +88,29 @@ spec = do
                     , poetryLockPackageSource = Nothing
                     }
                 ]
-          let expectedPkgNameGraph = run . evalGrapher $ edge (PackageName "somePkg") (PackageName "pkgOneChildOne")
-          buildPackageNameGraph candidatePoetryPkgs `shouldBe` expectedPkgNameGraph
+        graphFromLockFile poetryLock `shouldBe` expectedGraphWithNoDeps
+
+      describe "when package has deep dependencies" $ do
+        it "should produce graph with edges" $ do
+          let peortyLockDeps =
+                newPoetryLock
+                  [ PoetryLockPackage
+                      { poetryLockPackageName = PackageName "somePkg"
+                      , poetryLockPackageVersion = "1.21.0"
+                      , poetryLockPackageCategory = "main"
+                      , poetryLockPackageOptional = False
+                      , poetryLockPackageDependencies = Map.fromList [("pkgOneChildOne", TextVersion "*")]
+                      , poetryLockPackagePythonVersions = "*"
+                      , poetryLockPackageSource = Nothing
+                      }
+                  , PoetryLockPackage
+                      { poetryLockPackageName = PackageName "pkgOneChildOne"
+                      , poetryLockPackageVersion = "1.22.0"
+                      , poetryLockPackageCategory = "main"
+                      , poetryLockPackageOptional = False
+                      , poetryLockPackageDependencies = Map.empty
+                      , poetryLockPackagePythonVersions = "*"
+                      , poetryLockPackageSource = Nothing
+                      }
+                  ]
+          graphFromLockFile peortyLockDeps `shouldBe` expectedGraphWithDeps
