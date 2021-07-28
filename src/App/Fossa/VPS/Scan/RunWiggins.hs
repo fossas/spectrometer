@@ -86,8 +86,8 @@ generateVSIStandaloneArgs ApiOpts{..} PathFilters{..} =
   "vsi-direct" :
   optMaybeText "-endpoint" (render <$> apiOptsUri)
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
-    ++ optExplodeText "-only-path" (toText <$> onlyPaths)
-    ++ optExplodeText "-exclude-path" (toText <$> excludePaths)
+    ++ optExplodeText "-only-path" (optPathAsFilter <$> onlyPaths)
+    ++ optExplodeText "-exclude-path" (optPathAsFilter <$> excludePaths)
     ++ ["."]
 
 generateMonorepoArgs :: MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
@@ -103,8 +103,8 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} PathFilters{..} logSeverity Projec
     ++ optMaybeText "-team" projectTeam
     ++ optMaybeText "-title" projectTitle
     ++ optMaybeText "-branch" projectBranch
-    ++ optExplodeText "-only-path" (toText <$> onlyPaths)
-    ++ optExplodeText "-exclude-path" (toText <$> excludePaths)
+    ++ optExplodeText "-only-path" (optPathAsFilter <$> onlyPaths)
+    ++ optExplodeText "-exclude-path" (optPathAsFilter <$> excludePaths)
     ++ optBool "-debug" (logSeverity == SevDebug)
     ++ optMaybeText "-type" monorepoAnalysisType
     ++ ["."]
@@ -144,6 +144,11 @@ optExplodeText :: Text -> [Text] -> [Text]
 optExplodeText _ [] = []
 optExplodeText flag [a] = [flag, a]
 optExplodeText flag (a : as) = [flag, a] ++ optExplodeText flag as
+
+-- Path Rel Dir renders with a trailing /, but wiggins needs it to not have that trailing slash when used as an exclude or include-only filter.
+-- Strip the / postfix from the returned value.
+optPathAsFilter :: Path Rel Dir -> Text
+optPathAsFilter p = T.init (toText p)
 
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
