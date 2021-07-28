@@ -27,7 +27,8 @@ mkResult project graphResults =
           else Graphing.pruneUnreachable graph
     , projectResultGraphType = graphType
     }
-  where (graph, graphType) = graphResults
+  where
+    (graph, graphType) = graphResults
 
 data ProjectResult = ProjectResult
   { projectResultType :: Text

@@ -64,7 +64,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
--- is this actually Complete? Docs say so
+-- TODO: is this actually Complete? Docs say so
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project = do
   analyzeResults <- context "Carthage" . context "Static analysis" . fmap (G.gmap toDependency) . analyze . carthageLock $ project
