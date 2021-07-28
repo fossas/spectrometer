@@ -80,10 +80,12 @@ transformLocator :: ValidVSILocator -> Dependency
 transformLocator locator =
   Dependency (validType locator) (validName locator) (CEq <$> validRevision locator) [] [] mempty
 
-analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency)
+-- TODO: confirm this is Partial @kit
+analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency, GraphBreadth)
 analyze opts = context "VSI" $ do
   vsiLocators <- context "Running VSI binary" $ withWigginsBinary (execWigginsJson opts)
-  context "Building dependency graph" $ fromEither (buildGraph vsiLocators)
+  graph <- context "Building dependency graph" $ fromEither (buildGraph vsiLocators)
+  pure (graph, Partial)
 
 toDepType :: Locator -> Either VSIError DepType
 toDepType locator = case locatorFetcher locator of

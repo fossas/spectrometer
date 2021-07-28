@@ -19,6 +19,7 @@ import Graphing (Graphing (..))
 import Path.IO (getCurrentDir)
 import Strategy.Go.GoList
 import Test.Hspec
+import Types (GraphBreadth (..))
 
 runConstExec :: BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = runReader output . runConstExecC
@@ -69,7 +70,9 @@ spec = do
               & run
       case result of
         Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
-        Right graph -> graph `shouldBe` expected
+        Right (graph, graphType) -> do
+          graph `shouldBe` expected
+          graphType `shouldBe` Complete
 
     it "can handle complex inputs" $ do
       let result =
@@ -80,4 +83,6 @@ spec = do
 
       case result of
         Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
-        Right graph -> length (graphingDirect graph) `shouldBe` 12
+        Right (graph, graphType) -> do
+          length (graphingDirect graph) `shouldBe` 12
+          graphType `shouldBe` Complete
