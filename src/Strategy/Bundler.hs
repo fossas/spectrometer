@@ -60,10 +60,10 @@ getDeps project = context "Bundler" $ analyzeBundleShow project <||> analyzeGemf
 
 analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency, GraphBreadth)
 analyzeBundleShow project = do
-  analyzeResults <- context "bundle-show analysis" . BundleShow.analyze' . bundlerDir $ project
-  pure (analyzeResults, Complete)
+  graph <- context "bundle-show analysis" . BundleShow.analyze' . bundlerDir $ project
+  pure (graph, Complete)
 
 analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency, GraphBreadth)
 analyzeGemfileLock project = do
-  analyzeResults <- context "Gemfile.lock analysis" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project)) >>= GemfileLock.analyze'
-  pure (analyzeResults, Complete)
+  graph <- context "Gemfile.lock analysis" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project)) >>= GemfileLock.analyze'
+  pure (graph, Complete)

@@ -61,10 +61,10 @@ getDeps project =
 
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (Graphing Dependency, GraphBreadth)
 analyzePodfile project = do
-  analyzeResults <- Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project) >>= Podfile.analyze'
-  pure (analyzeResults, Partial)
+  graph <- Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project) >>= Podfile.analyze'
+  pure (graph, Partial)
 
 analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (Graphing Dependency, GraphBreadth )
 analyzePodfileLock project = do
-  analyzeResults <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project) >>= PodfileLock.analyze'
-  pure (analyzeResults, Complete)
+  graph <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project) >>= PodfileLock.analyze'
+  pure (graph, Complete)

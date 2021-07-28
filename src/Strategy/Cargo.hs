@@ -185,8 +185,8 @@ analyze manifestDir = do
   _ <- context "Generating lockfile" $ execThrow manifestDir cargoGenLockfileCmd
   meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd
   --
-  analyzeResults <- context "Building dependency graph" $ pure (buildGraph meta)
-  pure (analyzeResults, Complete)
+  graph <- context "Building dependency graph" $ pure (buildGraph meta)
+  pure (graph, Complete)
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg =
