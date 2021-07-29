@@ -13,6 +13,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
 import Data.Functor (void)
+import Data.Maybe (maybeToList)
 import Data.String (IsString)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -20,7 +21,9 @@ import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (
   DepEnvironment (..),
-  Dependency (..), DepType (MavenType), VerConstraint (CEq)
+  DepType (MavenType),
+  Dependency (..),
+  VerConstraint (CEq),
  )
 import Discovery.Walk (
   WalkStep (WalkContinue),
@@ -41,7 +44,6 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-import Data.Maybe (maybeToList)
 
 newtype DepTreeLabel
   = BuildTag DepEnvironment
@@ -76,7 +78,7 @@ buildGraph = foldr ((<>) . gmap toDependency . toGraph) mempty
 toDependency :: PackageId -> Dependency
 toDependency PackageId{..} =
   Dependency
-    { dependencyType = MavenType 
+    { dependencyType = MavenType
     , dependencyName = artifactName
     , dependencyVersion = Just $ CEq artifactVersion
     , dependencyLocations = []
