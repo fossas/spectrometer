@@ -33,7 +33,7 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Diagnostics ((<||>))
-import Control.Effect.Exception (Lift)
+import Control.Effect.Exception (Lift, SomeException, throwIO, try)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (runRecord)
 import Control.Effect.Replay (runReplay)
@@ -142,10 +142,11 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
         doAnalyze basedir
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
-        (execLogs, (readFSLogs, ())) <-
-          runRecord @Exec . runRecord @ReadFS $
+        (execLogs, (readFSLogs, res)) <-
+          runRecord @Exec . runRecord @ReadFS . try @SomeException $
             doAnalyze basedir
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
+        either throwIO pure res
       RecordModeReplay file -> do
         basedir <- BaseDir <$> P.resolveDir' workdir
         maybeJournal <- sendIO $ loadReplayLog file
