@@ -210,7 +210,6 @@ runDependencyAnalysis (BaseDir basedir) filters project =
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
-      logInfo $ pretty $ show targets
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
       graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
