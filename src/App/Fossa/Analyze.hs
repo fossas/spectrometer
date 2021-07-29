@@ -41,7 +41,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
@@ -91,7 +91,7 @@ import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
-import System.Exit (die, exitFailure)
+import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 
@@ -264,14 +264,30 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
-    NoneDiscovered -> logError "No analysis targets found in directory" >> sendIO exitFailure
-    FilteredAll count -> do
-      logError ("Filtered out all " <> pretty count <> " projects due to directory name, no manual deps found")
-      for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
-      sendIO exitFailure
+    NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
+    FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
       UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+
+data AnalyzeError
+  = ErrNoProjectsDiscovered
+  | ErrFilteredAllProjects Int [ProjectResult]
+
+instance Diag.ToDiagnostic AnalyzeError where
+  renderDiagnostic :: AnalyzeError -> Doc ann
+  renderDiagnostic ErrNoProjectsDiscovered =
+    "No analysis targets found in directory"
+  renderDiagnostic (ErrFilteredAllProjects count projectResults) =
+    "Filtered out all "
+      <> pretty count
+      <> " projects due to directory name, and no manual deps were found."
+      <> line
+      <> line
+      <> vsep (map renderExcludedProject projectResults)
+    where
+      renderExcludedProject :: ProjectResult -> Doc ann
+      renderExcludedProject project = "Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project)
 
 uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
