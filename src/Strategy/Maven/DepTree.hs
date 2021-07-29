@@ -33,7 +33,7 @@ import Discovery.Walk (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, readContentsParser)
-import Graphing (Graphing, gmap)
+import Graphing (Graphing, gmap, stripRoot)
 import Path
 import System.Random (randomIO)
 import Text.Megaparsec (
@@ -73,7 +73,7 @@ findDepTreeOutputs dir ident = execState @[Path Abs File] [] $
         pure (WalkContinue)
 
 buildGraph :: [DotGraph] -> Graphing Dependency
-buildGraph = foldr ((<>) . gmap toDependency . toGraph) mempty
+buildGraph = stripRoot . foldr ((<>) . gmap toDependency . toGraph) mempty
 
 toDependency :: PackageId -> Dependency
 toDependency PackageId{..} =
