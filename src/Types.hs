@@ -65,7 +65,8 @@ data DiscoveredProject m = DiscoveredProject
 --   Complete - indicates that the dependencies in question are a full, transitive graph, requiring no additional analysis
 --      Ex -> yarn.lock, Podfile.lock, Gemfile.lock
 --   Partial - indicates that the dependencies in question do *NOT* represent the fully resolved graph, i.e. because of a limitation
---             in the package manager in use, it wasn't possible for us to obtain a full list of deps
+--             in the package manager in use, it wasn't possible for us to obtain a full list of deps. This will signal to Core that
+--             further analysis may need to be run to determine the full graph.
 --      Ex -> stand-alone `package.json`, stand-alone Podfile
 data GraphBreadth = Complete | Partial
   deriving (Eq, Ord, Show)
