@@ -2,7 +2,7 @@
 
 module Strategy.Maven.DepTree (
   analyze,
-  sequenceEdges,
+  parseDotGraph,
 ) where
 
 import Control.Algebra (Has, run)
@@ -12,7 +12,6 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
-import Data.Functor (void)
 import Data.Maybe (maybeToList)
 import Data.String (IsString)
 import Data.String.Conversion (toString, toText)
@@ -33,7 +32,7 @@ import Discovery.Walk (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, readContentsParser)
-import Graphing (Graphing, gmap, stripRoot)
+import Graphing (Graphing, gmap, stripRoot, filterAndStripDirects)
 import Path
 import System.Random (randomIO)
 import Text.Megaparsec (
@@ -41,6 +40,7 @@ import Text.Megaparsec (
   between,
   many,
   takeWhile1P,
+  try,
  )
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
@@ -57,23 +57,23 @@ analyze dir = do
   -- We generate files with a random prefix so we don't pick up files from previous runs.
   -- If we did pick them up, they're likely not enough of a conflict to worry about, but
   -- it's better than not doing it.
-  randIdent <- sendIO randomIO
+  randIdent <- abs <$> sendIO randomIO
   _ <- context "Running maven 'dependency:tree' plugin" $ execThrow dir $ deptreeCmd randIdent
   graphFiles <- context "Locating maven output files" $ findDepTreeOutputs dir randIdent
-  graphs <- traverse (readContentsParser parseDotGraph) graphFiles
+  graphs <- context "Parsing output files" $ traverse (readContentsParser parseDotGraph) graphFiles
   pure $ buildGraph graphs
 
 findDepTreeOutputs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Int -> m [Path Abs File]
 findDepTreeOutputs dir ident = execState @[Path Abs File] [] $
   flip walk dir $ \_ _ files -> do
     case findFileNamed (show ident <> outputFileName) files of
-      Nothing -> pure (WalkContinue)
+      Nothing -> pure WalkContinue
       Just file -> do
         modify (file :)
-        pure (WalkContinue)
+        pure WalkContinue
 
 buildGraph :: [DotGraph] -> Graphing Dependency
-buildGraph = stripRoot . foldr ((<>) . gmap toDependency . toGraph) mempty
+buildGraph = filterAndStripDirects . gmap toDependency . foldr ((<>) . toGraph) mempty
 
 toDependency :: PackageId -> Dependency
 toDependency PackageId{..} =
@@ -82,6 +82,7 @@ toDependency PackageId{..} =
     , dependencyName = artifactName
     , dependencyVersion = Just $ CEq artifactVersion
     , dependencyLocations = []
+    -- , dependencyEnvironments = []
     , dependencyEnvironments = maybeToList $ toBuildTag <$> buildTag
     , dependencyTags = mempty
     }
@@ -124,11 +125,12 @@ data DotGraph = DotGraph
   { rootNode :: PackageId
   , edgeList :: [(PackageId, PackageId)]
   }
+  deriving (Eq, Ord, Show)
 
 parseDotGraph :: Parser DotGraph
 parseDotGraph = do
   root <- symbol "digraph" *> parseNode
-  edgeLists <- enclosed "{" "}" $ many parseGraphEntry
+  edgeLists <- enclosed "{" "}" (many $ try parseGraphEntry)
   pure . DotGraph root $ concatMap sequenceEdges edgeLists
 
 -- | Produce tuples of every adjacent pair in the list.
@@ -146,8 +148,8 @@ sequenceEdges (x0 : x1 : xs) = (x0, x1) : (sequenceEdges (x1 : xs))
 parseGraphEntry :: Parser [PackageId]
 parseGraphEntry = do
   first <- parseNode
-  rest <- many (symbol "->" *> parseNode)
-  void $ symbol ";"
+  rest <- many ((symbol "->") *> parseNode)
+  _ <- symbol ";"
   pure (first : rest)
 
 parseNode :: Parser PackageId
@@ -170,19 +172,8 @@ parseName input = combine parts
 enclosed :: Text -> Text -> Parser a -> Parser a
 enclosed open close = between (symbol open) (symbol close)
 
--- isEol :: Char -> Bool
--- isEol '\n' = True
--- isEol '\r' = True
--- isEol _ = False
-
--- parseInt :: Parser Int
--- parseInt = lexeme Lexer.decimal
-
 symbol :: Text -> Parser Text
 symbol = Lexer.symbol scn
-
--- sc :: Parser ()
--- sc = Lexer.space (void $ char ' ') empty empty
 
 scn :: Parser ()
 scn = Lexer.space space1 (Lexer.skipLineComment "//" <|> Lexer.skipLineComment "#") (Lexer.skipBlockComment "/*" "*/")

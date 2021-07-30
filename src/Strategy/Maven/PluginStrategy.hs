@@ -6,31 +6,37 @@ module Strategy.Maven.PluginStrategy (
 ) where
 
 import Control.Effect.Diagnostics
-import Control.Effect.Lift
+-- import Control.Effect.Lift
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import DepTypes
-import Effect.Exec
+-- import Effect.Exec
 import Effect.Grapher hiding (Edge)
-import Effect.ReadFS
+-- import Effect.ReadFS
 import Graphing (Graphing)
-import Path
+-- import Path
 import Strategy.Maven.Plugin
 
-analyze' ::
-  ( Has (Lift IO) sig m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
-  ) =>
-  Path Abs Dir ->
-  m (Graphing Dependency)
-analyze' dir = withUnpackedPlugin $ \filepath -> do
-  context "Installing plugin" $ installPlugin dir filepath
-  context "Running plugin" $ execPlugin dir
-  pluginOutput <- parsePluginOutput dir
-  context "Building dependency graph" $ pure (buildGraph pluginOutput)
+-- analyze' ::
+--   ( Has (Lift IO) sig m
+--   , Has ReadFS sig m
+--   , Has Exec sig m
+--   , Has Diagnostics sig m
+--   ) =>
+--   Path Abs Dir ->
+--   m (Graphing Dependency)
+-- analyze' dir = withUnpackedPlugin $ \filepath -> do
+--   context "Installing plugin" $ installPlugin dir filepath
+--   context "Running plugin" $ execPlugin dir
+--   pluginOutput <- parsePluginOutput dir
+--   context "Building dependency graph" $ pure (buildGraph pluginOutput)
+
+-- THIS IS WRITTEN TO TRIGGER CI, BUT STILL COMPILE SUCCESSFULLY
+-- By doing this, we can build, run, and skip to the next tactic.
+-- However, it cannot be merged since it triggers hlint's "Redundant id" rule.
+analyze' :: Has Diagnostics sig m => a -> m b
+analyze' = const . id $ fatalText "skipping for test purposes"
 
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} = run $
