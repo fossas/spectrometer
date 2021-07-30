@@ -49,7 +49,7 @@ discover dir = context "Poetry" $ do
 usesPoetryBackend :: Text -> Bool
 usesPoetryBackend backend =
   backend == "poetry.core.masonry.api" -- For poetry versions >=1.1.0a1 (released 2020)
-    || backend == "poetry.masonry.api"
+    || backend == "poetry.masonry.api" -- Refer to https://github.com/python-poetry/poetry/pull/2212
 
 -- | Reference message text for poetry build backend setting value required in pyproject.toml.
 -- Users should configure poetry build backend in pyproject.toml for poetry project discovery.

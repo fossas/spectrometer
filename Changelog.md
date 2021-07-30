@@ -10,6 +10,11 @@
 - Add `--exclude-path` and `--only-path` to monorepo functionality in fossa analyze. ([#291](https://github.com/fossas/spectrometer/pull/291))
 - Support globs in exclude/only path flags. ([#291](https://github.com/fossas/spectrometer/pull/291))
 
+## v2.12.1
+
+- Add `--exclude-path` and `--only-path` to monorepo functionality in fossa analyze. ([#291](https://github.com/fossas/spectrometer/pull/291))
+- Support globs in exclude/only path flags. ([#291](https://github.com/fossas/spectrometer/pull/291))
+
 ## v2.12.0
 
 - Adds poetry support for python ([#300](https://github.com/fossas/spectrometer/pull/300))
