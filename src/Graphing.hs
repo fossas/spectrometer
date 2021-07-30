@@ -21,7 +21,6 @@ module Graphing (
   gtraverse,
   induceJust,
   filter,
-  filterAndStripDirects,
   pruneUnreachable,
   stripRoot,
   promoteToDirect,
