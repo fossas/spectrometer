@@ -12,7 +12,6 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
-import Data.Maybe (maybeToList)
 import Data.String (IsString)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -32,7 +31,7 @@ import Discovery.Walk (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, readContentsParser)
-import Graphing (Graphing, gmap, stripRoot, filterAndStripDirects)
+import Graphing (Graphing, gmap, stripRoot)
 import Path
 import System.Random (randomIO)
 import Text.Megaparsec (
