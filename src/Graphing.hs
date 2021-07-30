@@ -116,12 +116,6 @@ stripRoot gr = gr{graphingDirect = direct'}
     edgeSet root = AM.postSet root $ graphingAdjacent gr
     direct' = S.unions $ map edgeSet roots
 
-filterAndStripDirects :: forall ty. Ord ty => Graphing ty -> Graphing ty
-filterAndStripDirects gr = filter wasNotDirect $ stripRoot gr
-  where
-    wasNotDirect :: ty -> Bool
-    wasNotDirect item = S.notMember item $ graphingDirect gr
-
 -- | Add a direct dependency to this Graphing
 direct :: Ord ty => ty -> Graphing ty -> Graphing ty
 direct dep gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}

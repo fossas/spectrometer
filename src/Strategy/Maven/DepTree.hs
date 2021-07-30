@@ -73,7 +73,7 @@ findDepTreeOutputs dir ident = execState @[Path Abs File] [] $
         pure WalkContinue
 
 buildGraph :: [DotGraph] -> Graphing Dependency
-buildGraph = filterAndStripDirects . gmap toDependency . foldr ((<>) . toGraph) mempty
+buildGraph = gmap toDependency . foldr ((<>) . stripRoot . toGraph) mempty
 
 toDependency :: PackageId -> Dependency
 toDependency PackageId{..} =
@@ -82,8 +82,7 @@ toDependency PackageId{..} =
     , dependencyName = artifactName
     , dependencyVersion = Just $ CEq artifactVersion
     , dependencyLocations = []
-    -- , dependencyEnvironments = []
-    , dependencyEnvironments = maybeToList $ toBuildTag <$> buildTag
+    , dependencyEnvironments = maybe [EnvProduction] ((: []) . toBuildTag) buildTag
     , dependencyTags = mempty
     }
 
