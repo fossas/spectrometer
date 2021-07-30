@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Support for Graph Breadth Tagging
+- Support for Graph Breadth Tagging ([#308](https://github.com/fossas/spectrometer/pull/308))
 
 ## v2.12.0
 
