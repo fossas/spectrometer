@@ -1,8 +1,10 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Strategy.Maven.DepTree (
   analyze,
   parseDotGraph,
+
+  -- * Exported for testing
+  DotGraph (..),
+  PackageId(..),
 ) where
 
 import Control.Algebra (Has, run)
@@ -11,7 +13,7 @@ import Control.Carrier.State.Strict (execState, modify)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Char (isSpace)
-import Data.Foldable (for_)
+import Data.Foldable (for_, traverse_)
 import Data.String (IsString)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -33,6 +35,7 @@ import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing, gmap)
 import Path (Abs, Dir, File, Path)
+import Path.IO (removeFile)
 import System.Random (randomIO)
 import Text.Megaparsec (
   Parsec,
@@ -61,6 +64,8 @@ analyze dir = do
   _ <- context "Running maven 'dependency:tree' plugin" $ execThrow dir $ deptreeCmd randIdent
   graphFiles <- context "Locating maven output files" $ findDepTreeOutputs dir randIdent
   graphs <- context "Parsing output files" $ traverse (readContentsParser parseDotGraph) graphFiles
+  -- TODO: Will this work correctly in the face of exceptions?
+  sendIO $ traverse_ removeFile graphFiles
   pure (buildGraph graphs, Complete)
 
 findDepTreeOutputs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Int -> m [Path Abs File]
@@ -76,7 +81,7 @@ buildGraph :: [DotGraph] -> Graphing Dependency
 buildGraph = gmap toDependency . foldr ((<>) . toGraph) mempty
 
 toDependency :: PackageId -> Dependency
-toDependency PackageId{..} =
+toDependency PackageId{artifactName, artifactVersion, buildTag} =
   Dependency
     { dependencyType = MavenType
     , dependencyName = artifactName
@@ -87,7 +92,7 @@ toDependency PackageId{..} =
     }
 
 toGraph :: DotGraph -> Graphing PackageId
-toGraph DotGraph{..} = run . evalGrapher $ do
+toGraph DotGraph{rootNode, edgeList} = run . evalGrapher $ do
   direct rootNode
   for_ edgeList $ uncurry edge
 
