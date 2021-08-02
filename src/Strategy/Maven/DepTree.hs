@@ -43,6 +43,7 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
+import Types (GraphBreadth (Complete))
 
 newtype DepTreeLabel
   = BuildTag DepEnvironment
@@ -51,7 +52,7 @@ newtype DepTreeLabel
 outputFileName :: IsString a => a
 outputFileName = "fossa-deptree.dot"
 
-analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
 analyze dir = do
   -- We generate files with a random prefix so we don't pick up files from previous runs.
   -- If we did pick them up, they're likely not enough of a conflict to worry about, but
@@ -60,7 +61,7 @@ analyze dir = do
   _ <- context "Running maven 'dependency:tree' plugin" $ execThrow dir $ deptreeCmd randIdent
   graphFiles <- context "Locating maven output files" $ findDepTreeOutputs dir randIdent
   graphs <- context "Parsing output files" $ traverse (readContentsParser parseDotGraph) graphFiles
-  pure $ buildGraph graphs
+  pure (buildGraph graphs, Complete)
 
 findDepTreeOutputs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Int -> m [Path Abs File]
 findDepTreeOutputs dir ident = execState @[Path Abs File] [] $
