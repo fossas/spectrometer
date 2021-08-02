@@ -131,7 +131,7 @@ jobs:
     - name: Run hlint
       run: |
         make lint
-  
+
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
@@ -148,7 +148,7 @@ jobs:
     # If git has changes, then the formatter check fails.
     - name: check git status
       run: |
-        git diff --exit-code
+        git diff --name-only --exit-code
 
   create-release:
     name: create-release
