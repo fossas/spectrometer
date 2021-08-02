@@ -4,7 +4,7 @@ module Strategy.Maven.DepTree (
 
   -- * Exported for testing
   DotGraph (..),
-  PackageId(..),
+  PackageId (..),
 ) where
 
 import Control.Algebra (Has, run)
