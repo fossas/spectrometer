@@ -5,38 +5,46 @@ module Strategy.Maven.PluginStrategy (
   buildGraph,
 ) where
 
-import Control.Effect.Diagnostics
--- import Control.Effect.Lift
+import Control.Algebra (Has, run)
+import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Lift (Lift)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import DepTypes
--- import Effect.Exec
-import Effect.Grapher hiding (Edge)
--- import Effect.ReadFS
+import DepTypes (
+  DepEnvironment (..),
+  DepType (MavenType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Effect.Exec (Exec)
+import Effect.Grapher (Grapher, edge, evalGrapher)
+import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
--- import Path
-import Strategy.Maven.Plugin
+import Path (Abs, Dir, Path)
+import Strategy.Maven.Plugin (
+  Artifact (..),
+  Edge (..),
+  PluginOutput (..),
+  execPlugin,
+  installPlugin,
+  parsePluginOutput,
+  withUnpackedPlugin,
+ )
 
--- analyze' ::
---   ( Has (Lift IO) sig m
---   , Has ReadFS sig m
---   , Has Exec sig m
---   , Has Diagnostics sig m
---   ) =>
---   Path Abs Dir ->
---   m (Graphing Dependency)
--- analyze' dir = withUnpackedPlugin $ \filepath -> do
---   context "Installing plugin" $ installPlugin dir filepath
---   context "Running plugin" $ execPlugin dir
---   pluginOutput <- parsePluginOutput dir
---   context "Building dependency graph" $ pure (buildGraph pluginOutput)
-
--- THIS IS WRITTEN TO TRIGGER CI, BUT STILL COMPILE SUCCESSFULLY
--- By doing this, we can build, run, and skip to the next tactic.
--- However, it cannot be merged since it triggers hlint's "Redundant id" rule.
-analyze' :: Has Diagnostics sig m => a -> m b
-analyze' = const . id $ fatalText "skipping for test purposes"
+analyze' ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m (Graphing Dependency)
+analyze' dir = withUnpackedPlugin $ \filepath -> do
+  context "Installing plugin" $ installPlugin dir filepath
+  context "Running plugin" $ execPlugin dir
+  pluginOutput <- parsePluginOutput dir
+  context "Building dependency graph" $ pure (buildGraph pluginOutput)
 
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} = run $
