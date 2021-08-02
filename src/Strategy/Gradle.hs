@@ -63,7 +63,7 @@ import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path (Abs, Dir, Path, fromAbsDir)
 import System.FilePath ((</>))
-import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
+import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
 
 newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
@@ -215,7 +215,9 @@ mkProject project =
     }
 
 getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m (Graphing Dependency, GraphBreadth)
-getDeps project targets = context "Gradle" $ analyze targets (gradleDir project)
+getDeps project targets = context "Gradle" $ do
+  graph <- analyze targets (gradleDir project)
+  pure (graph, Complete)
 
 -- See the release process to see how this script gets vendored.
 initScript :: ByteString
