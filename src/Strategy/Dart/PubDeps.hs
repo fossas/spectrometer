@@ -116,7 +116,6 @@ parsePackageVersion = CEq . toText <$> many (alphaNumChar <|> char '_' <|> char 
 --  - pkg_name 1.0.0 [pkg_dep_one, pkg_dep_two]
 parsePubDepPackage :: Bool -> Bool -> Parser PubDepPackage
 parsePubDepPackage isDirectDep isDevDep = do
-
   packageName <- lexeme $ symbol "-" *> lexeme parsePackageName
   packageVersion <- lexeme parsePackageVersion
 
@@ -146,10 +145,9 @@ isPackageSupported lockContent pkg = maybe False isSupported $ Map.lookup pkg (p
 buildGraph :: PubLockContent -> [PubDepPackage] -> Graphing Dependency
 buildGraph lockContent pkgs = Graphing.promoteToDirect isDirectDependency graphPackagesWithEdges
   where
-
     isDirectDependency :: Dependency -> Bool
     isDirectDependency dep = dependencyName dep `elem` (dependencyName . pkgToDependency <$> reportableDirectPackages)
-    
+
     graphPackagesWithEdges :: Graphing Dependency
     graphPackagesWithEdges = foldr (uncurry edge) graphPackagesWithoutEdges edges
 
@@ -188,7 +186,7 @@ buildGraph lockContent pkgs = Graphing.promoteToDirect isDirectDependency graphP
 
     isReportable :: PackageName -> Bool
     isReportable = isPackageSupported lockContent
-    
+
     reportableDirectPackages :: [PackageName]
     reportableDirectPackages = filter isReportable $ pubDepPackageName <$> filter pubDepPackageIsDirect pkgs
 

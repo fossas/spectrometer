@@ -114,7 +114,6 @@ isSupported _ = False
 buildGraph :: PubSpecContent -> Graphing.Graphing Dependency
 buildGraph specContent = foldr Graphing.direct Graphing.empty allDependencies
   where
-
     dependencies :: Map PackageName PubSpecDepSource
     dependencies = fromMaybe Map.empty $ pubSpecDependencies specContent
 

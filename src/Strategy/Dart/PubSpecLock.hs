@@ -152,7 +152,6 @@ buildGraph lockContent = foldr deep graphOfDirects transitiveDependencies
     graphOfDirects :: Graphing Dependency
     graphOfDirects = foldr direct empty $ getDependencies pubLockPackageIsDirect
 
-
 logIgnoredPackages :: Has Logger sig m => PubLockContent -> m ()
 logIgnoredPackages lockContent = for_ notSupportedDependenciesMsgs (logDebug . pretty)
   where
@@ -161,7 +160,6 @@ logIgnoredPackages lockContent = for_ notSupportedDependenciesMsgs (logDebug . p
 
     notSupportedPackages :: [Text]
     notSupportedPackages = map (unPackageName . fst) (Map.toList $ Map.filter isSupported $ packages lockContent)
-
 
 analyzePubLockFile ::
   (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>
