@@ -22,7 +22,7 @@ spec = do
     it "should parse dependencies" $ do
       let expectedPubSpecContent =
             PubSpecContent
-              { dependencies =
+              { pubSpecDependencies =
                   Just $
                     Map.fromList
                       [ (PackageName "pkg_default", PubSpecDepHostedSource (Just $ CEq "1.3.0") Nothing Nothing)
@@ -31,12 +31,12 @@ spec = do
                       , (PackageName "pkg_b", PubSpecDepGitSource (Just $ CEq "release-0.9") "https://github.com/user/pkg_b")
                       , (PackageName "pkg_sdk", PubSpecDepSdkSource "flutter")
                       ]
-              , devDependencies =
+              , pubSpecDevDependencies =
                   Just $
                     Map.fromList
                       [ (PackageName "pkg_dev_default", PubSpecDepHostedSource (Just $ CEq "1.0.0") Nothing Nothing)
                       ]
-              , dependenciesOverrides =
+              , pubSpecDependenciesOverrides =
                   Just $
                     Map.fromList
                       [ (PackageName "pkg_b", PubSpecDepPathSource "./some/dir")
@@ -51,19 +51,15 @@ spec = do
     it "should create expected graph" $ do
       let pubSpecContent =
             PubSpecContent
-              { dependencies =
+              { pubSpecDependencies =
                   Just $
                     Map.fromList
                       [ (PackageName "pkg_default", PubSpecDepHostedSource (Just $ CEq "1.3.0") Nothing Nothing)
                       , (PackageName "pkg_hosted", PubSpecDepHostedSource (Just $ CCompatible "1.0.0") (Just "pkg_hosted") (Just "http://pub.dev"))
                       , (PackageName "pkg_a", PubSpecDepGitSource Nothing "https://github.com/user/pkg_a.git")
                       ]
-              , devDependencies =
-                  Just $
-                    Map.fromList
-                      [ (PackageName "pkg_dev_default", PubSpecDepHostedSource (Just $ CEq "1.0.0") Nothing Nothing)
-                      ]
-              , dependenciesOverrides = Nothing
+              , pubSpecDevDependencies = Just $ Map.fromList [(PackageName "pkg_dev_default", PubSpecDepHostedSource (Just $ CEq "1.0.0") Nothing Nothing)]
+              , pubSpecDependenciesOverrides = Nothing
               }
 
       let graph = buildGraph pubSpecContent
@@ -108,9 +104,9 @@ spec = do
     it "should not graph, if dependency is overriden, and new source is not supported" $ do
       let pubSpecContent =
             PubSpecContent
-              { dependencies = Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepGitSource (Just $ CEq "release-0.9") "https://github.com/user/pkg_b")]
-              , devDependencies = Nothing
-              , dependenciesOverrides = Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepPathSource "./some/dir")]
+              { pubSpecDependencies = Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepGitSource (Just $ CEq "release-0.9") "https://github.com/user/pkg_b")]
+              , pubSpecDependenciesOverrides = Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepPathSource "./some/dir")]
+              , pubSpecDevDependencies = Nothing
               }
 
       let graph = buildGraph pubSpecContent
@@ -121,9 +117,11 @@ spec = do
     it "should graph, if dependency is overriden, and new source is supported" $ do
       let pubSpecContent =
             PubSpecContent
-              { dependencies = Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepGitSource (Just $ CEq "release-0.9") "https://github.com/user/pkg_b")]
-              , devDependencies = Nothing
-              , dependenciesOverrides = Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepGitSource (Just $ CEq "develop") "https://github.com/user/pkg_b")]
+              { pubSpecDependencies =
+                  Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepGitSource (Just $ CEq "release-0.9") "https://github.com/user/pkg_b")]
+              , pubSpecDependenciesOverrides =
+                  Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepGitSource (Just $ CEq "develop") "https://github.com/user/pkg_b")]
+              , pubSpecDevDependencies = Nothing
               }
       let graph = buildGraph pubSpecContent
       let expectedGraphDeps =
@@ -143,9 +141,9 @@ spec = do
     it "should not graph dependency of path sources" $ do
       let pubSpecContent =
             PubSpecContent
-              { dependencies = Just $ Map.fromList [(PackageName "pkg_sdk", PubSpecDepPathSource "./../some-dir/")]
-              , devDependencies = Nothing
-              , dependenciesOverrides = Nothing
+              { pubSpecDependencies = Just $ Map.fromList [(PackageName "pkg_sdk", PubSpecDepPathSource "./../some-dir/")]
+              , pubSpecDevDependencies = Nothing
+              , pubSpecDependenciesOverrides = Nothing
               }
       let graph = buildGraph pubSpecContent
       expectEdges [] graph
@@ -155,9 +153,9 @@ spec = do
     it "should not graph dependency of sdk sources" $ do
       let pubSpecContent =
             PubSpecContent
-              { dependencies = Just $ Map.fromList [(PackageName "pkg_sdk", PubSpecDepSdkSource "flutter")]
-              , devDependencies = Nothing
-              , dependenciesOverrides = Nothing
+              { pubSpecDependencies = Just $ Map.fromList [(PackageName "pkg_sdk", PubSpecDepSdkSource "flutter")]
+              , pubSpecDevDependencies = Nothing
+              , pubSpecDependenciesOverrides = Nothing
               }
       let graph = buildGraph pubSpecContent
       expectEdges [] graph

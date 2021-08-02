@@ -3,13 +3,10 @@ module Strategy.Dart.PubDeps (
 
   -- * for testing
   dartPubDepCmd,
-  -- parseDepsCmdOutput,
   depsCmdOutputParser,
   flutterPubDepCmd,
   buildGraph,
-  PubPkg (..),
-  -- DepsCmdOutput (..),
-  --   PubDepsCmdOutput(..),
+  PubDepPackage (..),
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
@@ -32,9 +29,9 @@ import Strategy.Dart.PubSpecLock (
   PackageName (..),
   PubDepSource (..),
   PubLockContent (..),
-  PubLockPkgMetadata (..),
+  PubLockPackageMetadata (..),
   isSupported,
-  logIgnoredPkgs,
+  logIgnoredPackages,
   toDependency,
  )
 import Text.Megaparsec (
@@ -54,43 +51,6 @@ import Text.Megaparsec.Char (alphaNumChar, char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types (GraphBreadth (..))
 
--- | Represents `dart pub deps -s compact`.
-dartPubDepCmd :: Command
-dartPubDepCmd =
-  Command
-    { cmdName = "dart"
-    , cmdArgs = ["pub", "deps", "-s", "compact"]
-    , cmdAllowErr = Never
-    }
-
--- | Represents `flutter pub deps -s compact`.
-flutterPubDepCmd :: Command
-flutterPubDepCmd =
-  Command
-    { cmdName = "flutter"
-    , cmdArgs = ["pub", "deps", "-s", "compact"]
-    , cmdAllowErr = Never
-    }
-
--- | Represents `pub deps -s compact`.
--- This is to support dart versions below .
-pubDepJsonCmd :: Command
-pubDepJsonCmd =
-  Command
-    { cmdName = "pub"
-    , cmdArgs = ["deps", "-s", "compact"]
-    , cmdAllowErr = Never
-    }
-
-data PubPkg = PubPkg
-  { pubPkgName :: PackageName
-  , pubPkgVersion :: Maybe VerConstraint
-  , pubPkgDeps :: Maybe (Set PackageName)
-  , isDirect :: Bool
-  , isDev :: Bool
-  }
-  deriving (Generic, Show, Eq, Ord)
-
 type Parser = Parsec Void Text
 
 symbol :: Text -> Parser Text
@@ -102,75 +62,135 @@ scn = L.space space1 Megaparsec.empty Megaparsec.empty
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme scn
 
-parsePkgName :: Parser PackageName
-parsePkgName = PackageName . toText <$> many (alphaNumChar <|> char '_')
+-- | Represents `dart pub deps -s compact`.
+dartPubDepCmd :: Command
+dartPubDepCmd =
+  Command
+    { cmdName = "dart"
+    , cmdArgs = ["pub", "deps", "-s", "scompact"]
+    , cmdAllowErr = Never
+    }
 
-parsePkgVersion :: Parser VerConstraint
-parsePkgVersion = CEq . toText <$> many (alphaNumChar <|> char '_' <|> char '.' <|> char '-' <|> char '+')
+-- | Represents `flutter pub deps -s compact`.
+flutterPubDepCmd :: Command
+flutterPubDepCmd =
+  Command
+    { cmdName = "flutter"
+    , cmdArgs = ["pub", "deps", "-s", "scompact"]
+    , cmdAllowErr = Never
+    }
 
-parsePubPkg :: Bool -> Bool -> Parser PubPkg
-parsePubPkg _isDirect _isDev = do
-  _ <- lexeme $ symbol "-"
-  packageName <- lexeme parsePkgName
-  packageVersion <- lexeme parsePkgVersion
-  packageSubDeps <- optional (between (symbol "[") (symbol "]") (Set.fromList <$> (sepBy parsePkgName (symbol " "))))
+-- | Represents `pub deps -s compact`.
+-- Standalone pub command is required to dart language below v2.10.
+-- https://github.com/dart-lang/sdk/blob/master/CHANGELOG.md#pub-1
+pubDepJsonCmd :: Command
+pubDepJsonCmd =
+  Command
+    { cmdName = "pub"
+    , cmdArgs = ["deps", "-s", "scompact"]
+    , cmdAllowErr = Never
+    }
+
+data PubDepPackage = PubDepPackage
+  { pubDepPackageName :: PackageName
+  , pubDepPackageVersion :: Maybe VerConstraint
+  , pubDepPackageDeps :: Maybe (Set PackageName)
+  , pubDepPackageIsDirect :: Bool
+  , pubDepPackageIsDev :: Bool
+  }
+  deriving (Generic, Show, Eq, Ord)
+
+-- | Parse package name.
+-- Ref: https://dart.dev/tools/pub/pubspec#name
+parsePackageName :: Parser PackageName
+parsePackageName = PackageName . toText <$> many (alphaNumChar <|> char '_')
+
+-- | Parse package version.
+-- Ref: https://dart.dev/tools/pub/pubspec#version
+parsePackageVersion :: Parser VerConstraint
+parsePackageVersion = CEq . toText <$> many (alphaNumChar <|> char '_' <|> char '.' <|> char '-' <|> char '+')
+
+-- | Parses Pub Package Entry.
+--  - pkg_name 1.0.0 [pkg_dep_one]
+--  - pkg_name 1.0.0
+--  - pkg_name 1.0.0 [pkg_dep_one, pkg_dep_two]
+parsePubDepPackage :: Bool -> Bool -> Parser PubDepPackage
+parsePubDepPackage isDirectDep isDevDep = do
+
+  packageName <- lexeme $ symbol "-" *> lexeme parsePackageName
+  packageVersion <- lexeme parsePackageVersion
+
+  -- package may not have any dependencies
+  packageSubDeps <- optional (between (symbol "[") (symbol "]") (Set.fromList <$> sepBy parsePackageName (symbol " ")))
+
   _ <- optional $ chunk "\n"
-  pure $ PubPkg packageName (Just packageVersion) packageSubDeps _isDirect _isDev
+  pure $ PubDepPackage packageName (Just packageVersion) packageSubDeps isDirectDep isDevDep
 
-depsCmdOutputParser :: Parser [PubPkg]
+depsCmdOutputParser :: Parser [PubDepPackage]
 depsCmdOutputParser = parseDeps <* eof
   where
     parseDeps = do
-      _ <- skipManyTill anySingle (symbol "dependencies:")
-      directDeps <- many (parsePubPkg True False)
-      devDeps <- optional $ chunk "dev dependencies:" *> chunk "\n" *> many (parsePubPkg True True)
-      _ <- optional $ chunk "dependency overrides:" *> chunk "\n" *> many (parsePubPkg False False)
-      transitiveDeps <- optional $ chunk "transitive dependencies:" *> chunk "\n" *> many (parsePubPkg False False)
+      directDeps <- skipManyTill anySingle (symbol "dependencies:") *> many (parsePubDepPackage True False)
+      devDeps <- optional $ chunk "dev dependencies:" *> chunk "\n" *> many (parsePubDepPackage True True)
+
+      -- Since, this strategy requires lockfile - dependency override information is redundant,
+      -- as lock file already produces resolved dependency source.
+      _ <- optional $ chunk "dependency overrides:" *> chunk "\n" *> many (parsePubDepPackage False False)
+
+      transitiveDeps <- optional $ chunk "transitive dependencies:" *> chunk "\n" *> many (parsePubDepPackage False False)
       pure $ directDeps ++ fromMaybe [] devDeps ++ fromMaybe [] transitiveDeps
 
-isPkgSupported :: PubLockContent -> PackageName -> Bool
-isPkgSupported lockContent pkg = maybe False isSupported $ Map.lookup pkg (packages lockContent)
+isPackageSupported :: PubLockContent -> PackageName -> Bool
+isPackageSupported lockContent pkg = maybe False isSupported $ Map.lookup pkg (packages lockContent)
 
--- | Build edges from pub deps command output.
-buildGraph :: PubLockContent -> [PubPkg] -> Graphing Dependency
+buildGraph :: PubLockContent -> [PubDepPackage] -> Graphing Dependency
 buildGraph lockContent pkgs = Graphing.promoteToDirect isDirectDependency graphPackagesWithEdges
   where
-    metadataOf :: PackageName -> PubLockPkgMetadata
+
+    isDirectDependency :: Dependency -> Bool
+    isDirectDependency dep = dependencyName dep `elem` (dependencyName . pkgToDependency <$> reportableDirectPackages)
+    
+    graphPackagesWithEdges :: Graphing Dependency
+    graphPackagesWithEdges = foldr (uncurry edge) graphPackagesWithoutEdges edges
+
+    edges :: [(Dependency, Dependency)]
+    edges = concatMap edgesOf pkgs
+
+    edgesOf :: PubDepPackage -> [(Dependency, Dependency)]
+    edgesOf pkg =
+      (pkgToDependency $ pubDepPackageName pkg,) . pkgToDependency
+        <$> filter isReportable (toList (fromMaybe Set.empty $ pubDepPackageDeps pkg))
+
+    pkgToDependency :: PackageName -> Dependency
+    pkgToDependency pkg = toDependency pkg $ metadataOf pkg
+
+    metadataOf :: PackageName -> PubLockPackageMetadata
     metadataOf pkg =
       Map.findWithDefault
-        ( PubLockPkgMetadata
-            { pubLockPkgIsDirect = any (\x -> pubPkgName x == pkg) pkgs
-            , pubLockPkgSource = PubLockPkgHostedSource Nothing Nothing
-            , pubLockPkgVersion = pubPkgVersion =<< find (\x -> pubPkgName x == pkg) pkgs
-            , pubLockPkgEnvironment = []
+        ( PubLockPackageMetadata
+            { pubLockPackageIsDirect = any (\x -> pubDepPackageName x == pkg) pkgs
+            , pubLockPackageSource = PubLockPackageHostedSource Nothing Nothing
+            , pubLockPackageVersion = pubDepPackageVersion =<< find (\x -> pubDepPackageName x == pkg) pkgs
+            , pubLockPackageEnvironment = []
             }
         )
         pkg
         (packages lockContent)
 
-    isDirectDependency :: Dependency -> Bool
-    isDirectDependency dep = (dependencyName dep) `elem` ((dependencyName . pkgToDependency) <$> filter isReportable (map pubPkgName (filter isDirect pkgs)))
-
-    pkgToDependency :: PackageName -> Dependency
-    pkgToDependency pkg = toDependency pkg (metadataOf pkg)
-
-    isReportable :: PackageName -> Bool
-    isReportable = isPkgSupported lockContent
-
-    depsWithoutEdges :: [Dependency]
-    depsWithoutEdges = map pkgToDependency $ filter isReportable $ pubPkgName <$> filter (\x -> Set.empty == fromMaybe Set.empty (pubPkgDeps x)) pkgs
-
-    edgesOf :: PubPkg -> [(Dependency, Dependency)]
-    edgesOf pkg = (pkgToDependency $ pubPkgName pkg,) . pkgToDependency <$> filter isReportable (toList (fromMaybe Set.empty $ pubPkgDeps pkg))
-
-    edges :: [(Dependency, Dependency)]
-    edges = concatMap edgesOf pkgs
-
     graphPackagesWithoutEdges :: Graphing Dependency
     graphPackagesWithoutEdges = foldr deep Graphing.empty depsWithoutEdges
 
-    graphPackagesWithEdges :: Graphing Dependency
-    graphPackagesWithEdges = foldr (uncurry edge) graphPackagesWithoutEdges edges
+    depsWithoutEdges :: [Dependency]
+    depsWithoutEdges =
+      map pkgToDependency $
+        filter isReportable $
+          pubDepPackageName <$> filter (\x -> Set.empty == fromMaybe Set.empty (pubDepPackageDeps x)) pkgs
+
+    isReportable :: PackageName -> Bool
+    isReportable = isPackageSupported lockContent
+    
+    reportableDirectPackages :: [PackageName]
+    reportableDirectPackages = filter isReportable $ pubDepPackageName <$> filter pubDepPackageIsDirect pkgs
 
 -- | Analyze using pub deps command and lockfile.
 -- The pub package manager has a command-line interface that works with either the flutter tool or the dart tool.
@@ -182,10 +202,10 @@ analyzeDepsCmd ::
   m (Graphing Dependency, GraphBreadth)
 analyzeDepsCmd lockFile dir = do
   lockContents <- context "Reading pubspec.lock" $ readContentsYaml lockFile
-  depsPkgs <-
+  depsCmdPackages <-
     execParser depsCmdOutputParser dir flutterPubDepCmd
       <||> execParser depsCmdOutputParser dir dartPubDepCmd
       <||> execParser depsCmdOutputParser dir pubDepJsonCmd
-  _ <- logIgnoredPkgs lockContents
-
-  context "building graphing from pub deps --json and pubspec.lock" $ pure (buildGraph lockContents depsPkgs, Complete)
+  _ <- logIgnoredPackages lockContents
+  context "building graphing from pub deps command and pubspec.lock" $
+    pure (buildGraph lockContents depsCmdPackages, Complete)

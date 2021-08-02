@@ -29,9 +29,9 @@ import Strategy.Dart.PubSpecLock (PackageName (..))
 import Types (GraphBreadth (..))
 
 data PubSpecContent = PubSpecContent
-  { dependencies :: Maybe (Map PackageName PubSpecDepSource)
-  , devDependencies :: Maybe (Map PackageName PubSpecDepSource)
-  , dependenciesOverrides :: Maybe (Map PackageName PubSpecDepSource)
+  { pubSpecDependencies :: Maybe (Map PackageName PubSpecDepSource)
+  , pubSpecDevDependencies :: Maybe (Map PackageName PubSpecDepSource)
+  , pubSpecDependenciesOverrides :: Maybe (Map PackageName PubSpecDepSource)
   }
   deriving (Show, Eq, Ord)
 
@@ -56,21 +56,25 @@ instance FromJSON PubSpecContent where
     depOverrides <- o .:? "dependency_overrides"
     pure $ PubSpecContent dependencies devDependencies depOverrides
 
+-- Formatter produces error:
 {- ORMOLU_DISABLE -}
 instance FromJSON PubSpecDepSource where
   parseJSON (Yaml.String s) = pure $ PubSpecDepHostedSource (Just . CEq $ s) Nothing Nothing
   parseJSON (Yaml.Object o) =
     asum
-      [ PubSpecDepHostedSource
-          . Just . CEq <$> o .: "version"
+      [ PubSpecDepHostedSource . Just . CEq
+          <$> o .: "version"
           <*> o .: "hosted" |> "name"
           <*> o .: "hosted" |> "url"
-      , PubSpecDepGitSource
-          . Just . CEq <$> o .: "git" |> "ref"
+      , PubSpecDepGitSource . Just . CEq
+          <$> o .: "git" |> "ref"
           <*> o .: "git" |> "url"
-      , PubSpecDepGitSource Nothing <$> o .: "git"
-      , PubSpecDepPathSource <$> o .: "path"
-      , PubSpecDepSdkSource <$> o .: "sdk"
+      , PubSpecDepGitSource Nothing
+          <$> o .: "git"
+      , PubSpecDepPathSource
+          <$> o .: "path"
+      , PubSpecDepSdkSource
+          <$> o .: "sdk"
       ]
     where
       (|>) :: FromJSON a => Yaml.Parser Yaml.Object -> Text -> Yaml.Parser a
@@ -103,65 +107,67 @@ toDependency _ _ (PubSpecDepSdkSource _) = error "unexpected sdk dependency conv
 toDependency _ _ (PubSpecDepPathSource _) = error "unexpected path dependency conversion"
 
 isSupported :: PubSpecDepSource -> Bool
-isSupported (PubSpecDepHostedSource{}) = True
+isSupported PubSpecDepHostedSource{} = True
 isSupported (PubSpecDepGitSource _ _) = True
 isSupported _ = False
 
 buildGraph :: PubSpecContent -> Graphing.Graphing Dependency
-buildGraph content = foldr Graphing.direct Graphing.empty allDeps
+buildGraph specContent = foldr Graphing.direct Graphing.empty allDependencies
   where
-    deps :: Map PackageName PubSpecDepSource
-    deps = fromMaybe Map.empty $ dependencies content
 
-    devDeps :: Map PackageName PubSpecDepSource
-    devDeps = fromMaybe Map.empty $ devDependencies content
+    dependencies :: Map PackageName PubSpecDepSource
+    dependencies = fromMaybe Map.empty $ pubSpecDependencies specContent
+
+    devDependencies :: Map PackageName PubSpecDepSource
+    devDependencies = fromMaybe Map.empty $ pubSpecDevDependencies specContent
 
     -- In pub manifest, dependency can be overriden.
-    superseded :: Map PackageName PubSpecDepSource
-    superseded = fromMaybe Map.empty $ dependenciesOverrides content
+    -- Ref: https://dart.dev/tools/pub/dependencies#dependency-overrides
+    supersededDependencies :: Map PackageName PubSpecDepSource
+    supersededDependencies = fromMaybe Map.empty $ pubSpecDependenciesOverrides specContent
 
     notSuperseded :: PackageName -> a -> Bool
-    notSuperseded key _ = notMember key superseded
+    notSuperseded key _ = notMember key supersededDependencies
 
-    -- Dependency Sources that can be reported - git, pub.
-    supportedDeps :: Map PackageName PubSpecDepSource
-    supportedDeps = filterWithKey notSuperseded $ Map.filter isSupported deps
+    -- Dependency Sources that are supported - e.g. git, pub.
+    supportedDependencies :: Map PackageName PubSpecDepSource
+    supportedDependencies = filterWithKey notSuperseded $ Map.filter isSupported dependencies
 
-    supportedDevDeps :: Map PackageName PubSpecDepSource
-    supportedDevDeps = filterWithKey notSuperseded $ Map.filter isSupported devDeps
+    supportedDevDependencies :: Map PackageName PubSpecDepSource
+    supportedDevDependencies = filterWithKey notSuperseded $ Map.filter isSupported devDependencies
 
-    supportedSuperseded :: Map PackageName PubSpecDepSource
-    supportedSuperseded = Map.filter isSupported superseded
+    supportedSupersededDependencies :: Map PackageName PubSpecDepSource
+    supportedSupersededDependencies = Map.filter isSupported supersededDependencies
 
-    allDeps :: [Dependency]
-    allDeps =
-      map (uncurry $ toDependency [EnvProduction]) (toList supportedDeps)
-        ++ map (uncurry $ toDependency [EnvDevelopment]) (toList supportedDevDeps)
-        ++ map (\(name, source) -> toDependency (getDepEnv name) name source) (toList supportedSuperseded)
+    allDependencies :: [Dependency]
+    allDependencies =
+      map (uncurry $ toDependency [EnvProduction]) (toList supportedDependencies)
+        ++ map (uncurry $ toDependency [EnvDevelopment]) (toList supportedDevDependencies)
+        ++ map (\(name, source) -> toDependency (getDependencyEnv name) name source) (toList supportedSupersededDependencies)
 
-    getDepEnv :: PackageName -> [DepEnvironment]
-    getDepEnv name
-      | member name deps = [EnvProduction]
-      | member name devDeps = [EnvDevelopment]
+    getDependencyEnv :: PackageName -> [DepEnvironment]
+    getDependencyEnv name
+      | member name dependencies = [EnvProduction]
+      | member name devDependencies = [EnvDevelopment]
       | otherwise = []
 
-logIgnoredPkgs :: Has Logger sig m => PubSpecContent -> m ()
-logIgnoredPkgs specContent = for_ notSupportedPkgsMsgs (logDebug . pretty)
+logIgnoredPackages :: Has Logger sig m => PubSpecContent -> m ()
+logIgnoredPackages specContent = for_ notSupportedPackagesMsgs (logDebug . pretty)
   where
-    notSupportedPkgsMsgs :: [Text]
-    notSupportedPkgsMsgs = map (<> " : ignored in analyses. Dependency's source is not supported!") notSupportedPkgs
+    notSupportedPackagesMsgs :: [Text]
+    notSupportedPackagesMsgs = map (<> " : ignored in analyses. Dependency's source is not supported!") notSupportedPackages
 
-    notSupportedPkgs :: [Text]
-    notSupportedPkgs =
-      notSupportedOf (devDependencies specContent)
-        ++ notSupportedOf (dependencies specContent)
-        ++ notSupportedOf (devDependencies specContent)
+    notSupportedPackages :: [Text]
+    notSupportedPackages =
+      notSupportedOf (pubSpecDevDependencies specContent)
+        ++ notSupportedOf (pubSpecDependencies specContent)
+        ++ notSupportedOf (pubSpecDependenciesOverrides specContent)
 
     notSupportedOf :: Maybe (Map PackageName PubSpecDepSource) -> [Text]
-    notSupportedOf deps = unPackageName . fst <$> (toList . notSupported) (fromMaybe Map.empty deps)
+    notSupportedOf dependencies = unPackageName . fst <$> (toList . notSupported) (fromMaybe Map.empty dependencies)
 
     notSupported :: Map k PubSpecDepSource -> Map k PubSpecDepSource
-    notSupported = Map.filter (not . isSupported)
+    notSupported = Map.filter $ not . isSupported
 
 analyzePubSpecFile ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>
@@ -169,5 +175,5 @@ analyzePubSpecFile ::
   m (Graphing Dependency, GraphBreadth)
 analyzePubSpecFile specFile = do
   specContent <- context "Reading pubspec.yaml" $ readContentsYaml specFile
-  _ <- logIgnoredPkgs specContent
+  _ <- logIgnoredPackages specContent
   context "building graphing from pubspec.yaml" $ pure (buildGraph specContent, Partial)
