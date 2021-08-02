@@ -17,7 +17,7 @@ import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path
 import Strategy.Elixir.MixTree qualified as MixTree
-import Types (Dependency, DiscoveredProject (..))
+import Types (Dependency, DiscoveredProject (..), GraphBreadth (..))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Mix" $ do
@@ -45,5 +45,5 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => MixProject -> m (Graphing Dependency)
+getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => MixProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project = MixTree.analyze (mixDir project)

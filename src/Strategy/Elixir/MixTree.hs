@@ -66,11 +66,12 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
+import Types (GraphBreadth (..))
 
 missingDepVersionsMsg :: Text
 missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
 analyze dir = do
   -- Get all dependencies
   depsAllEnvTree <-
@@ -83,7 +84,7 @@ analyze dir = do
 
   -- Reminder to get and compile dependencies, if not already done so.
   _ <- if missingResolvedVersions depsAllResolved then (logWarn . pretty) missingDepVersionsMsg else pure ()
-  context "Building dependency graph" $ pure $ buildGraph depsAllEnvTree depsAllResolved
+  context "Building dependency graph" $ pure (buildGraph depsAllEnvTree depsAllResolved, Complete)
 
 -- | Name of the Package.
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord)
