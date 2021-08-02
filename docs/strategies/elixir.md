@@ -49,7 +49,6 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 * Dependencies from private hex repositories are not supported currently.
 * Dependencies must be sourced from git, or from hex.
 * Dependencies must have been resolved `mix deps.get` and compiled `mix compile` (or at least `mix deps.compile`) prior to performing the analyses.
-  * If dependencies are not resolved and locked (missing `mix.lock`), dependencies constraint provided in `mix.exs` will be used.
 
 ## Example 
 
