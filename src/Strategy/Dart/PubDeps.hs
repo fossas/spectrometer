@@ -122,7 +122,7 @@ parsePubDepPackage isDirectDep = do
   -- package may not have any dependencies
   packageSubDeps <- optional (between (symbol "[") (symbol "]") (Set.fromList <$> sepBy parsePackageName (symbol " ")))
 
-  _ <- optional $ newline
+  _ <- optional newline
   pure $ PubDepPackage packageName (Just packageVersion) packageSubDeps isDirectDep
 
 depsCmdOutputParser :: Parser [PubDepPackage]
