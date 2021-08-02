@@ -2,11 +2,11 @@
 
 [Gradle](https://gradle.org/) is a polyglot tool mostly used by JVM projects. It's popular with Java and Android projects.
 
-Gradle users generally specify their builds using a `build.gradle` file, written in Groovy. These builds are specified as programs that must be dynamically evaluated.
+Gradle users generally specify their builds using a `build.gradle` file (written in Groovy) or a `build.gradle.kts` file (written in Kotlin). These builds are specified as programs that must be dynamically evaluated.
 
-|           |                                          |
-| --------- | ---------------------------------------- |
-| :warning: | This strategy requires dynamic analysis. |
+|           |                                                                           |
+| --------- | ------------------------------------------------------------------------- |
+| :warning: | This strategy requires dynamic analysis, which requires a CI integration. |
 
 <!-- omit in toc -->
 ## Table of contents
@@ -34,7 +34,7 @@ Most sizable Gradle builds organize their dependencies with two concepts: subpro
 
 #### Subprojects
 
-_Subprojects_ are used when you have multiple "projects" in a single Gradle build (e.g. having multiple projects in a single repository managed by a single `build.gradle`). Gradle calls these "multi-projects". Gradle multi-projects have one root project, and one or more subprojects.
+_Subprojects_ are used when you have multiple "projects" in a single Gradle build (e.g. having multiple projects in a single repository managed by with single `settings.gradle` and one or more `build.gradle` files). Gradle calls these "multi-projects". Gradle multi-projects have one root project, and one or more subprojects.
 
 A single subproject roughly corresponds to a single set of outputs. Hence, we treat subprojects as separate analysis targets.
 
@@ -80,17 +80,17 @@ In this documentation below, for brevity, we'll always refer to the selected too
 
 ## Discovery
 
-This strategy discovers analysis targets by looking for files in the folder being analyzed whose names start with `build.gradle`. This matches both `build.gradle` as well as `build.gradle.kts` and build files in other Gradle-supported languages (`build.gradle.*`).
+This strategy discovers analysis targets by looking for files in the folder being analyzed whose names start with `build.gradle`. This matches both `build.gradle` as well as `build.gradle.kts` and Gradle build scripts in other Gradle-supported languages (`build.gradle.*`).
 
 It then executes `gradle projects` in the directory where the build file is found to get a list of subprojects for this Gradle build. These subprojects are used to create the analysis targets for this Gradle build.
 
-If there are no subprojects, a analysis target is created that analyzes the root project. Otherwise, a set of analysis targets is created: one for each Gradle subproject.
+If there are no subprojects, an analysis target is created that analyzes the root project. Otherwise, a set of analysis targets is created: one for each Gradle subproject.
 
 ## Tactics
 
 ### Tactic selection
 
-This strategy selects tactics by trying them in preference order and using the results of the first tactic that succeeds.
+This strategy selects tactics by trying them in preference order and uses the results of the first tactic to succeed.
 
 The order of tactics for this strategy is:
 
@@ -99,11 +99,11 @@ The order of tactics for this strategy is:
 
 ### Gradle build plugin
 
-|                    |                                                                                          |
-| ------------------ | ---------------------------------------------------------------------------------------- |
-| :heavy_check_mark: | This tactic reports dependencies for all subprojects.                                    |
-| :heavy_check_mark: | This tactic provides a graph for subproject dependencies.                                |
-| :warning:          | This tactic requires dynamic analysis.                                                   |
+|                    |                                                           |
+| ------------------ | --------------------------------------------------------- |
+| :heavy_check_mark: | This tactic reports dependencies for all subprojects.     |
+| :heavy_check_mark: | This tactic provides a graph for subproject dependencies. |
+| :warning:          | This tactic requires dynamic analysis.                    |
 
 This tactic runs a Gradle [init script](https://docs.gradle.org/current/userguide/init_scripts.html) to output the dependencies in each Gradle subproject. Mechanically, this tactic:
 
@@ -114,8 +114,6 @@ This tactic runs a Gradle [init script](https://docs.gradle.org/current/userguid
 This init script is implemented [here](https://github.com/fossas/spectrometer/blob/master/scripts/jsondeps.gradle) and bundled into the CLI during compilation.
 
 The script works by iterating through configurations, resolving their dependencies, and then serializing those dependencies into JSON.
-
-Currently, this script only reports dependencies in the `default` configuration of each subproject.
 
 ### Parsing `gradle :dependencies`
 
@@ -134,7 +132,7 @@ To determine whether the CLI is properly detecting your Gradle project, run `fos
 
 <!-- TODO: is there a guide for `fossa list-targets` I can reference here? -->
 
-For each of your Gradle subprojects, you should see a `gradle@PATH_TO_GRADLE_SUBPROJECT` target in the list of analysis targets.
+For each of your Gradle subprojects, you should see a `gradle@PATH_TO_ROOT_PROJECT:SUBPROJECT` target in the list of analysis targets.
 
 If you _don't_ see this, one of two things is likely happening:
 
@@ -158,13 +156,13 @@ The Gradle build plugin is a Gradle [init script](https://docs.gradle.org/curren
 If this tactic doesn't appear to be working (e.g. is giving you incorrect dependencies or is missing dependencies), you can run the init script directly using:
 
 ```
-gradle -I$PATH_TO_SCRIPT $SUBPROJECT1:jsonDeps $SUBPROJECT2:jsonDeps ...
+gradle -I$PATH_TO_SCRIPT jsonDeps
 ```
 
-For example, for a Gradle build with subprojects `foo` and `bar` and the script extracted to `/tmp/jsondeps.gradle`, you should run (from within the build file's working directory):
+For example, with the script extracted to `/tmp/jsondeps.gradle`, you should run (from within the Gradle build script's working directory):
 
 ```
-gradle -I/tmp/jsondeps.gradle foo:jsonDeps bar:jsonDeps
+gradle -I/tmp/jsondeps.gradle jsonDeps
 ```
 
 Providing this output with a bug report will help us debug issues with the analysis.

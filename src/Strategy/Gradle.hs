@@ -101,9 +101,9 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
-discover dir =
-  context "Gradle" $
-    (fmap . fmap) mkProject $ context "Finding projects" $ findProjects dir
+discover dir = context "Gradle" $ do
+  found <- context "Finding projects" $ findProjects dir
+  pure $ mkProject <$> found
 
 -- Run a Gradle command in a specific working directory, while correctly trying
 -- Gradle wrappers.

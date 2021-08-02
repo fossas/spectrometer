@@ -56,6 +56,14 @@ allprojects {
                 // iterator can be empty (for dependencies with no artifacts
                 // e.g. `jackson-bom`).
                 //
+                // See also:
+                // - https://docs.gradle.org/current/userguide/declaring_dependencies.html#sub:module_dependencies
+                // - https://stackoverflow.com/questions/67328406/what-is-junit-bom-and-junit-platform-for-and-should-i-include-them-in-gradle-de
+                if (resolvedDep.moduleArtifacts.size() == 0) {
+                    println "DEBUG: Dependency has no module artifacts"
+                    return null
+                }
+
                 // artifact: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedArtifact.html
                 def artifact = resolvedDep.moduleArtifacts.iterator().next()
 
@@ -83,24 +91,9 @@ allprojects {
                     if (!resolvedDep.children.isEmpty()) {
                         // childResolvedDep: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedDependency.html
                         resolvedDep.children.each { childResolvedDep ->
-                            // If we don't do this check, then calling
-                            // `resolvedDep.moduleArtifacts.iterator().next()`
-                            // above explodes because the `moduleArtifacts`
-                            // iterator is empty.
-                            //
-                            // This seems to happen for at least `jackson-bom`
-                            // and and `junit-bom`. I'm not sure how this is
-                            // possible.
-                            //
-                            // See also:
-                            // - https://docs.gradle.org/current/userguide/declaring_dependencies.html#sub:module_dependencies
-                            // - https://stackoverflow.com/questions/67328406/what-is-junit-bom-and-junit-platform-for-and-should-i-include-them-in-gradle-de
-                            if (childResolvedDep.moduleArtifacts.size() > 0) {
-                                def result = depToJSON childResolvedDep
+                            def result = depToJSON childResolvedDep
+                            if (result != null) {
                                 childResults << result
-                            } else {
-                                println "DEBUG: Found dep with no module artifacts"
-                                println childResolvedDep
                             }
                         }
                     }
@@ -121,8 +114,6 @@ allprojects {
             // config: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/Configuration.html
             def configToKeyValue = { config ->
                 def jsonDeps = []
-                println "DEBUG: Trying to resolve configuration"
-                println config
                 // config.resolvedConfiguration: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedConfiguration.html
                 config.resolvedConfiguration.firstLevelModuleDependencies.each { dep ->
                     println "DEBUG: Found direct dependency in configuration"
@@ -143,36 +134,24 @@ allprojects {
                     println "DEBUG: Trying to resolve configuration"
                     println config
                     try {
-                        def result = configToKeyValue config
-                        println "DEBUG: Configuration resolved"
-                        println result
-                        jsonConfigs << result
-                    } catch (IllegalStateException e) {
-                        // This particular exception is fairly common, so we
-                        // handle it specially. There's nothing to do in this
-                        // case. Some configurations aren't meant to be
-                        // resolved, because they're just meant to be containers
-                        // of dependency constraints.
+                        // Some configurations aren't meant to be resolved,
+                        // because they're just meant to be containers of
+                        // dependency constraints.
                         //
                         // See also:
                         // - https://discuss.gradle.org/t/what-is-a-configuration-which-cant-be-directly-resolved/30721
                         // - https://docs.gradle.org/current/userguide/declaring_dependencies.html#sec:resolvable-consumable-configs
-                        if (e.getMessage().contains("canBeResolved=false")) {
-                            println "DEBUG: Could not resolve configuration"
+                        if (config.canBeResolved) {
+                            println "DEBUG: Configuration is resolvable"
+                            def result = configToKeyValue config
+                            println "DEBUG: Configuration resolved"
+                            println result
+                            jsonConfigs << result
                         } else {
-                            throw e
+                            println "DEBUG: Configuration is not resolvable"
                         }
                     } catch (Exception ignored) {
-                        // If more common exceptions occur, add a catch case to
-                        // handle them. Groovy supports multiple catch clauses
-                        // (the documentation calls this "multi-catch"), and
-                        // will try to pattern match exceptions to handlers in
-                        // order.
-                        //
-                        // See also:
-                        // - https://www.tutorialspoint.com/groovy/groovy_exception_handling.htm
-                        // - https://groovy-lang.org/semantics.html#_exception_handling
-                        println "DEBUG: Some other exception occurred"
+                        println "DEBUG: An exception occurred"
                         println ignored
                         ignored.printStackTrace()
                     }
