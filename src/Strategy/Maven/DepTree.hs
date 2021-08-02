@@ -31,8 +31,8 @@ import Discovery.Walk (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, readContentsParser)
-import Graphing (Graphing, gmap, stripRoot)
-import Path
+import Graphing (Graphing, gmap)
+import Path (Abs, Dir, File, Path)
 import System.Random (randomIO)
 import Text.Megaparsec (
   Parsec,
@@ -72,7 +72,7 @@ findDepTreeOutputs dir ident = execState @[Path Abs File] [] $
         pure WalkContinue
 
 buildGraph :: [DotGraph] -> Graphing Dependency
-buildGraph = gmap toDependency . foldr ((<>) . stripRoot . toGraph) mempty
+buildGraph = gmap toDependency . foldr ((<>) . toGraph) mempty
 
 toDependency :: PackageId -> Dependency
 toDependency PackageId{..} =
@@ -129,26 +129,14 @@ parseDotGraph :: Parser DotGraph
 parseDotGraph = do
   root <- symbol "digraph" *> parseNode
   edgeLists <- enclosed "{" "}" (many $ try parseGraphEntry)
-  pure . DotGraph root $ concatMap sequenceEdges edgeLists
+  pure $ DotGraph root edgeLists
 
--- | Produce tuples of every adjacent pair in the list.
--- 1-item lists contain no edges, and are discarded.
---
--- >>> sequenceEdges [1, 2, 3, 4]
--- [(1, 2), (2, 3), (3, 4)]
--- >>> sequenceEdges [1]
--- []
-sequenceEdges :: [a] -> [(a, a)]
-sequenceEdges [] = []
-sequenceEdges [_] = []
-sequenceEdges (x0 : x1 : xs) = (x0, x1) : (sequenceEdges (x1 : xs))
-
-parseGraphEntry :: Parser [PackageId]
+parseGraphEntry :: Parser (PackageId, PackageId)
 parseGraphEntry = do
-  first <- parseNode
-  rest <- many ((symbol "->") *> parseNode)
+  from <- parseNode
+  to <- (symbol "->") *> parseNode
   _ <- symbol ";"
-  pure (first : rest)
+  pure (from, to)
 
 parseNode :: Parser PackageId
 parseNode = lexeme ((quotedName <|> unquotedName) >>= parseName)
