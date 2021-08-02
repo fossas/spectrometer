@@ -19,14 +19,15 @@ discover dir = context "Pub" $ do
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PubProject]
 findProjects = walk' $ \dir _ files -> do
-  -- note: pub does not support pubspec.yml naming.
+  -- Note: pub does not support pubspec.yml naming - it must be pubspec.yaml.
   let pubSpecFile = findFileNamed "pubspec.yaml" files
   let pubSpecLockFile = findFileNamed "pubspec.lock" files
 
   case (pubSpecFile, pubSpecLockFile) of
     (Just specFile, Just lockFile) -> pure ([PubProject specFile (Just lockFile) dir], WalkContinue)
     (Just specFile, Nothing) -> pure ([PubProject specFile Nothing dir], WalkContinue)
-    -- lockfile without manifest (pubspec.yaml) is not legible to pub
+    -- lockfile without manifest (pubspec.yaml) is not a dart project
+    -- ref: https://dart.dev/guides/packages
     (Nothing, Just _) -> pure ([], WalkContinue)
     (Nothing, Nothing) -> pure ([], WalkContinue)
 

@@ -56,7 +56,7 @@ instance FromJSON PubSpecContent where
     depOverrides <- o .:? "dependency_overrides"
     pure $ PubSpecContent dependencies devDependencies depOverrides
 
--- Formatter produces error:
+-- Formatter crashes here. 
 {- ORMOLU_DISABLE -}
 instance FromJSON PubSpecDepSource where
   parseJSON (Yaml.String s) = pure $ PubSpecDepHostedSource (Just . CEq $ s) Nothing Nothing

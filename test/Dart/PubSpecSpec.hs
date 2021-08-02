@@ -101,7 +101,7 @@ spec = do
       expectDeps expectedGraphDeps graph
       expectDirect expectedGraphDeps graph
 
-    it "should not graph, if dependency is overriden, and new source is not supported" $ do
+    it "should not graph, if dependency is overriden, and the new source is not supported" $ do
       let pubSpecContent =
             PubSpecContent
               { pubSpecDependencies = Just $ Map.fromList [(PackageName "pkg_b", PubSpecDepGitSource (Just $ CEq "release-0.9") "https://github.com/user/pkg_b")]
@@ -114,7 +114,7 @@ spec = do
       expectDeps [] graph
       expectDirect [] graph
 
-    it "should graph, if dependency is overriden, and new source is supported" $ do
+    it "should graph, if dependency is overriden, and the new source is supported" $ do
       let pubSpecContent =
             PubSpecContent
               { pubSpecDependencies =

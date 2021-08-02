@@ -19,15 +19,15 @@ import Text.Megaparsec
 
 expectedDepsCmdOutput :: [PubDepPackage]
 expectedDepsCmdOutput =
-  [ PubDepPackage (PackageName "pkg_a") (Just $ CEq "5.0.0") (Just $ Set.fromList [PackageName "pkg_aa"]) True False
-  , PubDepPackage (PackageName "pkg_b") (Just $ CEq "4.0.0") Nothing True False
-  , PubDepPackage (PackageName "pkg_c") (Just $ CEq "3.0.0") (Just $ Set.fromList [PackageName "pkg_ca", PackageName "pkg_cb"]) True False
-  , PubDepPackage (PackageName "pkg_d") (Just $ CEq "3.0.1") Nothing True False
-  , PubDepPackage (PackageName "pkg_e") (Just $ CEq "2.0.0") (Just $ Set.fromList [PackageName "pkg_ea"]) True True
-  , PubDepPackage (PackageName "pkg_aa") (Just $ CEq "1.0.0") (Just $ Set.fromList [PackageName "pkg_ca"]) False False
-  , PubDepPackage (PackageName "pkg_ca") (Just $ CEq "1.2.0") Nothing False False
-  , PubDepPackage (PackageName "pkg_cb") (Just $ CEq "1.3.0") Nothing False False
-  , PubDepPackage (PackageName "pkg_ea") (Just $ CEq "1.4.0") Nothing False False
+  [ PubDepPackage (PackageName "pkg_a") (Just $ CEq "5.0.0") (Just $ Set.fromList [PackageName "pkg_aa"]) True
+  , PubDepPackage (PackageName "pkg_b") (Just $ CEq "4.0.0") Nothing True
+  , PubDepPackage (PackageName "pkg_c") (Just $ CEq "3.0.0") (Just $ Set.fromList [PackageName "pkg_ca", PackageName "pkg_cb"]) True
+  , PubDepPackage (PackageName "pkg_d") (Just $ CEq "3.0.1") Nothing True
+  , PubDepPackage (PackageName "pkg_e") (Just $ CEq "2.0.0") (Just $ Set.fromList [PackageName "pkg_ea"]) True
+  , PubDepPackage (PackageName "pkg_aa") (Just $ CEq "1.0.0") (Just $ Set.fromList [PackageName "pkg_ca"]) False
+  , PubDepPackage (PackageName "pkg_ca") (Just $ CEq "1.2.0") Nothing False
+  , PubDepPackage (PackageName "pkg_cb") (Just $ CEq "1.3.0") Nothing False
+  , PubDepPackage (PackageName "pkg_ea") (Just $ CEq "1.4.0") Nothing False
   ]
 
 spec :: Spec
@@ -43,8 +43,8 @@ spec = do
   describe "buildGraph" $ do
     it "should build graph with edges" $ do
       let pubDepsContent =
-            [ PubDepPackage (PackageName "pkg_a") (Just $ CEq "1.8.0") (Just $ Set.fromList [PackageName "pkg_deep"]) True True
-            , PubDepPackage (PackageName "pkg_deep") (Just $ CEq "1.10.0") Nothing False False
+            [ PubDepPackage (PackageName "pkg_a") (Just $ CEq "1.8.0") (Just $ Set.fromList [PackageName "pkg_deep"]) True
+            , PubDepPackage (PackageName "pkg_deep") (Just $ CEq "1.10.0") Nothing False
             ]
 
       let lockContent =
@@ -128,7 +128,7 @@ spec = do
         graph
 
     it "should ignore path dependency" $ do
-      let pubDepsContent = [PubDepPackage (PackageName "pkg_path") (Just $ CEq "1.10.0") Nothing True False]
+      let pubDepsContent = [PubDepPackage (PackageName "pkg_path") (Just $ CEq "1.10.0") Nothing True]
       let lockContent =
             PubLockContent
               { packages =
@@ -151,7 +151,7 @@ spec = do
       expectEdges [] graph
 
     it "should ignore sdk dependency" $ do
-      let pubDepsContent = [PubDepPackage (PackageName "pkg_sdk") (Just $ CEq "1.10.0") Nothing True False]
+      let pubDepsContent = [PubDepPackage (PackageName "pkg_sdk") (Just $ CEq "1.10.0") Nothing True]
 
       let lockContent =
             PubLockContent
@@ -172,4 +172,48 @@ spec = do
       let graph = buildGraph lockContent pubDepsContent
       expectDirect [] graph
       expectDeps [] graph
+      expectEdges [] graph
+
+    it "should build graph when dependencies have no edges" $ do
+      let pubDepsContent = [PubDepPackage (PackageName "pkg_a") (Just $ CEq "1.10.0") Nothing True]
+
+      let lockContent =
+            PubLockContent
+              { packages =
+                  Map.fromList
+                    [
+                      ( PackageName "pkg_a"
+                      , PubLockPackageMetadata
+                          { pubLockPackageIsDirect = True
+                          , pubLockPackageSource = PubLockPackageHostedSource Nothing Nothing
+                          , pubLockPackageVersion = Just $ CEq "1.8.0"
+                          , pubLockPackageEnvironment = []
+                          }
+                      )
+                    ]
+              }
+
+      let graph = buildGraph lockContent pubDepsContent
+      expectDirect
+        [ Dependency
+            { dependencyType = PubType
+            , dependencyName = "pkg_a"
+            , dependencyVersion = Just $ CEq "1.8.0"
+            , dependencyLocations = []
+            , dependencyEnvironments = []
+            , dependencyTags = Map.empty
+            }
+        ]
+        graph
+      expectDeps
+        [ Dependency
+            { dependencyType = PubType
+            , dependencyName = "pkg_a"
+            , dependencyVersion = Just $ CEq "1.8.0"
+            , dependencyLocations = []
+            , dependencyEnvironments = []
+            , dependencyTags = Map.empty
+            }
+        ]
+        graph
       expectEdges [] graph

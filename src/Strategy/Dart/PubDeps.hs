@@ -47,7 +47,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec qualified as Megaparsec
-import Text.Megaparsec.Char (alphaNumChar, char, space1)
+import Text.Megaparsec.Char (alphaNumChar, char, newline, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types (GraphBreadth (..))
 
@@ -67,16 +67,17 @@ dartPubDepCmd :: Command
 dartPubDepCmd =
   Command
     { cmdName = "dart"
-    , cmdArgs = ["pub", "deps", "-s", "scompact"]
+    , cmdArgs = ["pub", "deps", "-s", "compact"]
     , cmdAllowErr = Never
     }
 
 -- | Represents `flutter pub deps -s compact`.
+-- This is when, dart project has flutter app or other Flutter-specific code.
 flutterPubDepCmd :: Command
 flutterPubDepCmd =
   Command
     { cmdName = "flutter"
-    , cmdArgs = ["pub", "deps", "-s", "scompact"]
+    , cmdArgs = ["pub", "deps", "-s", "compact"]
     , cmdAllowErr = Never
     }
 
@@ -87,7 +88,7 @@ pubDepJsonCmd :: Command
 pubDepJsonCmd =
   Command
     { cmdName = "pub"
-    , cmdArgs = ["deps", "-s", "scompact"]
+    , cmdArgs = ["deps", "-s", "compact"]
     , cmdAllowErr = Never
     }
 
@@ -96,7 +97,6 @@ data PubDepPackage = PubDepPackage
   , pubDepPackageVersion :: Maybe VerConstraint
   , pubDepPackageDeps :: Maybe (Set PackageName)
   , pubDepPackageIsDirect :: Bool
-  , pubDepPackageIsDev :: Bool
   }
   deriving (Generic, Show, Eq, Ord)
 
@@ -108,36 +108,39 @@ parsePackageName = PackageName . toText <$> many (alphaNumChar <|> char '_')
 -- | Parse package version.
 -- Ref: https://dart.dev/tools/pub/pubspec#version
 parsePackageVersion :: Parser VerConstraint
-parsePackageVersion = CEq . toText <$> many (alphaNumChar <|> char '_' <|> char '.' <|> char '-' <|> char '+')
+parsePackageVersion = CEq . toText <$> many (alphaNumChar <|> char '.' <|> char '-' <|> char '+')
 
 -- | Parses Pub Package Entry.
 --  - pkg_name 1.0.0 [pkg_dep_one]
 --  - pkg_name 1.0.0
 --  - pkg_name 1.0.0 [pkg_dep_one, pkg_dep_two]
-parsePubDepPackage :: Bool -> Bool -> Parser PubDepPackage
-parsePubDepPackage isDirectDep isDevDep = do
+parsePubDepPackage :: Bool -> Parser PubDepPackage
+parsePubDepPackage isDirectDep = do
   packageName <- lexeme $ symbol "-" *> lexeme parsePackageName
   packageVersion <- lexeme parsePackageVersion
 
   -- package may not have any dependencies
   packageSubDeps <- optional (between (symbol "[") (symbol "]") (Set.fromList <$> sepBy parsePackageName (symbol " ")))
 
-  _ <- optional $ chunk "\n"
-  pure $ PubDepPackage packageName (Just packageVersion) packageSubDeps isDirectDep isDevDep
+  _ <- optional $ newline
+  pure $ PubDepPackage packageName (Just packageVersion) packageSubDeps isDirectDep
 
 depsCmdOutputParser :: Parser [PubDepPackage]
 depsCmdOutputParser = parseDeps <* eof
   where
     parseDeps = do
-      directDeps <- skipManyTill anySingle (symbol "dependencies:") *> many (parsePubDepPackage True False)
-      devDeps <- optional $ chunk "dev dependencies:" *> chunk "\n" *> many (parsePubDepPackage True True)
+      directDeps <- skipManyTill anySingle (symbol "dependencies:") *> many (parsePubDepPackage True)
+      devDeps <- optional $ chunk "dev dependencies:" *> newline *> many (parsePubDepPackage True)
 
       -- Since, this strategy requires lockfile - dependency override information is redundant,
       -- as lock file already produces resolved dependency source.
-      _ <- optional $ chunk "dependency overrides:" *> chunk "\n" *> many (parsePubDepPackage False False)
+      _ <- optional $ chunk "dependency overrides:" *> newline *> many (parsePubDepPackage False)
+      transitiveDeps <- optional $ chunk "transitive dependencies:" *> newline *> many (parsePubDepPackage False)
 
-      transitiveDeps <- optional $ chunk "transitive dependencies:" *> chunk "\n" *> many (parsePubDepPackage False False)
-      pure $ directDeps ++ fromMaybe [] devDeps ++ fromMaybe [] transitiveDeps
+      pure $
+        directDeps
+          ++ fromMaybe [] devDeps
+          ++ fromMaybe [] transitiveDeps
 
 isPackageSupported :: PubLockContent -> PackageName -> Bool
 isPackageSupported lockContent pkg = maybe False isSupported $ Map.lookup pkg (packages lockContent)
@@ -204,6 +207,8 @@ analyzeDepsCmd lockFile dir = do
     execParser depsCmdOutputParser dir flutterPubDepCmd
       <||> execParser depsCmdOutputParser dir dartPubDepCmd
       <||> execParser depsCmdOutputParser dir pubDepJsonCmd
+
   _ <- logIgnoredPackages lockContents
+
   context "building graphing from pub deps command and pubspec.lock" $
     pure (buildGraph lockContents depsCmdPackages, Complete)
