@@ -5,28 +5,26 @@ Dart ecosystem uses pub package manager to manage shared [packages and libraries
 ## Project Discovery
 
 Find files named `pubspec.yaml`. 
-
 ## Analysis
 
-We will attempt to perform all of the listed below, we 
+We attempt to perform all of strategies below, we select result of succeeded strategies which has the highest preference. 
 
-| Preference | Strategy                                                                                        | Direct Deps        | Deep Deps          | Edges              |
-| ---------- | ----------------------------------------------------------------------------------------------- | ------------------ | ------------------ | ------------------ |
-| Highest    | `pubspec.yaml` and `pubspec.lock` are discovered, and `flutter pub deps --json` can be executed | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-|            | `pubspec.yaml` and `pubspec.lock` are discovered, and `dart pub deps --json` can be executed    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-|            | `pubspec.yaml` and `pubspec.lock` are discovered                                                | :heavy_check_mark: | :x:                | :x:                |
-| Lowest     | Only `pubspec.yaml` is discovered                                                               | :heavy_check_mark: | :x:                | :x:                |
+| Preference | Strategy                                                                                               | Direct Deps        | Deep Deps          | Edges              |
+| ---------- | ------------------------------------------------------------------------------------------------------ | ------------------ | ------------------ | ------------------ |
+| Highest    | 1. `pubspec.yaml` and `pubspec.lock` are discovered, and `flutter pub deps -s compact` can be executed | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+|            | 2. `pubspec.yaml` and `pubspec.lock` are discovered, and `dart pub deps -s compact` can be executed    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+|            | 3. `pubspec.yaml` and `pubspec.lock` are discovered, and `pub deps -s compact` can be executed         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+|            | 4. `pubspec.yaml` and `pubspec.lock` are discovered                                                    | :heavy_check_mark: | :x:                | :x:                |
+| Lowest     | 5. Only `pubspec.yaml` is discovered                                                                   | :heavy_check_mark: | :x:                | :x:                |
 
 Where, 
 
 * :heavy_check_mark: - Supported in all projects
 * :x: - Not Supported
-
 ### Limitations
 
 * [Path dependencies](https://dart.dev/tools/pub/dependencies#path-packages) are not reported, and will be ignored in analyses.
 * [Sdk dependencies](https://dart.dev/tools/pub/dependencies#sdk) are not supported, and will be ignored in analyses.
-
 # Example 
 
 Create new dart project by creating `pubspec.yaml` file.
@@ -201,7 +199,7 @@ sdks:
   flutter: ">=1.16.0"
 ```
 
-After which, dependencies can be inspected using `dart pub deps -s compact`, or `dart pub deps --json` command. 
+After which, dependencies can be inspected using `dart pub deps -s compact`.
 
 ```text
 Dart SDK 2.14.0-301.0.dev
@@ -232,6 +230,16 @@ transitive dependencies:
 - typed_data 1.3.0 [collection]
 - vector_math 2.1.0
 ```
+
+When pub deps command is successfully executed, and lockfile id discovered (strategy 1, 2, or 3) analyses would yield following dependency graph:
+
+![With lock file and deps command](dart-resolved-graph-with-lock-cmd.svg)
+
+Note: Dependencies in yellow boxes are direct dependencies, rest are deep dependencies.
+
+If pub deps command is not successfully executed:
+
+![Without deps command](dart-resolved-graph-without-cmd.svg)
 
 ### References
 
