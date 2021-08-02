@@ -9,7 +9,6 @@ module Strategy.Maven.DepTree (
 
 import Control.Algebra (Has, run)
 import Control.Applicative ((<|>))
-import Control.Carrier.State.Strict (execState, modify)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Char (isSpace)
@@ -28,7 +27,7 @@ import DepTypes (
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walk,
+  walk',
  )
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow)
 import Effect.Grapher (direct, edge, evalGrapher)
@@ -48,10 +47,6 @@ import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (GraphBreadth (Complete))
 
-newtype DepTreeLabel
-  = BuildTag DepEnvironment
-  deriving (Eq, Ord, Show)
-
 outputFileName :: IsString a => a
 outputFileName = "fossa-deptree.dot"
 
@@ -69,16 +64,13 @@ analyze dir = do
   pure (buildGraph graphs, Complete)
 
 findDepTreeOutputs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Int -> m [Path Abs File]
-findDepTreeOutputs dir ident = execState @[Path Abs File] [] $
-  flip walk dir $ \_ _ files -> do
-    case findFileNamed (show ident <> outputFileName) files of
-      Nothing -> pure WalkContinue
-      Just file -> do
-        modify (file :)
-        pure WalkContinue
+findDepTreeOutputs dir ident = flip walk' dir $ \_ _ files -> do
+  case findFileNamed (show ident <> outputFileName) files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([file], WalkContinue)
 
 buildGraph :: [DotGraph] -> Graphing Dependency
-buildGraph = gmap toDependency . foldr ((<>) . toGraph) mempty
+buildGraph = gmap toDependency . foldMap toGraph
 
 toDependency :: PackageId -> Dependency
 toDependency PackageId{artifactName, artifactVersion, buildTag} =
@@ -159,7 +151,7 @@ parseName input = combine parts
     combine :: [Text] -> m PackageId
     combine [a, b, c, d, e] = pure . PackageId a b c d $ Just e
     combine [a, b, c, d] = pure $ PackageId a b c d Nothing
-    combine items = fail $ toString ("invalid identifier" <> Text.intercalate ":" items)
+    combine items = fail $ toString $ "invalid identifier: " <> Text.intercalate ":" items
 
 enclosed :: Text -> Text -> Parser a -> Parser a
 enclosed open close = between (symbol open) (symbol close)
