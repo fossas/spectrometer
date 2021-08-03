@@ -9,7 +9,6 @@ import Control.Effect.Lift
 import Control.Monad.IO.Class
 import Effect.Exec
 import Effect.ReadFS
-import Graphing (Graphing)
 import Path
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
@@ -43,7 +42,7 @@ mkProject basedir closure =
     { projectType = "maven"
     , projectPath = parent $ PomClosure.closurePath closure
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps closure
+    , projectDependencyResults = const $ getDeps closure
     , projectLicenses = pure $ Pom.getLicenses basedir closure
     }
 
@@ -54,8 +53,15 @@ getDeps ::
   , Has Exec sig m
   ) =>
   PomClosure.MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
-getDeps closure =
-  context "Maven" $
-    context "Plugin analysis" (Plugin.analyze' (parent (PomClosure.closurePath closure)))
-      <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))
+  m (DependencyResults)
+getDeps closure = do
+  (graph, graphBreadth) <-
+    context "Maven" $
+      context "Plugin analysis" (Plugin.analyze' (parent (PomClosure.closurePath closure)))
+        <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [PomClosure.closurePath closure]
+      }

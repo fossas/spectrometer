@@ -50,6 +50,7 @@ import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+    ( color, Color(Green, Cyan, Yellow) )
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
@@ -211,8 +212,8 @@ runDependencyAnalysis (BaseDir basedir) filters project =
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
-      Diag.withResult SevWarn graphResult (output . mkResult project)
+      graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyResults project targets
+      Diag.withResult SevWarn graphResult (output . mkResult basedir project)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir filters DiscoveredProject{..} =

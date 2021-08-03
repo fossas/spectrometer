@@ -109,27 +109,25 @@ cabalGenPlanCmd =
 cabalPlanFilePath :: Path Rel File
 cabalPlanFilePath = $(mkRelFile "dist-newstyle/cache/plan.json")
 
-isCabalFile :: Path Abs File -> Bool
-isCabalFile file = isDotCabal || isCabalDotProject
-  where
-    name = fileName file
-    isDotCabal = ".cabal" `isSuffixOf` name
-    isCabalDotProject = "cabal.project" == name
-
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Cabal" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
 
+isDotCabal :: Path Abs File -> Bool
+isDotCabal name = ".cabal" `isSuffixOf` fileName name
+
+isCabalDotFile :: Path Abs File -> Bool
+isCabalDotFile name = "cabal.project" == fileName name
+
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CabalProject]
 findProjects = walk' $ \dir _ files -> do
-  let project =
-        CabalProject
-          { cabalDir = dir
-          }
+  let dotCabalFiles = filter isDotCabal files
+  let cabalDotFiles = filter isCabalDotFile files
+  let allDotFiles = dotCabalFiles ++ cabalDotFiles
 
-  if any isCabalFile files
-    then pure ([project], WalkSkipAll)
+  if not (null allDotFiles)
+    then pure ([CabalProject dir allDotFiles], WalkSkipAll)
     else pure ([], WalkContinue)
 
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CabalProject -> DiscoveredProject n
@@ -137,19 +135,20 @@ mkProject project =
   DiscoveredProject
     { projectType = "cabal"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = cabalDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (DependencyResults)
 getDeps project =
   context "Cabal" $
     context "Dynamic analysis" $
-      analyze (cabalDir project)
+      analyze project
 
-newtype CabalProject = CabalProject
+data CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
+  , cabalFiles :: [Path Abs File]
   }
   deriving (Eq, Ord, Show)
 
@@ -185,9 +184,15 @@ toDependency plan =
     , dependencyTags = M.empty
     }
 
-analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
-analyze dir = do
+analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CabalProject -> m (DependencyResults)
+analyze project = do
+  let dir = cabalDir project
   _ <- execThrow dir cabalGenPlanCmd
   plans <- readContentsJson @BuildPlan (dir </> cabalPlanFilePath)
   graph <- context "Building dependency graph" $ buildGraph plans
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = cabalFiles project
+      }

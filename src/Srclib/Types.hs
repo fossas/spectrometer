@@ -25,6 +25,7 @@ data SourceUnit = SourceUnit
     sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
+  , sourceUnitOriginPaths :: [FilePath]
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)
@@ -96,6 +97,7 @@ instance ToJSON SourceUnit where
       , "Manifest" .= sourceUnitManifest
       , "Build" .= sourceUnitBuild
       , "GraphBreadth" .= sourceUnitGraphBreadth
+      , "OriginPaths" .= sourceUnitOriginPaths
       , "AdditionalDependencyData" .= additionalData
       ]
 

@@ -9,10 +9,11 @@ import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
 import Path
+import Path.Extra (toRelativePath)
 import Types
 
-mkResult :: DiscoveredProject n -> (Graphing Dependency, GraphBreadth) -> ProjectResult
-mkResult project graphResults =
+mkResult :: Path Abs Dir -> DiscoveredProject n -> (DependencyResults) -> ProjectResult
+mkResult basedir project dependencyResults =
   ProjectResult
     { projectResultType = projectType project
     , projectResultPath = projectPath project
@@ -25,14 +26,17 @@ mkResult project graphResults =
         if S.null (Graphing.graphingDirect graph)
           then graph
           else Graphing.pruneUnreachable graph
-    , projectResultGraphBreadth = graphBreadth
+    , projectResultGraphBreadth = dependencyGraphBreadth dependencyResults
+    , projectResultManifestFiles = relativeManifestFiles
     }
   where
-    (graph, graphBreadth) = graphResults
+    graph = dependencyGraph dependencyResults
+    relativeManifestFiles = map (toRelativePath basedir) $ dependencyManifestFiles dependencyResults
 
 data ProjectResult = ProjectResult
   { projectResultType :: Text
   , projectResultPath :: Path Abs Dir
   , projectResultGraph :: Graphing Dependency
   , projectResultGraphBreadth :: GraphBreadth
+  , projectResultManifestFiles :: [FilePath]
   }
