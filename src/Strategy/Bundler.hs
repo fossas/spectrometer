@@ -69,10 +69,11 @@ analyzeBundleShow project = do
 
 analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (DependencyResults)
 analyzeGemfileLock project = do
-  graph <- context "Gemfile.lock analysis" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project)) >>= GemfileLock.analyze'
+  lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
+  graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = maybe [] pure (bundlerGemfileLock project)
+      , dependencyManifestFiles = [lockFile]
       }
