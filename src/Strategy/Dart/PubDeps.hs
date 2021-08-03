@@ -82,7 +82,7 @@ flutterPubDepCmd =
     }
 
 -- | Represents `pub deps -s compact`.
--- Standalone pub command is required to dart language below v2.10.
+-- Standalone pub command is required for dart lang versions below 2.10
 -- https://github.com/dart-lang/sdk/blob/master/CHANGELOG.md#pub-1
 pubDepJsonCmd :: Command
 pubDepJsonCmd =
@@ -195,7 +195,8 @@ buildGraph lockContent pkgs = Graphing.promoteToDirect isDirectDependency graphP
 
 -- | Analyze using pub deps command and lockfile.
 -- The pub package manager has a command-line interface that works with either the flutter tool or the dart tool.
--- https://dart.dev/tools/pub/cmd.
+-- We attempt with flutter command, than dart command, and lastly with pub (for versions below 2.10).
+-- Ref: https://dart.dev/tools/pub/cmd.
 analyzeDepsCmd ::
   (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>
   Path Abs File ->
