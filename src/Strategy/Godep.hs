@@ -56,20 +56,22 @@ getDeps project =
 
 analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (DependencyResults)
 analyzeGopkgLock project = do
-  graph <- Diag.fromMaybeText "No Gopkg.lock present in the project" (godepLock project) >>= GopkgLock.analyze'
+  lockFile <- Diag.fromMaybeText "No Gopkg.lock present in the project" (godepLock project)
+  graph <- GopkgLock.analyze' lockFile
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = maybe [] pure $ godepLock project
+      , dependencyManifestFiles = [lockFile]
       }
 
 analyzeGopkgToml :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (DependencyResults)
 analyzeGopkgToml project = do
-  graph <- Diag.fromMaybeText "No Gopkg.toml present in the project" (godepToml project) >>= GopkgToml.analyze'
+  tomlFile <- Diag.fromMaybeText "No Gopkg.toml present in the project" (godepToml project)
+  graph <- GopkgToml.analyze' tomlFile
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = maybe [] pure $ godepToml project
+      , dependencyManifestFiles = [tomlFile]
       }

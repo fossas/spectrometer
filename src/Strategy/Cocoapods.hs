@@ -60,20 +60,22 @@ getDeps project =
 
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (DependencyResults)
 analyzePodfile project = do
-  graph <- Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project) >>= Podfile.analyze'
+  podFile <- Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project)
+  graph <- Podfile.analyze' podFile
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Partial
-      , dependencyManifestFiles = maybe [] pure $ cocoapodsPodfile project
+      , dependencyManifestFiles = [podFile]
       }
 
 analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (DependencyResults)
 analyzePodfileLock project = do
-  graph <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project) >>= PodfileLock.analyze'
+  lockFile <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project)
+  graph <- PodfileLock.analyze' lockFile
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = maybe [] pure $ cocoapodsPodfileLock project
+      , dependencyManifestFiles = [lockFile]
       }
