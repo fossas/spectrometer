@@ -126,7 +126,7 @@ findProjects :: (Has Exec sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnos
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
     Nothing -> pure ([], WalkContinue)
-    Just _ -> do
+    Just buildFile -> do
       projectsStdout <-
         errorBoundary
           . context ("Listing gradle projects at '" <> toText dir <> "'")
@@ -149,7 +149,7 @@ findProjects = walk' $ \dir _ files -> do
           let project =
                 GradleProject
                   { gradleDir = dir
-                  , gradleBuildFiles = files
+                  , gradleBuildFile = buildFile
                   , gradleProjects = subprojects
                   }
 
@@ -157,7 +157,7 @@ findProjects = walk' $ \dir _ files -> do
 
 data GradleProject = GradleProject
   { gradleDir :: Path Abs Dir
-  , gradleBuildFiles :: [Path Abs File]
+  , gradleBuildFile :: Path Abs File
   , gradleProjects :: Set Text
   }
   deriving (Eq, Ord, Show)
@@ -223,7 +223,7 @@ getDeps project targets = context "Gradle" $ do
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = gradleBuildFiles project
+      , dependencyManifestFiles = [gradleBuildFile project]
       }
 
 -- See the release process to see how this script gets vendored.

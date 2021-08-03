@@ -126,6 +126,7 @@ findProjects = walk' $ \dir _ files -> do
   let cabalDotFiles = filter isCabalDotFile files
   let allDotFiles = dotCabalFiles ++ cabalDotFiles
 
+  -- TODO: @wes is one preferred over the other if they are *both* found?
   if not (null allDotFiles)
     then pure ([CabalProject dir allDotFiles], WalkSkipAll)
     else pure ([], WalkContinue)
