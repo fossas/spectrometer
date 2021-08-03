@@ -20,7 +20,7 @@ import Graphing qualified
 import Path
 import Types (DependencyResults (..), GraphBreadth (..))
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (DependencyResults)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   lockfile <- readContentsYaml @GlideLockfile file
   graph <- context "Building dependency graph" $ pure (buildGraph lockfile)

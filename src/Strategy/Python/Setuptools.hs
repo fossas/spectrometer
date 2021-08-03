@@ -42,7 +42,7 @@ findProjects = walk' $ \dir _ files -> do
     ([], Nothing) -> pure ([], WalkContinue)
     _ -> pure ([project], WalkContinue)
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m DependencyResults
 getDeps project = do
   graph <-
     context "Setuptools" $

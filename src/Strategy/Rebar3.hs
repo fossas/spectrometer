@@ -40,7 +40,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => RebarProject -> m (DependencyResults)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => RebarProject -> m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- Rebar3Tree.analyze' (rebarDir project)
   pure $

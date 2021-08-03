@@ -63,7 +63,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m DependencyResults
 getDeps project = do
   graph <- context "Carthage" . context "Static analysis" . fmap (G.gmap toDependency) . analyze . carthageLock $ project
   pure $

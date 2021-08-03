@@ -54,10 +54,10 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (DependencyResults)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 getDeps project = context "Bundler" $ analyzeBundleShow project <||> analyzeGemfileLock project
 
-analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m (DependencyResults)
+analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeBundleShow project = do
   graph <- context "bundle-show analysis" . BundleShow.analyze' . bundlerDir $ project
   pure $
@@ -67,7 +67,7 @@ analyzeBundleShow project = do
       , dependencyManifestFiles = maybe [bundlerGemfile project] pure (bundlerGemfileLock project)
       }
 
-analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (DependencyResults)
+analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeGemfileLock project = do
   lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
   graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile

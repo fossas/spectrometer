@@ -78,7 +78,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m (DependencyResults)
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m DependencyResults
 getDeps = context "Leiningen" . context "Dynamic analysis" . analyze . leinProjectClj
 
 data LeiningenProject = LeiningenProject
@@ -87,7 +87,7 @@ data LeiningenProject = LeiningenProject
   }
   deriving (Eq, Ord, Show)
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (DependencyResults)
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze file = do
   stdoutBL <- execThrow (parent file) leinDepsCmd
   let stdoutTL = decodeUtf8 stdoutBL

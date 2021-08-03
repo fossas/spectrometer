@@ -158,7 +158,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m (DependencyResults)
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze . cargoDir $ project
   pure $

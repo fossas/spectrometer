@@ -141,7 +141,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
 getDeps project =
   context "Cabal" $
     context "Dynamic analysis" $
@@ -185,7 +185,7 @@ toDependency plan =
     , dependencyTags = M.empty
     }
 
-analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CabalProject -> m (DependencyResults)
+analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
 analyze project = do
   let dir = cabalDir project
   _ <- execThrow dir cabalGenPlanCmd

@@ -49,7 +49,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m DependencyResults
 getDeps project = context "Composer" $ do
   lock <- readContentsJson @ComposerLock (composerLock project)
   graph <- context "Building dependency graph" $ pure (buildGraph lock)

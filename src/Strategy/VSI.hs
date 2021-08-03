@@ -87,7 +87,7 @@ transformLocator locator =
   Dependency (validType locator) (validName locator) (CEq <$> validRevision locator) [] [] mempty
 
 -- Note: this is *actually* a Partial graph, however we are treating it as a full one in the UI, so the GraphBreadth will remain as Complete for now
-analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (DependencyResults)
+analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m DependencyResults
 analyze opts = context "VSI" $ do
   vsiLocators <- context "Running VSI binary" $ withWigginsBinary (execWigginsJson opts)
   graph <- context "Building dependency graph" $ fromEither (buildGraph vsiLocators)

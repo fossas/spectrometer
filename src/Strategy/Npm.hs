@@ -56,10 +56,10 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (DependencyResults)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 getDeps project = context "Npm" $ analyzeNpmList project <||> analyzeNpmLock project <||> analyzeNpmJson project
 
-analyzeNpmList :: (Has Exec sig m, Has Diagnostics sig m) => NpmProject -> m (DependencyResults)
+analyzeNpmList :: (Has Exec sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 analyzeNpmList project = do
   graph <- context "npm-list analysis" . NpmList.analyze' $ npmDir project
   pure $
@@ -69,7 +69,7 @@ analyzeNpmList project = do
       , dependencyManifestFiles = maybe [npmPackageJson project] pure $ npmPackageLock project
       }
 
-analyzeNpmLock :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (DependencyResults)
+analyzeNpmLock :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 analyzeNpmLock project = do
   lockFile <- Diag.fromMaybeText "No package-lock.json present in the project" (npmPackageLock project)
   graph <- context "package-lock.json analysis" . NpmLock.analyze' $ lockFile
@@ -80,7 +80,7 @@ analyzeNpmLock project = do
       , dependencyManifestFiles = [lockFile]
       }
 
-analyzeNpmJson :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (DependencyResults)
+analyzeNpmJson :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 analyzeNpmJson project = do
   graph <- context "package.json analysis" . PackageJson.analyze' $ npmPackageJson project
   pure $

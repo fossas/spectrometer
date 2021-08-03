@@ -53,12 +53,12 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 getDeps project =
   context "Cocoapods" $
     context "Podfile.lock analysis" (analyzePodfileLock project) <||> context "Podfile analysis" (analyzePodfile project)
 
-analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (DependencyResults)
+analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 analyzePodfile project = do
   podFile <- Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project)
   graph <- Podfile.analyze' podFile
@@ -69,7 +69,7 @@ analyzePodfile project = do
       , dependencyManifestFiles = [podFile]
       }
 
-analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (DependencyResults)
+analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 analyzePodfileLock project = do
   lockFile <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project)
   graph <- PodfileLock.analyze' lockFile

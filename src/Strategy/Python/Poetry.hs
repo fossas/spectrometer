@@ -99,7 +99,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PoetryProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PoetryProject -> m DependencyResults
 getDeps project = do
   context "Poetry" $ context "Static analysis" $ analyze project
 
@@ -110,7 +110,7 @@ analyze ::
   , Has Logger sig m
   ) =>
   PoetryProject ->
-  m (DependencyResults)
+  m DependencyResults
 analyze PoetryProject{pyProjectToml, poetryLock} = do
   pyproject <- readContentsToml pyProjectCodec (pyProjectTomlPath pyProjectToml)
   (graph, graphBreadth, manifestFile) <- case poetryLock of

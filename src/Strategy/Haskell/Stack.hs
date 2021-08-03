@@ -79,7 +79,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m (DependencyResults)
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m DependencyResults
 getDeps project =
   context "Stack" $
     context "Dynamic analysis" $
@@ -129,7 +129,7 @@ buildGraph deps = do
   result <- fromEither =<< withMapping ignorePackageName (traverse doGraph deps)
   pure . G.gmap toDependency $ G.filter shouldInclude result
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m (DependencyResults)
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m DependencyResults
 analyze project = do
   graph <- execJson @[StackDep] (stackDir project) stackJSONDepsCmd >>= buildGraph
   pure $

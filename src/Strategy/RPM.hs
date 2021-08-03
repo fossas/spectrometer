@@ -77,10 +77,10 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m DependencyResults
 getDeps = context "RPM" . context "Static analysis" . analyze . rpmFiles
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m (DependencyResults)
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m DependencyResults
 analyze specFiles = do
   graph <- Diag.combineSuccessful "Analysis failed for all discovered *.spec files" (map analyzeSingle specFiles)
   -- TODO: Should each Dep have an origin path?

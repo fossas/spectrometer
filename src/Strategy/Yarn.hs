@@ -39,10 +39,10 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m DependencyResults
 getDeps project = context "Yarn" $ getDepsV1 project <||> getDepsV2 project
 
-getDepsV1 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (DependencyResults)
+getDepsV1 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m DependencyResults
 getDepsV1 project = do
   graph <- V1.analyze . yarnLock $ project
   pure $
@@ -52,7 +52,7 @@ getDepsV1 project = do
       , dependencyManifestFiles = [yarnLock project]
       }
 
-getDepsV2 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (DependencyResults)
+getDepsV2 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m DependencyResults
 getDepsV2 project = do
   graph <- V2.analyze . yarnLock $ project
   pure $

@@ -61,10 +61,10 @@ mkProject project =
     , projectLicenses = analyzeLicenses (nuspecFile project)
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m DependencyResults
 getDeps = context "Nuspec" . context "Static analysis" . analyze' . nuspecFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (DependencyResults)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   nuspec <- readContentsXML @Nuspec file
   graph <- context "Building dependency graph" $ pure (buildGraph nuspec)

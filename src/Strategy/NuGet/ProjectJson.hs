@@ -48,10 +48,10 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectJsonProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectJsonProject -> m DependencyResults
 getDeps = analyze' . projectJsonFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (DependencyResults)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   graph <- buildGraph <$> readContentsJson @ProjectJson file
   pure $

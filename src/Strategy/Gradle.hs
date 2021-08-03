@@ -216,7 +216,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m (DependencyResults)
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m DependencyResults
 getDeps project targets = context "Gradle" $ do
   graph <- analyze targets (gradleDir project)
   pure $

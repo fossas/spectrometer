@@ -48,13 +48,13 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 getDeps project =
   context "Godep" $
     context "Gopkg.lock analysis" (analyzeGopkgLock project)
       <||> context "Gopkg.toml analysis" (analyzeGopkgToml project)
 
-analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (DependencyResults)
+analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 analyzeGopkgLock project = do
   lockFile <- Diag.fromMaybeText "No Gopkg.lock present in the project" (godepLock project)
   graph <- GopkgLock.analyze' lockFile
@@ -65,7 +65,7 @@ analyzeGopkgLock project = do
       , dependencyManifestFiles = [lockFile]
       }
 
-analyzeGopkgToml :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (DependencyResults)
+analyzeGopkgToml :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 analyzeGopkgToml project = do
   tomlFile <- Diag.fromMaybeText "No Gopkg.toml present in the project" (godepToml project)
   graph <- GopkgToml.analyze' tomlFile

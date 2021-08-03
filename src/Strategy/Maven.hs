@@ -55,7 +55,7 @@ getDeps ::
   , Has Exec sig m
   ) =>
   PomClosure.MavenProjectClosure ->
-  m (DependencyResults)
+  m DependencyResults
 getDeps closure = do
   (graph, graphBreadth) <-
     context "Maven" $

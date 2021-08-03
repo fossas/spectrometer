@@ -58,7 +58,7 @@ data DiscoveredProject m = DiscoveredProject
   { projectType :: Text
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
-  , projectDependencyResults :: FoundTargets -> m (DependencyResults)
+  , projectDependencyResults :: FoundTargets -> m DependencyResults
   , projectLicenses :: m [LicenseResult]
   }
 

@@ -40,7 +40,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m (DependencyResults)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <-
     context "Gomodules" $

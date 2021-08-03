@@ -48,10 +48,10 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectAssetsJsonProject -> m (DependencyResults)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectAssetsJsonProject -> m DependencyResults
 getDeps = context "ProjectAssetsJson" . context "Static analysis" . analyze' . projectAssetsJsonFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (DependencyResults)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   assetsJson <- readContentsJson @ProjectAssetsJson file
   graph <- context "Building dependency graph" $ pure (buildGraph assetsJson)

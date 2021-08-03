@@ -72,7 +72,7 @@ import Types (DependencyResults (..), GraphBreadth (..))
 missingDepVersionsMsg :: Text
 missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => MixProject -> m (DependencyResults)
+analyze :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => MixProject -> m DependencyResults
 analyze project = do
   let dir = mixDir project
   -- Get all dependencies
