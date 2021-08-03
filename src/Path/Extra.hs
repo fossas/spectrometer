@@ -1,7 +1,6 @@
-module Path.Extra
-  ( toRelativePath,
-  )
-where
+module Path.Extra (
+  toRelativePath,
+) where
 
 import Data.List (stripPrefix)
 import Data.Maybe (fromMaybe)
