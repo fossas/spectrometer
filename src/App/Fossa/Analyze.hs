@@ -50,7 +50,6 @@ import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-    ( color, Color(Green, Cyan, Yellow) )
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)

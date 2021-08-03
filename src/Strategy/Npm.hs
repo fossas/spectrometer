@@ -85,6 +85,6 @@ analyzeNpmJson project = do
   pure $
     DependencyResults
       { dependencyGraph = graph
-      , dependencyGraphBreadth = Complete
+      , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [npmPackageJson project]
       }
