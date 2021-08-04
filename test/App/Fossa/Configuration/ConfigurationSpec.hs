@@ -6,12 +6,12 @@ module App.Fossa.Configuration.ConfigurationSpec (
 ) where
 
 import App.Fossa.Configuration
+import App.Types (ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Effect.ReadFS
 import Path
 import Test.Hspec qualified as T
 import Types (BuildTarget (..), TargetFilter (..))
-import App.Types (ReleaseGroupMetadata(..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
