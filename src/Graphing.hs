@@ -14,7 +14,7 @@
 module Graphing (
   -- * Graphing type
   Graphing (..),
-  Node(..),
+  Node (..),
   empty,
   size,
   direct,
@@ -52,10 +52,10 @@ import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
-import Data.Set qualified as Set
 import Data.Bifunctor (bimap)
+import Data.Set qualified as Set
 import Prelude hiding (filter)
-import qualified Prelude
+import Prelude qualified
 
 -- | A @Graphing ty@ is a graph of nodes with type @ty@.
 --
@@ -197,7 +197,7 @@ edge :: Ord ty => ty -> ty -> Graphing ty
 edge parent child = Graphing (AM.edge (Node parent) (Node child))
 
 -- | Build a Graphing containing several edges
-edges :: Ord ty => [(ty,ty)] -> Graphing ty
+edges :: Ord ty => [(ty, ty)] -> Graphing ty
 edges = Graphing . AM.edges . map (bimap Node Node)
 
 -- | Add a single deep node to the graphing
@@ -207,7 +207,6 @@ deep = Graphing . AM.vertex . Node
 -- | Add several deep nodes to the graphing.
 deeps :: Ord ty => [ty] -> Graphing ty
 deeps = Graphing . AM.vertices . map Node
-
 
 -- | @unfold direct getDeps toDependency@ unfolds a graph, given:
 --
