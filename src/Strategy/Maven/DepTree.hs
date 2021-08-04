@@ -48,9 +48,13 @@ deptreeCmd settingsFile outputFile =
   Command
     { cmdName = "mvn"
     , cmdArgs =
-        [ -- Run `dependency:tree`. See http://maven.apache.org/plugins/maven-dependency-plugin/usage.html#dependency:tree.
+        [ -- Run `dependency:tree`.
+          --
+          -- See http://maven.apache.org/plugins/maven-dependency-plugin/usage.html#dependency:tree.
           "dependency:tree"
-        , -- Output in DOT format, which is Graphviz's graph format. See https://graphviz.org/doc/info/lang.html.
+        , -- Output in DOT format, which is Graphviz's graph format.
+          --
+          -- See https://graphviz.org/doc/info/lang.html.
           "-DoutputType=dot"
         , -- Save output to this file. This must be an absolute path for output
           -- to get saved to a single file. If this is a relative path, then
@@ -114,15 +118,20 @@ analyze dir = do
 
   -- Then we run the command, parse the temporary file's output, and clean up
   -- the temporary file.
-  _ <-
-    context "Running 'mvn dependency:tree'" $
-      exec dir $
-        deptreeCmd (if settingsExists then Just settingsPath else Nothing) tmp
   graphs <-
-    (context "Parsing 'mvn dependency:tree' output" (readContentsParser parseDotGraphs tmp))
+    execAndParse (if settingsExists then Just settingsPath else Nothing) tmp
       `finally` sendIO (removeFile tmp)
   pure (buildGraph graphs, Complete)
   where
+    execAndParse ::
+      (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) =>
+      Maybe (Path Abs File) ->
+      Path Abs File ->
+      m [DotGraph]
+    execAndParse settingsFile tmpFile = do
+      _ <- context "Running 'mvn dependency:tree'" $ exec dir $ deptreeCmd settingsFile tmpFile
+      context "Parsing 'mvn dependency:tree' output" $ readContentsParser parseDotGraphs tmpFile
+
     mustRelFile :: (Has Diagnostics sig m) => FilePath -> m (Path Rel File)
     mustRelFile f = case parseRelFile f of
       Just f' -> pure f'
