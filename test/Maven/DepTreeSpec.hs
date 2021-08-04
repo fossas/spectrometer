@@ -1,7 +1,7 @@
 module Maven.DepTreeSpec (spec) where
 
 import Data.Text.IO qualified as TextIO
-import Strategy.Maven.DepTree (DotGraph (..), PackageId (..), parseDotGraph)
+import Strategy.Maven.DepTree (DotGraph (..), PackageId (..), parseDotGraphs)
 import Test.Hspec (Spec, describe, it, runIO)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (parse)
@@ -15,8 +15,8 @@ spec =
   describe "mvn dependency:tree" $ do
     dotfile <- runIO $ TextIO.readFile fixtureFile
 
-    it "parses dot files" $
-      parse parseDotGraph fixtureFile dotfile `shouldParse` fixtureGraph
+    it "parses single dot files" $
+      parse parseDotGraphs fixtureFile dotfile `shouldParse` [fixtureGraph]
 
 fixtureFile :: FilePath
 fixtureFile = "test/Maven/testdata/fossa-deptree.dot"
