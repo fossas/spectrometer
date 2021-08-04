@@ -104,8 +104,8 @@ analyze dir = do
   -- need to use. We only look for this in the root (i.e. next to the `pom.xml`)
   -- that constructed this analysis target.
   --
-  -- TODO: For maximum magic, find all `settings.xml`s in the CWD, and try with
-  -- all of them until one works?
+  -- TODO: For maximum magic, find all `settings.xml`s in the CWD and its
+  -- subdirectories, and try with all of them until one works?
   settingsFile <- mustRelFile "settings.xml"
   let settingsPath = dir </> settingsFile
   settingsExists <- doesFileExist settingsPath
@@ -123,6 +123,9 @@ analyze dir = do
       `finally` sendIO (removeFile tmp)
   pure (buildGraph graphs, Complete)
   where
+    -- Note that we do both of these in a single action so that the `finally`
+    -- above runs for both exceptions in the exec and in the parsing. Do not
+    -- separate these two into different actions.
     execAndParse ::
       (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) =>
       Maybe (Path Abs File) ->
