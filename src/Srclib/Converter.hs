@@ -40,7 +40,7 @@ toSourceUnit ProjectResult{..} =
     renderedPath = toText (toFilePath projectResultPath)
 
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
+    filteredGraph = Graphing.shrink (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph
