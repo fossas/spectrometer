@@ -13,6 +13,7 @@ import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
+import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Types (Dependency, DiscoveredProject (..), GraphBreadth (..))
@@ -58,5 +59,6 @@ getDeps ::
   m (Graphing Dependency, GraphBreadth)
 getDeps closure =
   context "Maven" $
-    context "Dynamic analysis" (DepTreeCmd.analyze . parent $ PomClosure.closurePath closure)
+    context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+      <||> context "Dynamic analysis" (DepTreeCmd.analyze . parent $ PomClosure.closurePath closure)
       <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))

@@ -246,6 +246,8 @@ library
     Strategy.Leiningen
     Strategy.Maven
     Strategy.Maven.DepTree
+    Strategy.Maven.Plugin
+    Strategy.Maven.PluginStrategy
     Strategy.Maven.Pom
     Strategy.Maven.Pom.Closure
     Strategy.Maven.Pom.PomFile
@@ -344,6 +346,7 @@ test-suite unit-tests
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.DepTreeSpec
+    Maven.PluginStrategySpec
     Maven.PomStrategySpec
     Node.NpmLockSpec
     Node.PackageJsonSpec
