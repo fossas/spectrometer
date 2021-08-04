@@ -18,7 +18,7 @@ import Control.Effect.Diagnostics
 import Control.Monad (when)
 import Data.Aeson.Types
 import Data.Foldable (for_)
-import Data.List (isSuffixOf)
+import Data.List (find, isSuffixOf)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Set (Set)
@@ -122,14 +122,14 @@ isCabalDotFile name = "cabal.project" == fileName name
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CabalProject]
 findProjects = walk' $ \dir _ files -> do
-  let dotCabalFiles = filter isDotCabal files
-  let cabalDotFiles = filter isCabalDotFile files
-  let allDotFiles = dotCabalFiles ++ cabalDotFiles
-
-  -- TODO: @wes is one preferred over the other if they are *both* found?
-  if not (null allDotFiles)
-    then pure ([CabalProject dir allDotFiles], WalkSkipAll)
-    else pure ([], WalkContinue)
+  -- TODO: @wes is this the right approach?
+  -- Prefer the `.cabal` file over the `cabal.project` file
+  let manifestFile = case (find isDotCabal files) of
+        Just file -> Just file
+        Nothing -> find isCabalDotFile files
+  case manifestFile of
+    Just mf -> pure ([CabalProject dir mf], WalkSkipAll)
+    Nothing -> pure ([], WalkContinue)
 
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CabalProject -> DiscoveredProject n
 mkProject project =
@@ -149,7 +149,7 @@ getDeps project =
 
 data CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
-  , cabalFiles :: [Path Abs File]
+  , cabalFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
 
@@ -195,5 +195,5 @@ analyze project = do
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = cabalFiles project
+      , dependencyManifestFiles = [cabalFile project]
       }
