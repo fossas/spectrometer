@@ -17,6 +17,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Types (GraphBreadth (..))
+import Path (SomeBase, File)
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
@@ -25,7 +26,7 @@ data SourceUnit = SourceUnit
     sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
-  , sourceUnitOriginPaths :: [FilePath]
+  , sourceUnitOriginPaths :: [SomeBase File]
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)

@@ -1,16 +1,14 @@
-module Path.Extra (
-  toRelativePath,
-) where
+module Path.Extra
+  ( tryMakeRelative,
+  )
+where
 
-import Data.List (stripPrefix)
-import Data.Maybe (fromMaybe)
 import Path
 
--- toRelativePath returns the path of a file (Path Abs File) relative to a directory (Path Abs Dir).
--- If the file is not within the directory, then the full file path will be returned
-toRelativePath :: Path Abs Dir -> Path Abs File -> FilePath
-toRelativePath baseDir file =
-  fromMaybe (fullPath) $ stripPrefix (fullDir) (fullPath)
-  where
-    fullPath = fromAbsFile file
-    fullDir = fromAbsDir baseDir
+-- tryMakeRelative returns the path of an absolute file (Path Abs File) relative to an absolute directory (Path Abs Dir).
+-- If the file is not within the directory, then the absolute file path will be returned
+tryMakeRelative :: Path Abs Dir -> Path Abs File -> SomeBase File
+tryMakeRelative absDir absFile =
+  case stripProperPrefix absDir absFile of
+    Left _ -> Abs absFile
+    Right relFile -> Rel relFile

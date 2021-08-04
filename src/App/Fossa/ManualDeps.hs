@@ -36,7 +36,7 @@ import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types
 import Path
-import Path.Extra (toRelativePath)
+import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 import Types (GraphBreadth (..))
@@ -90,8 +90,8 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
       additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty remoteDependencies)
       build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
       originPath = case depsFile of
-        (ManualJSON path) -> toRelativePath root path
-        (ManualYaml path) -> toRelativePath root path
+        (ManualJSON path) -> tryMakeRelative root path
+        (ManualYaml path) -> tryMakeRelative root path
   pure $
     SourceUnit
       { sourceUnitName = renderedPath

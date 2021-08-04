@@ -9,7 +9,7 @@ import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
 import Path
-import Path.Extra (toRelativePath)
+import Path.Extra (tryMakeRelative)
 import Types
 
 mkResult :: Path Abs Dir -> DiscoveredProject n -> (DependencyResults) -> ProjectResult
@@ -31,12 +31,12 @@ mkResult basedir project dependencyResults =
     }
   where
     graph = dependencyGraph dependencyResults
-    relativeManifestFiles = map (toRelativePath basedir) $ dependencyManifestFiles dependencyResults
+    relativeManifestFiles = map (tryMakeRelative basedir) $ dependencyManifestFiles dependencyResults
 
 data ProjectResult = ProjectResult
   { projectResultType :: Text
   , projectResultPath :: Path Abs Dir
   , projectResultGraph :: Graphing Dependency
   , projectResultGraphBreadth :: GraphBreadth
-  , projectResultManifestFiles :: [FilePath]
+  , projectResultManifestFiles :: [SomeBase File]
   }
