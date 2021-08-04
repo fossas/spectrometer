@@ -22,7 +22,7 @@ gtraverse f = fmap mkAdjacencyMap . traverse (\(a, xs) -> (,) <$> f a <*> traver
 
 -- | Filter vertices in an AdjacencyMap, preserving the overall structure by rewiring edges through deleted vertices.
 --
--- For example, given the graph @1 -> 2 -> 3 -> 4@ and applying @filterRewire (/= 3)@, we return the graph
+-- For example, given the graph @1 -> 2 -> 3 -> 4@ and applying @shrink (/= 3)@, we return the graph
 -- @1 -> 2 -> 4@
 shrink :: Ord a => (a -> Bool) -> AM.AdjacencyMap a -> AM.AdjacencyMap a
 shrink f gr = foldr shrinkSingle gr filteredOutVertices
@@ -31,7 +31,7 @@ shrink f gr = foldr shrinkSingle gr filteredOutVertices
 
 -- | Delete a vertex in an AdjacencyMap, preserving the overall structure by rewiring edges through the delted vertex.
 --
--- For example, given the graph @1 -> 2 -> 3 -> 4@ and applying @deleteRewire 3@, we return the graph
+-- For example, given the graph @1 -> 2 -> 3 -> 4@ and applying @shrinkSingle 3@, we return the graph
 -- @1 -> 2 -> 4@
 shrinkSingle :: forall a. Ord a => a -> AM.AdjacencyMap a -> AM.AdjacencyMap a
 shrinkSingle vert gr = AM.overlay (AM.removeVertex vert gr) inducedEdges

@@ -6,6 +6,7 @@ import GraphUtil
 import Graphing
 import Test.Hspec
 import Prelude
+import Debug.Trace
 
 spec :: Spec
 spec = do
@@ -21,7 +22,8 @@ spec = do
   describe "deep" $ do
     it "should add deep node to graphing" $ do
       let graph :: Graphing Int
-          graph = Graphing.deep 5 $ Graphing.edge 2 3 (Graphing.empty)
+          graph = Graphing.deep 5 <> Graphing.edge 2 3
+      traceM (show graph)
       expectDirect [] graph
       expectDeps [5, 2, 3] graph
       expectEdges [(2, 3)] graph
