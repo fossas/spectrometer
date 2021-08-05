@@ -19,6 +19,7 @@ import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure)
 import System.IO (stderr)
+import Data.Flag (Flag)
 
 data ReportType
   = AttributionReport
@@ -34,9 +35,10 @@ reportMain ::
   -- | timeout (seconds)
   Int ->
   ReportType ->
+  Flag PollMonorepo -> 
   OverrideProject ->
   IO ()
-reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType override = do
+reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType reportMonorepo override = do
   -- TODO: refactor this code duplicate from `fossa test`
   {-
   Most of this module (almost everything below this line) has been copied
@@ -59,7 +61,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild apiOpts revision <||> waitForMonorepoScan apiOpts revision
+      waitForScanCompletion reportMonorepo apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
 

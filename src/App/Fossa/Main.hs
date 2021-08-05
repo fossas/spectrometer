@@ -5,6 +5,7 @@ module App.Fossa.Main (
 ) where
 
 import App.Fossa.Analyze (JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.API.BuildWait qualified as BuildWait
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -448,6 +449,7 @@ reportOpts =
   ReportOptions
     <$> switch (long "json" <> help "Output the report in JSON format (Currently required).")
     <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> flagOpt BuildWait.TestMonorepo (long "monorepo" <> help "Fallback to monorepo polling if project type cannot be detected")
     <*> reportCmd
     <*> baseDirArg
 
@@ -461,6 +463,7 @@ testOpts :: Parser TestOptions
 testOpts =
   TestOptions
     <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> flagOpt BuildWait.TestMonorepo (long "monorepo" <> help "Fallback to monorepo polling if project type cannot be detected")
     <*> flag Test.TestOutputPretty Test.TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
 
@@ -643,6 +646,7 @@ data VPSReportOptions = VPSReportOptions
 data ReportOptions = ReportOptions
   { reportJsonOutput :: Bool
   , reportTimeout :: Int
+  , reportMonorepo :: Flag BuildWait.PollMonorepo
   , reportType :: Report.ReportType
   , reportBaseDir :: FilePath
   }
@@ -666,6 +670,7 @@ data AnalyzeOptions = AnalyzeOptions
 
 data TestOptions = TestOptions
   { testTimeout :: Int
+  , testMonorepo :: Flag BuildWait.PollMonorepo
   , testOutputType :: Test.TestOutputType
   , testBaseDir :: FilePath
   }

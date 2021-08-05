@@ -437,6 +437,14 @@ By default, `fossa test` displays issues in a human-readable format. To instead 
 fossa test --json
 ```
 
+### Testing Monorepo projects
+
+`fossa test` works by fetching the latest "build" from the FOSSA API.  By default, we use that "build" to determine if the project being scanned is a
+standard project, or a monorepo project.  The two project types work differently internally, so we need to know which type we're testing.
+
+In rare cases, that info may not be available, and in those cases we assume that the project is a standard project.
+If `fossa test --monorepo` is run, then the same process is run, but the fallback assumption is the project is a monorepo project.
+
 ## `fossa report`
 
 The report command downloads a report of the most-recent scan of your FOSSA project. This command is usually run immedately after `fossa analyze` or `fossa test`
@@ -474,6 +482,12 @@ fossa report attribtion --json
 *NOTE: Currently, text reports are not supported, and the report will be*
 *printed as JSON.  It is recommended to use the `--json` flag anyway, since*
 *the behavior of the command without the flag will change in the future.*
+
+### Reporting for Monorepo projects
+
+Before a report can be run, both a "build" and "issue scan" must be completed on the backend, like in `fossa test`.  We will automatically wait for
+these to finish, but doing so requires the same detection and fallback process as described in [Testing Monorepo projects](#testing-monorepo-projects).
+For this reason, `fossa report` also accepts a `--monorepo` flag, which has the same effect as it does during `fossa test`.
 
 ## Common FOSSA Project Flags
 
