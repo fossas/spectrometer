@@ -63,7 +63,7 @@ import Prelude qualified
 -- automatically deduplicated using the 'Ord' instance of @ty@.
 --
 -- Typically, when consuming a Graphing, we only care about nodes in the graph
--- reachable from 'graphingDirect'
+-- reachable from 'directList'
 newtype Graphing ty = Graphing {unGraphing :: AdjacencyMap (Node ty)}
   deriving (Eq, Ord, Show)
 
