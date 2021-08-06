@@ -29,17 +29,17 @@ data Raw deriving (Typeable)
 sha256 :: BL.ByteString -> Digest SHA256
 sha256 = hashlazy
 
-hashFile :: (Has (Lift IO) sig m) => FilePath -> m Text
+hashFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => FilePath -> m Text
 hashFile file = do
-  content <- sendIO $ BL.readFile file
+  content <- context "Read file" $ sendIO $ BL.readFile file
   pure . toText . show $ sha256 content
 
-fingerprintRaw :: (Has (Lift IO) sig m) => Path Abs File -> m (Fingerprint Raw)
+fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
 fingerprintRaw file = do
-  fp <- hashFile (toFilePath file)
+  fp <- context "Fingerprint file" $ hashFile (toFilePath file)
   pure (Fingerprint fp)
 
-fingerprintRawMany :: (Has (Lift IO) sig m) => [Path Abs File] -> m [Fingerprint Raw]
+fingerprintRawMany :: (Has (Lift IO) sig m, Has Diagnostics sig m) => [Path Abs File] -> m [Fingerprint Raw]
 fingerprintRawMany [] = pure []
 fingerprintRawMany (x : xs) = do
   fp <- fingerprintRaw x
