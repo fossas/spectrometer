@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.IAT.Types (
   Fingerprint (..),

@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE RecordWildCards #-}
-
 module App.Fossa.IAT.Fingerprint (
   fingerprintContentsRaw,
 ) where
