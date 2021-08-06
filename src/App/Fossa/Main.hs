@@ -200,7 +200,7 @@ appMain = do
       baseDir <- validateDir testBaseDir
       key <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl key
-      Test.testMain baseDir apiOpts logSeverity testTimeout testOutputType override
+      Test.testMain baseDir apiOpts logSeverity testTimeout testOutputType testMonorepo override
     --
     InitCommand ->
       withDefaultLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
@@ -210,7 +210,7 @@ appMain = do
       baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl key
-      Report.reportMain baseDir apiOpts logSeverity reportTimeout reportType override
+      Report.reportMain baseDir apiOpts logSeverity reportTimeout reportType reportMonorepo override
     --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
@@ -449,7 +449,7 @@ reportOpts =
   ReportOptions
     <$> switch (long "json" <> help "Output the report in JSON format (Currently required).")
     <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
-    <*> flagOpt BuildWait.TestMonorepo (long "monorepo" <> help "Fallback to monorepo polling if project type cannot be detected")
+    <*> flagOpt BuildWait.PollMonorepo (long "monorepo" <> help "Fallback to monorepo polling if project type cannot be detected")
     <*> reportCmd
     <*> baseDirArg
 
@@ -463,7 +463,7 @@ testOpts :: Parser TestOptions
 testOpts =
   TestOptions
     <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
-    <*> flagOpt BuildWait.TestMonorepo (long "monorepo" <> help "Fallback to monorepo polling if project type cannot be detected")
+    <*> flagOpt BuildWait.PollMonorepo (long "monorepo" <> help "Fallback to monorepo polling if project type cannot be detected")
     <*> flag Test.TestOutputPretty Test.TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
 
