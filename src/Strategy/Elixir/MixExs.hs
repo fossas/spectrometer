@@ -80,7 +80,6 @@ unRecognizedElixirValue = (EString <$> ElixirText) . toText <$> takeWhileP (Just
 --  * ':manager'      because compiler of the dependency is irrelevant for scope of dependency graphing.
 --  * ':runtime'      because the dependency can still be started at runtime later, we take cautionary approach, and consider them in analyses.
 --  * ':system_env'   because it is irreverent for scope of dependency graphing.
--- 
 parseMixExsPackage :: Parser MixExsPackage
 parseMixExsPackage = do
   opts <- betweenCurlyBrackets (sepEndBy (try parseElixirValue <|> unRecognizedElixirValue) (lexeme $ symbol ","))
