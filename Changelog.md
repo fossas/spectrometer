@@ -1,5 +1,10 @@
 # Spectrometer Changelog
 
+## Unreleased
+
+- Add new hidden subcommand `experimental-vsi-register-binary-custom-dependency`.
+  This subcommand is intended to be used with direct support from FOSSA engineering when working with specific projects.
+
 ## v2.14.4
 
 - Gradle: Fixes an issue where all dependencies would appear as direct ([#319](https://github.com/fossas/spectrometer/pull/319))
