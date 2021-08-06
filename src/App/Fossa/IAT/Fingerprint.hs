@@ -2,29 +2,19 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.IAT.Fingerprint (
-  Fingerprint (..),
-  Raw,
   fingerprintContentsRaw,
 ) where
 
+import App.Fossa.IAT.Types
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift
 import Crypto.Hash
 import Data.ByteString.Lazy qualified as BL
-import Data.Data
 import Data.String.Conversion
 import Data.Text
 import Discovery.Walk
 import Effect.ReadFS
 import Path
-
--- | Fingerprint uniquely idenfies a file, derived from its content.
--- Fingerprints are backed by base16 representations of underlying data.
-newtype Fingerprint t = Fingerprint Text
-
--- | Raw describes a fingerprint calculated from the full unmodified content of a file.
--- Raw fingerprints are implemented as SHA256 hashes.
-data Raw deriving (Typeable)
 
 sha256 :: BL.ByteString -> Digest SHA256
 sha256 = hashlazy

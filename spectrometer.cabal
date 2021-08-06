@@ -143,6 +143,7 @@ library
     App.Fossa.Container.Analyze
     App.Fossa.Container.Test
     App.Fossa.IAT.Fingerprint
+    App.Fossa.IAT.Types
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
     App.Fossa.ListTargets
