@@ -26,6 +26,8 @@ import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, pars
 import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
+import App.Fossa.IAT.RegisterUserDefinedBinary
+import App.Fossa.IAT.Types
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Monorepo
 import App.Fossa.Report qualified as Report
@@ -261,6 +263,12 @@ appMain = do
         ContainerParseFile path -> parseSyftOutputMain logSeverity path
         ContainerDumpScan ContainerDumpScanOptions{..} -> dumpSyftScanMain logSeverity dumpScanOutputFile dumpScanImage
     --
+    RegisterUserDefinedIATBinaryCommand RegisterUserDefinedIATBinaryOptions{..} -> do
+      apikey <- requireKey maybeApiKey
+      baseDir <- validateDir userDefinedBinaryAssertionBaseDir
+      let apiOpts = ApiOpts optBaseUrl apikey
+      registerUserDefinedIATBinaryMain logSeverity baseDir apiOpts userDefiniedBinaryAssertion
+    --
     CompatibilityCommand args -> do
       compatibilityMain args
     --
@@ -377,6 +385,12 @@ hiddenCommands =
           ( info
               (CompatibilityCommand <$> compatibilityOpts)
               (progDesc "Run fossa cli v1 analyze. Supply arguments as \"fossa compatibility -- --project test\"")
+          )
+        <> command
+          "experimental-vsi-register-binary-custom-dependency"
+          ( info
+              (RegisterUserDefinedIATBinaryCommand <$> registerUserDefinedBinaryAssertionOpts)
+              (progDesc "Register one or more binary fingerprints as a custom dependency to be discovered when running in `analyze --enable-vsi` mode on a downstream project")
           )
     )
 
@@ -606,6 +620,24 @@ compatibilityOpts :: Parser [Argument]
 compatibilityOpts =
   many argumentParser
 
+registerUserDefinedBinaryAssertionOpts :: Parser RegisterUserDefinedIATBinaryOptions
+registerUserDefinedBinaryAssertionOpts =
+  RegisterUserDefinedIATBinaryOptions
+    <$> userDefinedAssertionDirArg
+    <*> userDefinedBinaryAssertionOpts
+
+userDefinedBinaryAssertionOpts :: Parser UserDefinedBinaryAssertion
+userDefinedBinaryAssertionOpts =
+  UserDefinedBinaryAssertion
+    <$> (strOption (long "name" <> help "The name to display for the dependency"))
+    <*> (strOption (long "version" <> help "The version to display for the dependency"))
+    <*> (strOption (long "license" <> help "The license identifier to use for the dependency"))
+    <*> optional (strOption (long "description" <> help "The description to use for the dependency"))
+    <*> optional (strOption (long "homepage" <> help "The URL to the homepage for the dependency"))
+
+userDefinedAssertionDirArg :: Parser String
+userDefinedAssertionDirArg = argument str (metavar "DIR" <> help "The directory containing one or more binaries to assert to the provided values (default: current directory)" <> value ".")
+
 data CmdOptions = CmdOptions
   { optDebug :: Bool
   , optBaseUrl :: Maybe URI
@@ -621,6 +653,7 @@ data Command
   | ReportCommand ReportOptions
   | VPSCommand VPSOptions
   | ContainerCommand ContainerOptions
+  | RegisterUserDefinedIATBinaryCommand RegisterUserDefinedIATBinaryOptions
   | CompatibilityCommand [Argument]
   | ListTargetsCommand FilePath
   | InitCommand
@@ -694,6 +727,11 @@ data VPSTestOptions = VPSTestOptions
   { vpsTestTimeout :: Int
   , vpsTestOutputType :: VPSTest.TestOutputType
   , vpsTestBaseDir :: FilePath
+  }
+
+data RegisterUserDefinedIATBinaryOptions = RegisterUserDefinedIATBinaryOptions
+  { userDefinedBinaryAssertionBaseDir :: FilePath
+  , userDefiniedBinaryAssertion :: UserDefinedBinaryAssertion
   }
 
 newtype ContainerOptions = ContainerOptions
