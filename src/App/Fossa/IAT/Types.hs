@@ -4,6 +4,7 @@
 module App.Fossa.IAT.Types (
   Fingerprint (..),
   Raw,
+  UserDefinedBinaryAssertion (..),
 ) where
 
 import Data.Aeson
@@ -23,3 +24,12 @@ toText (Fingerprint x) = x
 -- | Raw describes a fingerprint calculated from the full unmodified content of a file.
 -- Raw fingerprints are implemented as SHA256 hashes.
 data Raw deriving (Typeable)
+
+-- | User provided data to assert a binary via IAT.
+data UserDefinedBinaryAssertion = UserDefinedBinaryAssertion
+  { assertedName :: Text
+  , assertedVersion :: Text
+  , assertedLicenseIdentifier :: Text
+  , assertedDescription :: Maybe Text
+  , assertedUrl :: Maybe Text
+  }
