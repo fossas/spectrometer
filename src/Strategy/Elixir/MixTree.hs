@@ -4,6 +4,7 @@ module Strategy.Elixir.MixTree (
   MixDepResolved (..),
   DepManager (..),
   DepSCM (..),
+  supportedSCM,
 
   -- * Parsers
   mixTreeCmdOutputParser,

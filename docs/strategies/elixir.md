@@ -5,12 +5,17 @@ When developing in Elixir, [Mix](https://hexdocs.pm/mix/Mix.html) and [Hex](http
 | Strategy | Direct Deps        | Deep Deps          | Edges              |
 | -------- | ------------------ | ------------------ | ------------------ |
 | mix deps | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| mix.exs  | :white_check_mark: | :x:                | :x:                |
 
 ## Project Discovery
 
 In order to find elixir projects, we look for `mix.exs` file, which specifies the root of an elixir project. When we find an elixir project, we do not descend into any `deps` or `_build` subdirectories to look for more elixir projects.
 
 ## Analysis
+
+By default, for analyses, preferred strategy of analyzing with mix deps command will be attempted, if there is failure or mix tool is not accessible, analysis using mix.exs will be employed.
+
+### Analysis: Using mix deps command
 
 1. Run `mix deps.tree --format plain --only prod` and generate output similar to:
 ```
@@ -43,6 +48,26 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
   .....
 ```
 3. Parse these outputs to determine the dependency graph and the locations of each dependency. 
+
+### Analysis: Using mix.exs file
+
+In this approach, we parse mix.exs file. Within mix.exs file we look for keyword `defp deps do` and parse all entries, to infer the project's direct dependencies. 
+
+```elixir
+  defp deps do
+    [
+      {:phoenix, git: "https://github.com/phoenixframework/phoenix", tag: "v1.5.1"},
+      {:plug, ">= 0.4.0"},
+      {:ecto, "~> 2.0"},
+      {:postgrex, ">= 0.8.1 and <3.0.0"},
+      {:faker, "~> 0.16.0"},
+      {:ex_doc, "~> 0.23"},
+      {:jason, "~> 1.0"}
+    ]
+  end
+```
+
+Analyzing from only mix.exs, we take cautionary approach, and such, we only consider `:only` option in our analyses to infer development, testing, and other environment dependencies. We do not consider `runtime:`, as dependency can still be manually started later in runtime. Similarly, since, we can't infer the intended target architecture, we include all dependencies in our analyses regardless of it's target specified. 
 
 ## Limitations
 
@@ -130,9 +155,14 @@ Corresponding mix.lock file should now be generated in the project directory (ex
 3. To perform the analyses, run `fossa analyze ./../myElixirProjectDir/` 
 4. To perform the analyses and view it's output only, run `fossa analyze ./../myElixirProjectDir/ --output` 
 
-Here is the dependency graph produced from the above project. Dependencies in yellow are direct dependencies. 
+Here is the dependency graph produced from the above project, when using mix command for analysis. Dependencies in yellow are direct dependencies. 
 
 ![Mix Dependency Graph](mix-resolved-graph.svg)
+
+When mix deps command is not accessible or fails, we fallback to analyzing from mix.exs file only. Dependency graph when analyzing from only `mix.exs` is shown below. 
+
+![Mix Dependency Graph When Analyzing From mix.exs](mix-resolved-graph-with-mixexs.svg)
+
 
 ## F.A.Q
 
