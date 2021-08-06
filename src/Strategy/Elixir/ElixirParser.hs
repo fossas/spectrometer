@@ -66,9 +66,9 @@ parseComma = lexeme $ chunk ","
 -- Reference: https://elixir-lang.org/getting-started/basic-types.html
 
 data ElixirValue
-  = String ElixirText
+  = EString ElixirText
   | Atom ElixirAtom
-  | Bool ElixirBool
+  | EBool ElixirBool
   | Accessor ElixirAccessor
   | Keyword ElixirKeyword
   | List [ElixirValue]
@@ -121,8 +121,8 @@ parseElixirList = List <$> betweenSquareBrackets (sepEndBy (parseElixirValue) (l
 parseElixirValue :: Parser ElixirValue
 parseElixirValue =
   lexeme $
-    try (Bool <$> parseElixirBool)
-      <|> try (String <$> parseElixirText)
+    try (EBool <$> parseElixirBool)
+      <|> try (EString <$> parseElixirText)
       <|> try (Keyword <$> parseElixirKeyword)
       <|> try (Atom <$> parseElixirAtom)
       <|> try (Accessor <$> parseElixirAccessor)
@@ -143,5 +143,5 @@ findKeyword _ [] = Nothing
 -- | Finds keyword's value recursively, based on accessor's text value.
 findKeywordWithStringValue :: [ElixirValue] -> Text -> Maybe Text
 findKeywordWithStringValue opts lookupKey = case findKeyword (\x -> getAccessor x == lookupKey) opts of
-  Just (String (ElixirText source)) -> Just source
+  Just (EString (ElixirText source)) -> Just source
   _ -> Nothing

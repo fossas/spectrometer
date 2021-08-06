@@ -46,7 +46,7 @@ import Types (GraphBreadth (..))
 
 type Parser = Parsec Void Text
 
--- | MixExsDeps represents data entry found in `mix.exs` file
+-- | MixExsDeps represents dependency entry found in `mix.exs` file.
 data MixExsPackage = MixExsPackage
   { mixExsPkgName :: PackageName
   , mixExsPkgDepSCM :: DepSCM
@@ -62,24 +62,25 @@ mixExsFileParser = lexeme prefix *> deps <* symbol "end"
     deps = betweenSquareBrackets (sepEndBy parseMixExsPackage (lexeme $ symbol ","))
 
 -- | Parses any unrecognized value as ElixirValue of type string.
--- This is needed to avoid exception when non relevant elixir type is used. - e.g float, global variable, lambda function, etc.
+-- This is to avoid exception when parsing non relevant elixir type in deps entry. - e.g float, global variable, etc.
 unRecognizedElixirValue :: Parser ElixirValue
-unRecognizedElixirValue = (String <$> ElixirText) . toText <$> takeWhileP (Just "ignored") (\c -> c /= ',' && c /= '}')
+unRecognizedElixirValue = (EString <$> ElixirText) . toText <$> takeWhileP (Just "ignored") (\c -> c /= ',' && c /= '}')
 
 -- | Parses Mix.exs deps entry
--- Specs: https://hexdocs.pm/mix/1.12/Mix.Tasks.Deps.html
+-- Reference: https://hexdocs.pm/mix/1.12/Mix.Tasks.Deps.html
 --
 -- We ignore following options,
 --
---  * ':app'          because entry-point of the dependency is irrelevant for scope of dependency graphing.
---  * ':env'          because env the dependency is ran, is not of consideration.
+--  * ':app'          because entry-point of the dependency, is irrelevant for scope of dependency graphing.
+--  * ':env'          because env of dependency application, is irrelevant for scope of dependency graphing.
 --  * ':compile'      because compiler command of the dependency is irrelevant for scope of dependency graphing.
---  * ':optional'     because current project will always include optional dependency (refer to spec).
---  * ':targets'      because we cannot distinguish target the app will be ran from we take cautionary approach, and do not exclude dependency based on targets.
---  * ':override'     because dependency resolution cannot be performed from exs file only. TODO: Resolve this in mix.exs file.
+--  * ':optional'     because current project will always include optional dependency (refer to reference).
+--  * ':targets'      because we cannot distinguish target the app will be ran. We take cautionary approach, and do not exclude dependency based on targets.
+--  * ':override'     because dependency resolution cannot be performed from exs file only. TODO: Resolve this in mix.lock tactic.
 --  * ':manager'      because compiler of the dependency is irrelevant for scope of dependency graphing.
 --  * ':runtime'      because the dependency can still be started at runtime later, we take cautionary approach, and consider them in analyses.
---  * ':system_env'   because it is irreverent for scope of dependency graphing
+--  * ':system_env'   because it is irreverent for scope of dependency graphing.
+-- 
 parseMixExsPackage :: Parser MixExsPackage
 parseMixExsPackage = do
   opts <- betweenCurlyBrackets (sepEndBy (try parseElixirValue <|> unRecognizedElixirValue) (lexeme $ symbol ","))
@@ -114,7 +115,7 @@ parseMixExsPackage = do
       Just a -> Other a
 
 lookupPackageVersion :: [ElixirValue] -> Maybe VerConstraint
-lookupPackageVersion opts = case listToMaybe ([opt | (String opt) <- opts]) of
+lookupPackageVersion opts = case listToMaybe ([opt | (EString opt) <- opts]) of
   Nothing -> Nothing
   Just (ElixirText versionText) -> toDependencyVersion versionText
 
@@ -122,7 +123,7 @@ lookupPackageGitSource :: [ElixirValue] -> Maybe Text
 lookupPackageGitSource opts = case findKeywordWithStringValue opts "git" of
   Nothing -> case findKeywordWithStringValue opts "github" of
     -- If :github, as a shortcut is used to refer to git dependency
-    -- http scheme, and host value are not provided
+    -- http scheme, and host value are not provided.
     Just gitRepo -> Just $ "https://github.com/" <> gitRepo <> ".git"
     Nothing -> Nothing
   url -> url

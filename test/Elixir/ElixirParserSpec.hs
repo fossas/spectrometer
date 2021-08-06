@@ -38,20 +38,20 @@ spec = do
       ":goodbye" `shouldParseInto` Atom (ElixirAtom "goodbye")
 
     it "should parse elixir string" $ do
-      "\"hippity\"" `shouldParseInto` String (ElixirText "hippity")
-      "\"hoppity:\"" `shouldParseInto` String (ElixirText "hoppity:")
-      "\"h o p  \"" `shouldParseInto` String (ElixirText "h o p  ")
+      "\"hippity\"" `shouldParseInto` EString (ElixirText "hippity")
+      "\"hoppity:\"" `shouldParseInto` EString (ElixirText "hoppity:")
+      "\"h o p  \"" `shouldParseInto` EString (ElixirText "h o p  ")
 
     it "should parse elixir boolean" $ do
-      ":true" `shouldParseInto` Bool (ElixirBool True)
-      "true" `shouldParseInto` Bool (ElixirBool True)
-      ":false" `shouldParseInto` Bool (ElixirBool False)
-      "false" `shouldParseInto` Bool (ElixirBool False)
+      ":true" `shouldParseInto` EBool (ElixirBool True)
+      "true" `shouldParseInto` EBool (ElixirBool True)
+      ":false" `shouldParseInto` EBool (ElixirBool False)
+      "false" `shouldParseInto` EBool (ElixirBool False)
 
     it "should parse elixir keyword" $ do
-      "status: :true" `shouldParseInto` Keyword (ElixirKeyword (ElixirAccessor "status") (Bool $ ElixirBool True))
-      "status: false" `shouldParseInto` Keyword (ElixirKeyword (ElixirAccessor "status") (Bool $ ElixirBool False))
-      "msg: \"hello\"" `shouldParseInto` Keyword (ElixirKeyword (ElixirAccessor "msg") (String $ ElixirText "hello"))
+      "status: :true" `shouldParseInto` Keyword (ElixirKeyword (ElixirAccessor "status") (EBool $ ElixirBool True))
+      "status: false" `shouldParseInto` Keyword (ElixirKeyword (ElixirAccessor "status") (EBool $ ElixirBool False))
+      "msg: \"hello\"" `shouldParseInto` Keyword (ElixirKeyword (ElixirAccessor "msg") (EString $ ElixirText "hello"))
       "status: :ok" `shouldParseInto` Keyword (ElixirKeyword (ElixirAccessor "status") (Atom $ ElixirAtom "ok"))
 
     it "should parse elixir accessor" $ do
@@ -62,12 +62,12 @@ spec = do
       "[:we, true]"
         `shouldParseInto` List
           [ Atom (ElixirAtom "we")
-          , Bool (ElixirBool True)
+          , EBool (ElixirBool True)
           ]
       "[:we, \"live half in the day time\"]"
         `shouldParseInto` List
           [ Atom (ElixirAtom "we")
-          , String (ElixirText "live half in the day time")
+          , EString (ElixirText "live half in the day time")
           ]
       "[watch: :things, on: :vcr]"
         `shouldParseInto` List
@@ -79,7 +79,7 @@ spec = do
       "{with: :me, \"and talk all night\"}"
         `shouldParseInto` Tuple
           [ Keyword (ElixirKeyword (ElixirAccessor "with") (Atom $ ElixirAtom "me"))
-          , String (ElixirText "and talk all night")
+          , EString (ElixirText "and talk all night")
           ]
       "{:pkg, [:dev]}"
         `shouldParseInto` Tuple
@@ -97,9 +97,9 @@ spec = do
       findKeyword
         (accessorOf "msg")
         [ Atom (ElixirAtom "ok")
-        , Keyword (ElixirKeyword (ElixirAccessor "msg") (Bool $ ElixirBool True))
+        , Keyword (ElixirKeyword (ElixirAccessor "msg") (EBool $ ElixirBool True))
         ]
-        `shouldBe` Just (Bool $ ElixirBool True)
+        `shouldBe` Just (EBool $ ElixirBool True)
 
     it "should retrieve value of the accessor in nested list" $ do
       findKeyword
@@ -156,7 +156,7 @@ spec = do
     it "should not retrieve value of the accessor when corresponding value is not string" $ do
       findKeywordWithStringValue
         [ Atom (ElixirAtom "ok")
-        , Keyword (ElixirKeyword (ElixirAccessor "msg") (Bool $ ElixirBool True))
+        , Keyword (ElixirKeyword (ElixirAccessor "msg") (EBool $ ElixirBool True))
         ]
         "msg"
         `shouldBe` Nothing
@@ -164,7 +164,7 @@ spec = do
     it "should retrieve value of the accessor only when corresponding value is string" $ do
       findKeywordWithStringValue
         [ Atom (ElixirAtom "ok")
-        , Keyword (ElixirKeyword (ElixirAccessor "msg") (String (ElixirText "some-description")))
+        , Keyword (ElixirKeyword (ElixirAccessor "msg") (EString (ElixirText "some-description")))
         ]
         "msg"
         `shouldBe` Just ("some-description" :: Text)

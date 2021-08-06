@@ -13,7 +13,7 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 
 ## Analysis
 
-By default, for analyses, preferred strategy of analyzing with mix deps command will be attempted, if there is failure or mix tool is not accessible, analysis using mix.exs will be employed.
+By default, for analyses, preferred strategy of analyzing with mix deps command will be attempted, if there is failure or mix tool is not accessible, analysis using mix.exs will be performed instead.
 
 ### Analysis: Using mix deps command
 
