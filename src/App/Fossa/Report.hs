@@ -10,6 +10,7 @@ import App.Types
 import Control.Carrier.Diagnostics
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Data.Aeson qualified as Aeson
+import Data.Flag (Flag)
 import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
@@ -19,7 +20,6 @@ import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure)
 import System.IO (stderr)
-import Data.Flag (Flag)
 
 data ReportType
   = AttributionReport
@@ -35,7 +35,7 @@ reportMain ::
   -- | timeout (seconds)
   Int ->
   ReportType ->
-  Flag PollMonorepo -> 
+  Flag PollMonorepo ->
   OverrideProject ->
   IO ()
 reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType reportMonorepo override = do
