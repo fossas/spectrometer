@@ -24,8 +24,8 @@ module App.Fossa.FossaAPIV1 (
   getSignedURL,
   archiveUpload,
   archiveBuildUpload,
-  assertIATUserDefinedBinaries,
-  UserDefinedIATBinaryAssertion (..),
+  assertUserDefinedBinaries,
+  UserDefinedAssertion (..),
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
@@ -470,32 +470,32 @@ instance ToJSON FingerprintSet where
       [ "fingerprint_sha_256" .= fingerprintRaw
       ]
 
--- | The set of necessary data to describe a user defined binary IAT assertion to the FOSSA API.
-data UserDefinedIATBinaryAssertion = UserDefinedIATBinaryAssertion
-  { userDefinedBinaryAssertionName :: Text
-  , userDefinedBinaryAssertionVersion :: Text
-  , userDefinedBinaryAssertionLicenseIdentifier :: Text
-  , userDefinedBinaryAssertionDescription :: Maybe Text
-  , userDefinedBinaryAssertionUrl :: Maybe Text
-  , userDefinedBinaryAssertionFingerprints :: [Fingerprint]
+-- | The set of necessary data to describe a user defined binary assertion to the FOSSA API.
+data UserDefinedAssertion = UserDefinedAssertion
+  { userDefinedAssertionName :: Text
+  , userDefinedAssertionVersion :: Text
+  , userDefinedAssertionLicense :: Text
+  , userDefinedAssertionDescription :: Maybe Text
+  , userDefinedAssertionUrl :: Maybe Text
+  , userDefinedAssertionFingerprints :: [Fingerprint]
   }
 
-instance ToJSON UserDefinedIATBinaryAssertion where
-  toJSON UserDefinedIATBinaryAssertion{..} =
+instance ToJSON UserDefinedAssertion where
+  toJSON UserDefinedAssertion{..} =
     object
-      [ "name" .= userDefinedBinaryAssertionName
-      , "version" .= userDefinedBinaryAssertionVersion
-      , "license" .= userDefinedBinaryAssertionLicenseIdentifier
-      , "description" .= userDefinedBinaryAssertionDescription
-      , "url" .= userDefinedBinaryAssertionUrl
-      , "fingerprints" .= (FingerprintSet <$> userDefinedBinaryAssertionFingerprints)
+      [ "name" .= userDefinedAssertionName
+      , "version" .= userDefinedAssertionVersion
+      , "license" .= userDefinedAssertionLicense
+      , "description" .= userDefinedAssertionDescription
+      , "url" .= userDefinedAssertionUrl
+      , "fingerprints" .= (FingerprintSet <$> userDefinedAssertionFingerprints)
       ]
 
-assertIATUserDefinedBinariesEndpoint :: Url scheme -> Url scheme
-assertIATUserDefinedBinariesEndpoint baseurl = baseurl /: "api" /: "iat" /: "binary"
+assertUserDefinedBinariesEndpoint :: Url scheme -> Url scheme
+assertUserDefinedBinariesEndpoint baseurl = baseurl /: "api" /: "iat" /: "binary"
 
-assertIATUserDefinedBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> UserDefinedIATBinaryAssertion -> m ()
-assertIATUserDefinedBinaries apiOpts assertion = fossaReq $ do
+assertUserDefinedBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> UserDefinedAssertion -> m ()
+assertUserDefinedBinaries apiOpts assertion = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  _ <- req POST (assertIATUserDefinedBinariesEndpoint baseUrl) (ReqBodyJson assertion) ignoreResponse baseOpts
+  _ <- req POST (assertUserDefinedBinariesEndpoint baseUrl) (ReqBodyJson assertion) ignoreResponse baseOpts
   pure ()

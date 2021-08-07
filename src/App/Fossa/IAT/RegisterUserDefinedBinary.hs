@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.IAT.RegisterUserDefinedBinary (
-  registerUserDefinedIATBinaryMain,
+  registerUserDefinedBinaryMain,
 ) where
 
 import App.Fossa.FossaAPIV1
@@ -16,17 +16,17 @@ import Effect.ReadFS
 import Fossa.API.Types
 import Path
 
-registerUserDefinedIATBinaryMain :: Severity -> BaseDir -> ApiOpts -> UserDefinedBinaryAssertion -> IO ()
-registerUserDefinedIATBinaryMain logSeverity (BaseDir dir) apiOpts assertion = withDefaultLogger logSeverity . logWithExit_ . runReadFSIO $ do
-  registerUserDefinedIATBinary dir apiOpts assertion
+registerUserDefinedBinaryMain :: Severity -> BaseDir -> ApiOpts -> UserDefinedBinaryAssertion -> IO ()
+registerUserDefinedBinaryMain logSeverity (BaseDir dir) apiOpts assertion = withDefaultLogger logSeverity . logWithExit_ . runReadFSIO $ do
+  registerUserDefinedBinary dir apiOpts assertion
 
-registerUserDefinedIATBinary :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> UserDefinedBinaryAssertion -> m ()
-registerUserDefinedIATBinary dir apiOpts UserDefinedBinaryAssertion{..} = do
+registerUserDefinedBinary :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> UserDefinedBinaryAssertion -> m ()
+registerUserDefinedBinary dir apiOpts UserDefinedBinaryAssertion{..} = do
   logInfo "Fingerprinting directory contents"
   fingerprints <- fingerprintContentsRaw dir
 
   logInfo "Uploading assertion to FOSSA"
-  let assertion = UserDefinedIATBinaryAssertion assertedName assertedVersion assertedLicenseIdentifier assertedDescription assertedUrl fingerprints
-  assertIATUserDefinedBinaries apiOpts assertion
+  let assertion = UserDefinedAssertion assertedName assertedVersion assertedLicenseIdentifier assertedDescription assertedUrl fingerprints
+  assertUserDefinedBinaries apiOpts assertion
 
   pure ()
