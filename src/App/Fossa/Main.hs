@@ -263,11 +263,11 @@ appMain = do
         ContainerParseFile path -> parseSyftOutputMain logSeverity path
         ContainerDumpScan ContainerDumpScanOptions{..} -> dumpSyftScanMain logSeverity dumpScanOutputFile dumpScanImage
     --
-    RegisterUserDefinedBinaryCommand RegisterUserDefinedBinaryOptions{..} -> do
+    AssertUserDefinedBinariesCommand AssertUserDefinedBinariesOptions{..} -> do
       apikey <- requireKey maybeApiKey
-      baseDir <- validateDir userDefinedBinaryAssertionBaseDir
+      baseDir <- validateDir assertionDir
       let apiOpts = ApiOpts optBaseUrl apikey
-      registerUserDefinedBinaryMain logSeverity baseDir apiOpts userDefiniedBinaryAssertion
+      assertUserDefinedBinariesMain logSeverity baseDir apiOpts assertionMeta
     --
     CompatibilityCommand args -> do
       compatibilityMain args
@@ -389,7 +389,7 @@ hiddenCommands =
         <> command
           "experimental-vsi-register-binary-custom-dependency"
           ( info
-              (RegisterUserDefinedBinaryCommand <$> registerUserDefinedBinaryAssertionOpts)
+              (AssertUserDefinedBinariesCommand <$> assertUserDefinedBinariesOpts)
               (progDesc "Register one or more binary fingerprints as a custom dependency to be discovered when running in `analyze --enable-vsi` mode on a downstream project")
           )
     )
@@ -620,22 +620,22 @@ compatibilityOpts :: Parser [Argument]
 compatibilityOpts =
   many argumentParser
 
-registerUserDefinedBinaryAssertionOpts :: Parser RegisterUserDefinedBinaryOptions
-registerUserDefinedBinaryAssertionOpts =
-  RegisterUserDefinedBinaryOptions
-    <$> userDefinedAssertionDirArg
-    <*> userDefinedBinaryAssertionOpts
+assertUserDefinedBinariesOpts :: Parser AssertUserDefinedBinariesOptions
+assertUserDefinedBinariesOpts =
+  AssertUserDefinedBinariesOptions
+    <$> assertUserDefinedBinariesDir
+    <*> assertUserDefinedBinariesMeta
   where
-    userDefinedBinaryAssertionOpts :: Parser UserDefinedBinaryAssertion
-    userDefinedBinaryAssertionOpts =
+    assertUserDefinedBinariesMeta :: Parser UserDefinedBinaryAssertion
+    assertUserDefinedBinariesMeta =
       UserDefinedBinaryAssertion
         <$> (strOption (long "name" <> help "The name to display for the dependency"))
         <*> (strOption (long "version" <> help "The version to display for the dependency"))
         <*> (strOption (long "license" <> help "The license identifier to use for the dependency"))
         <*> optional (strOption (long "description" <> help "The description to use for the dependency"))
         <*> optional (strOption (long "homepage" <> help "The URL to the homepage for the dependency"))
-    userDefinedAssertionDirArg :: Parser String
-    userDefinedAssertionDirArg = argument str (metavar "DIR" <> help "The directory containing one or more binaries to assert to the provided values (default: current directory)" <> value ".")
+    assertUserDefinedBinariesDir :: Parser String
+    assertUserDefinedBinariesDir = argument str (metavar "DIR" <> help "The directory containing one or more binaries to assert to the provided values (default: current directory)" <> value ".")
 
 data CmdOptions = CmdOptions
   { optDebug :: Bool
@@ -652,7 +652,7 @@ data Command
   | ReportCommand ReportOptions
   | VPSCommand VPSOptions
   | ContainerCommand ContainerOptions
-  | RegisterUserDefinedBinaryCommand RegisterUserDefinedBinaryOptions
+  | AssertUserDefinedBinariesCommand AssertUserDefinedBinariesOptions
   | CompatibilityCommand [Argument]
   | ListTargetsCommand FilePath
   | InitCommand
@@ -728,9 +728,9 @@ data VPSTestOptions = VPSTestOptions
   , vpsTestBaseDir :: FilePath
   }
 
-data RegisterUserDefinedBinaryOptions = RegisterUserDefinedBinaryOptions
-  { userDefinedBinaryAssertionBaseDir :: FilePath
-  , userDefiniedBinaryAssertion :: UserDefinedBinaryAssertion
+data AssertUserDefinedBinariesOptions = AssertUserDefinedBinariesOptions
+  { assertionDir :: FilePath
+  , assertionMeta :: UserDefinedBinaryAssertion
   }
 
 newtype ContainerOptions = ContainerOptions

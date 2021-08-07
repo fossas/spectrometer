@@ -20,7 +20,7 @@ toText (Fingerprint x) = x
 data UserDefinedBinaryAssertion = UserDefinedBinaryAssertion
   { assertedName :: Text
   , assertedVersion :: Text
-  , assertedLicenseIdentifier :: Text
+  , assertedLicense :: Text
   , assertedDescription :: Maybe Text
   , assertedUrl :: Maybe Text
   }
