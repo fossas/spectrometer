@@ -21,19 +21,19 @@ hashFile file = do
   content <- context "Read file" $ sendIO $ BL.readFile file
   pure . toText . show $ sha256 content
 
-fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
+fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m Fingerprint
 fingerprintRaw file = do
   fp <- context "Fingerprint file" $ hashFile (toFilePath file)
   pure (Fingerprint fp)
 
-fingerprintRawMany :: (Has (Lift IO) sig m, Has Diagnostics sig m) => [Path Abs File] -> m [Fingerprint Raw]
+fingerprintRawMany :: (Has (Lift IO) sig m, Has Diagnostics sig m) => [Path Abs File] -> m [Fingerprint]
 fingerprintRawMany [] = pure []
 fingerprintRawMany (x : xs) = do
   fp <- fingerprintRaw x
   fps <- fingerprintRawMany xs
   pure (fp : fps)
 
-fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint Raw]
+fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint]
 fingerprintContentsRaw = walk' $ \_ _ files -> do
   fps <- fingerprintRawMany files
   pure (fps, WalkContinue)

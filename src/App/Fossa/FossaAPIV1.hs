@@ -460,7 +460,7 @@ uploadContributors apiOpts locator contributors = fossaReq $ do
 ----------
 
 newtype IATFingerprintSet = IATFingerprintSet
-  { fingerprintRaw :: Fingerprint Raw
+  { fingerprintRaw :: Fingerprint
   }
 
 instance ToJSON IATFingerprintSet where
