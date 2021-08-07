@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.IAT.RegisterUserDefinedBinary (
+module App.Fossa.IAT.AssertUserDefinedBinaries (
   assertUserDefinedBinariesMain,
 ) where
 

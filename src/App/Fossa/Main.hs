@@ -26,7 +26,7 @@ import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, pars
 import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
-import App.Fossa.IAT.RegisterUserDefinedBinary
+import App.Fossa.IAT.AssertUserDefinedBinaries
 import App.Fossa.IAT.Types
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Monorepo
