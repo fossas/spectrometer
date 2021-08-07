@@ -16,17 +16,16 @@ import Effect.ReadFS
 import Fossa.API.Types
 import Path
 
-assertUserDefinedBinariesMain :: Severity -> BaseDir -> ApiOpts -> UserDefinedBinaryAssertion -> IO ()
+assertUserDefinedBinariesMain :: Severity -> BaseDir -> ApiOpts -> UserDefinedAssertionMeta -> IO ()
 assertUserDefinedBinariesMain logSeverity (BaseDir dir) apiOpts assertion = withDefaultLogger logSeverity . logWithExit_ . runReadFSIO $ do
   assertUserDefinedBinaries dir apiOpts assertion
 
-assertUserDefinedBinaries :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> UserDefinedBinaryAssertion -> m ()
-assertUserDefinedBinaries dir apiOpts UserDefinedBinaryAssertion{..} = do
+assertUserDefinedBinaries :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> UserDefinedAssertionMeta -> m ()
+assertUserDefinedBinaries dir apiOpts assertionMeta = do
   logInfo "Fingerprinting directory contents"
   fingerprints <- fingerprintContentsRaw dir
 
   logInfo "Uploading assertion to FOSSA"
-  let assertion = Fossa.UserDefinedAssertion assertedName assertedVersion assertedLicense assertedDescription assertedUrl fingerprints
-  Fossa.assertUserDefinedBinaries apiOpts assertion
+  Fossa.assertUserDefinedBinaries apiOpts assertionMeta fingerprints
 
   pure ()

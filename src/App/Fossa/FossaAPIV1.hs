@@ -25,7 +25,6 @@ module App.Fossa.FossaAPIV1 (
   archiveUpload,
   archiveBuildUpload,
   assertUserDefinedBinaries,
-  UserDefinedAssertion (..),
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
@@ -471,31 +470,32 @@ instance ToJSON FingerprintSet where
       ]
 
 -- | The set of necessary data to describe a user defined binary assertion to the FOSSA API.
-data UserDefinedAssertion = UserDefinedAssertion
-  { userDefinedAssertionName :: Text
-  , userDefinedAssertionVersion :: Text
-  , userDefinedAssertionLicense :: Text
-  , userDefinedAssertionDescription :: Maybe Text
-  , userDefinedAssertionUrl :: Maybe Text
-  , userDefinedAssertionFingerprints :: [Fingerprint]
+data UserDefinedAssertionBody = UserDefinedAssertionBody
+  { bodyName :: Text
+  , bodyVersion :: Text
+  , bodyLicense :: Text
+  , bodyDescription :: Maybe Text
+  , bodyUrl :: Maybe Text
+  , bodyFingerprints :: [FingerprintSet]
   }
 
-instance ToJSON UserDefinedAssertion where
-  toJSON UserDefinedAssertion{..} =
+instance ToJSON UserDefinedAssertionBody where
+  toJSON UserDefinedAssertionBody{..} =
     object
-      [ "name" .= userDefinedAssertionName
-      , "version" .= userDefinedAssertionVersion
-      , "license" .= userDefinedAssertionLicense
-      , "description" .= userDefinedAssertionDescription
-      , "url" .= userDefinedAssertionUrl
-      , "fingerprints" .= (FingerprintSet <$> userDefinedAssertionFingerprints)
+      [ "name" .= bodyName
+      , "version" .= bodyVersion
+      , "license" .= bodyLicense
+      , "description" .= bodyDescription
+      , "url" .= bodyUrl
+      , "fingerprints" .= bodyFingerprints
       ]
 
 assertUserDefinedBinariesEndpoint :: Url scheme -> Url scheme
 assertUserDefinedBinariesEndpoint baseurl = baseurl /: "api" /: "iat" /: "binary"
 
-assertUserDefinedBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> UserDefinedAssertion -> m ()
-assertUserDefinedBinaries apiOpts assertion = fossaReq $ do
+assertUserDefinedBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> UserDefinedAssertionMeta -> [Fingerprint] -> m ()
+assertUserDefinedBinaries apiOpts UserDefinedAssertionMeta{..} fingerprints = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  _ <- req POST (assertUserDefinedBinariesEndpoint baseUrl) (ReqBodyJson assertion) ignoreResponse baseOpts
+  let body = UserDefinedAssertionBody assertedName assertedVersion assertedLicense assertedDescription assertedUrl (FingerprintSet <$> fingerprints)
+  _ <- req POST (assertUserDefinedBinariesEndpoint baseUrl) (ReqBodyJson body) ignoreResponse baseOpts
   pure ()

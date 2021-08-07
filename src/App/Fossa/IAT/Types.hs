@@ -1,6 +1,6 @@
 module App.Fossa.IAT.Types (
   Fingerprint (..),
-  UserDefinedBinaryAssertion (..),
+  UserDefinedAssertionMeta (..),
 ) where
 
 import Data.Aeson
@@ -17,7 +17,7 @@ toText :: Fingerprint -> Text
 toText (Fingerprint x) = x
 
 -- | User provided data to assert a binary via IAT.
-data UserDefinedBinaryAssertion = UserDefinedBinaryAssertion
+data UserDefinedAssertionMeta = UserDefinedAssertionMeta
   { assertedName :: Text
   , assertedVersion :: Text
   , assertedLicense :: Text

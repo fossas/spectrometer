@@ -626,9 +626,9 @@ assertUserDefinedBinariesOpts =
     <$> assertUserDefinedBinariesDir
     <*> assertUserDefinedBinariesMeta
   where
-    assertUserDefinedBinariesMeta :: Parser UserDefinedBinaryAssertion
+    assertUserDefinedBinariesMeta :: Parser UserDefinedAssertionMeta
     assertUserDefinedBinariesMeta =
-      UserDefinedBinaryAssertion
+      UserDefinedAssertionMeta
         <$> (strOption (long "name" <> help "The name to display for the dependency"))
         <*> (strOption (long "version" <> help "The version to display for the dependency"))
         <*> (strOption (long "license" <> help "The license identifier to use for the dependency"))
@@ -730,7 +730,7 @@ data VPSTestOptions = VPSTestOptions
 
 data AssertUserDefinedBinariesOptions = AssertUserDefinedBinariesOptions
   { assertionDir :: FilePath
-  , assertionMeta :: UserDefinedBinaryAssertion
+  , assertionMeta :: UserDefinedAssertionMeta
   }
 
 newtype ContainerOptions = ContainerOptions
