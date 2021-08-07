@@ -26,7 +26,7 @@ registerUserDefinedIATBinary dir apiOpts UserDefinedBinaryAssertion{..} = do
   fingerprints <- fingerprintContentsRaw dir
 
   logInfo "Uploading assertion to FOSSA"
-  let assertion = UserDefinedIATBinaryAssertion assertedName assertedVersion assertedLicenseIdentifier assertedDescription assertedUrl (IATFingerprintSet <$> fingerprints)
+  let assertion = UserDefinedIATBinaryAssertion assertedName assertedVersion assertedLicenseIdentifier assertedDescription assertedUrl fingerprints
   assertIATUserDefinedBinaries apiOpts assertion
 
   pure ()

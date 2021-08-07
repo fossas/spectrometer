@@ -26,7 +26,6 @@ module App.Fossa.FossaAPIV1 (
   archiveBuildUpload,
   assertIATUserDefinedBinaries,
   UserDefinedIATBinaryAssertion (..),
-  IATFingerprintSet (..),
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
@@ -459,12 +458,14 @@ uploadContributors apiOpts locator contributors = fossaReq $ do
 
 ----------
 
-newtype IATFingerprintSet = IATFingerprintSet
+-- | Core expects an object for each fingerprint.
+-- This type allows us to convert a fingerprint to the required object.
+newtype FingerprintSet = FingerprintSet
   { fingerprintRaw :: Fingerprint
   }
 
-instance ToJSON IATFingerprintSet where
-  toJSON IATFingerprintSet{..} =
+instance ToJSON FingerprintSet where
+  toJSON FingerprintSet{..} =
     object
       [ "fingerprint_sha_256" .= fingerprintRaw
       ]
@@ -476,7 +477,7 @@ data UserDefinedIATBinaryAssertion = UserDefinedIATBinaryAssertion
   , userDefinedBinaryAssertionLicenseIdentifier :: Text
   , userDefinedBinaryAssertionDescription :: Maybe Text
   , userDefinedBinaryAssertionUrl :: Maybe Text
-  , userDefinedBinaryAssertionFingerprints :: [IATFingerprintSet]
+  , userDefinedBinaryAssertionFingerprints :: [Fingerprint]
   }
 
 instance ToJSON UserDefinedIATBinaryAssertion where
@@ -487,7 +488,7 @@ instance ToJSON UserDefinedIATBinaryAssertion where
       , "license" .= userDefinedBinaryAssertionLicenseIdentifier
       , "description" .= userDefinedBinaryAssertionDescription
       , "url" .= userDefinedBinaryAssertionUrl
-      , "fingerprints" .= userDefinedBinaryAssertionFingerprints
+      , "fingerprints" .= (FingerprintSet <$> userDefinedBinaryAssertionFingerprints)
       ]
 
 assertIATUserDefinedBinariesEndpoint :: Url scheme -> Url scheme
