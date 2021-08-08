@@ -10,9 +10,9 @@ module Strategy.Go.GlideLock (
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
 import Data.Aeson
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import DepTypes
 import Effect.ReadFS
 import Graphing (Graphing)
@@ -42,7 +42,7 @@ buildGraph lockfile = Graphing.fromList (map toDependency direct)
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
 data GlideLockfile = GlideLockfile
@@ -73,4 +73,4 @@ instance FromJSON GlideDep where
       <*> obj .:? "repo"
 
 intToText :: Int -> Text
-intToText = T.pack . show
+intToText = toText . show

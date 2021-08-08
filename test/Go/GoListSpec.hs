@@ -11,11 +11,12 @@ import Control.Carrier.Diagnostics
 import Control.Carrier.Reader
 import Data.ByteString.Lazy qualified as BL
 import Data.Function ((&))
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes
 import Effect.Exec
 import Effect.Grapher
-import Graphing (Graphing (..))
+import Graphing (Graphing)
+import Graphing qualified
 import Path.IO (getCurrentDir)
 import Strategy.Go.GoList
 import Test.Hspec
@@ -42,7 +43,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "commithash")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -51,7 +52,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "v2.0.0")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
 
 spec :: Spec
@@ -80,4 +81,4 @@ spec = do
 
       case result of
         Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
-        Right (graph, _) -> length (graphingDirect graph) `shouldBe` 12
+        Right (graph, _) -> length (Graphing.directList graph) `shouldBe` 12

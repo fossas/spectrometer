@@ -11,8 +11,8 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Fossa.Analyze.Project
 import Control.Applicative ((<|>))
 import Data.Set qualified as Set
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
@@ -38,22 +38,22 @@ toSourceUnit ProjectResult{..} =
     , additionalData = Nothing
     }
   where
-    renderedPath = Text.pack (toFilePath projectResultPath)
+    renderedPath = toText (toFilePath projectResultPath)
 
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
+    filteredGraph = Graphing.shrink (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph
 
     locatorAdjacent :: AM.AdjacencyMap Locator
-    locatorAdjacent = Graphing.graphingAdjacent locatorGraph
+    locatorAdjacent = Graphing.toAdjacencyMap locatorGraph
 
     deps :: [SourceUnitDependency]
     deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
 
     imports :: [Locator]
-    imports = Set.toList $ Graphing.graphingDirect locatorGraph
+    imports = Graphing.directList locatorGraph
 
 mkSourceUnitDependency :: AM.AdjacencyMap Locator -> Locator -> SourceUnitDependency
 mkSourceUnitDependency gr locator =

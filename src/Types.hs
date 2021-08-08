@@ -25,8 +25,8 @@ import Data.Aeson (
 
 import Data.Aeson.Types (Parser)
 import Data.Set.NonEmpty (NonEmptySet)
+import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as T
 import DepTypes (
   DepEnvironment (..),
   DepType (..),
@@ -120,7 +120,7 @@ instance FromJSON TargetFilter where
 
 pathParser :: Text -> Parser (Path Rel Dir)
 pathParser input = do
-  case parseRelDir (T.unpack input) of
+  case parseRelDir (toString input) of
     Left err -> fail (show err)
     Right value -> pure value
 
