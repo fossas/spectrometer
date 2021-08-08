@@ -18,7 +18,7 @@ import Control.Effect.Diagnostics
 import Control.Monad (when)
 import Data.Aeson.Types
 import Data.Foldable (for_)
-import Data.List (find, isSuffixOf)
+import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -115,22 +115,21 @@ discover dir = context "Cabal" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
 
-isDotCabal :: Path Abs File -> Bool
-isDotCabal name = ".cabal" `isSuffixOf` fileName name
-
-isCabalDotFile :: Path Abs File -> Bool
-isCabalDotFile name = "cabal.project" == fileName name
+isCabalFile :: Path Abs File -> Bool
+isCabalFile file = isDotCabal || isCabalDotProject
+  where
+    name = fileName file
+    isDotCabal = ".cabal" `isSuffixOf` name
+    isCabalDotProject = "cabal.project" == name
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CabalProject]
 findProjects = walk' $ \dir _ files -> do
-  -- TODO: @wes is this the right approach?
   -- Prefer the `.cabal` file over the `cabal.project` file
-  let manifestFile = case (find isDotCabal files) of
-        Just file -> Just file
-        Nothing -> find isCabalDotFile files
-  case manifestFile of
-    Just mf -> pure ([CabalProject dir mf], WalkSkipAll)
-    Nothing -> pure ([], WalkContinue)
+  let manifestFiles = filter isCabalFile files
+
+  if not (null manifestFiles)
+    then pure ([CabalProject dir manifestFiles], WalkSkipAll)
+    else pure ([], WalkContinue)
 
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CabalProject -> DiscoveredProject n
 mkProject project =
@@ -150,7 +149,7 @@ getDeps project =
 
 data CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
-  , cabalFile :: Path Abs File
+  , cabalFiles :: [Path Abs File]
   }
   deriving (Eq, Ord, Show)
 
@@ -196,5 +195,5 @@ analyze project = do
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = [cabalFile project]
+      , dependencyManifestFiles = cabalFiles project
       }

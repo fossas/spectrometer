@@ -16,8 +16,8 @@ import Data.Aeson
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Path (File, SomeBase)
 import Types (GraphBreadth (..))
-import Path (SomeBase, File)
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text

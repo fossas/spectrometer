@@ -1,7 +1,6 @@
-module Path.Extra
-  ( tryMakeRelative,
-  )
-where
+module Path.Extra (
+  tryMakeRelative,
+) where
 
 import Path
 
