@@ -124,7 +124,8 @@ isCabalFile file = isDotCabal || isCabalDotProject
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CabalProject]
 findProjects = walk' $ \dir _ files -> do
-  -- Prefer the `.cabal` file over the `cabal.project` file
+  -- NOTE: the long-term more-accurate version here is to parse the `cabal.project` file and look
+  -- for relevant cabal files to mark as manifests.
   let manifestFiles = filter isCabalFile files
 
   if not (null manifestFiles)
