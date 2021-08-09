@@ -104,15 +104,35 @@ accompanying comment explaining the safety.
 
 ### Prefer `map` to `fmap` or `<$>`
 
-When operating on a list using `map` tells the reader "I'm transforming a list", where `fmap` tells them "I'm transforming *some* functor, and it doesn't matter which one.
+When operating on a list, using `map` tells the reader "I'm transforming a list", where `fmap` tells them "I'm transforming *some* functor, and it doesn't matter which one.
 
 ```haskell
 appendFoo t = t <> "-foo"
 txts = ["Hello", "darkness", "my", "old", "friend"]
 
 -- Ambiguous
-appendFoo <$> 
+appendFoo <$> txts
+-- Slightly better
+fmap appendFoo txts
+-- Clear and Obvious
+map appendFoo txts
 ```
+
+### Don't use `&` or `<&>`
+
+`&` and `<&>` are the flipped versions of `$` and `<$>`, and it is tempting to use them, since they read from left-to-right, like english.  However, the usefulness of
+`$` is to remove parentheses, and `&` makes that a lot harder:
+
+```haskell
+-- Raw parens
+foo (bar baz (quux))
+-- Using $
+foo $ bar baz $ quux
+-- Using &
+quux & bar baz & foo
+```
+
+`<$>` is meant to mimic `$`, but for functors.  Therefore, if we use `$` instead of `&`, we should also use `<$>` instead of `<&>`.
 
 ## Data Types
 
@@ -181,6 +201,85 @@ import Control.Effect.Diagnostics (fatal, context)  -- Good
 
 There are notable exceptions, but they are few and far between.  The `Path` module is a common exception, but there's no good justification for this.
 
+## Strings
+
+### Don't use the bare conversion routines
+
+For converting between `Bytestring`/`Text`/`String`, including the lazy forms of `Bytestring` and `Text`, use the internal `Data.String.Conversion`
+module.  We export as many string conversion routines as we've found use for, plus more.  Use these instead of `decodeUtf8`/`encodeUTF8`/`Text.pack`
+/`Text.unpack`/`toFilePath`.  `hlint` will catch some of these, but not all.
+
+## Parsing
+
+We use `megaparsec` for text parsing, with a few common idioms.
+
+### Define a `Parser` type alias
+
+Usually, you should add `type Parser = Parsec Void Text` to your parsing module, so that your parser functions can be of type `Parser a`, rather than
+the long-form `Parsec` version, or worse, the fully-verbose `ParsecT` version.
+
+### Use `sc`, `scn`, `symbol`, and `lexeme`
+
+When writing a non-trivial text parser, you should create the following helper functions:
+
+- `sc`/`scn` - **S**pace **C**onsumer (or **S**pace **C**onsumer with **N**ewlines)
+  - Use [`Lexer.space`](https://hackage.haskell.org/package/megaparsec-9.1.0/docs/Text-Megaparsec-Char-Lexer.html#v:space) to create your whitespace consumer.
+  - READ THE DOCS FOR THAT FUNCTION IF YOU HAVEN'T YET!  There's a lot of useful info there, and you'll need to know it.
+  - You don't always need to create both `sc` and `scn`, but you'll almost always need at least one.
+- `symbol` - Parser for verbatim text strings.
+  - Use [`Lexer.symbol`](https://hackage.haskell.org/package/megaparsec-9.1.0/docs/Text-Megaparsec-Char-Lexer.html#v:symbol) to create this helper.
+  - Use your `sc` or `scn` function for the whitespace consumer.
+  - You can use `Lexer.symbol'` if your text is case-insensitive.
+- `lexeme` - Parser for any basic unit of the language.  While `symbol` is for verbatim text parsing, `lexeme` is used with any parser that should consume space
+  after finishing.  For example, `Lexer.symbol` is implmented via `Lexer.lexeme`.
+  - Use [`Lexer.lexeme`](https://hackage.haskell.org/package/megaparsec-9.1.0/docs/Text-Megaparsec-Char-Lexer.html#v:lexeme) to define this helper.
+  - Use your `sc` or `scn` function for the whitespace consumer.
+
+### Every parser must consume something to succeed
+
+This is not a style concern, but a parsing rule.
+
+An example file should look somthing like this:
+
+```haskell
+import Data.Text (Text)
+import Data.Void (Void)
+import Text.Megaparsec (Parsec)
+import Text.Megaparsec.Char (space1)
+import Text.Megaparsec.Char.Lexer qualified as Lexer
+
+type Parser = Parsec Void Text
+
+-- A parser for a C language file.
+moduleParser :: Parser CModule
+moduleParser = ...
+
+scn :: Parser ()
+scn = Lexer.space space1 lineComment blockComment
+  where
+    -- These are C-style comments
+    lineComment = Lexer.skipLineComment "//"
+    blockComment = Lexer.skipBlockComment "/*" "*/"
+
+symbol :: Parser Text
+symbol = Lexer.symbol scn
+
+lexeme :: Parser a -> Parser a
+lexeme = Lexer.lexeme scn
+```
+
+If you need to define `sc` instead of `scn` you can follow this common example:
+
+```haskell
+sc :: Parser ()
+sc = Lexer.space (void $ char ' ') lineComment blockComment
+```
+
 ## Miscellaneous
 
-* Don't use `{-# ANN … #-}` to disable hlint warnings, as it can slow down compilation. If you need to disable lints in a file, do so in `.hlint.yaml`.
+- Don't use `{-# ANN … #-}` to disable hlint warnings, as it can slow down compilation. If you need to disable lints in a file, do so in `.hlint.yaml`.
+- Don't use `do` notation for single items.  If removing the `do` keyword compiles identically, then remove it.
+- Avoid nested `where` blocks.  If you feel that you need them, rethink your design.  Consider making an `Internal` module instead.
+- Prefer unflipped versions of functions, unless it significantly improves readability.  Some examples:
+  - If `traverse` makes sense, don't use `for`.
+  - If you can use `>>=`, don't use `=<<`.
