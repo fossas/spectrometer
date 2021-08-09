@@ -442,8 +442,7 @@ fossa test --json
 `fossa test` works by fetching the latest "build" from the FOSSA API.  By default, we use that "build" to determine if the project being scanned is a
 standard project, or a monorepo project.  The two project types work differently internally, so we need to know which type we're testing.
 
-In rare cases, that info may not be available, and in those cases we assume that the project is a standard project.
-If `fossa test --monorepo` is run, then the same process is run, but the fallback assumption is the project is a monorepo project.
+In rare cases (like having an out-of-date FOSSA server instance), that info may not be available, and in those cases we assume that the project is a standard project.
 
 ## `fossa report`
 
@@ -487,7 +486,6 @@ fossa report attribtion --json
 
 Before a report can be run, both a "build" and "issue scan" must be completed on the backend, like in `fossa test`.  We will automatically wait for
 these to finish, but doing so requires the same detection and fallback process as described in [Testing Monorepo projects](#testing-monorepo-projects).
-For this reason, `fossa report` also accepts a `--monorepo` flag, which has the same effect as it does during `fossa test`.
 
 ## Common FOSSA Project Flags
 
