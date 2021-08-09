@@ -4,7 +4,6 @@ module App.Fossa.Test (
 ) where
 
 import App.Fossa.API.BuildWait (
-  PollMonorepo,
   timeout,
   waitForIssues,
   waitForScanCompletion,
@@ -24,7 +23,6 @@ import Control.Carrier.Diagnostics (logWithExit_, (<||>))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
-import Data.Flag (Flag)
 import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
@@ -54,10 +52,9 @@ testMain ::
   -- | timeout (seconds)
   Int ->
   TestOutputType ->
-  Flag PollMonorepo ->
   OverrideProject ->
   IO ()
-testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType testMonorepo override = do
+testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
   void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
     logWithExit_ . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
@@ -68,7 +65,7 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType testMon
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForScanCompletion testMonorepo apiOpts revision
+      waitForScanCompletion apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
       issues <- waitForIssues apiOpts revision

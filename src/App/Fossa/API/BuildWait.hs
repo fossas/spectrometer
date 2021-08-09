@@ -5,7 +5,6 @@ module App.Fossa.API.BuildWait (
   waitForSherlockScan,
   waitForScanCompletion,
   timeout,
-  PollMonorepo (..),
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -24,7 +23,6 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
-import Data.Flag (Flag, fromFlag)
 import Data.Functor (($>))
 import Data.Text (Text)
 import Effect.Logger (Logger, pretty, viaShow)
@@ -32,8 +30,6 @@ import Fossa.API.Types (ApiOpts, Issues (..))
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
-
-data PollMonorepo = PollMonorepo
 
 data WaitError
   = -- | we encountered the FAILED status on a build
@@ -47,16 +43,15 @@ instance ToDiagnostic WaitError where
 -- Try to detect the correct method, use provided fallback
 waitForScanCompletion ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
-  Flag PollMonorepo ->
   ApiOpts ->
   ProjectRevision ->
   m ()
-waitForScanCompletion monorepo apiopts revision = do
+waitForScanCompletion apiopts revision = do
   -- Route is new, this may fail on on-prem if they haven't updated
   project <- recover $ Fossa.getProject apiopts revision
 
-  -- Try inferring, fallback to CLI flag.  Missing flag means no monorepo
-  let runAsMonorepo = maybe (fromFlag PollMonorepo monorepo) Fossa.projectIsMonorepo project
+  -- Try inferring, fallback to standard.
+  let runAsMonorepo = maybe False Fossa.projectIsMonorepo project
 
   if runAsMonorepo
     then waitForMonorepoScan apiopts revision
