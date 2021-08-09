@@ -42,10 +42,7 @@ fingerprintRaw file = do
     hashFile' :: (Has (Lift IO) sig m, Has Diagnostics sig m) => FilePath -> m (Digest SHA256)
     hashFile' = hashFile
 
-fingerprintRawMany :: (Has (Lift IO) sig m, Has Diagnostics sig m) => [Path Abs File] -> m [Fingerprint]
-fingerprintRawMany = traverse fingerprintRaw
-
 fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint]
 fingerprintContentsRaw = walk' $ \_ _ files -> do
-  fps <- fingerprintRawMany files
+  fps <- traverse fingerprintRaw files
   pure (fps, WalkContinue)
