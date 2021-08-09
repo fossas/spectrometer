@@ -27,11 +27,7 @@ fingerprintRaw file = do
   pure (Fingerprint fp)
 
 fingerprintRawMany :: (Has (Lift IO) sig m, Has Diagnostics sig m) => [Path Abs File] -> m [Fingerprint]
-fingerprintRawMany [] = pure []
-fingerprintRawMany (x : xs) = do
-  fp <- fingerprintRaw x
-  fps <- fingerprintRawMany xs
-  pure (fp : fps)
+fingerprintRawMany = traverse fingerprintRaw
 
 fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint]
 fingerprintContentsRaw = walk' $ \_ _ files -> do
