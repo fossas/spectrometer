@@ -34,13 +34,9 @@ hashFile fp =
 
 fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m Fingerprint
 fingerprintRaw file = do
-  fp <- hashFile' $ toFilePath file
+  (fp :: Digest SHA256) <- hashFile $ toFilePath file
   let base16 = toText . show $ fp
   pure (Fingerprint base16)
-  where
-    -- Monomorphize to SHA256 hash
-    hashFile' :: (Has (Lift IO) sig m, Has Diagnostics sig m) => FilePath -> m (Digest SHA256)
-    hashFile' = hashFile
 
 fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint]
 fingerprintContentsRaw = walk' $ \_ _ files -> do
