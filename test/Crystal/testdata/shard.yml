@@ -1,0 +1,49 @@
+name: somename
+version: 1.2.3
+crystal: '>= 0.35.0'
+
+authors:
+- Some User <some@user.org>
+
+description: |
+  Some description
+
+dependencies:
+  a:
+    git: https://some.git
+    branch: develop
+  b:
+    git: https://some.git
+    commit: 005dc
+  c:
+    git: https://some.git
+    tag: someTag
+  d:
+    git: https://some.git
+    version: <= 2.3.1
+  e:
+    github: github_username/repo
+  f:
+    gitlab: gitlab_username/repo
+  g:
+    bitbucket: bitbucket_username/repo
+  h:
+    git: https://some.git
+  i:
+    github: github_username/repo
+    branch: develop
+  j:
+    path: ./../local-path
+
+development_dependencies:
+  k:
+    path: ./../local-path-dev
+  l:
+    git: https://some.git
+
+scripts:
+  postinstall: make ext
+
+targets:
+  shards:
+    main: src/shards.cr

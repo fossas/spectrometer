@@ -95,6 +95,7 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
+import Strategy.Shards qualified as Shards
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
@@ -202,6 +203,7 @@ discoverFuncs =
   , Rebar3.discover
   , RepoManifest.discover
   , Scala.discover
+  , Shards.discover
   , Setuptools.discover
   , Stack.discover
   , Yarn.discover
