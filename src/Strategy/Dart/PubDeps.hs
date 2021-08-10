@@ -18,17 +18,18 @@ import Data.Set qualified as Set
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Data.Void (Void)
-import DepTypes (Dependency (..), VerConstraint (CEq))
+import DepTypes (Dependency (..))
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger (Logger (..))
 import Effect.ReadFS (Has, ReadFS, readContentsYaml)
 import GHC.Generics (Generic)
-import Graphing (Graphing, deep, edge, empty, promoteToDirect)
+import Graphing (Graphing, deeps, directs, edges, gmap, shrink)
 import Path
 import Strategy.Dart.PubSpecLock (
   PackageName (..),
   PubDepSource (..),
   PubLockContent (..),
+  PubLockPackageHostedSource (..),
   PubLockPackageMetadata (..),
   isSupported,
   logIgnoredPackages,
@@ -39,7 +40,6 @@ import Text.Megaparsec (
   Parsec,
   anySingle,
   between,
-  chunk,
   many,
   optional,
   sepBy,
@@ -47,7 +47,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec qualified as Megaparsec
-import Text.Megaparsec.Char (alphaNumChar, char, newline, space1)
+import Text.Megaparsec.Char (alphaNumChar, char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types (GraphBreadth (..))
 
@@ -94,7 +94,7 @@ pubDepJsonCmd =
 
 data PubDepPackage = PubDepPackage
   { pubDepPackageName :: PackageName
-  , pubDepPackageVersion :: Maybe VerConstraint
+  , pubDepPackageVersion :: Maybe Text
   , pubDepPackageDeps :: Maybe (Set PackageName)
   , pubDepPackageIsDirect :: Bool
   }
@@ -107,8 +107,8 @@ parsePackageName = PackageName . toText <$> many (alphaNumChar <|> char '_')
 
 -- | Parse package version.
 -- Ref: https://dart.dev/tools/pub/pubspec#version
-parsePackageVersion :: Parser VerConstraint
-parsePackageVersion = CEq . toText <$> many (alphaNumChar <|> char '.' <|> char '-' <|> char '+')
+parsePackageVersion :: Parser Text
+parsePackageVersion = toText <$> many (alphaNumChar <|> char '.' <|> char '-' <|> char '+')
 
 -- | Parses Pub Package Entry.
 --  - pkg_name 1.0.0 [pkg_dep_one]
@@ -147,21 +147,23 @@ isPackageSupported :: PubLockContent -> PackageName -> Bool
 isPackageSupported lockContent pkg = maybe False isSupported $ Map.lookup pkg (packages lockContent)
 
 buildGraph :: PubLockContent -> [PubDepPackage] -> Graphing Dependency
-buildGraph lockContent pkgs = Graphing.promoteToDirect isDirectDependency graphPackagesWithEdges
+buildGraph lockContent pkgs = gmap pkgToDependency filteredGraphOfPackageNames
   where
-    isDirectDependency :: Dependency -> Bool
-    isDirectDependency dep = dependencyName dep `elem` (dependencyName . pkgToDependency <$> reportableDirectPackages)
+    graphOfPackageNames :: Graphing PackageName
+    graphOfPackageNames =
+      directs (pubDepPackageName <$> filter pubDepPackageIsDirect pkgs)
+        -- packages without any edges
+        <> deeps (pubDepPackageName <$> filter (\x -> Set.empty == fromMaybe Set.empty (pubDepPackageDeps x)) pkgs)
+        <> edges (concatMap edgesOf pkgs)
 
-    graphPackagesWithEdges :: Graphing Dependency
-    graphPackagesWithEdges = foldr (uncurry edge) graphPackagesWithoutEdges edges
+    edgesOf :: PubDepPackage -> [(PackageName, PackageName)]
+    edgesOf pkg = (pubDepPackageName pkg,) <$> toList (fromMaybe Set.empty $ pubDepPackageDeps pkg)
 
-    edges :: [(Dependency, Dependency)]
-    edges = concatMap edgesOf pkgs
+    filteredGraphOfPackageNames :: Graphing PackageName
+    filteredGraphOfPackageNames = shrink (isReportable) graphOfPackageNames
 
-    edgesOf :: PubDepPackage -> [(Dependency, Dependency)]
-    edgesOf pkg =
-      (pkgToDependency $ pubDepPackageName pkg,) . pkgToDependency
-        <$> filter isReportable (toList (fromMaybe Set.empty $ pubDepPackageDeps pkg))
+    isReportable :: PackageName -> Bool
+    isReportable = isPackageSupported lockContent
 
     pkgToDependency :: PackageName -> Dependency
     pkgToDependency pkg = toDependency pkg $ metadataOf pkg
@@ -171,28 +173,13 @@ buildGraph lockContent pkgs = Graphing.promoteToDirect isDirectDependency graphP
       Map.findWithDefault
         ( PubLockPackageMetadata
             { pubLockPackageIsDirect = any (\x -> pubDepPackageName x == pkg) pkgs
-            , pubLockPackageSource = PubLockPackageHostedSource Nothing Nothing
+            , pubLockPackageSource = HostedSource $ PubLockPackageHostedSource Nothing Nothing
             , pubLockPackageVersion = pubDepPackageVersion =<< find (\x -> pubDepPackageName x == pkg) pkgs
             , pubLockPackageEnvironment = []
             }
         )
         pkg
         (packages lockContent)
-
-    graphPackagesWithoutEdges :: Graphing Dependency
-    graphPackagesWithoutEdges = foldr deep Graphing.empty depsWithoutEdges
-
-    depsWithoutEdges :: [Dependency]
-    depsWithoutEdges =
-      map pkgToDependency $
-        filter isReportable $
-          pubDepPackageName <$> filter (\x -> Set.empty == fromMaybe Set.empty (pubDepPackageDeps x)) pkgs
-
-    isReportable :: PackageName -> Bool
-    isReportable = isPackageSupported lockContent
-
-    reportableDirectPackages :: [PackageName]
-    reportableDirectPackages = filter isReportable $ pubDepPackageName <$> filter pubDepPackageIsDirect pkgs
 
 -- | Analyze using pub deps command and lockfile.
 -- The pub package manager has a command-line interface that works with either the flutter tool or the dart tool.

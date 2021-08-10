@@ -6,13 +6,17 @@ import Data.ByteString qualified as BS
 import Data.Map qualified as Map
 import Data.Yaml (decodeEither')
 import DepTypes
-import GraphUtil
+import GraphUtil (expectDeps, expectDirect)
 import Graphing (empty)
 import Strategy.Dart.PubSpecLock (
   PackageName (..),
   PubDepSource (..),
   PubLockContent (..),
+  PubLockPackageGitSource (..),
+  PubLockPackageHostedSource (..),
   PubLockPackageMetadata (..),
+  PubLockPackagePathSource (..),
+  PubLockPackageSdkSource (..),
   buildGraph,
   toDependency,
  )
@@ -27,8 +31,8 @@ expectedLockFile =
             ( PackageName "pkg_hosted"
             , PubLockPackageMetadata
                 { pubLockPackageIsDirect = False
-                , pubLockPackageSource = PubLockPackageHostedSource (Just "pkg_hosted") (Just "https://pub.dartlang.org")
-                , pubLockPackageVersion = Just $ CEq "1.1"
+                , pubLockPackageSource = HostedSource $ PubLockPackageHostedSource (Just "pkg_hosted") (Just "https://pub.dartlang.org")
+                , pubLockPackageVersion = Just "1.1"
                 , pubLockPackageEnvironment = []
                 }
             )
@@ -36,8 +40,8 @@ expectedLockFile =
             ( PackageName "pkg_git"
             , PubLockPackageMetadata
                 { pubLockPackageIsDirect = False
-                , pubLockPackageSource = PubLockPackageGitSource "https://github.com/user/pkg" "release-0.9"
-                , pubLockPackageVersion = Just $ CEq "1.2"
+                , pubLockPackageSource = GitSource $ PubLockPackageGitSource "https://github.com/user/pkg" "release-0.9"
+                , pubLockPackageVersion = Just "1.2"
                 , pubLockPackageEnvironment = []
                 }
             )
@@ -45,8 +49,8 @@ expectedLockFile =
             ( PackageName "pkg_sdk"
             , PubLockPackageMetadata
                 { pubLockPackageIsDirect = False
-                , pubLockPackageSource = PubLockPackageSdkSource "flutter"
-                , pubLockPackageVersion = Just $ CEq "1.3"
+                , pubLockPackageSource = SdkSource $ PubLockPackageSdkSource "flutter"
+                , pubLockPackageVersion = Just "1.3"
                 , pubLockPackageEnvironment = []
                 }
             )
@@ -54,8 +58,8 @@ expectedLockFile =
             ( PackageName "pkg_file"
             , PubLockPackageMetadata
                 { pubLockPackageIsDirect = False
-                , pubLockPackageSource = PubLockPackagePathSource "/Users/dir/pkg_dir"
-                , pubLockPackageVersion = Just $ CEq "1.4"
+                , pubLockPackageSource = PathSource $ PubLockPackagePathSource "/Users/dir/pkg_dir"
+                , pubLockPackageVersion = Just "1.4"
                 , pubLockPackageEnvironment = []
                 }
             )
@@ -63,8 +67,8 @@ expectedLockFile =
             ( PackageName "pkg_hosted_direct"
             , PubLockPackageMetadata
                 { pubLockPackageIsDirect = True
-                , pubLockPackageSource = PubLockPackageHostedSource (Just "pkg_hosted_direct") (Just "https://pub.dartlang.org")
-                , pubLockPackageVersion = Just $ CEq "1.5"
+                , pubLockPackageSource = HostedSource $ PubLockPackageHostedSource (Just "pkg_hosted_direct") (Just "https://pub.dartlang.org")
+                , pubLockPackageVersion = Just "1.5"
                 , pubLockPackageEnvironment = [EnvProduction]
                 }
             )
@@ -72,8 +76,8 @@ expectedLockFile =
             ( PackageName "pkg_hosted_direct_dev"
             , PubLockPackageMetadata
                 { pubLockPackageIsDirect = True
-                , pubLockPackageSource = PubLockPackageHostedSource (Just "pkg_hosted_direct_dev") (Just "https://pub.dartlang.org")
-                , pubLockPackageVersion = Just $ CEq "1.6"
+                , pubLockPackageSource = HostedSource $ PubLockPackageHostedSource (Just "pkg_hosted_direct_dev") (Just "https://pub.dartlang.org")
+                , pubLockPackageVersion = Just "1.6"
                 , pubLockPackageEnvironment = [EnvDevelopment]
                 }
             )
@@ -95,8 +99,8 @@ spec = do
       let pkg =
             PubLockPackageMetadata
               { pubLockPackageIsDirect = True
-              , pubLockPackageSource = PubLockPackageHostedSource (Just "pkg_a") (Just "https://pub.dartlang.org")
-              , pubLockPackageVersion = Just $ CEq "1.1"
+              , pubLockPackageSource = HostedSource $ PubLockPackageHostedSource (Just "pkg_a") (Just "https://pub.dartlang.org")
+              , pubLockPackageVersion = Just "1.1"
               , pubLockPackageEnvironment = [EnvDevelopment]
               }
       let expectedDependency =
@@ -114,8 +118,8 @@ spec = do
       let pkg =
             PubLockPackageMetadata
               { pubLockPackageIsDirect = True
-              , pubLockPackageSource = PubLockPackageGitSource "https://github.com/user/pkg" "release-0.9"
-              , pubLockPackageVersion = Just $ CEq "1.1"
+              , pubLockPackageSource = GitSource $ PubLockPackageGitSource "https://github.com/user/pkg" "release-0.9"
+              , pubLockPackageVersion = Just "1.1"
               , pubLockPackageEnvironment = []
               }
       let expectedDependency =
@@ -155,7 +159,7 @@ spec = do
                       ( PackageName "pkg_direct"
                       , PubLockPackageMetadata
                           { pubLockPackageIsDirect = True
-                          , pubLockPackageSource = PubLockPackageHostedSource (Just "pkg_direct") (Just "some-url-1")
+                          , pubLockPackageSource = HostedSource $ PubLockPackageHostedSource (Just "pkg_direct") (Just "some-url-1")
                           , pubLockPackageVersion = Nothing
                           , pubLockPackageEnvironment = []
                           }
@@ -164,7 +168,7 @@ spec = do
                       ( PackageName "pkg_deep"
                       , PubLockPackageMetadata
                           { pubLockPackageIsDirect = False
-                          , pubLockPackageSource = PubLockPackageHostedSource (Just "pkg_deep") (Just "some-url-2")
+                          , pubLockPackageSource = HostedSource $ PubLockPackageHostedSource (Just "pkg_deep") (Just "some-url-2")
                           , pubLockPackageVersion = Nothing
                           , pubLockPackageEnvironment = []
                           }

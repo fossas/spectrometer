@@ -5,11 +5,16 @@ module Strategy.Dart.PubSpec (
   buildGraph,
   PubSpecContent (..),
   PubSpecDepSource (..),
+  PubSpecDepHostedSource (..),
+  PubSpecDepGitSource (..),
+  PubSpecDepSdkSource (..),
+  PubSpecDepPathSource (..),
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Foldable (asum, for_)
-import Data.Map (Map, filterWithKey, member, notMember, toList)
+import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Text (Text)
@@ -23,7 +28,7 @@ import DepTypes (
  )
 import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
 import Effect.ReadFS (Has, ReadFS, readContentsYaml)
-import Graphing (Graphing, direct, empty)
+import Graphing (Graphing, directs, induceJust)
 import Path
 import Strategy.Dart.PubSpecLock (PackageName (..))
 import Types (GraphBreadth (..))
@@ -35,18 +40,25 @@ data PubSpecContent = PubSpecContent
   }
   deriving (Show, Eq, Ord)
 
+newtype PubSpecDepSdkSource = PubSpecDepSdkSource {sdkName :: Text} deriving (Show, Eq, Ord)
+newtype PubSpecDepPathSource = PubSpecDepPathSource {hostPath :: Text} deriving (Show, Eq, Ord)
+data PubSpecDepHostedSource = PubSpecDepHostedSource
+  { version :: Maybe Text
+  , hostedName :: Maybe Text
+  , hostedUrl :: Maybe Text
+  }
+  deriving (Show, Eq, Ord)
+data PubSpecDepGitSource = PubSpecDepGitSource
+  { gitRef :: Maybe Text
+  , gitUrl :: Text
+  }
+  deriving (Show, Eq, Ord)
+
 data PubSpecDepSource
-  = PubSpecDepHostedSource
-      { version :: Maybe VerConstraint
-      , hostedName :: Maybe Text
-      , hostedUrl :: Maybe Text
-      }
-  | PubSpecDepGitSource
-      { gitRef :: Maybe VerConstraint
-      , gitUrl :: Text
-      }
-  | PubSpecDepSdkSource {sdkName :: Text}
-  | PubSpecDepPathSource {hostPath :: Text}
+  = HostedSource PubSpecDepHostedSource
+  | GitSource PubSpecDepGitSource
+  | SdkSource PubSpecDepSdkSource
+  | PathSource PubSpecDepPathSource
   deriving (Show, Eq, Ord)
 
 instance FromJSON PubSpecContent where
@@ -56,99 +68,92 @@ instance FromJSON PubSpecContent where
     depOverrides <- o .:? "dependency_overrides"
     pure $ PubSpecContent dependencies devDependencies depOverrides
 
--- Formatter crashes here.
-{- ORMOLU_DISABLE -}
 instance FromJSON PubSpecDepSource where
-  parseJSON (Yaml.String s) = pure $ PubSpecDepHostedSource (Just . CEq $ s) Nothing Nothing
+  parseJSON (Yaml.String s) = pure $ HostedSource $ PubSpecDepHostedSource (Just s) Nothing Nothing
   parseJSON (Yaml.Object o) =
     asum
-      [ PubSpecDepHostedSource . Just . CEq
-          <$> o .: "version"
-          <*> o .: "hosted" |> "name"
-          <*> o .: "hosted" |> "url"
-      , PubSpecDepGitSource . Just . CEq
-          <$> o .: "git" |> "ref"
-          <*> o .: "git" |> "url"
-      , PubSpecDepGitSource Nothing
-          <$> o .: "git"
-      , PubSpecDepPathSource
-          <$> o .: "path"
-      , PubSpecDepSdkSource
-          <$> o .: "sdk"
+      [ parseHostedSource o
+      , parseGitSource o
+      , parseSdkSource o
+      , parsePathSource o
       ]
     where
+      parseHostedSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
+      parseHostedSource ho =
+        HostedSource
+          <$> ( PubSpecDepHostedSource
+                  <$> ho .: "version"
+                  <*> ho .: "hosted" |> "name"
+                  <*> ho .: "hosted" |> "url"
+              )
+
+      parseGitSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
+      parseGitSource go =
+        GitSource
+          <$> ( PubSpecDepGitSource
+                  <$> go .: "git" |> "ref"
+                  <*> go .: "git" |> "url"
+                  <|> PubSpecDepGitSource Nothing
+                  <$> go .: "git"
+              )
+      parseSdkSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
+      parseSdkSource so = SdkSource . PubSpecDepSdkSource <$> so .: "sdk"
+
+      parsePathSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
+      parsePathSource po = PathSource . PubSpecDepPathSource <$> po .: "path"
+
       (|>) :: FromJSON a => Yaml.Parser Yaml.Object -> Text -> Yaml.Parser a
       (|>) parser key = do
         obj <- parser
         obj .: key
   parseJSON _ = fail "failed parsing pub package's source!"
-{- ORMOLU_ENABLE -}
 
-toDependency :: [DepEnvironment] -> PackageName -> PubSpecDepSource -> Dependency
-toDependency environments name (PubSpecDepHostedSource version _ url) =
-  Dependency
-    { dependencyType = PubType
-    , dependencyName = unPackageName name
-    , dependencyVersion = version
-    , dependencyLocations = maybeToList url
-    , dependencyEnvironments = environments
-    , dependencyTags = Map.empty
-    }
-toDependency environments _ (PubSpecDepGitSource gitRef gitUrl) =
-  Dependency
-    { dependencyType = GitType
-    , dependencyName = gitUrl
-    , dependencyVersion = gitRef
-    , dependencyLocations = []
-    , dependencyEnvironments = environments
-    , dependencyTags = Map.empty
-    }
-toDependency _ _ (PubSpecDepSdkSource _) = error "unexpected sdk dependency conversion"
-toDependency _ _ (PubSpecDepPathSource _) = error "unexpected path dependency conversion"
+toDependency :: DepEnvironment -> PackageName -> PubSpecDepSource -> Maybe Dependency
+toDependency environment name (HostedSource (PubSpecDepHostedSource version _ url)) =
+  Just
+    Dependency
+      { dependencyType = PubType
+      , dependencyName = unPackageName name
+      , dependencyVersion = CEq <$> version
+      , dependencyLocations = maybeToList url
+      , dependencyEnvironments = [environment]
+      , dependencyTags = Map.empty
+      }
+toDependency environment _ (GitSource (PubSpecDepGitSource gitRef gitUrl)) =
+  Just
+    Dependency
+      { dependencyType = GitType
+      , dependencyName = gitUrl
+      , dependencyVersion = CEq <$> gitRef
+      , dependencyLocations = []
+      , dependencyEnvironments = [environment]
+      , dependencyTags = Map.empty
+      }
+toDependency _ _ (SdkSource _) = Nothing
+toDependency _ _ (PathSource _) = Nothing
 
-isSupported :: PubSpecDepSource -> Bool
-isSupported PubSpecDepHostedSource{} = True
-isSupported (PubSpecDepGitSource _ _) = True
-isSupported _ = False
+-- | Updates all of 'A''s value, with 'B' value, when key of 'A' matches with key of 'B'.
+update :: Map PackageName PubSpecDepSource -> Map PackageName PubSpecDepSource -> Map PackageName PubSpecDepSource
+update a b = Map.union (Map.intersection b a) a
 
 buildGraph :: PubSpecContent -> Graphing.Graphing Dependency
-buildGraph specContent = foldr Graphing.direct Graphing.empty allDependencies
+buildGraph specContent = induceJust allDependencies
   where
-    dependencies :: Map PackageName PubSpecDepSource
-    dependencies = fromMaybe Map.empty $ pubSpecDependencies specContent
-
-    devDependencies :: Map PackageName PubSpecDepSource
-    devDependencies = fromMaybe Map.empty $ pubSpecDevDependencies specContent
-
     -- In pub manifest, dependency can be overriden.
     -- Ref: https://dart.dev/tools/pub/dependencies#dependency-overrides
     supersededDependencies :: Map PackageName PubSpecDepSource
     supersededDependencies = fromMaybe Map.empty $ pubSpecDependenciesOverrides specContent
 
-    notSuperseded :: PackageName -> a -> Bool
-    notSuperseded key _ = notMember key supersededDependencies
+    dependencies :: Map PackageName PubSpecDepSource
+    dependencies = update (fromMaybe Map.empty $ pubSpecDependencies specContent) supersededDependencies
 
-    -- Dependency Sources that are supported - e.g. git, pub.
-    supportedDependencies :: Map PackageName PubSpecDepSource
-    supportedDependencies = filterWithKey notSuperseded $ Map.filter isSupported dependencies
+    devDependencies :: Map PackageName PubSpecDepSource
+    devDependencies = update (fromMaybe Map.empty $ pubSpecDevDependencies specContent) supersededDependencies
 
-    supportedDevDependencies :: Map PackageName PubSpecDepSource
-    supportedDevDependencies = filterWithKey notSuperseded $ Map.filter isSupported devDependencies
-
-    supportedSupersededDependencies :: Map PackageName PubSpecDepSource
-    supportedSupersededDependencies = Map.filter isSupported supersededDependencies
-
-    allDependencies :: [Dependency]
+    allDependencies :: Graphing (Maybe Dependency)
     allDependencies =
-      map (uncurry $ toDependency [EnvProduction]) (toList supportedDependencies)
-        ++ map (uncurry $ toDependency [EnvDevelopment]) (toList supportedDevDependencies)
-        ++ map (\(name, source) -> toDependency (getDependencyEnv name) name source) (toList supportedSupersededDependencies)
-
-    getDependencyEnv :: PackageName -> [DepEnvironment]
-    getDependencyEnv name
-      | member name dependencies = [EnvProduction]
-      | member name devDependencies = [EnvDevelopment]
-      | otherwise = []
+      directs (map (uncurry $ toDependency EnvProduction) $ toList dependencies)
+        <> directs (map (uncurry $ toDependency EnvDevelopment) $ toList devDependencies)
 
 logIgnoredPackages :: Has Logger sig m => PubSpecContent -> m ()
 logIgnoredPackages specContent = for_ notSupportedPackagesMsgs (logDebug . pretty)
@@ -160,13 +165,25 @@ logIgnoredPackages specContent = for_ notSupportedPackagesMsgs (logDebug . prett
     notSupportedPackages =
       notSupportedOf (pubSpecDevDependencies specContent)
         ++ notSupportedOf (pubSpecDependencies specContent)
-        ++ notSupportedOf (pubSpecDependenciesOverrides specContent)
 
     notSupportedOf :: Maybe (Map PackageName PubSpecDepSource) -> [Text]
-    notSupportedOf dependencies = unPackageName . fst <$> (toList . notSupported) (fromMaybe Map.empty dependencies)
+    notSupportedOf dependencies =
+      unPackageName . fst
+        <$> (toList . notSupported)
+          (update (fromMaybe Map.empty dependencies) supersededDependencies)
+
+    supersededDependencies :: Map PackageName PubSpecDepSource
+    supersededDependencies = fromMaybe Map.empty $ pubSpecDependenciesOverrides specContent
 
     notSupported :: Map k PubSpecDepSource -> Map k PubSpecDepSource
     notSupported = Map.filter $ not . isSupported
+
+    isSupported :: PubSpecDepSource -> Bool
+    isSupported (GitSource _) = True
+    isSupported (HostedSource _) = True
+    isSupported (SdkSource _) = False
+    isSupported (PathSource _) = False
+
 
 analyzePubSpecFile ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>

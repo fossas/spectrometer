@@ -8,11 +8,14 @@ module Strategy.Dart.PubSpecLock (
   -- * for testing
   buildGraph,
   PubDepSource (..),
+  PubLockPackageHostedSource (..),
+  PubLockPackageGitSource (..),
+  PubLockPackageSdkSource (..),
+  PubLockPackagePathSource (..),
   toDependency,
   isSupported,
 ) where
 
-import Control.Applicative (optional)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Aeson.Types (
   FromJSONKey,
@@ -35,7 +38,7 @@ import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import GHC.Generics (Generic)
-import Graphing (Graphing, deep, direct, empty)
+import Graphing (Graphing, deeps, directs)
 import Path
 import Types (GraphBreadth (..))
 
@@ -46,17 +49,22 @@ newtype PubLockContent = PubLockContent {packages :: Map PackageName PubLockPack
 data PubLockPackageMetadata = PubLockPackageMetadata
   { pubLockPackageIsDirect :: Bool
   , pubLockPackageSource :: PubDepSource
-  , pubLockPackageVersion :: Maybe VerConstraint
+  , pubLockPackageVersion :: Maybe Text
   , pubLockPackageEnvironment :: [DepEnvironment]
   }
   deriving (Generic, Show, Eq, Ord)
 
+newtype PubLockPackageSdkSource = PubLockPackageSdkSource {sdkName :: Text} deriving (Show, Eq, Ord)
+newtype PubLockPackagePathSource = PubLockPackagePathSource {hostPath :: Text} deriving (Show, Eq, Ord)
+data PubLockPackageGitSource = PubLockPackageGitSource {gitUrl :: Text, ref :: Text} deriving (Show, Eq, Ord)
+data PubLockPackageHostedSource = PubLockPackageHostedSource {hostPackageName :: Maybe Text, hostUrl :: Maybe Text} deriving (Show, Eq, Ord)
+
 -- | Represents Pub Dependency's source.
 data PubDepSource
-  = PubLockPackageSdkSource {sdkName :: Text}
-  | PubLockPackageGitSource {gitUrl :: Text, ref :: Text}
-  | PubLockPackageHostedSource {hostPackageName :: Maybe Text, hostUrl :: Maybe Text}
-  | PubLockPackagePathSource {hostPath :: Text}
+  = SdkSource PubLockPackageSdkSource
+  | GitSource PubLockPackageGitSource
+  | HostedSource PubLockPackageHostedSource
+  | PathSource PubLockPackagePathSource
   deriving (Show, Eq, Ord)
 
 instance FromJSON PackageName where
@@ -72,7 +80,7 @@ instance FromJSON PubLockPackageMetadata where
   parseJSON = Yaml.withObject "pubspec.lock content package" $ \o -> do
     pubLockPackageIsDirect <- isDirect <$> o .: "dependency"
     pubLockPackageSource <- o .: "description"
-    pubLockPackageVersion <- optional (CEq <$> o .: "version")
+    pubLockPackageVersion <- o .:? "version"
     pubLockPackageEnvironment <- getEnvironment <$> o .: "dependency"
     pure $ PubLockPackageMetadata pubLockPackageIsDirect pubLockPackageSource pubLockPackageVersion pubLockPackageEnvironment
     where
@@ -86,22 +94,31 @@ instance FromJSON PubLockPackageMetadata where
         | otherwise = []
 
 instance FromJSON PubDepSource where
-  parseJSON (Yaml.String v) = pure $ PubLockPackageSdkSource v
+  parseJSON (Yaml.String v) = pure $ SdkSource $ PubLockPackageSdkSource v
   parseJSON (Yaml.Object o) =
     asum
-      [ PubLockPackageGitSource <$> o .: "url" <*> o .: "ref"
-      , PubLockPackagePathSource <$> o .: "path"
-      , PubLockPackageHostedSource <$> o .:? "name" <*> o .:? "url"
+      [ parseGitSource o
+      , parsePathSource o
+      , parseHostedSource o
       ]
+    where
+      parseHostedSource :: Yaml.Object -> Yaml.Parser PubDepSource
+      parseHostedSource ho = HostedSource <$> (PubLockPackageHostedSource <$> ho .:? "name" <*> ho .:? "url")
+
+      parseGitSource :: Yaml.Object -> Yaml.Parser PubDepSource
+      parseGitSource go = GitSource <$> (PubLockPackageGitSource <$> go .: "url" <*> go .: "ref")
+
+      parsePathSource :: Yaml.Object -> Yaml.Parser PubDepSource
+      parsePathSource po = PathSource . PubLockPackagePathSource <$> po .: "path"
   parseJSON _ = fail "could not parse pub dependency's metadata"
 
 isSupported :: PubLockPackageMetadata -> Bool
 isSupported meta =
   case pubLockPackageSource meta of
-    PubLockPackageSdkSource _ -> False
-    PubLockPackagePathSource _ -> False
-    PubLockPackageHostedSource _ _ -> True
-    PubLockPackageGitSource _ _ -> True
+    SdkSource _ -> False
+    PathSource _ -> False
+    GitSource _ -> True
+    HostedSource _ -> True
 
 -- Transforms Package into Dependency.
 toDependency :: PackageName -> PubLockPackageMetadata -> Dependency
@@ -117,28 +134,28 @@ toDependency pkg meta =
   where
     depType :: DepType
     depType = case pubLockPackageSource meta of
-      PubLockPackageGitSource{} -> GitType
+      GitSource{} -> GitType
       _ -> PubType
 
     depName :: Text
     depName = case pubLockPackageSource meta of
-      PubLockPackageGitSource gitUrl _ -> gitUrl
+      GitSource (PubLockPackageGitSource gitUrl _) -> gitUrl
       _ -> unPackageName pkg
 
     depVersion :: Maybe VerConstraint
     depVersion = case pubLockPackageSource meta of
-      PubLockPackageGitSource _ ref -> Just $ CEq ref
-      _ -> pubLockPackageVersion meta
+      GitSource (PubLockPackageGitSource _ ref) -> Just $ CEq ref
+      _ -> CEq <$> pubLockPackageVersion meta
 
     depLocation :: [Text]
     depLocation = case pubLockPackageSource meta of
-      PubLockPackageHostedSource _ (Just hostUrl) -> [hostUrl]
+      HostedSource (PubLockPackageHostedSource _ (Just hostUrl)) -> [hostUrl]
       _ -> []
 
 -- | Builds the dependency graphing from pubspec.lock's content.
 -- Edges are not reported.
 buildGraph :: PubLockContent -> Graphing Dependency
-buildGraph lockContent = foldr deep graphOfDirects transitiveDependencies
+buildGraph lockContent = graphOfDirects <> graphOfTransitives
   where
     supportedPackages :: Map PackageName PubLockPackageMetadata
     supportedPackages = Map.filter isSupported $ packages lockContent
@@ -146,11 +163,11 @@ buildGraph lockContent = foldr deep graphOfDirects transitiveDependencies
     getDependencies :: (PubLockPackageMetadata -> Bool) -> [Dependency]
     getDependencies f = Map.elems $ Map.mapWithKey toDependency $ Map.filter f supportedPackages
 
-    transitiveDependencies :: [Dependency]
-    transitiveDependencies = getDependencies $ not . pubLockPackageIsDirect
+    graphOfTransitives :: Graphing Dependency
+    graphOfTransitives = deeps $ getDependencies $ not . pubLockPackageIsDirect
 
     graphOfDirects :: Graphing Dependency
-    graphOfDirects = foldr direct empty $ getDependencies pubLockPackageIsDirect
+    graphOfDirects = directs $ getDependencies pubLockPackageIsDirect
 
 logIgnoredPackages :: Has Logger sig m => PubLockContent -> m ()
 logIgnoredPackages lockContent = for_ notSupportedDependenciesMsgs (logDebug . pretty)
