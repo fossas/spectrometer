@@ -121,10 +121,11 @@ parsePubDepPackage isDirectDep = do
 
   -- package may not have any dependencies
   packageSubDeps <- optional (between (symbol "[") (symbol "]") (Set.fromList <$> sepBy parsePackageName (symbol " ")))
-
-  _ <- optional newline
   pure $ PubDepPackage packageName (Just packageVersion) packageSubDeps isDirectDep
 
+-- | Parses command output.
+-- Reference: https://github.com/dart-lang/pub/blob/291705ca0b9632cb945dd39493dd5b9db41b897a/lib/src/command/deps.dart#L176
+-- Note, it prints dependencies, dev dependencies, overrides, and transitive dependencies in order.
 depsCmdOutputParser :: Parser [PubDepPackage]
 depsCmdOutputParser = parseDeps <* eof
   where
