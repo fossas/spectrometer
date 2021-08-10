@@ -184,7 +184,6 @@ logIgnoredPackages specContent = for_ notSupportedPackagesMsgs (logDebug . prett
     isSupported (SdkSource _) = False
     isSupported (PathSource _) = False
 
-
 analyzePubSpecFile ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>
   Path Abs File ->
