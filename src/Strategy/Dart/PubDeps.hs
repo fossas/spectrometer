@@ -131,12 +131,12 @@ depsCmdOutputParser = parseDeps <* eof
   where
     parseDeps = do
       directDeps <- skipManyTill anySingle (symbol "dependencies:") *> many (parsePubDepPackage True)
-      devDeps <- optional $ chunk "dev dependencies:" *> newline *> many (parsePubDepPackage True)
+      devDeps <- optional $ symbol "dev dependencies:" *> many (parsePubDepPackage True)
 
       -- Since, this strategy requires lockfile - dependency override information is redundant,
       -- as lock file already produces resolved dependency source.
-      _ <- optional $ chunk "dependency overrides:" *> newline *> many (parsePubDepPackage False)
-      transitiveDeps <- optional $ chunk "transitive dependencies:" *> newline *> many (parsePubDepPackage False)
+      _ <- optional $ symbol "dependency overrides:" *> many (parsePubDepPackage False)
+      transitiveDeps <- optional $ symbol "transitive dependencies:" *> many (parsePubDepPackage False)
 
       pure $
         directDeps
