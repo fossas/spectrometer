@@ -91,6 +91,8 @@ data DepType
     HackageType
   | -- | A Carthage dependency -- effectively a "git" dependency. Name is repo path and version is tag/branch/hash
     CarthageType
+  | -- | IAT user-defined binary dependency
+    IATType
   deriving (Eq, Ord, Show, Generic)
 
 data VerConstraint

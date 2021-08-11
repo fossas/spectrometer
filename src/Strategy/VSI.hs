@@ -99,4 +99,5 @@ toDepType locator = case locatorFetcher locator of
   "archive" -> Right GooglesourceType
   "mvn" -> Right MavenType
   "nuget" -> Right NuGetType
+  "iat" -> Right IATType
   other -> Left $ UnsupportedLocatorType locator other
