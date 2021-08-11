@@ -50,12 +50,14 @@ import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+import DepTypes
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
 import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
+import Graphing qualified
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
@@ -261,7 +263,11 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
       . runAtomicCounter
       $ withDiscoveredProjects discoverFuncs' (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
-  let filteredProjects = filterProjects (BaseDir basedir) projectResults
+  let (iatDeps, filteredProjects) = extractIATDeps $ filterProjects (BaseDir basedir) projectResults
+  logInfo "IAT custom deps:"
+  traverse_ (logInfo . pretty . show . dependencyName) iatDeps
+  logInfo "Other deps:"
+  traverse_ (logInfo . pretty . show . dependencyName) (concat $ Graphing.toList <$> (projectResultGraph <$> filteredProjects))
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
@@ -370,6 +376,32 @@ filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAb
     rootPath = fromAbsDir $ unBaseDir rootDir
     dropPrefix :: String -> String -> String
     dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
+
+-- We want to treat VSI dependencies separate, so that we can resolve them into user-defined custom dependencies.
+-- Remove any deps from the graph whose DepType is VSIType for projects of type 'vsi'.
+-- Evaluates to the list of dependencies so removed and the list of project results after removal.
+extractIATDeps :: [ProjectResult] -> ([Dependency], [ProjectResult])
+extractIATDeps results = do
+  -- hack: process the results twice to get the two pieces of infomation we want.
+  -- I'm happy to do this a better way but I'm not sure how to split these out in one action so I'm brute forcing it and moving on for now.
+  let iatDepGraphs = Graphing.filter isIATDep <$> (projectResultGraph <$> filter isIATProject results)
+  let iatOnlyDeps = concat $ Graphing.toList <$> iatDepGraphs
+  let filteredProjects = map filterIATDeps results
+  (iatOnlyDeps, filteredProjects)
+  where
+    isIATProject :: ProjectResult -> Bool
+    isIATProject p = (projectResultType p) == "vsi"
+    isIATDep :: Dependency -> Bool
+    isIATDep d = (dependencyType d) == IATType
+    filterIATDeps :: ProjectResult -> ProjectResult
+    filterIATDeps r = case (projectResultType r) of
+      "vsi" -> do
+        ProjectResult
+          (projectResultType r)
+          (projectResultPath r)
+          (Graphing.filter (not . isIATDep) $ projectResultGraph r)
+          (projectResultGraphBreadth r)
+      _ -> r
 
 isProductionPath :: FilePath -> Bool
 isProductionPath path =
