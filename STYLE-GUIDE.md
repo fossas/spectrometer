@@ -12,7 +12,7 @@ Use `fourmolu` for formatting.  Our CI setup enforces that all changes pass a `f
 
 Our CI systems ensure that all patches pass `hlint`'s muster. We have our own set of rules in `.hlint.yaml`.
 
-We strongly recommend adding Haddock documentation to any function/data type, unless its purpose is immediately apparent from its name.
+We strongly recommend adding Haddock documentation to any top-level declaration, unless its purpose is immediately apparent from its name.
 Comments should describe the "why", type signatures should describe the "what", and the code should describe the "how".
 
 ## Formatting
@@ -67,7 +67,7 @@ foo = Heap.lookup thing
 
 ## Functions
 
-### Don't go buckwild with infix operators
+### Don't go crazy with infix operators
 
 Sensible use of infix operators can provide serious readability benefits, but often the best tool is just a named function. If you're defining new operators, make sure that you have a solid justification for doing so.
 
@@ -75,9 +75,9 @@ Sensible use of infix operators can provide serious readability benefits, but of
 
 In almost all cases, `map`, `filter`, `fold`, and the `[]` monad are more flexible and readable.
 
-### Don't go buckwild with point-free definitions
+### Don't go crazy with point-free definitions
 
-Point-free style can help or hinder readability, depending on the context. If a function is expressed naturally with the `.` operator, then do so, but if you have to gyrate the definition to write it point-free, then you should probably just write out the variable names. If you are reviewing someone else's PR and find a point-free definition hard to read, ask them to simplify/clarify it.
+Point-free style can help or hinder readability, depending on the context. If a function is expressed naturally with the `.` operator, then do so, but if you have to over-complicate the definition to write it point-free, then you should probably just write out the variable names. If you are reviewing someone else's PR and find a point-free definition hard to read, ask them to simplify/clarify it.
 
 ### Prefer `.` and `$` to parentheses
 
@@ -237,9 +237,9 @@ When writing a non-trivial text parser, you should create the following helper f
 
 ### Every parser must consume something to succeed
 
-This is not a style concern, but a parsing rule.
+This is not a style concern, but a common bug when writing parsers.
 
-An example file should look somthing like this:
+An example file should look something like this:
 
 ```haskell
 import Data.Text (Text)
