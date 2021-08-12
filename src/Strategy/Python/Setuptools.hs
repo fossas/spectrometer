@@ -9,6 +9,7 @@ import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Diagnostics qualified as Diag
 import Data.List (isInfixOf, isSuffixOf)
+import Data.Maybe (maybeToList)
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
@@ -53,7 +54,7 @@ getDeps project = do
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Partial
-      , dependencyManifestFiles = (maybe [] pure (setuptoolsSetupPy project)) ++ setuptoolsReqTxt project
+      , dependencyManifestFiles = maybeToList (setuptoolsSetupPy project) ++ setuptoolsReqTxt project
       }
 
 analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
