@@ -15,6 +15,7 @@ import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
+import App.Fossa.IAT.ResolveAssertions
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Types (
@@ -45,7 +46,7 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
@@ -269,13 +270,22 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
   logInfo "Other deps:"
   traverse_ (logInfo . pretty . show . dependencyName) (concat $ Graphing.toList <$> (projectResultGraph <$> filteredProjects))
 
+  assertedDeps <- resolveAssertedDeps destination iatDeps
+
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
+  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, assertedDeps] of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
-      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+      UploadScan opts metadata -> do
+        logInfo "Uploading source units:"
+        traverse_ (logInfo . pretty . show) (NE.toList sourceUnits)
+        uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+
+resolveAssertedDeps :: (Has (Lift IO) sig m, Has Diag.Diagnostics sig m, Has Logger sig m) => ScanDestination -> [Dependency] -> m (Maybe SourceUnit)
+resolveAssertedDeps OutputStdout _ = pure Nothing
+resolveAssertedDeps (UploadScan opts _) deps = resolveAssertions opts deps
 
 data AnalyzeError
   = ErrNoProjectsDiscovered
@@ -346,10 +356,11 @@ data CountedResult
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
-checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> Maybe SourceUnit -> CountedResult
-checkForEmptyUpload xs ys manualUnit =
-  case manualUnit of
-    Nothing -> case (xlen, ylen) of
+checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [Maybe SourceUnit] -> CountedResult
+checkForEmptyUpload xs ys potentialManualUnits = do
+  let manualUnits = catMaybes potentialManualUnits
+  if null manualUnits
+    then case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
       -- If either list is empty, we have nothing to upload
@@ -357,8 +368,7 @@ checkForEmptyUpload xs ys manualUnit =
       (_, 0) -> FilteredAll filterCount
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
-    -- If we have a manual or archive source unit, then there's always something to upload.
-    Just unit -> FoundSome $ unit NE.:| discoveredUnits
+    else FoundSome $ NE.fromList (manualUnits ++ discoveredUnits)
   where
     xlen = length xs
     ylen = length ys
