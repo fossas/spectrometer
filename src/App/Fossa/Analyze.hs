@@ -63,7 +63,7 @@ import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (SourceUnit, parseLocator)
+import Srclib.Types (SourceUnit (..), parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -270,10 +270,10 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
   logInfo "Other deps:"
   traverse_ (logInfo . pretty . show . dependencyName) (concat $ Graphing.toList <$> (projectResultGraph <$> filteredProjects))
 
-  assertedDeps <- resolveAssertedDeps destination iatDeps
+  assertedSrcUnits <- resolveAssertedDeps destination basedir iatDeps
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, assertedDeps] of
+  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, assertedSrcUnits] of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
@@ -283,9 +283,9 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
         traverse_ (logInfo . pretty . show) (NE.toList sourceUnits)
         uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
 
-resolveAssertedDeps :: (Has (Lift IO) sig m, Has Diag.Diagnostics sig m, Has Logger sig m) => ScanDestination -> [Dependency] -> m (Maybe SourceUnit)
-resolveAssertedDeps OutputStdout _ = pure Nothing
-resolveAssertedDeps (UploadScan opts _) deps = resolveAssertions opts deps
+resolveAssertedDeps :: (Has (Lift IO) sig m, Has Diag.Diagnostics sig m) => ScanDestination -> Path Abs Dir -> [Dependency] -> m (Maybe SourceUnit)
+resolveAssertedDeps OutputStdout _ _ = pure Nothing
+resolveAssertedDeps (UploadScan opts _) root deps = resolveAssertions root opts deps
 
 data AnalyzeError
   = ErrNoProjectsDiscovered

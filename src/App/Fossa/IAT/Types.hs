@@ -21,3 +21,7 @@ data UserDefinedAssertionMeta = UserDefinedAssertionMeta
   , assertedDescription :: Maybe Text
   , assertedUrl :: Maybe Text
   }
+
+instance FromJSON UserDefinedAssertionMeta where
+  parseJSON = withObject "UserDefinedAssertionMetadata" $ \obj -> do
+    UserDefinedAssertionMeta <$> obj .: "name" <*> obj .: "version" <*> obj .: "license" <*> obj .: "description" <*> obj .: "url"
