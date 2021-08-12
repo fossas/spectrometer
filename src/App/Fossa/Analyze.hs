@@ -388,20 +388,17 @@ filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAb
     dropPrefix :: String -> String -> String
     dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
 
--- We want to treat VSI dependencies separate, so that we can resolve them into user-defined custom dependencies.
--- Remove any deps from the graph whose DepType is VSIType for projects of type 'vsi'.
+-- We want to treat IAT dependencies separately so that we can resolve them into user-defined custom dependencies.
+-- Remove any deps from the graph of type IATType.
 -- Evaluates to the list of dependencies so removed and the list of project results after removal.
 extractIATDeps :: [ProjectResult] -> ([Dependency], [ProjectResult])
 extractIATDeps results = do
-  -- hack: process the results twice to get the two pieces of infomation we want.
-  -- I'm happy to do this a better way but I'm not sure how to split these out in one action so I'm brute forcing it and moving on for now.
-  let iatDepGraphs = Graphing.filter isIATDep <$> (projectResultGraph <$> filter isIATProject results)
+  -- hack: process the results twice to get the two pieces of infomation desired.
+  -- I'm happy to do this a better way but I'm not sure how to combine these into one action.
+  let iatDepGraphs = Graphing.filter isIATDep <$> (projectResultGraph <$> results)
   let iatOnlyDeps = concat $ Graphing.toList <$> iatDepGraphs
-  let filteredProjects = map filterIATDeps results
-  (iatOnlyDeps, filteredProjects)
+  (iatOnlyDeps, filterIATDeps <$> results)
   where
-    isIATProject :: ProjectResult -> Bool
-    isIATProject p = (projectResultType p) == "vsi"
     isIATDep :: Dependency -> Bool
     isIATDep d = (dependencyType d) == IATType
     filterIATDeps :: ProjectResult -> ProjectResult
