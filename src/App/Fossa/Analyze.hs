@@ -256,7 +256,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
 
-  (projectResults, ()) <-
+  (allProjectResults, ()) <-
     runOutput @ProjectResult
       . runStickyLogger SevInfo
       . runFinally
@@ -264,7 +264,8 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
       . runAtomicCounter
       $ withDiscoveredProjects discoverFuncs' (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
-  let (iatDeps, filteredProjects) = extractIATDeps $ filterProjects (BaseDir basedir) projectResults
+  let (iatDeps, projectResults) = extractIATDeps allProjectResults
+  let filteredProjects = filterProjects (BaseDir basedir) projectResults
   logInfo "IAT custom deps:"
   traverse_ (logInfo . pretty . show . dependencyName) iatDeps
   logInfo "Other deps:"
@@ -404,14 +405,12 @@ extractIATDeps results = do
     isIATDep :: Dependency -> Bool
     isIATDep d = (dependencyType d) == IATType
     filterIATDeps :: ProjectResult -> ProjectResult
-    filterIATDeps r = case (projectResultType r) of
-      "vsi" -> do
-        ProjectResult
-          (projectResultType r)
-          (projectResultPath r)
-          (Graphing.filter (not . isIATDep) $ projectResultGraph r)
-          (projectResultGraphBreadth r)
-      _ -> r
+    filterIATDeps ProjectResult{..} =
+      ProjectResult
+        projectResultType
+        projectResultPath
+        (Graphing.filter (not . isIATDep) projectResultGraph)
+        projectResultGraphBreadth
 
 isProductionPath :: FilePath -> Bool
 isProductionPath path =
