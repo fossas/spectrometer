@@ -1,5 +1,7 @@
 # Spectrometer style guide
 
+[Back to development doc homepage](devdocs/index.md)
+
 Through a number of pull requests, reviews, and discussions, a codebase style has emerged.  This document is an attempt to capture that, and prevent further discussions that slow down work unnecessarily.
 
 This style guide is forked from Github's [semantic](https://github.com/github/semantic).
@@ -17,7 +19,9 @@ Comments should describe the "why", type signatures should describe the "what", 
 
 ## Formatting
 
-2 spaces everywhere. Tabs are forbidden. Haskell indentation can be unpredictable, so generally stick with what your editor suggests.
+2 spaces everywhere. Tabs are forbidden.  These are enforced by the formatter.
+
+Haskell indentation can be unpredictable, so generally stick with what your editor suggests.
 There is no hard line-length limit, though if you go beyond 110 or 120 you should generally split it up, especially for type signatures.
 
 ### Use applicative notation when constructing simple data types
@@ -25,19 +29,30 @@ There is no hard line-length limit, though if you go beyond 110 or 120 you shoul
 ``` haskell
 thing :: Parser Foo
 
--- Broke:
+-- Bad:
 thing = do
   a <- bar
   b <- baz
   pure (Foo a b)
 
--- Woke:
+-- Better:
 thing = Foo <$> bar <*> baz
 ```
 
-Code written with applicative notation is less powerful than code written in `do`-notation.  As a result, it can be easier to reason about, as long as it's also readable.
+Code written with applicative notation is less powerful than code written in `do`-notation (since that code is, by definition, monadic).  As a result, it can be easier to reason about, as long as it's also readable.
 
-Overreliance on applicative notation can create code that is difficult to read. Don't use applicative notation in combination with operator sections. If in doubt, write it with `do` notation and see if it's more immediately comprehensible.
+Over-reliance on applicative notation can create code that is difficult to read. Don't use applicative notation in combination with operator sections. If in doubt, write it with `do` notation and see if it's more immediately comprehensible.
+
+#### Don't overuse `do` notation in parsers
+
+Parsers should make extra effort to not use do notation.  However, this only applies to applicative parsers.  There is no reason not to use do
+notation for monadic parsers.
+
+In parsers, it can seem more readable to use do notation, especially given the extra functor and applicative operators (`*>`, `$>`, `<*`, `<$`).
+However, a parser is one of the areas where having less power makes a significant difference in reasoning about the code.  For this reason, we
+are willing to sacrifice some readability (in the form of operator-heavy functions).
+
+See our [best practices](devdocs/parsing-best-practices.md) doc for more info on writing good parsers.
 
 ### Use leading commas for records, exports, and lists
 
@@ -50,7 +65,7 @@ data Pos = Pos
   }
 ```
 
-This rule is enforced by CI.
+This rule is enforced by the formatter.
 
 ## Naming
 
@@ -156,7 +171,7 @@ data Bad = Evil { getInt :: Int }
 -- so does getInt (Bad 1)
 ```
 
-Often, this is incorrect deisgn.  You usually want something like the following three examples instead:
+Often, this is incorrect design.  You usually want something like the following three examples instead:
 
 ```haskell
 -- Alternative 1
@@ -208,72 +223,6 @@ There are notable exceptions, but they are few and far between.  The `Path` modu
 For converting between `Bytestring`/`Text`/`String`, including the lazy forms of `Bytestring` and `Text`, use the internal `Data.String.Conversion`
 module.  We export as many string conversion routines as we've found use for, plus more.  Use these instead of `decodeUtf8`/`encodeUTF8`/`Text.pack`
 /`Text.unpack`/`toFilePath`.  `hlint` will catch some of these, but not all.
-
-## Parsing
-
-We use `megaparsec` for text parsing, with a few common idioms.
-
-### Define a `Parser` type alias
-
-Usually, you should add `type Parser = Parsec Void Text` to your parsing module, so that your parser functions can be of type `Parser a`, rather than
-the long-form `Parsec` version, or worse, the fully-verbose `ParsecT` version.
-
-### Use `sc`, `scn`, `symbol`, and `lexeme`
-
-When writing a non-trivial text parser, you should create the following helper functions:
-
-- `sc`/`scn` - **S**pace **C**onsumer (or **S**pace **C**onsumer with **N**ewlines)
-  - Use [`Lexer.space`](https://hackage.haskell.org/package/megaparsec-9.1.0/docs/Text-Megaparsec-Char-Lexer.html#v:space) to create your whitespace consumer.
-  - READ THE DOCS FOR THAT FUNCTION IF YOU HAVEN'T YET!  There's a lot of useful info there, and you'll need to know it.
-  - You don't always need to create both `sc` and `scn`, but you'll almost always need at least one.
-- `symbol` - Parser for verbatim text strings.
-  - Use [`Lexer.symbol`](https://hackage.haskell.org/package/megaparsec-9.1.0/docs/Text-Megaparsec-Char-Lexer.html#v:symbol) to create this helper.
-  - Use your `sc` or `scn` function for the whitespace consumer.
-  - You can use `Lexer.symbol'` if your text is case-insensitive.
-- `lexeme` - Parser for any basic unit of the language.  While `symbol` is for verbatim text parsing, `lexeme` is used with any parser that should consume space
-  after finishing.  For example, `Lexer.symbol` is implmented via `Lexer.lexeme`.
-  - Use [`Lexer.lexeme`](https://hackage.haskell.org/package/megaparsec-9.1.0/docs/Text-Megaparsec-Char-Lexer.html#v:lexeme) to define this helper.
-  - Use your `sc` or `scn` function for the whitespace consumer.
-
-### Every parser must consume something to succeed
-
-This is not a style concern, but a common bug when writing parsers.
-
-An example file should look something like this:
-
-```haskell
-import Data.Text (Text)
-import Data.Void (Void)
-import Text.Megaparsec (Parsec)
-import Text.Megaparsec.Char (space1)
-import Text.Megaparsec.Char.Lexer qualified as Lexer
-
-type Parser = Parsec Void Text
-
--- A parser for a C language file.
-moduleParser :: Parser CModule
-moduleParser = ...
-
-scn :: Parser ()
-scn = Lexer.space space1 lineComment blockComment
-  where
-    -- These are C-style comments
-    lineComment = Lexer.skipLineComment "//"
-    blockComment = Lexer.skipBlockComment "/*" "*/"
-
-symbol :: Parser Text
-symbol = Lexer.symbol scn
-
-lexeme :: Parser a -> Parser a
-lexeme = Lexer.lexeme scn
-```
-
-If you need to define `sc` instead of `scn` you can follow this common example:
-
-```haskell
-sc :: Parser ()
-sc = Lexer.space (void $ char ' ') lineComment blockComment
-```
 
 ## Miscellaneous
 
