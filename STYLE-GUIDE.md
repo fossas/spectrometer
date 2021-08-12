@@ -100,11 +100,14 @@ Parentheses can make a function harder to edit, since parentheses have to be bal
 
 ``` haskell
 -- Bad
-f (g (h x))
+f (g (h (i x)))
+-- Okay
+f $ g $ h $ i x
 -- Better
-f $ g $ h x
+f . g . h $ i x
+-- Don't over-use $
 -- Hlint will reject this
-f . g . h $ x
+f . g . h . i $ x
 ```
 
 Parentheses are useful when there are other operators in the mix, since they don't have conflicting fixity like `$` and `.` have.  `<>` doesn't play well with
