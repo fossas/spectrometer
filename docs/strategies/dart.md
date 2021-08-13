@@ -4,10 +4,11 @@ Dart ecosystem uses pub package manager to manage shared [packages and libraries
 
 ## Project Discovery
 
-Find files named `pubspec.yaml`. 
+Find file named `pubspec.yaml`. 
+
 ## Analysis
 
-We attempt to perform all of strategies below, we select result of succeeded strategies which has the highest preference. 
+We attempt to perform all of the strategies below, we select the result of succeeded strategies which has the highest preference. 
 
 | Preference | Strategy                                                                                               | Direct Deps        | Deep Deps          | Edges              |
 | ---------- | ------------------------------------------------------------------------------------------------------ | ------------------ | ------------------ | ------------------ |
@@ -21,10 +22,14 @@ Where,
 
 * :heavy_check_mark: - Supported in all projects
 * :x: - Not Supported
+
+It is recommended that, `pub deps get` is executed prior to analyzing dart project. This ensures dependencies are retrieved, so `pub deps -s compact` command can produce edges between direct, and deep dependencies.
+
 ### Limitations
 
-* [Path dependencies](https://dart.dev/tools/pub/dependencies#path-packages) are not reported, and will be ignored in analyses.
-* [Sdk dependencies](https://dart.dev/tools/pub/dependencies#sdk) are not supported, and will be ignored in analyses.
+* [Path dependencies](https://dart.dev/tools/pub/dependencies#path-packages) are not reported, and will be ignored in analyses. All descendant dependencies of the path dependency will be promoted to the ancestor of the path dependency.
+* [Sdk dependencies](https://dart.dev/tools/pub/dependencies#sdk) are not reported, and will be ignored in analyses. All descendant dependencies of the sdk dependency will be promoted to the ancestor of the sdk dependency.
+
 # Example 
 
 Create new dart project by creating `pubspec.yaml` file.
@@ -110,22 +115,29 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "267e516367eb05896787d5f461dc2a7dd564c044"
+      resolved-ref: bc2a3f44339574edb5c374b991b6386c495a1bbb
       url: "https://github.com/leocavalcante/encrypt.git"
     source: git
-    version: "5.0.0"
+    version: "5.0.1"
   flutter:
     dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"
+  js:
+    dependency: transitive
+    description:
+      name: js
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.6.3"
   matcher:
     dependency: transitive
     description:
       name: matcher
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.12.10"
+    version: "0.12.11"
   meta:
     dependency: transitive
     description:
@@ -153,7 +165,7 @@ packages:
       name: pointycastle
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.1.3"
+    version: "3.3.0"
   provider:
     dependency: "direct main"
     description:
@@ -199,7 +211,7 @@ sdks:
   flutter: ">=1.16.0"
 ```
 
-After which, dependencies can be inspected using `dart pub deps -s compact`.
+Dependencies can be inspected using `dart pub deps -s compact`:
 
 ```text
 Dart SDK 2.14.0-301.0.dev
@@ -207,7 +219,7 @@ Flutter SDK 2.4.0-4.0.pre
 some_example 1.0.0+1
 
 dependencies:
-- encrypt 5.0.0 [args asn1lib clock collection crypto pointycastle]
+- encrypt 5.0.1 [args asn1lib clock collection crypto pointycastle]
 - flutter 0.0.0 [characters collection meta typed_data vector_math sky_engine]
 - path 1.8.0
 - provider 5.0.0 [collection flutter nested]
@@ -221,10 +233,11 @@ transitive dependencies:
 - collection 1.15.0
 - convert 3.0.1 [typed_data]
 - crypto 3.0.1 [collection typed_data]
-- matcher 0.12.10 [stack_trace]
+- js 0.6.3
+- matcher 0.12.11 [stack_trace]
 - meta 1.7.0
 - nested 1.0.0 [flutter]
-- pointycastle 3.1.3 [collection convert]
+- pointycastle 3.3.0 [collection convert js]
 - sky_engine 0.0.99
 - stack_trace 1.10.0 [path]
 - typed_data 1.3.0 [collection]
@@ -235,13 +248,30 @@ When pub deps command is successfully executed, and lockfile id discovered (stra
 
 ![With lock file and deps command](dart-resolved-graph-with-lock-cmd.svg)
 
-Note: Dependencies in yellow boxes are direct dependencies, rest are deep dependencies.
+Note: Dependencies in yellow boxes are direct dependencies, rest are deep dependencies. All descendent dependencies of sdk dependencies are promoted to their ancestor - e.g. characters, collection, meta, typed_data, and vector_math.
 
 If pub deps command is not successfully executed:
 
 ![Without deps command](dart-resolved-graph-without-cmd.svg)
 
-### References
+## FAQ
+
+### How do I *only* analyze dart projects?
+
+You can explicitly specify analyses target in `.fossa.yml` file. 
+
+Example below, will exclude all analyses targets except pub. 
+
+```yaml
+# .fossa.yml 
+
+version: 3
+targets:
+  only:
+    - type: pub
+```
+
+## References
 
 * [Pub](https://dart.dev/tools/pub/cmd)
 * [Dart](https://dart.dev/tools/pub/cmd)

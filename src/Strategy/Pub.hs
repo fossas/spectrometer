@@ -5,12 +5,11 @@ import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger (..))
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing)
 import Path
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
-import Types (Dependency, DiscoveredProject (..), GraphBreadth)
+import Types (DependencyResults (..), DiscoveredProject (..))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run, Has Logger rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Pub" $ do
@@ -43,12 +42,19 @@ mkProject project =
   DiscoveredProject
     { projectType = "pub"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = pubSpecDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m (Graphing Dependency, GraphBreadth)
-getDeps project = case pubLock project of
-  Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> analyzePubLockFile lockFile
-  Nothing -> analyzePubSpecFile $ pubSpec project
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
+getDeps project = do
+  (graph, graphBreadth) <- case pubLock project of
+    Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> analyzePubLockFile lockFile
+    Nothing -> analyzePubSpecFile $ pubSpec project
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [pubSpec project]
+      }
