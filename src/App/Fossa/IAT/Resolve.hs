@@ -6,18 +6,37 @@ module App.Fossa.IAT.Resolve (
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.IAT.Types
-import Control.Algebra
-import Control.Effect.Diagnostics
-import Control.Effect.Lift
-import Data.Maybe
-import DepTypes
-import Fossa.API.Types
+import App.Fossa.IAT.Types (
+  UserDefinedAssertionMeta (..),
+  extractUserDefinedBinaries,
+ )
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Lift (Lift)
+import Data.Maybe (catMaybes)
+import DepTypes (
+  DepType (IATType),
+  Dependency (
+    Dependency,
+    dependencyName,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Fossa.API.Types (ApiOpts)
 import Graphing qualified
-import Path
+import Path (Abs, Dir, Path)
 import Srclib.Converter qualified as Srclib
-import Srclib.Types
-import Types
+import Srclib.Types (
+  AdditionalDepData (AdditionalDepData),
+  Locator (Locator),
+  SourceUnit (additionalData),
+  SourceUserDefDep (..),
+ )
+import Types (
+  GraphBreadth (Complete),
+ )
 
 resolveShallowGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> ApiOpts -> [Dependency] -> m SourceUnit
 resolveShallowGraph dir apiOpts shallow = do
