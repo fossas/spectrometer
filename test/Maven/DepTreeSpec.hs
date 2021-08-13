@@ -245,8 +245,8 @@ fixtureMultiGraph =
       }
   ]
 
-fixtureAcmeFile :: FilePath
-fixtureAcmeFile = "test/Maven/testdata/acme-deptree.dot"
+-- fixtureAcmeFile :: FilePath
+-- fixtureAcmeFile = "test/Maven/testdata/acme-deptree.dot"
 
 fixturePackageIDWithPlatformContents :: Text
 fixturePackageIDWithPlatformContents =
