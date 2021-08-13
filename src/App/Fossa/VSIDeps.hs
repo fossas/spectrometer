@@ -3,7 +3,7 @@ module App.Fossa.VSIDeps (
 ) where
 
 import App.Fossa.EmbeddedBinary (withWigginsBinary)
-import App.Fossa.IAT.ResolveAssertions (resolveShallowGraph)
+import App.Fossa.IAT.Resolve (resolveShallowGraph)
 import App.Fossa.VPS.Scan.RunWiggins (WigginsOpts, execWigginsJson, generateVSIStandaloneOpts, toPathFilters)
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (renderDiagnostic)

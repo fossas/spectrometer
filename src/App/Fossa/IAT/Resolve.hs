@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.IAT.ResolveAssertions (
+module App.Fossa.IAT.Resolve (
   resolveShallowGraph,
 ) where
 

@@ -144,7 +144,7 @@ library
     App.Fossa.Container.Test
     App.Fossa.IAT.AssertUserDefinedBinaries
     App.Fossa.IAT.Fingerprint
-    App.Fossa.IAT.ResolveAssertions
+    App.Fossa.IAT.Resolve
     App.Fossa.IAT.Types
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
