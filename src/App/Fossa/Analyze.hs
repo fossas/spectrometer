@@ -266,10 +266,6 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
   let (iatDeps, projectResults) = extractIATDeps allProjectResults
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
-  logInfo "IAT custom deps:"
-  traverse_ (logInfo . pretty . show . dependencyName) iatDeps
-  logInfo "Other deps:"
-  traverse_ (logInfo . pretty . show . dependencyName) (concat $ Graphing.toList <$> (projectResultGraph <$> filteredProjects))
 
   assertedSrcUnits <- resolveAssertedDeps destination basedir iatDeps
 
@@ -279,10 +275,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
-      UploadScan opts metadata -> do
-        logInfo "Uploading source units:"
-        traverse_ (logInfo . pretty . show) (NE.toList sourceUnits)
-        uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
 
 resolveAssertedDeps :: (Has (Lift IO) sig m, Has Diag.Diagnostics sig m) => ScanDestination -> Path Abs Dir -> [Dependency] -> m (Maybe SourceUnit)
 resolveAssertedDeps OutputStdout _ _ = pure Nothing
