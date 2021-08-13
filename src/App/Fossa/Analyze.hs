@@ -61,7 +61,7 @@ import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (SourceUnit (..), parseLocator)
+import Srclib.Types (SourceUnit, parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -244,6 +244,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
         UploadScan opts _ -> Just opts
 
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
+  vsiResults <- analyzeVSI enableVSI apiOpts basedir filters
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -254,8 +255,6 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
       $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
-
-  vsiResults <- analyzeVSI enableVSI apiOpts basedir filters
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults] of
@@ -342,9 +341,9 @@ data CountedResult
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
 checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [Maybe SourceUnit] -> CountedResult
-checkForEmptyUpload xs ys potentialManualUnits = do
-  let manualUnits = catMaybes potentialManualUnits
-  if null manualUnits
+checkForEmptyUpload xs ys potentialAdditionalUnits = do
+  let additionalUnits = catMaybes potentialAdditionalUnits
+  if null additionalUnits
     then case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
@@ -353,7 +352,8 @@ checkForEmptyUpload xs ys potentialManualUnits = do
       (_, 0) -> FilteredAll filterCount
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
-    else FoundSome $ NE.fromList (manualUnits ++ discoveredUnits)
+    else -- If we have a additional source units, then there's always something to upload.
+      FoundSome $ NE.fromList (additionalUnits ++ discoveredUnits)
   where
     xlen = length xs
     ylen = length ys
