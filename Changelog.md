@@ -4,6 +4,7 @@
 
 - Adds a new hidden subcommand `experimental-vsi-register-binary-custom-dependency`. ([#323](https://github.com/fossas/spectrometer/pull/323))
   This subcommand is intended to be used with direct support from FOSSA engineering when working with specific projects.
+- Support identifying previously registered binary custom dependencies when running analysis in VSI mode. ([#328](https://github.com/fossas/spectrometer/pull/328))
 
 ## v2.14.5
 
