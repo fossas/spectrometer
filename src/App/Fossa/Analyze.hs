@@ -15,9 +15,9 @@ import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
-import App.Fossa.IAT.ResolveAssertions
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
+import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
   OverrideProject,
@@ -51,14 +51,12 @@ import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import DepTypes
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
 import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
-import Graphing qualified
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
@@ -93,7 +91,6 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
-import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
@@ -163,12 +160,6 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
               $ doAnalyze basedir
   where
     doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI filters
-
--- vsiDiscoverFunc is appended to discoverFuncs during analyze.
--- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
-vsiDiscoverFunc :: (TaskEffs sig m, TaskEffs rsig run) => VSIAnalysisMode -> ScanDestination -> AllFilters -> Path Abs Dir -> m [DiscoveredProject run]
-vsiDiscoverFunc VSIAnalysisEnabled (UploadScan apiOpts _) filters = VSI.discover filters apiOpts
-vsiDiscoverFunc _ _ _ = const $ pure []
 
 discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
@@ -247,39 +238,39 @@ analyze ::
   m ()
 analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI filters = do
   capabilities <- sendIO getNumCapabilities
-  -- When running analysis, append the vsi discover function to the end of the discover functions list.
-  -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
-  let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination filters]
-      apiOpts = case destination of
+
+  let apiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
 
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
 
-  (allProjectResults, ()) <-
+  (projectResults, ()) <-
     runOutput @ProjectResult
       . runStickyLogger SevInfo
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      $ withDiscoveredProjects discoverFuncs' (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
-  let (iatDeps, projectResults) = extractIATDeps allProjectResults
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
-  assertedSrcUnits <- resolveAssertedDeps destination basedir iatDeps
+  vsiResults <- analyzeVSI enableVSI apiOpts basedir filters
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, assertedSrcUnits] of
+  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults] of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
       UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
 
-resolveAssertedDeps :: (Has (Lift IO) sig m, Has Diag.Diagnostics sig m) => ScanDestination -> Path Abs Dir -> [Dependency] -> m (Maybe SourceUnit)
-resolveAssertedDeps OutputStdout _ _ = pure Nothing
-resolveAssertedDeps (UploadScan opts _) root deps = resolveAssertions root opts deps
+analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
+analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
+  logInfo "Running VSI analysis"
+  results <- analyzeVSIDeps dir apiOpts filters
+  pure $ Just results
+analyzeVSI _ _ _ _ = pure Nothing
 
 data AnalyzeError
   = ErrNoProjectsDiscovered
@@ -380,27 +371,6 @@ filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAb
     rootPath = fromAbsDir $ unBaseDir rootDir
     dropPrefix :: String -> String -> String
     dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
-
--- We want to treat IAT dependencies separately so that we can resolve them into user-defined custom dependencies.
--- Remove any deps from the graph of type IATType.
--- Evaluates to the list of dependencies so removed and the list of project results after removal.
-extractIATDeps :: [ProjectResult] -> ([Dependency], [ProjectResult])
-extractIATDeps results = do
-  -- hack: process the results twice to get the two pieces of infomation desired.
-  -- I'm happy to do this a better way but I'm not sure how to combine these into one action.
-  let iatDepGraphs = Graphing.filter isIATDep <$> (projectResultGraph <$> results)
-  let iatOnlyDeps = concat $ Graphing.toList <$> iatDepGraphs
-  (iatOnlyDeps, filterIATDeps <$> results)
-  where
-    isIATDep :: Dependency -> Bool
-    isIATDep d = (dependencyType d) == IATType
-    filterIATDeps :: ProjectResult -> ProjectResult
-    filterIATDeps ProjectResult{..} =
-      ProjectResult
-        projectResultType
-        projectResultPath
-        (Graphing.filter (not . isIATDep) projectResultGraph)
-        projectResultGraphBreadth
 
 isProductionPath :: FilePath -> Bool
 isProductionPath path =
