@@ -142,10 +142,6 @@ library
     App.Fossa.Container
     App.Fossa.Container.Analyze
     App.Fossa.Container.Test
-    App.Fossa.IAT.AssertUserDefinedBinaries
-    App.Fossa.IAT.Fingerprint
-    App.Fossa.IAT.Resolve
-    App.Fossa.IAT.Types
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
     App.Fossa.ListTargets
@@ -165,6 +161,11 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
+    App.Fossa.VSI.IAT.AssertUserDefinedBinaries
+    App.Fossa.VSI.IAT.Fingerprint
+    App.Fossa.VSI.IAT.Resolve
+    App.Fossa.VSI.IAT.Types
+    App.Fossa.VSI.Types
     App.Fossa.VSIDeps
     App.OptionExtensions
     App.Pathfinder.Main

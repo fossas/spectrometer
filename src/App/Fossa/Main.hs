@@ -26,8 +26,6 @@ import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, pars
 import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
-import App.Fossa.IAT.AssertUserDefinedBinaries
-import App.Fossa.IAT.Types
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Monorepo
 import App.Fossa.Report qualified as Report
@@ -38,6 +36,8 @@ import App.Fossa.VPS.Report qualified as VPSReport
 import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.Test qualified as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
+import App.Fossa.VSI.IAT.AssertUserDefinedBinaries
+import App.Fossa.VSI.IAT.Types
 import App.OptionExtensions (jsonOption, uriOption)
 import App.Types (
   BaseDir (BaseDir, unBaseDir),

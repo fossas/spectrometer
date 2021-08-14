@@ -3,6 +3,7 @@
 module Srclib.Converter (
   toSourceUnit,
   depTypeToFetcher,
+  fetcherToDepType,
 ) where
 
 import Prelude
@@ -117,4 +118,26 @@ depTypeToFetcher = \case
   SubprojectType -> "mvn" -- FIXME. I knew SubprojectType would come back to bite us.
   URLType -> "url"
   UserType -> "user"
-  IATType -> "iat"
+
+-- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
+fetcherToDepType :: Text -> Maybe DepType
+fetcherToDepType fetcher | depTypeToFetcher ArchiveType == fetcher = Just ArchiveType
+fetcherToDepType fetcher | depTypeToFetcher CarthageType == fetcher = Just CarthageType
+fetcherToDepType fetcher | depTypeToFetcher CargoType == fetcher = Just CargoType
+fetcherToDepType fetcher | depTypeToFetcher ComposerType == fetcher = Just ComposerType
+fetcherToDepType fetcher | depTypeToFetcher CondaType == fetcher = Just CondaType
+fetcherToDepType fetcher | depTypeToFetcher CpanType == fetcher = Just CpanType
+fetcherToDepType fetcher | depTypeToFetcher GemType == fetcher = Just GemType
+fetcherToDepType fetcher | depTypeToFetcher GitType == fetcher = Just GitType
+fetcherToDepType fetcher | depTypeToFetcher GoType == fetcher = Just GoType
+fetcherToDepType fetcher | depTypeToFetcher HackageType == fetcher = Just HackageType
+fetcherToDepType fetcher | depTypeToFetcher HexType == fetcher = Just HexType
+fetcherToDepType fetcher | depTypeToFetcher MavenType == fetcher = Just MavenType
+fetcherToDepType fetcher | depTypeToFetcher NodeJSType == fetcher = Just NodeJSType
+fetcherToDepType fetcher | depTypeToFetcher NuGetType == fetcher = Just NuGetType
+fetcherToDepType fetcher | depTypeToFetcher PipType == fetcher = Just PipType
+fetcherToDepType fetcher | depTypeToFetcher PodType == fetcher = Just PodType
+fetcherToDepType fetcher | depTypeToFetcher RPMType == fetcher = Just RPMType
+fetcherToDepType fetcher | depTypeToFetcher URLType == fetcher = Just URLType
+fetcherToDepType fetcher | depTypeToFetcher UserType == fetcher = Just UserType
+fetcherToDepType _ = Nothing

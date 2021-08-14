@@ -29,8 +29,9 @@ module App.Fossa.FossaAPIV1 (
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
-import App.Fossa.IAT.Types
 import App.Fossa.Report.Attribution qualified as Attr
+import App.Fossa.VSI.IAT.Types
+import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Types
 import App.Version (versionNumber)
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
@@ -501,10 +502,10 @@ assertUserDefinedBinaries apiOpts UserDefinedAssertionMeta{..} fingerprints = fo
   _ <- req POST (assertUserDefinedBinariesEndpoint baseUrl) (ReqBodyJson body) ignoreResponse baseOpts
   pure ()
 
-resolveUserDefinedBinaryEndpoint :: Url scheme -> Locator -> Url scheme
-resolveUserDefinedBinaryEndpoint baseurl locator = baseurl /: "api" /: "iat" /: "resolve" /: "user-defined" /: renderLocator locator
+resolveUserDefinedBinaryEndpoint :: Url scheme -> IAT.UserDep -> Url scheme
+resolveUserDefinedBinaryEndpoint baseurl dep = baseurl /: "api" /: "iat" /: "resolve" /: "user-defined" /: IAT.renderUserDep dep
 
-resolveUserDefinedBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> m UserDefinedAssertionMeta
-resolveUserDefinedBinary apiOpts locator = fossaReq $ do
+resolveUserDefinedBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> IAT.UserDep -> m UserDefinedAssertionMeta
+resolveUserDefinedBinary apiOpts dep = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  responseBody <$> req GET (resolveUserDefinedBinaryEndpoint baseUrl locator) NoReqBody jsonResponse baseOpts
+  responseBody <$> req GET (resolveUserDefinedBinaryEndpoint baseUrl dep) NoReqBody jsonResponse baseOpts

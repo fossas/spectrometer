@@ -1,9 +1,14 @@
-module App.Fossa.IAT.Types (
+{-# LANGUAGE RecordWildCards #-}
+
+module App.Fossa.VSI.IAT.Types (
   Fingerprint (..),
   UserDefinedAssertionMeta (..),
-  extractUserDefinedBinaries,
+  UserDep (..),
+  toUserDep,
+  renderUserDep,
 ) where
 
+import App.Fossa.VSI.Types qualified as VSI
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON (toJSON),
@@ -11,7 +16,6 @@ import Data.Aeson (
   (.:),
  )
 import Data.Text (Text)
-import DepTypes (DepType (IATType), Dependency (dependencyType))
 
 -- | Fingerprint uniquely idenfies a file, derived from its content.
 -- Fingerprints are backed by base16 representations of underlying data.
@@ -19,6 +23,15 @@ newtype Fingerprint = Fingerprint {unFingerprint :: Text}
 
 instance ToJSON Fingerprint where
   toJSON = toJSON . unFingerprint
+
+-- | UserDep is the minimal set of data required to lookup a UserDefinedAssertionMeta in FOSSA.
+data UserDep = UserDep
+  { userDepName :: Text
+  , userDepVersion :: Text
+  }
+
+renderUserDep :: UserDep -> Text
+renderUserDep UserDep{..} = VSI.userDefinedFetcher <> "+" <> userDepName <> "$" <> userDepVersion
 
 -- | User provided data to assert a binary via IAT.
 data UserDefinedAssertionMeta = UserDefinedAssertionMeta
@@ -38,10 +51,5 @@ instance FromJSON UserDefinedAssertionMeta where
       <*> obj .: "description"
       <*> obj .: "url"
 
--- | Extract user defined binary dependencies from a list of dependencies.
--- Evaluates to the list of user defined binaries and the remaining graph.
-extractUserDefinedBinaries :: [Dependency] -> ([Dependency], [Dependency])
-extractUserDefinedBinaries graph = (filter isIATDep graph, filter (not . isIATDep) graph)
-
-isIATDep :: Dependency -> Bool
-isIATDep d = (dependencyType d) == IATType
+toUserDep :: VSI.Locator -> UserDep
+toUserDep VSI.Locator{..} = UserDep locatorProject locatorRevision

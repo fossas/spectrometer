@@ -2,87 +2,59 @@ module App.Fossa.VSIDeps (
   analyzeVSIDeps,
 ) where
 
+import App.Fossa.Analyze.Project (ProjectResult (ProjectResult))
 import App.Fossa.EmbeddedBinary (withWigginsBinary)
-import App.Fossa.IAT.Resolve (resolveShallowGraph)
 import App.Fossa.VPS.Scan.RunWiggins (WigginsOpts, execWigginsJson, generateVSIStandaloneOpts, toPathFilters)
+import App.Fossa.VSI.IAT.Resolve (resolveUserDefined)
+import App.Fossa.VSI.IAT.Types qualified as IAT
+import App.Fossa.VSI.Types qualified as VSI
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (renderDiagnostic)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fromEither)
+import Control.Effect.Diagnostics (Diagnostics, context, fromEither)
 import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
-import Data.Aeson (FromJSON)
-import Data.Text qualified as Text
-import DepTypes (Dependency (Dependency))
+import Data.Text (Text)
+import DepTypes (Dependency)
 import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
-import Effect.Logger (pretty, viaShow)
 import Fossa.API.Types (ApiOpts)
-import GHC.Generics (Generic)
+import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, Dir, Path)
-import Srclib.Types (Locator, SourceUnit (..), locatorFetcher, locatorProject, locatorRevision, parseLocator)
-import Types (DepType (GitType, GooglesourceType, IATType, MavenType, NuGetType), VerConstraint (CEq))
-
-newtype VSILocator = VSILocator
-  { unVSILocator :: Text.Text
-  }
-  deriving (Eq, Ord, Show, Generic, FromJSON)
-
-data ValidVSILocator = ValidVSILocator
-  { validType :: DepType
-  , validName :: Text.Text
-  , validRevision :: Maybe Text.Text
-  }
-
-data VSIError = UnsupportedLocatorType Locator Text.Text
-  deriving (Eq, Ord, Show)
-
-instance ToDiagnostic VSIError where
-  renderDiagnostic (UnsupportedLocatorType locator ty) =
-    "Unsupported locator type: " <> pretty ty <> " . Locator: " <> viaShow locator
+import Srclib.Converter qualified as Srclib
+import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
+import Types (GraphBreadth (Complete))
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, VSI analysis is run separately over the entire scan directory, outputting its own source unit.
 analyzeVSIDeps :: (MonadIO m, Has Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> AllFilters -> m SourceUnit
 analyzeVSIDeps dir apiOpts filters = do
-  direct <- pluginAnalyze $ generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
-  resolveShallowGraph dir apiOpts direct
+  (direct, userDeps) <- pluginAnalyze $ generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
+  resolvedUserDeps <- resolveUserDefined apiOpts userDeps
 
--- | The VSI plugin results in a shallow graph of direct dependencies.
-pluginAnalyze :: (MonadIO m, Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m [Dependency]
+  -- For now evaluate direct dependencies directly into a shallow graph.
+  -- An upcoming PR is going to resolve these dependencies to a full graph.
+  let graph = Graphing.fromList direct
+  resolvedGraph <- fromEither $ Graphing.gtraverse VSI.toDependency graph
+
+  pure $ toSourceUnit (toProject dir resolvedGraph) resolvedUserDeps
+
+-- | The VSI plugin results in a shallow graph of direct discovered dependencies and a list of discovered user defined dependencies.
+pluginAnalyze :: (MonadIO m, Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m ([VSI.Locator], [IAT.UserDep])
 pluginAnalyze opts = context "VSI" $ do
-  vsiLocators <- context "Running VSI binary" $ withWigginsBinary (execWigginsJson opts)
-  context "Building dependency graph" $ fromEither (toDependencies vsiLocators)
+  (discoveredRawLocators :: [Text]) <- context "Running VSI binary" $ withWigginsBinary (execWigginsJson opts)
+  parsedLocators <- fromEither $ traverse VSI.parseLocator discoveredRawLocators
 
-toDependencies :: [VSILocator] -> Either VSIError [Dependency]
-toDependencies rawLocators = transformed
+  let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined parsedLocators
+  let allOtherDeps = filter (not . VSI.isUserDefined) parsedLocators
+  pure (allOtherDeps, userDefinedDeps)
+
+toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
+toProject dir graph =
+  ProjectResult "vsi" dir graph Complete
+
+toSourceUnit :: ProjectResult -> Maybe [SourceUserDefDep] -> SourceUnit
+toSourceUnit project deps = do
+  let unit = Srclib.toSourceUnit project
+  unit{additionalData = fmap toDepData deps}
   where
-    validated :: Either VSIError [ValidVSILocator]
-    validated = traverse validateLocator rawLocators
-
-    transformed :: Either VSIError [Dependency]
-    transformed = map transformLocator <$> validated
-
-validateLocator :: VSILocator -> Either VSIError ValidVSILocator
-validateLocator vsiLocator = do
-  let locator = parseLocator $ unVSILocator vsiLocator
-  ty <- toDepType locator
-  pure (ValidVSILocator ty (locatorProject locator) (locatorRevision locator))
-
-transformLocator :: ValidVSILocator -> Dependency
-transformLocator locator =
-  Dependency
-    (validType locator)
-    (validName locator)
-    (CEq <$> validRevision locator)
-    []
-    []
-    mempty
-
-toDepType :: Locator -> Either VSIError DepType
-toDepType locator = case locatorFetcher locator of
-  "git" -> Right GitType
-  "archive" -> Right GooglesourceType
-  "mvn" -> Right MavenType
-  "nuget" -> Right NuGetType
-  "iat" -> Right IATType
-  other -> Left $ UnsupportedLocatorType locator other
+    toDepData d = AdditionalDepData (Just d) Nothing
