@@ -15,7 +15,7 @@ import Srclib.Converter (fetcherToDepType)
 import Srclib.Types qualified as Srclib
 
 -- | VSI supports a subset of possible Locators.
--- | Specifically, all VSI locators must have a valid revision.
+-- Specifically, all VSI locators must have a valid revision.
 data Locator = Locator
   { locatorFetcher :: Text
   , locatorProject :: Text
