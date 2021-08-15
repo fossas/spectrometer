@@ -25,6 +25,7 @@ module App.Fossa.FossaAPIV1 (
   archiveUpload,
   archiveBuildUpload,
   assertUserDefinedBinaries,
+  assertRevisionBinaries,
   resolveUserDefinedBinary,
 ) where
 
@@ -500,6 +501,16 @@ assertUserDefinedBinaries apiOpts UserDefinedAssertionMeta{..} fingerprints = fo
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let body = UserDefinedAssertionBody assertedName assertedVersion assertedLicense assertedDescription assertedUrl (FingerprintSet <$> fingerprints)
   _ <- req POST (assertUserDefinedBinariesEndpoint baseUrl) (ReqBodyJson body) ignoreResponse baseOpts
+  pure ()
+
+assertRevisionBinariesEndpoint :: Url scheme -> Locator -> Url scheme
+assertRevisionBinariesEndpoint baseurl locator = baseurl /: "api" /: "iat" /: "binary" /: renderLocator locator
+
+assertRevisionBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> [Fingerprint] -> m ()
+assertRevisionBinaries apiOpts locator fingerprints = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let body = FingerprintSet <$> fingerprints
+  _ <- req POST (assertRevisionBinariesEndpoint baseUrl locator) (ReqBodyJson body) ignoreResponse baseOpts
   pure ()
 
 resolveUserDefinedBinaryEndpoint :: Url scheme -> IAT.UserDep -> Url scheme
