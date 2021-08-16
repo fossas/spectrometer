@@ -46,7 +46,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
-import Data.String.Conversion (decodeUtf8, encodeUtf8, toText, toString)
+import Data.String.Conversion (decodeUtf8, encodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -109,10 +109,11 @@ discover dir = context "Gradle" $ do
 -- Run a Gradle command in a specific working directory, while correctly trying
 -- Gradle wrappers.
 runGradle :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> (Text -> Command) -> m BL.ByteString
-runGradle dir cmd = do
-  walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText
-  <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
-  <||> execThrow dir (cmd "gradle")
+runGradle dir cmd =
+  do
+    walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText
+    <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
+    <||> execThrow dir (cmd "gradle")
 
 -- Search upwards in a directory for the existence of the supplied file.
 walkUpDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
@@ -129,7 +130,6 @@ walkUpDir dir filename = do
       if parentDir /= dir
         then walkUpDir parentDir filename
         else fatal $ toText $ "invalid file name: " <> filename
-
 
 -- Search for a `build.gradle`. Each `build.gradle` is its own analysis target.
 --
