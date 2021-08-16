@@ -118,8 +118,8 @@ runGradle dir cmd =
 -- Search upwards in a directory for the existence of the supplied file.
 walkUpDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
 walkUpDir dir filename = do
-  relFile <- case parseRelFile $ Data.String.Conversion.toString filename of
-    Nothing -> fatal $ toText $ "invalid file name: " <> filename
+  relFile <- case parseRelFile $ toString filename of
+    Nothing -> fatal $ "invalid file name: " <> filename
     Just path -> pure path
   let absFile = dir </> relFile
   exists <- doesFileExist absFile
@@ -129,7 +129,7 @@ walkUpDir dir filename = do
       let parentDir = parent dir
       if parentDir /= dir
         then walkUpDir parentDir filename
-        else fatal $ toText $ "invalid file name: " <> filename
+        else fatal $ "invalid file name: " <> filename
 
 -- Search for a `build.gradle`. Each `build.gradle` is its own analysis target.
 --
