@@ -26,7 +26,7 @@ instance MonadHttp IO where
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation
 shouldRespondToGETWithHttpCode uri expected = do
   (url, _) <- fromJust . useHttpsURI <$> mkURI uri
-  r <- req GET (url) NoReqBody bsResponse mempty
+  r <- req GET url NoReqBody bsResponse mempty
   responseStatusCode r `shouldBe` expected
 
 spec :: Spec
