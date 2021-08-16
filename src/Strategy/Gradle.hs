@@ -110,24 +110,25 @@ discover dir = context "Gradle" $ do
 -- Gradle wrappers.
 runGradle :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> (Text -> Command) -> m BL.ByteString
 runGradle dir cmd = do
-  searchForScript dir "gradlew" >>= execThrow dir . cmd . toText
-  <||> (searchForScript dir "gradlew.bat" >>= execThrow dir . cmd . toText)
+  walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText
+  <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
   <||> execThrow dir (cmd "gradle")
 
-searchForScript :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
-searchForScript dir script = do
-  relFile <- case parseRelFile $ Data.String.Conversion.toString script of
-    Nothing -> fatal $ toText $ "invalid file name: " <> script
+-- Search upwards in a directory for the existence of the supplied file.
+walkUpDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
+walkUpDir dir filename = do
+  relFile <- case parseRelFile $ Data.String.Conversion.toString filename of
+    Nothing -> fatal $ toText $ "invalid file name: " <> filename
     Just path -> pure path
-  let fullFile = dir </> relFile
-  exists <- doesFileExist fullFile
+  let absFile = dir </> relFile
+  exists <- doesFileExist absFile
   if exists
-    then pure fullFile
+    then pure absFile
     else do
       let parentDir = parent dir
       if parentDir /= dir
-        then searchForScript parentDir script
-        else fatal $ toText $ "invalid file name: " <> script
+        then walkUpDir parentDir filename
+        else fatal $ toText $ "invalid file name: " <> filename
 
 
 -- Search for a `build.gradle`. Each `build.gradle` is its own analysis target.
