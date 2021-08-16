@@ -16,7 +16,7 @@ import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Pretty (pretty), viaShow)
-import Srclib.Converter (fetcherToDepType)
+import Srclib.Converter (depTypeToFetcher, fetcherToDepType)
 import Srclib.Types qualified as Srclib
 
 -- | VSI supports a subset of possible Locators.
@@ -88,7 +88,4 @@ userDefinedFetcher :: Text
 userDefinedFetcher = "iat"
 
 isTopLevelProject :: Locator -> Bool
-isTopLevelProject loc = locatorFetcher loc == customFetcher
-
-customFetcher :: Text
-customFetcher = "custom"
+isTopLevelProject loc = locatorFetcher loc == depTypeToFetcher CustomType
