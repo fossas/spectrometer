@@ -4,7 +4,6 @@ module App.Version (
   versionNumber,
   fullVersionDescription,
   isDirty,
-  shortCommit,
 ) where
 
 import App.Version.TH (getCurrentTag)

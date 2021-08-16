@@ -10,6 +10,7 @@ module App.Fossa.Analyze (
   RecordMode (..),
 ) where
 
+import App.Docs (newIssueUrl, userGuideUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
@@ -280,7 +281,15 @@ data AnalyzeError
 instance Diag.ToDiagnostic AnalyzeError where
   renderDiagnostic :: AnalyzeError -> Doc ann
   renderDiagnostic ErrNoProjectsDiscovered =
-    "No analysis targets found in directory"
+    vsep
+      [ "No analysis targets found in directory."
+      , ""
+      , "Make sure your project meets the requirements described in:"
+      , "    " <> pretty userGuideUrl
+      , ""
+      , "If you believe this to be a defect, please file a request at:"
+      , "    " <> pretty newIssueUrl
+      ]
   renderDiagnostic (ErrFilteredAllProjects count projectResults) =
     "Filtered out all "
       <> pretty count
