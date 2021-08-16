@@ -24,9 +24,7 @@ data Locator = Locator
   deriving (Eq, Ord, Show)
 
 parseLocator :: Text -> Either LocatorParseError Locator
-parseLocator a = do
-  let plain = Srclib.parseLocator a
-  validateLocator plain
+parseLocator = validateLocator . Srclib.parseLocator
 
 newtype LocatorParseError = RevisionRequired Srclib.Locator
   deriving (Eq, Ord, Show)
@@ -61,11 +59,7 @@ instance ToDiagnostic ToDependencyError where
       <> viaShow locator
 
 validateLocator :: Srclib.Locator -> Either LocatorParseError Locator
-validateLocator loc =
-  Locator
-    <$> Right (Srclib.locatorFetcher loc)
-    <*> Right (Srclib.locatorProject loc)
-    <*> validateRevision loc
+validateLocator loc = Locator (Srclib.locatorFetcher loc) (Srclib.locatorProject loc) <$> validateRevision loc
 
 validateRevision :: Srclib.Locator -> Either LocatorParseError Text
 validateRevision loc = case (Srclib.locatorRevision loc) of
