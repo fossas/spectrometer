@@ -4,7 +4,7 @@ import Data.Text (Text)
 import Data.Text.IO qualified as TextIO
 import Strategy.Maven.DepTree (DotGraph (..), PackageId (..), parseDotGraphs)
 import Test.Hspec (Spec, describe, it, runIO)
-import Test.Hspec.Megaparsec (shouldParse)
+import Test.Hspec.Megaparsec (shouldParse, shouldSucceedOn)
 import Text.Megaparsec (parse)
 
 -- TODO: Other tests:
@@ -22,9 +22,9 @@ spec =
     it "parses multiple dot graphs in one file" $
       parse parseDotGraphs fixtureMultiFile multi `shouldParse` fixtureMultiGraph
 
-    -- acme <- runIO $ TextIO.readFile fixtureAcmeFile
-    -- it "parses real-world test fixture" $
-    --   parse parseDotGraphs fixtureAcmeFile `shouldSucceedOn` acme
+    acme <- runIO $ TextIO.readFile fixtureAcmeFile
+    it "parses real-world test fixture" $
+      parse parseDotGraphs fixtureAcmeFile `shouldSucceedOn` acme
 
     it "parses package IDs with platforms" $
       parse parseDotGraphs "" fixturePackageIDWithPlatformContents
@@ -245,8 +245,8 @@ fixtureMultiGraph =
       }
   ]
 
--- fixtureAcmeFile :: FilePath
--- fixtureAcmeFile = "test/Maven/testdata/acme-deptree.dot"
+fixtureAcmeFile :: FilePath
+fixtureAcmeFile = "test/Maven/testdata/acme-deptree.dot"
 
 fixturePackageIDWithPlatformContents :: Text
 fixturePackageIDWithPlatformContents =
