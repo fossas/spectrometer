@@ -74,8 +74,8 @@ This strategy requires dynamic analysis in its discovery phase (not just in the 
 
 When executing Gradle for an analysis target at directory `ANALYSIS_TARGET_DIR`, the CLI will prefer (in order):
 
-1. `gradlew`. Search upwards in the directory `ANALYSIS_TARGET_DIR` for the nearest `gradlew` file.
-1. `gradlew.bat`. Search upwards in the directory `ANALYSIS_TARGET_DIR` for the nearest `gradlew.bat` file.
+1. `gradlew`. First looking in `ANALYSIS_TARGET_DIR` and then recursively searching parent directories until `gradlew` is found.
+1. `gradlew.bat`. First looking in `ANALYSIS_TARGET_DIR` and then recursively searching parent directories until `gradlew.bat` is found.
 1. `gradle` (from `$PATH`)
 
 For more details, see [Gradle wrappers](#gradle-wrappers).
