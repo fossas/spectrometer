@@ -3,19 +3,18 @@
 Upgrading from FOSSA CLI 1.x to 2.x is a major breaking change. For most users, this change should be seamless. For users who use less common flags, or who have heavily customized their CLI usage, you may need to update some scripts.
 
 ## Table of contents <!-- omit in toc -->
-- [Differences from FOSSA 1.x to 2.x](#differences-from-fossa-1x-to-2x)
-  - [What's new in FOSSA 2.x?](#whats-new-in-fossa-2x)
-    - ["Modules" are now "analysis targets"](#modules-are-now-analysis-targets)
-    - [Automatic analysis target discovery](#automatic-analysis-target-discovery)
-    - [Automatic analysis target strategy selection](#automatic-analysis-target-strategy-selection)
-    - [Improved correctness](#improved-correctness)
-    - [Improved debug logging](#improved-debug-logging)
-  - [How to upgrade to FOSSA 2.x](#how-to-upgrade-to-fossa-2x)
-    - [Remove calls to `fossa init`](#remove-calls-to-fossa-init)
-    - [Migrate your configuration file](#migrate-your-configuration-file)
-    - [Migrate "archive upload" targets](#migrate-archive-upload-targets)
-    - [Getting help with your migration](#getting-help-with-your-migration)
-    - [Migrate "fossa report" commands](#migrate-fossa-report-commands)
+
+- [What's new in FOSSA 2.x?](#whats-new-in-fossa-2x)
+  - ["Modules" are now "analysis targets"](#modules-are-now-analysis-targets)
+  - [Automatic analysis target discovery](#automatic-analysis-target-discovery)
+  - [Automatic analysis target strategy selection](#automatic-analysis-target-strategy-selection)
+  - [Improved correctness](#improved-correctness)
+  - [Improved debug logging](#improved-debug-logging)
+- [How to upgrade to FOSSA 2.x](#how-to-upgrade-to-fossa-2x)
+  - [Remove calls to `fossa init`](#remove-calls-to-fossa-init)
+  - [Migrate your configuration file](#migrate-your-configuration-file)
+  - [Migrate "archive upload" targets](#migrate-archive-upload-targets)
+  - [Getting help with your migration](#getting-help-with-your-migration)
 
 ## What's new in FOSSA 2.x?
 
