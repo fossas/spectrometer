@@ -2,9 +2,12 @@
 
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Fspectrometer.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgithub.com%2Ffossas%2Fspectrometer?ref=badge_shield)
 
-Spectrometer is a minimal-configuration dependency analysis tool. It supports a wide array of languages and buildtools.
+Spectrometer is a minimal-configuration dependency analysis tool. It supports a
+wide array of languages and buildtools.
 
-Spectrometer extracts dependency graphs from your projects and reports them to [FOSSA](https://fossa.com) for license scanning, vulnerability scanning, and more.
+Spectrometer extracts dependency graphs from your projects and reports them to
+[FOSSA](https://fossa.com) for license scanning, vulnerability scanning, and
+more.
 
 ## Table of Contents
 
@@ -26,7 +29,8 @@ curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spect
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/spectrometer/master/install.ps1'))
 ```
 
-**NOTE**: You may need to add the executable to your PATH. The installer reports the installation path of the executable.
+**NOTE**: You may need to add the executable to your PATH. The installer
+reports the installation path of the executable.
 
 ## Using Spectrometer
 
@@ -48,13 +52,16 @@ fossa test
 
 ## Contributing
 
-For development documentation (still WIP, but not empty), see our [Development Docs Homepage](devdocs/index.md).
+For development documentation (still WIP, but not empty), see our [Development
+Docs Homepage](devdocs/index.md).
 
 ## Reporting Issues
 
-If you are experiencing an issue related to the results on the FOSSA website/dashboard, please contact [support@fossa.com](mailto:support@fossa.com)
+If you are experiencing an issue related to the results on the FOSSA
+website/dashboard, please contact [support@fossa.com](mailto:support@fossa.com)
 
-Issues specific to Spectrometer should be filed through the [Github issues page](https://github.com/fossas/spectrometer/issues/new).
+Issues specific to Spectrometer should be filed through the [Github issues
+page](https://github.com/fossas/spectrometer/issues/new).
 
 Please include the following in your bug report:
 

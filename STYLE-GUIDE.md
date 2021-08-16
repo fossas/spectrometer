@@ -29,7 +29,7 @@ code should describe the "how".
 
 2 spaces everywhere. Tabs are forbidden.  These are enforced by the formatter.
 
-We have a soft line limit of 80, but don't sacrific readability for shorter
+We have a soft line limit of 80, but don't sacrifice readability for shorter
 lines.  That said, 80 chars is a lot, and you should probably split code lines
 earlier than that.  Write code vertically, not horizontally.
 
@@ -137,9 +137,17 @@ f (g (h (i x)))
 f $ g $ h $ i x
 -- Better
 f . g . h $ i x
--- Don't over-use $
--- Hlint will reject this
-f . g . h . i $ x
+```
+
+However, `$` can easily be over-used (for example, on every single function
+application), so `hlint` will warn us in the case that removing the `$` produces
+the same effect as including it.
+
+```haskell
+-- Bad: Hlint will reject this
+h . i $ x
+-- Good
+h $ i x
 ```
 
 Parentheses are useful when there are other operators in the mix, since they
@@ -258,6 +266,9 @@ We do have some common exceptions for longer module names:
 - `Data.Bytestring` -> `BS`
 - `Data.ByteString.Lazy` -> `BL`
 
+Use your best judgement here, but in general, shorter names should not be
+abbreviated.
+
 ### Don't use implicit blanket imports
 
 Import items explicitly:
@@ -267,8 +278,11 @@ import Control.Effect.Diagnostics -- bad
 import Control.Effect.Diagnostics (fatal, context)  -- Good
 ```
 
-There are notable exceptions, but they are few and far between.  The `Path`
-module is a common exception, but there's no good justification for this.
+Implicit imports are confusing, especially during code review or text editing
+without an IDE.  VSCode has a code action that will rewrite your implicit
+imports to explicit automatically.  You may also want to refine your imports to
+their "true" locations (VSCode has an action for this as well), but this is not
+always helpful, so it's not required.
 
 ## Strings
 
