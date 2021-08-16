@@ -26,6 +26,7 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   context,
   errorBoundary,
+  fatal,
   renderFailureBundle,
   (<||>),
  )
@@ -45,7 +46,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
-import Data.String.Conversion (decodeUtf8, encodeUtf8, toText)
+import Data.String.Conversion (decodeUtf8, encodeUtf8, toText, toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -59,10 +60,10 @@ import Discovery.Walk (WalkStep (..), fileName, walk')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
-import Effect.ReadFS (ReadFS)
+import Effect.ReadFS (ReadFS, doesFileExist, runReadFSIO)
 import Graphing (Graphing)
-import Path (Abs, Dir, File, Path, fromAbsDir)
-import System.FilePath ((</>))
+import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
+import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
 
 newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
@@ -107,11 +108,27 @@ discover dir = context "Gradle" $ do
 
 -- Run a Gradle command in a specific working directory, while correctly trying
 -- Gradle wrappers.
-runGradle :: (Has Exec sig m, Has Diagnostics sig m) => Path t Dir -> (Text -> Command) -> m BL.ByteString
-runGradle dir cmd =
-  execThrow dir (cmd (toText dir <> "gradlew"))
-    <||> execThrow dir (cmd (toText dir <> "gradlew.bat"))
-    <||> execThrow dir (cmd "gradle")
+runGradle :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> (Text -> Command) -> m BL.ByteString
+runGradle dir cmd = do
+  searchForScript dir "gradlew" >>= execThrow dir . cmd . toText
+  <||> (searchForScript dir "gradlew.bat" >>= execThrow dir . cmd . toText)
+  <||> execThrow dir (cmd "gradle")
+
+searchForScript :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
+searchForScript dir script = do
+  relFile <- case parseRelFile $ Data.String.Conversion.toString script of
+    Nothing -> fatal $ toText $ "invalid file name: " <> script
+    Just path -> pure path
+  let fullFile = dir </> relFile
+  exists <- doesFileExist fullFile
+  if exists
+    then pure fullFile
+    else do
+      let parentDir = parent dir
+      if parentDir /= dir
+        then searchForScript parentDir script
+        else fatal $ toText $ "invalid file name: " <> script
+
 
 -- Search for a `build.gradle`. Each `build.gradle` is its own analysis target.
 --
@@ -241,7 +258,7 @@ analyze ::
   Path Abs Dir ->
   m (Graphing Dependency)
 analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
-  let initScriptFilepath = fromAbsDir tmpDir </> "jsondeps.gradle"
+  let initScriptFilepath = fromAbsDir tmpDir FilePath.</> "jsondeps.gradle"
   context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
 
   let cmd :: Text -> Command
@@ -249,11 +266,7 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
         FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
         ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
-  stdout <-
-    context "Running gradle script" $
-      execThrow dir (cmd (toText dir <> "gradlew"))
-        <||> execThrow dir (cmd (toText dir <> "gradlew.bat"))
-        <||> execThrow dir (cmd "gradle")
+  stdout <- context "running gradle script" $ runReadFSIO $ runGradle dir cmd
 
   let text = decodeUtf8 $ BL.toStrict stdout
 
