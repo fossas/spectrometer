@@ -36,9 +36,7 @@ instance FromJSON Locator where
       <*> obj .: "revision"
 
 parseLocator :: Text -> Either LocatorParseError Locator
-parseLocator a = do
-  let plain = Srclib.parseLocator a
-  validateLocator plain
+parseLocator = validateLocator . Srclib.parseLocator
 
 renderLocator :: Locator -> Text
 renderLocator Locator{..} = locatorFetcher <> "+" <> locatorProject <> "$" <> locatorRevision
@@ -76,11 +74,7 @@ instance ToDiagnostic ToDependencyError where
       <> viaShow locator
 
 validateLocator :: Srclib.Locator -> Either LocatorParseError Locator
-validateLocator loc =
-  Locator
-    <$> Right (Srclib.locatorFetcher loc)
-    <*> Right (Srclib.locatorProject loc)
-    <*> validateRevision loc
+validateLocator loc = Locator (Srclib.locatorFetcher loc) (Srclib.locatorProject loc) <$> validateRevision loc
 
 validateRevision :: Srclib.Locator -> Either LocatorParseError Text
 validateRevision loc = case (Srclib.locatorRevision loc) of
