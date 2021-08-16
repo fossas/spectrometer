@@ -1,13 +1,18 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VSI.Types (
   Locator (..),
   LocatorParseError (..),
   parseLocator,
+  renderLocator,
   isUserDefined,
   userDefinedFetcher,
+  isTopLevelProject,
   toDependency,
 ) where
 
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Pretty (pretty), viaShow)
@@ -23,10 +28,20 @@ data Locator = Locator
   }
   deriving (Eq, Ord, Show)
 
+instance FromJSON Locator where
+  parseJSON = withObject "Locator" $ \obj -> do
+    Locator
+      <$> obj .: "fetcher"
+      <*> obj .: "package"
+      <*> obj .: "revision"
+
 parseLocator :: Text -> Either LocatorParseError Locator
 parseLocator a = do
   let plain = Srclib.parseLocator a
   validateLocator plain
+
+renderLocator :: Locator -> Text
+renderLocator Locator{..} = locatorFetcher <> "+" <> locatorProject <> "$" <> locatorRevision
 
 newtype LocatorParseError = RevisionRequired Srclib.Locator
   deriving (Eq, Ord, Show)
@@ -77,3 +92,9 @@ isUserDefined loc = locatorFetcher loc == userDefinedFetcher
 
 userDefinedFetcher :: Text
 userDefinedFetcher = "iat"
+
+isTopLevelProject :: Locator -> Bool
+isTopLevelProject loc = locatorFetcher loc == customFetcher
+
+customFetcher :: Text
+customFetcher = "custom"

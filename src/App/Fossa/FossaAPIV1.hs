@@ -27,12 +27,14 @@ module App.Fossa.FossaAPIV1 (
   assertUserDefinedBinaries,
   assertRevisionBinaries,
   resolveUserDefinedBinary,
+  resolveProjectDependencies,
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.IAT.Types
 import App.Fossa.VSI.IAT.Types qualified as IAT
+import App.Fossa.VSI.Types qualified as VSI
 import App.Types
 import App.Version (versionNumber)
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
@@ -520,3 +522,22 @@ resolveUserDefinedBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiO
 resolveUserDefinedBinary apiOpts dep = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   responseBody <$> req GET (resolveUserDefinedBinaryEndpoint baseUrl dep) NoReqBody jsonResponse baseOpts
+
+-- | The revision dependencies endpoint contains a lot of information we don't need. This intermediate type allows us to throw it away.
+newtype ResolvedDependency = ResolvedDependency {unwrapResolvedDependency :: VSI.Locator}
+
+instance FromJSON ResolvedDependency where
+  parseJSON = withObject "ResolvedProjectDependencies" $ \obj -> do
+    ResolvedDependency <$> obj .: "loc"
+
+resolveProjectDependenciesEndpoint :: Url scheme -> VSI.Locator -> Url scheme
+resolveProjectDependenciesEndpoint baseurl locator = baseurl /: "api" /: "revisions" /: VSI.renderLocator locator /: "dependencies"
+
+resolveProjectDependencies :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.Locator -> m [VSI.Locator]
+resolveProjectDependencies apiOpts locator = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = baseOpts <> "include_ignored" =: False
+  (dependencies :: [ResolvedDependency]) <- responseBody <$> req GET (resolveProjectDependenciesEndpoint baseUrl locator) NoReqBody jsonResponse opts
+
+  pure $ map unwrapResolvedDependency dependencies
