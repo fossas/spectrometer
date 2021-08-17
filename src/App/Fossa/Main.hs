@@ -184,11 +184,10 @@ appMain = do
         else withDefaultLogger logSeverity $ logWarn "The --filter option has been deprecated. Refer to the new target exclusion feature for upgrading. --filter will be removed by v2.20.0"
 
       assertionMode <- case analyzeAssertMode of
+        AnalyzeVSIAssertionDisabled -> pure IATAssertionDisabled
         AnalyzeVSIAssertionEnabled p -> do
           dir <- validateDir p
           pure $ IATAssertionEnabled (unBaseDir dir)
-        AnalyzeVSIAssertionEmpty -> pure IATAssertionDisabled
-        AnalyzeVSIAssertionDisabled -> pure IATAssertionDisabled
 
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
@@ -425,12 +424,9 @@ vsiAnalyzeOpt =
   flag' VSIAnalysisEnabled (long "enable-vsi" <> hidden)
     <|> pure VSIAnalysisDisabled
 
--- FIXME: why does this require AnalyzeVSIAssertionEmpty?
--- If I just delete it from the type definition and here, this parser breaks.
 iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
 iatAssertionOpt =
-  flag' AnalyzeVSIAssertionEmpty (long "experimental-vsi-assertion-none" <> hidden)
-    <|> (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-vsi-generated-binary-dir" <> hidden))
+  (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-vsi-generated-binary-dir" <> hidden))
     <|> pure AnalyzeVSIAssertionDisabled
 
 analyzeReplayOpt :: Parser RecordMode
@@ -717,9 +713,7 @@ data AnalyzeOptions = AnalyzeOptions
 -- This type translates to IATAssertionMode, but exists so that the flag parser can work with FilePath
 -- until the FilePath can be converted to a Path Abs Dir in appMain.
 data AnalyzeVSIAssertionMode
-  = -- | FIXME only here so I can get the parser working until I can ask someone what's up
-    AnalyzeVSIAssertionEmpty
-  | -- | assertion enabled, reading binaries from this directory
+  = -- | assertion enabled, reading binaries from this directory
     AnalyzeVSIAssertionEnabled FilePath
   | -- | assertion not enabled
     AnalyzeVSIAssertionDisabled
