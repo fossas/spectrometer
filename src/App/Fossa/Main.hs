@@ -396,7 +396,7 @@ hiddenCommands =
           "experimental-link-user-defined-dependency-binary"
           ( info
               (AssertUserDefinedBinariesCommand <$> assertUserDefinedBinariesOpts)
-              (progDesc "Register one or more binary fingerprints as a custom dependency to be discovered when running in `analyze --enable-vsi` mode on a downstream project")
+              (progDesc "Link one or more binary fingerprints as a user-defined dependency")
           )
     )
 
