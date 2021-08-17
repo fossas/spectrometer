@@ -267,18 +267,14 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  uploadLocator <- case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults] of
+  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults] of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> do
-        _ <- logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
-        pure Nothing
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
       UploadScan opts metadata -> do
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
-        pure $ Just locator
-
-  doAssertRevisionBinaries iatAssertion apiOpts uploadLocator
+        doAssertRevisionBinaries iatAssertion opts locator
 
 analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
@@ -287,8 +283,8 @@ analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
   pure $ Just results
 analyzeVSI _ _ _ _ = pure Nothing
 
-doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> Maybe ApiOpts -> Maybe Locator -> m ()
-doAssertRevisionBinaries (IATAssertionEnabled dir) (Just apiOpts) (Just locator) = assertRevisionBinaries dir apiOpts locator
+doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> ApiOpts -> Locator -> m ()
+doAssertRevisionBinaries (IATAssertionEnabled dir) apiOpts locator = assertRevisionBinaries dir apiOpts locator
 doAssertRevisionBinaries _ _ _ = pure ()
 
 data AnalyzeError
