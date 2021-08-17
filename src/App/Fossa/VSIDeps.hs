@@ -47,7 +47,7 @@ pluginAnalyze opts = context "VSI" $ do
   pure (allOtherDeps, userDefinedDeps)
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-toProject dir graph = ProjectResult "vsi" dir graph Complete
+toProject dir graph = ProjectResult "vsi" dir graph Complete []
 
 toSourceUnit :: ProjectResult -> Maybe [SourceUserDefDep] -> SourceUnit
 toSourceUnit project deps = do
