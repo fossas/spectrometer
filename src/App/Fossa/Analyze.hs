@@ -344,10 +344,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
   -- Warn on contributor errors, never fail
   void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
-  _ <-
-    if fromFlag JsonOutput jsonOutput
-      then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl
-      else pure ()
+  if fromFlag JsonOutput jsonOutput
+    then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl
+    else pure ()
 
   pure locator
 
