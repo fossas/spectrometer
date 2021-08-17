@@ -35,6 +35,7 @@ toSourceUnit ProjectResult{..} =
             , buildDependencies = deps
             }
     , sourceUnitGraphBreadth = projectResultGraphBreadth
+    , sourceUnitOriginPaths = projectResultManifestFiles
     , additionalData = Nothing
     }
   where
@@ -119,6 +120,7 @@ depTypeToFetcher = \case
   SubprojectType -> "mvn" -- FIXME. I knew SubprojectType would come back to bite us.
   URLType -> "url"
   UserType -> "user"
+  PubType -> "pub"
 
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
 fetcherToDepType :: Text -> Maybe DepType
@@ -142,4 +144,5 @@ fetcherToDepType fetcher | depTypeToFetcher PodType == fetcher = Just PodType
 fetcherToDepType fetcher | depTypeToFetcher RPMType == fetcher = Just RPMType
 fetcherToDepType fetcher | depTypeToFetcher URLType == fetcher = Just URLType
 fetcherToDepType fetcher | depTypeToFetcher UserType == fetcher = Just UserType
+fetcherToDepType fetcher | depTypeToFetcher PubType == fetcher = Just PubType
 fetcherToDepType _ = Nothing

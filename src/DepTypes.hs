@@ -78,6 +78,8 @@ data DepType
     PipType
   | -- | Cocoapods registry
     PodType
+  | -- | Pub dependency for dart
+    PubType
   | -- | Go dependency
     GoType
   | -- | Rust Cargo Dependency

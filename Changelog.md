@@ -1,6 +1,10 @@
 # Spectrometer Changelog
 
-## v2.14.6
+## Unreleased
+
+- Gradle: Search parent directories for gradlew and gradlew.bat ([#336](https://github.com/fossas/spectrometer/pull/336)) 
+
+## v2.15.4
 
 This release adds a number of closed beta features around FOSSA C/C++ support.
 For now this functionality is considered publicly undocumented, and is only used with support from FOSSA engineering.
@@ -12,6 +16,24 @@ For questions using the new functionality in this release please contact us!
 - Support resolving linked user-defined binaries found in projects when VSI is enabled. ([#328](https://github.com/fossas/spectrometer/pull/328))
 - Support linking user project binaries. ([#333](https://github.com/fossas/spectrometer/pull/333))
 - Support resolving linked user project binaries found in projects when VSI is enabled.s ([#333](https://github.com/fossas/spectrometer/pull/333))
+
+## v2.15.3
+
+- Resolve a scan performance regression for `fossa vps` invocations. ([#335](https://github.com/fossas/spectrometer/pull/335))
+- Resolve a scan performance regression for `fossa analyze --experimental-enable-monorepo` invocations. ([#335](https://github.com/fossas/spectrometer/pull/335))
+
+## v2.15.2
+
+- Maven: Fixes an issue where dependencies parsed from `dependency:tree` would fail to resolve when uploaded. ([#332](https://github.com/fossas/spectrometer/pull/332))
+
+## v2.15.1
+
+- Maven: Fixes an issue where dependencies with a platform specifier were not correctly parsed. ([#329](https://github.com/fossas/spectrometer/pull/329))
+
+## v2.15.0
+
+- Dart: Adds support for pub package manager. ([#313](https://github.com/fossas/spectrometer/pull/313))
+- Analyzed dependencies now report what file they were found in. ([#316](https://github.com/fossas/spectrometer/pull/316))
 
 ## v2.14.5
 
