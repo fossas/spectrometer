@@ -393,7 +393,7 @@ hiddenCommands =
               (progDesc "Run fossa cli v1 analyze. Supply arguments as \"fossa compatibility -- --project test\"")
           )
         <> command
-          "experimental-vsi-register-binary-custom-dependency"
+          "experimental-link-user-defined-dependency-binary"
           ( info
               (AssertUserDefinedBinariesCommand <$> assertUserDefinedBinariesOpts)
               (progDesc "Register one or more binary fingerprints as a custom dependency to be discovered when running in `analyze --enable-vsi` mode on a downstream project")
@@ -426,7 +426,7 @@ vsiAnalyzeOpt =
 
 iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
 iatAssertionOpt =
-  (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-vsi-generated-binary-dir" <> hidden))
+  (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-link-project-binary" <> hidden))
     <|> pure AnalyzeVSIAssertionDisabled
 
 analyzeReplayOpt :: Parser RecordMode
