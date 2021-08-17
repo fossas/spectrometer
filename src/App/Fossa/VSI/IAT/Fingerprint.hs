@@ -1,8 +1,8 @@
-module App.Fossa.IAT.Fingerprint (
+module App.Fossa.VSI.IAT.Fingerprint (
   fingerprintContentsRaw,
 ) where
 
-import App.Fossa.IAT.Types
+import App.Fossa.VSI.IAT.Types
 import Conduit
 import Control.Carrier.Diagnostics
 import Control.Effect.Exception

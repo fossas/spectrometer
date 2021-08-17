@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (IATAssertionMode (..), JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -26,8 +26,6 @@ import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, pars
 import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
-import App.Fossa.IAT.AssertUserDefinedBinaries
-import App.Fossa.IAT.Types
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Monorepo
 import App.Fossa.Report qualified as Report
@@ -38,6 +36,8 @@ import App.Fossa.VPS.Report qualified as VPSReport
 import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.Test qualified as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
+import App.Fossa.VSI.IAT.AssertUserDefinedBinaries
+import App.Fossa.VSI.IAT.Types
 import App.OptionExtensions (jsonOption, uriOption)
 import App.Types (
   BaseDir (BaseDir, unBaseDir),
@@ -183,9 +183,15 @@ appMain = do
         then pure ()
         else withDefaultLogger logSeverity $ logWarn "The --filter option has been deprecated. Refer to the new target exclusion feature for upgrading. --filter will be removed by v2.20.0"
 
+      assertionMode <- case analyzeAssertMode of
+        AnalyzeVSIAssertionDisabled -> pure IATAssertionDisabled
+        AnalyzeVSIAssertionEnabled p -> do
+          dir <- validateDir p
+          pure $ IATAssertionEnabled (unBaseDir dir)
+
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
-          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
+          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode assertionMode combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -408,6 +414,7 @@ analyzeOpts =
     <*> many (option (eitherReader pathOpt) (long "only-path" <> help "Only scan these paths. See paths.only in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (long "exclude-path" <> help "Exclude these paths from scanning. See paths.exclude in the fossa.yml spec." <> metavar "PATH"))
     <*> vsiAnalyzeOpt
+    <*> iatAssertionOpt
     <*> monorepoOpts
     <*> analyzeReplayOpt
     <*> baseDirArg
@@ -416,6 +423,11 @@ vsiAnalyzeOpt :: Parser VSIAnalysisMode
 vsiAnalyzeOpt =
   flag' VSIAnalysisEnabled (long "enable-vsi" <> hidden)
     <|> pure VSIAnalysisDisabled
+
+iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
+iatAssertionOpt =
+  (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-vsi-generated-binary-dir" <> hidden))
+    <|> pure AnalyzeVSIAssertionDisabled
 
 analyzeReplayOpt :: Parser RecordMode
 analyzeReplayOpt =
@@ -691,10 +703,20 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeOnlyPaths :: [Path Rel Dir]
   , analyzeExcludePaths :: [Path Rel Dir]
   , analyzeVSIMode :: VSIAnalysisMode
+  , analyzeAssertMode :: AnalyzeVSIAssertionMode
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeRecordMode :: RecordMode
   , analyzeBaseDir :: FilePath
   }
+
+-- | "IAT Assertion" modes
+-- This type translates to IATAssertionMode, but exists so that the flag parser can work with FilePath
+-- until the FilePath can be converted to a Path Abs Dir in appMain.
+data AnalyzeVSIAssertionMode
+  = -- | assertion enabled, reading binaries from this directory
+    AnalyzeVSIAssertionEnabled FilePath
+  | -- | assertion not enabled
+    AnalyzeVSIAssertionDisabled
 
 data TestOptions = TestOptions
   { testTimeout :: Int

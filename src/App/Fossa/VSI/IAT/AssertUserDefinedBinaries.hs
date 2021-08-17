@@ -1,10 +1,10 @@
-module App.Fossa.IAT.AssertUserDefinedBinaries (
+module App.Fossa.VSI.IAT.AssertUserDefinedBinaries (
   assertUserDefinedBinariesMain,
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.IAT.Fingerprint
-import App.Fossa.IAT.Types
+import App.Fossa.VSI.IAT.Fingerprint
+import App.Fossa.VSI.IAT.Types
 import App.Types
 import Control.Algebra
 import Control.Carrier.Diagnostics
