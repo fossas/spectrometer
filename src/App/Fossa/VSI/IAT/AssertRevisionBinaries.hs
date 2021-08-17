@@ -3,14 +3,14 @@ module App.Fossa.VSI.IAT.AssertRevisionBinaries (
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.VSI.IAT.Fingerprint
-import Control.Algebra
-import Control.Carrier.Diagnostics
-import Control.Effect.Lift
-import Effect.Logger
-import Effect.ReadFS
-import Fossa.API.Types
-import Path
+import App.Fossa.VSI.IAT.Fingerprint (fingerprintContentsRaw)
+import Control.Algebra (Has)
+import Control.Carrier.Diagnostics (Diagnostics)
+import Control.Effect.Lift (Lift)
+import Effect.Logger (Logger, logInfo)
+import Effect.ReadFS (ReadFS)
+import Fossa.API.Types (ApiOpts)
+import Path (Abs, Dir, Path)
 import Srclib.Types (Locator)
 
 assertRevisionBinaries :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> Locator -> m ()

@@ -36,8 +36,8 @@ import App.Fossa.VPS.Report qualified as VPSReport
 import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.Test qualified as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
-import App.Fossa.VSI.IAT.AssertUserDefinedBinaries
-import App.Fossa.VSI.IAT.Types
+import App.Fossa.VSI.IAT.AssertUserDefinedBinaries (assertUserDefinedBinariesMain)
+import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta (..))
 import App.OptionExtensions (jsonOption, uriOption)
 import App.Types (
   BaseDir (BaseDir, unBaseDir),

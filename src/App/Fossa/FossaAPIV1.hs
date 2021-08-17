@@ -32,7 +32,6 @@ module App.Fossa.FossaAPIV1 (
 
 import App.Fossa.Container (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
-import App.Fossa.VSI.IAT.Types
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types
@@ -465,7 +464,7 @@ uploadContributors apiOpts locator contributors = fossaReq $ do
 -- | Core expects an object for each fingerprint.
 -- This type allows us to convert a fingerprint to the required object.
 newtype FingerprintSet = FingerprintSet
-  { fingerprintRaw :: Fingerprint
+  { fingerprintRaw :: IAT.Fingerprint
   }
 
 instance ToJSON FingerprintSet where
@@ -498,8 +497,8 @@ instance ToJSON UserDefinedAssertionBody where
 assertUserDefinedBinariesEndpoint :: Url scheme -> Url scheme
 assertUserDefinedBinariesEndpoint baseurl = baseurl /: "api" /: "iat" /: "binary"
 
-assertUserDefinedBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> UserDefinedAssertionMeta -> [Fingerprint] -> m ()
-assertUserDefinedBinaries apiOpts UserDefinedAssertionMeta{..} fingerprints = fossaReq $ do
+assertUserDefinedBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> IAT.UserDefinedAssertionMeta -> [IAT.Fingerprint] -> m ()
+assertUserDefinedBinaries apiOpts IAT.UserDefinedAssertionMeta{..} fingerprints = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let body = UserDefinedAssertionBody assertedName assertedVersion assertedLicense assertedDescription assertedUrl (FingerprintSet <$> fingerprints)
   _ <- req POST (assertUserDefinedBinariesEndpoint baseUrl) (ReqBodyJson body) ignoreResponse baseOpts
@@ -508,7 +507,7 @@ assertUserDefinedBinaries apiOpts UserDefinedAssertionMeta{..} fingerprints = fo
 assertRevisionBinariesEndpoint :: Url scheme -> Locator -> Url scheme
 assertRevisionBinariesEndpoint baseurl locator = baseurl /: "api" /: "iat" /: "binary" /: renderLocator locator
 
-assertRevisionBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> [Fingerprint] -> m ()
+assertRevisionBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> [IAT.Fingerprint] -> m ()
 assertRevisionBinaries apiOpts locator fingerprints = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let body = FingerprintSet <$> fingerprints
@@ -518,7 +517,7 @@ assertRevisionBinaries apiOpts locator fingerprints = fossaReq $ do
 resolveUserDefinedBinaryEndpoint :: Url scheme -> IAT.UserDep -> Url scheme
 resolveUserDefinedBinaryEndpoint baseurl dep = baseurl /: "api" /: "iat" /: "resolve" /: "user-defined" /: IAT.renderUserDep dep
 
-resolveUserDefinedBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> IAT.UserDep -> m UserDefinedAssertionMeta
+resolveUserDefinedBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> IAT.UserDep -> m IAT.UserDefinedAssertionMeta
 resolveUserDefinedBinary apiOpts dep = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   responseBody <$> req GET (resolveUserDefinedBinaryEndpoint baseUrl dep) NoReqBody jsonResponse baseOpts

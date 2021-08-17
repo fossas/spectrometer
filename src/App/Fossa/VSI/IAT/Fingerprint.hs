@@ -2,17 +2,25 @@ module App.Fossa.VSI.IAT.Fingerprint (
   fingerprintContentsRaw,
 ) where
 
-import App.Fossa.VSI.IAT.Types
-import Conduit
-import Control.Carrier.Diagnostics
-import Control.Effect.Exception
-import Control.Effect.Lift
-import Crypto.Hash
+import App.Fossa.VSI.IAT.Types (Fingerprint (Fingerprint))
+import Conduit (ConduitT, Void, await, runConduitRes, sourceFile, (.|))
+import Control.Algebra (Has)
+import Control.Carrier.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Exception (IOException, Lift, catch)
+import Control.Effect.Lift (sendIO)
+import Crypto.Hash (
+  Digest,
+  HashAlgorithm,
+  SHA256,
+  hashFinalize,
+  hashInit,
+  hashUpdate,
+ )
 import Data.ByteString qualified as B
-import Data.String.Conversion
-import Discovery.Walk
-import Effect.ReadFS
-import Path
+import Data.String.Conversion (ToText (..))
+import Discovery.Walk (WalkStep (..), walk')
+import Effect.ReadFS (ReadFS)
+import Path (Abs, Dir, File, Path, toFilePath)
 
 -- | Hashes a stream of 'B.ByteString'@s@ and creates a digest @d@.
 -- Adapted from @sinkHash@ in https://hackage.haskell.org/package/cryptonite-conduit-0.2.2/docs/src/Crypto-Hash-Conduit.html

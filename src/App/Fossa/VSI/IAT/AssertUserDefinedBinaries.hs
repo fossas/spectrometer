@@ -3,16 +3,16 @@ module App.Fossa.VSI.IAT.AssertUserDefinedBinaries (
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.VSI.IAT.Fingerprint
-import App.Fossa.VSI.IAT.Types
-import App.Types
-import Control.Algebra
-import Control.Carrier.Diagnostics
-import Control.Effect.Lift
-import Effect.Logger
-import Effect.ReadFS
-import Fossa.API.Types
-import Path
+import App.Fossa.VSI.IAT.Fingerprint (fingerprintContentsRaw)
+import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta)
+import App.Types (BaseDir (..))
+import Control.Algebra (Has)
+import Control.Carrier.Diagnostics (Diagnostics, logWithExit_)
+import Control.Effect.Lift (Lift)
+import Effect.Logger (Logger, Severity, logInfo, withDefaultLogger)
+import Effect.ReadFS (ReadFS, runReadFSIO)
+import Fossa.API.Types (ApiOpts)
+import Path (Abs, Dir, Path)
 
 assertUserDefinedBinariesMain :: Severity -> BaseDir -> ApiOpts -> UserDefinedAssertionMeta -> IO ()
 assertUserDefinedBinariesMain logSeverity (BaseDir dir) apiOpts assertion = withDefaultLogger logSeverity . logWithExit_ . runReadFSIO $ do
