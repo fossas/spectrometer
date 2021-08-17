@@ -24,7 +24,7 @@ import Srclib.Types (
  )
 
 resolveUserDefined :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> [UserDep] -> m (Maybe [SourceUserDefDep])
-resolveUserDefined apiOpts deps = context ("Resolving user defined dependencies " <> toText (show $ fmap IAT.renderUserDep deps)) $ do
+resolveUserDefined apiOpts deps = context ("Resolving user defined dependencies " <> toText (show $ map IAT.renderUserDep deps)) $ do
   assertions <- traverse (Fossa.resolveUserDefinedBinary apiOpts) deps
   if null assertions
     then pure Nothing
