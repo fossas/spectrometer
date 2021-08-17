@@ -1,12 +1,17 @@
 # Spectrometer Changelog
 
-## Unreleased
+## v2.14.6
 
-- Adds a new hidden subcommand `experimental-vsi-register-binary-custom-dependency`. ([#323](https://github.com/fossas/spectrometer/pull/323))
-  This subcommand is intended to be used with direct support from FOSSA engineering when working with specific projects.
-- Support identifying previously registered binary custom dependencies when running analysis in VSI mode. ([#328](https://github.com/fossas/spectrometer/pull/328))
-- Support asserting fingerprints for binaries produced by a project being analyzed ([#333](https://github.com/fossas/spectrometer/pull/333))
-- Support resolving asserted top-level projects as a dependencies of downstream projects ([#333](https://github.com/fossas/spectrometer/pull/333))
+This release adds a number of closed beta features around FOSSA C/C++ support.
+For now this functionality is considered publicly undocumented, and is only used with support from FOSSA engineering.
+
+As such this new functionality is hidden from the help and other documentation in this repo.
+For questions using the new functionality in this release please contact us!
+
+- Support linking user-defined dependency binaries. ([#323](https://github.com/fossas/spectrometer/pull/323))
+- Support resolving linked user-defined binaries found in projects when VSI is enabled. ([#328](https://github.com/fossas/spectrometer/pull/328))
+- Support linking user project binaries. ([#333](https://github.com/fossas/spectrometer/pull/333))
+- Support resolving linked user project binaries found in projects when VSI is enabled.s ([#333](https://github.com/fossas/spectrometer/pull/333))
 
 ## v2.14.5
 
