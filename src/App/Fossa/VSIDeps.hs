@@ -5,7 +5,7 @@ module App.Fossa.VSIDeps (
 import App.Fossa.Analyze.Project (ProjectResult (ProjectResult))
 import App.Fossa.EmbeddedBinary (withWigginsBinary)
 import App.Fossa.VPS.Scan.RunWiggins (WigginsOpts, execWigginsJson, generateVSIStandaloneOpts, toPathFilters)
-import App.Fossa.VSI.IAT.Resolve (resolveUserDefined)
+import App.Fossa.VSI.IAT.Resolve (resolveGraph, resolveUserDefined)
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import Control.Algebra (Has)
@@ -29,14 +29,12 @@ import Types (GraphBreadth (Complete))
 analyzeVSIDeps :: (MonadIO m, Has Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> AllFilters -> m SourceUnit
 analyzeVSIDeps dir apiOpts filters = do
   (direct, userDeps) <- pluginAnalyze $ generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
+
   resolvedUserDeps <- resolveUserDefined apiOpts userDeps
+  resolvedGraph <- resolveGraph apiOpts direct
+  dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
 
-  -- For now evaluate direct dependencies directly into a shallow graph.
-  -- An upcoming PR is going to resolve these dependencies to a full graph.
-  let graph = Graphing.fromList direct
-  resolvedGraph <- fromEither $ Graphing.gtraverse VSI.toDependency graph
-
-  pure $ toSourceUnit (toProject dir resolvedGraph) resolvedUserDeps
+  pure $ toSourceUnit (toProject dir dependencies) resolvedUserDeps
 
 -- | The VSI plugin results in a shallow graph of direct discovered dependencies and a list of discovered user defined dependencies.
 pluginAnalyze :: (MonadIO m, Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m ([VSI.Locator], [IAT.UserDep])
@@ -49,8 +47,7 @@ pluginAnalyze opts = context "VSI" $ do
   pure (allOtherDeps, userDefinedDeps)
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-toProject dir graph =
-  ProjectResult "vsi" dir graph Complete
+toProject dir graph = ProjectResult "vsi" dir graph Complete
 
 toSourceUnit :: ProjectResult -> Maybe [SourceUserDefDep] -> SourceUnit
 toSourceUnit project deps = do

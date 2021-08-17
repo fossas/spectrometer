@@ -103,6 +103,7 @@ depTypeToFetcher = \case
   ComposerType -> "comp"
   CondaType -> "conda"
   CpanType -> "cpan"
+  CustomType -> "custom"
   GemType -> "gem"
   GitType -> "git"
   GooglesourceType -> "git" -- FIXME. Yet another thing that's coming back to bite us
@@ -127,6 +128,7 @@ fetcherToDepType fetcher | depTypeToFetcher CargoType == fetcher = Just CargoTyp
 fetcherToDepType fetcher | depTypeToFetcher ComposerType == fetcher = Just ComposerType
 fetcherToDepType fetcher | depTypeToFetcher CondaType == fetcher = Just CondaType
 fetcherToDepType fetcher | depTypeToFetcher CpanType == fetcher = Just CpanType
+fetcherToDepType fetcher | depTypeToFetcher CustomType == fetcher = Just CustomType
 fetcherToDepType fetcher | depTypeToFetcher GemType == fetcher = Just GemType
 fetcherToDepType fetcher | depTypeToFetcher GitType == fetcher = Just GitType
 fetcherToDepType fetcher | depTypeToFetcher GoType == fetcher = Just GoType

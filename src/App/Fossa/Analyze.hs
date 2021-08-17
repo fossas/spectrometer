@@ -6,6 +6,7 @@ module App.Fossa.Analyze (
   UnpackArchives (..),
   JsonOutput (..),
   VSIAnalysisMode (..),
+  IATAssertionMode (..),
   discoverFuncs,
   RecordMode (..),
 ) where
@@ -17,6 +18,7 @@ import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadR
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
+import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
@@ -61,7 +63,7 @@ import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (SourceUnit, parseLocator)
+import Srclib.Types (Locator, SourceUnit, parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -122,6 +124,13 @@ data VSIAnalysisMode
   | -- | disable the VSI analysis strategy
     VSIAnalysisDisabled
 
+-- | "IAT Assertion" modes
+data IATAssertionMode
+  = -- | assertion enabled, reading binaries from this directory
+    IATAssertionEnabled (Path Abs Dir)
+  | -- | assertion not enabled
+    IATAssertionDisabled
+
 -- | "Replay logging" modes
 data RecordMode
   = -- | record effect invocations
@@ -131,8 +140,8 @@ data RecordMode
   | -- | don't record or replay
     RecordModeNone
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> AllFilters -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI filters =
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> IATAssertionMode -> AllFilters -> IO ()
+analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI assertionMode filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -159,7 +168,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
               . runReplay @Exec (effectsExec effects)
               $ doAnalyze basedir
   where
-    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI filters
+    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI assertionMode filters
 
 discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
@@ -234,9 +243,10 @@ analyze ::
   Flag UnpackArchives ->
   Flag JsonOutput ->
   VSIAnalysisMode ->
+  IATAssertionMode ->
   AllFilters ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI filters = do
+analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI iatAssertion filters = do
   capabilities <- sendIO getNumCapabilities
 
   let apiOpts = case destination of
@@ -262,7 +272,9 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
-      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+      UploadScan opts metadata -> do
+        locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+        doAssertRevisionBinaries iatAssertion opts locator
 
 analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
@@ -270,6 +282,10 @@ analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
   results <- analyzeVSIDeps dir apiOpts filters
   pure $ Just results
 analyzeVSI _ _ _ _ = pure Nothing
+
+doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> ApiOpts -> Locator -> m ()
+doAssertRevisionBinaries (IATAssertionEnabled dir) apiOpts locator = assertRevisionBinaries dir apiOpts locator
+doAssertRevisionBinaries _ _ _ = pure ()
 
 data AnalyzeError
   = ErrNoProjectsDiscovered
@@ -301,7 +317,7 @@ uploadSuccessfulAnalysis ::
   Flag JsonOutput ->
   OverrideProject ->
   NE.NonEmpty SourceUnit ->
-  m ()
+  m Locator
 uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = do
   revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision revision
@@ -313,7 +329,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
   logInfo ("Using branch: `" <> pretty branchText <> "`")
 
   uploadResult <- uploadAnalysis apiOpts revision metadata units
-  buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult
+  let locator = parseLocator $ uploadLocator uploadResult
+  buildUrl <- getFossaBuildUrl revision apiOpts locator
   logInfo $
     vsep
       [ "============================================================"
@@ -330,6 +347,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
   if fromFlag JsonOutput jsonOutput
     then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl
     else pure ()
+
+  pure locator
 
 data CountedResult
   = NoneDiscovered

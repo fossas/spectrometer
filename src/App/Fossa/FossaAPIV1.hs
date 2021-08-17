@@ -25,13 +25,16 @@ module App.Fossa.FossaAPIV1 (
   archiveUpload,
   archiveBuildUpload,
   assertUserDefinedBinaries,
+  assertRevisionBinaries,
   resolveUserDefinedBinary,
+  resolveProjectDependencies,
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.IAT.Types
 import App.Fossa.VSI.IAT.Types qualified as IAT
+import App.Fossa.VSI.Types qualified as VSI
 import App.Types
 import App.Version (versionNumber)
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
@@ -502,6 +505,16 @@ assertUserDefinedBinaries apiOpts UserDefinedAssertionMeta{..} fingerprints = fo
   _ <- req POST (assertUserDefinedBinariesEndpoint baseUrl) (ReqBodyJson body) ignoreResponse baseOpts
   pure ()
 
+assertRevisionBinariesEndpoint :: Url scheme -> Locator -> Url scheme
+assertRevisionBinariesEndpoint baseurl locator = baseurl /: "api" /: "iat" /: "binary" /: renderLocator locator
+
+assertRevisionBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> [Fingerprint] -> m ()
+assertRevisionBinaries apiOpts locator fingerprints = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let body = FingerprintSet <$> fingerprints
+  _ <- req POST (assertRevisionBinariesEndpoint baseUrl locator) (ReqBodyJson body) ignoreResponse baseOpts
+  pure ()
+
 resolveUserDefinedBinaryEndpoint :: Url scheme -> IAT.UserDep -> Url scheme
 resolveUserDefinedBinaryEndpoint baseurl dep = baseurl /: "api" /: "iat" /: "resolve" /: "user-defined" /: IAT.renderUserDep dep
 
@@ -509,3 +522,22 @@ resolveUserDefinedBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiO
 resolveUserDefinedBinary apiOpts dep = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   responseBody <$> req GET (resolveUserDefinedBinaryEndpoint baseUrl dep) NoReqBody jsonResponse baseOpts
+
+-- | The revision dependencies endpoint contains a lot of information we don't need. This intermediate type allows us to throw it away.
+newtype ResolvedDependency = ResolvedDependency {unwrapResolvedDependency :: VSI.Locator}
+
+instance FromJSON ResolvedDependency where
+  parseJSON = withObject "ResolvedProjectDependencies" $ \obj -> do
+    ResolvedDependency <$> obj .: "loc"
+
+resolveProjectDependenciesEndpoint :: Url scheme -> VSI.Locator -> Url scheme
+resolveProjectDependenciesEndpoint baseurl locator = baseurl /: "api" /: "revisions" /: VSI.renderLocator locator /: "dependencies"
+
+resolveProjectDependencies :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.Locator -> m [VSI.Locator]
+resolveProjectDependencies apiOpts locator = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = baseOpts <> "include_ignored" =: False
+  (dependencies :: [ResolvedDependency]) <- responseBody <$> req GET (resolveProjectDependenciesEndpoint baseUrl locator) NoReqBody jsonResponse opts
+
+  pure $ map unwrapResolvedDependency dependencies

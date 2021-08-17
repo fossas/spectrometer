@@ -161,6 +161,7 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
+    App.Fossa.VSI.IAT.AssertRevisionBinaries
     App.Fossa.VSI.IAT.AssertUserDefinedBinaries
     App.Fossa.VSI.IAT.Fingerprint
     App.Fossa.VSI.IAT.Resolve
