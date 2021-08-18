@@ -1,32 +1,27 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 module App.DocsSpec (
   spec,
 ) where
 
 import App.Docs (newIssueUrl, userGuideUrl)
-import Control.Exception (throwIO)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Network.HTTP.Req (
   GET (GET),
-  MonadHttp (handleHttpException),
   NoReqBody (NoReqBody),
   bsResponse,
+  defaultHttpConfig,
   req,
   responseStatusCode,
+  runReq,
   useHttpsURI,
  )
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
 
-instance MonadHttp IO where
-  handleHttpException = throwIO
-
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation
 shouldRespondToGETWithHttpCode uri expected = do
   (url, _) <- fromJust . useHttpsURI <$> mkURI uri
-  r <- req GET url NoReqBody bsResponse mempty
+  r <- runReq defaultHttpConfig $ req GET url NoReqBody bsResponse mempty
   responseStatusCode r `shouldBe` expected
 
 spec :: Spec
