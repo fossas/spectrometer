@@ -2,7 +2,7 @@ module Android.UtilSpec (
   spec,
 ) where
 
-import Control.Monad (forM_)
+import Data.Foldable (for_)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
@@ -37,19 +37,19 @@ defaultNonDevAndTestConfigs =
 spec :: Spec
 spec = do
   describe "isDefaultAndroidDevConfig" $ do
-    forM_ defaultAndroidDevConfigs $ \candidate -> do
-      it ("should return true when provided with: " <> toString candidate) $ do
+    for_ defaultAndroidDevConfigs $ \candidate ->
+      it ("should return true when provided with: " <> toString candidate) $
         isDefaultAndroidDevConfig candidate `shouldBe` True
 
-    forM_ defaultNonDevAndTestConfigs $ \candidate -> do
-      it ("should return false when provided with: " <> toString candidate) $ do
+    for_ defaultNonDevAndTestConfigs $ \candidate ->
+      it ("should return false when provided with: " <> toString candidate) $
         isDefaultAndroidDevConfig candidate `shouldBe` False
 
   describe "isDefaultAndroidTestConfig" $ do
-    forM_ defaultAndroidTestConfigs $ \candidate -> do
-      it ("should return true when provided with: " <> toString candidate) $ do
+    for_ defaultAndroidTestConfigs $ \candidate ->
+      it ("should return true when provided with: " <> toString candidate) $
         isDefaultAndroidTestConfig candidate `shouldBe` True
 
-    forM_ defaultNonDevAndTestConfigs $ \candidate -> do
-      it ("should return false when provided with: " <> toString candidate) $ do
+    for_ defaultNonDevAndTestConfigs $ \candidate ->
+      it ("should return false when provided with: " <> toString candidate) $
         isDefaultAndroidTestConfig candidate `shouldBe` False
