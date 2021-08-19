@@ -5,6 +5,12 @@ module Strategy.Cocoapods.PodfileLock (
   Dep (..),
   Pod (..),
   Section (..),
+
+  -- * for testing,
+  podParser,
+  depParser,
+  depGitSrcParser,
+  PodGitSrc (..),
 ) where
 
 import Control.Effect.Diagnostics
@@ -86,8 +92,12 @@ data Section
   | UnknownSection Text
   deriving (Eq, Ord, Show)
 
-newtype Dep = Dep
+data PodGitSrc = PodGitSrc Text (Maybe Text)
+  deriving (Eq, Ord, Show)
+
+data Dep = Dep
   { depName :: Text
+  , depGitSrc :: Maybe PodGitSrc
   }
   deriving (Eq, Ord, Show)
 
@@ -158,21 +168,45 @@ remoteParser = indentBlock $ do
 
 podParser :: Parser Pod
 podParser = indentBlock $ do
-  _ <- chunk "- "
-  name <- findDep
+  name <- symbol "-" *> ignoreDoubleQuote *> findDep
   version <- findVersion
   _ <- restOfLine
   pure (L.IndentMany Nothing (pure . Pod name version) depParser)
 
 depParser :: Parser Dep
 depParser = do
-  _ <- chunk "- "
-  name <- findDep
+  name <- symbol "-" *> ignoreDoubleQuote *> findDep
+  src <- optional . try $ (symbol "(" *> depGitSrcParser)
   _ <- restOfLine
-  pure $ Dep name
+  pure $ Dep name (if isValidGitSrc src then src else Nothing)
+
+isValidGitSrc :: Maybe PodGitSrc -> Bool
+isValidGitSrc (Just (PodGitSrc t _)) =
+  any (`Text.isPrefixOf` t) ["git://", "git@"]
+    || ".git" `Text.isSuffixOf` t
+isValidGitSrc Nothing = False
+
+depGitSrcParser :: Parser PodGitSrc
+depGitSrcParser = do
+  _ <- symbol "from"
+  uri <-
+    lexeme $
+      between
+        (symbol "`")
+        (symbol "`")
+        $ takeWhileP (Just "git uri") (/= '`')
+  ref <-
+    optional $
+      symbol ","
+        *> (symbol "commit" <|> symbol "tag" <|> symbol "branch")
+        *> lexeme (between (symbol "`") (symbol "`") $ takeWhileP (Just "git ref") (/= '`'))
+  pure $ PodGitSrc uri ref
 
 findDep :: Parser Text
-findDep = lexeme (takeWhile1P (Just "dep") (not . C.isSpace))
+findDep = lexeme (takeWhile1P (Just "dep") isNotDoubleQuoteAndSpace)
+  where
+    isNotDoubleQuoteAndSpace :: Char -> Bool
+    isNotDoubleQuoteAndSpace c = c /= '"' && (not . C.isSpace) c
 
 findVersion :: Parser Text
 findVersion = between (char '(') (char ')') (lexeme (takeWhileP (Just "version") (/= ')')))
@@ -199,3 +233,9 @@ lexeme = L.lexeme sc
 
 sc :: Parser ()
 sc = L.space (void $ some (char ' ')) empty empty
+
+symbol :: Text -> Parser Text
+symbol = L.symbol scn
+
+ignoreDoubleQuote :: Parser (Maybe Text)
+ignoreDoubleQuote = optional $ symbol "\""
