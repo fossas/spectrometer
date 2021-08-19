@@ -8,6 +8,18 @@ import Network.HTTP.Client (HttpException (HttpExceptionRequest), HttpExceptionC
 import Network.HTTP.Req (HttpConfig, HttpException (VanillaHttpException), defaultHttpConfig, httpConfigRetryJudgeException, httpConfigRetryPolicy)
 
 -- | An HttpConfig that adds a retry handler for ResponseTimeout
+--
+-- ResponseTimeout occurs when the backend is available (the edge server accepts
+-- our connection) but the pod is not responding to our request
+--
+-- Some examples of behavior to expect:
+--
+-- 408 - Request Timeout - Retried
+-- 504 - Gateway Timeout - Retried
+-- 500 - Internal Server Failure - Immediate failure
+-- 502 - Bad Gateway - Immediate failure
+-- 503 - Service Unavailable - Immediate failure
+-- No internet - Immedate failure
 httpConfigRetryTimeouts :: HttpConfig
 httpConfigRetryTimeouts =
   defaultHttpConfig
