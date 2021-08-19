@@ -17,15 +17,15 @@ httpConfigRetryTimeouts =
 
 -- | Retry every 5 seconds for up to 5 minutes
 retryPolicy :: RetryPolicy
-retryPolicy = limitRetriesByCumulativeDelay maxDelay (constantDelay retryDelay)
+retryPolicy = limitRetriesByCumulativeDelay fiveMinutes (constantDelay fiveSeconds)
   where
     -- five minutes
-    maxDelay :: Int
-    maxDelay = 5 * 60 * 1_000_000
+    fiveMinutes :: Int
+    fiveMinutes = 5 * 60 * 1_000_000
 
     -- five seconds
-    retryDelay :: Int
-    retryDelay = 5 * 1_000_000
+    fiveSeconds :: Int
+    fiveSeconds = 5 * 1_000_000
 
 -- | Is the Exception a ResponseTimeout?
 isResponseTimeout :: SomeException -> Bool
