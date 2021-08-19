@@ -60,9 +60,9 @@ dependencyTwoDepB = depOf "two-dep-B" Nothing
 podSection :: Section
 podSection =
   PodSection
-    [ Pod "one" "1.0.0" [Dep "two" Nothing, Dep "three" Nothing, Dep "ab-normal/+name" Nothing]
-    , Pod "two" "2.0.0" [Dep "two_dep_A" Nothing, Dep "two-dep-B" Nothing]
-    , Pod "three" "3.0.0" [Dep "four" Nothing]
+    [ Pod "one" "1.0.0" [Dep "two", Dep "three", Dep "ab-normal/+name"]
+    , Pod "two" "2.0.0" [Dep "two_dep_A", Dep "two-dep-B"]
+    , Pod "three" "3.0.0" [Dep "four"]
     , Pod "ab-normal/+name" "2.0.0" []
     , Pod "four" "4.0.0" []
     , Pod "not-so-safe-name" "2.0.0" []
@@ -73,11 +73,11 @@ podSection =
 dependencySection :: Section
 dependencySection =
   DependencySection
-    [ Dep "one" Nothing
-    , Dep "three" Nothing
-    , Dep "not-so-safe-name" Nothing
-    , Dep "some-dep-sourced-from-git" (Just $ PodGitSrc "git@github.example.com:ab/ios.git" $ Just "559e6a")
-    , Dep "depWithTag" (Just $ PodGitSrc "git@github.example.com:ab/cap.git" $ Just "v1.2.3")
+    [ Dep "one"
+    , Dep "three"
+    , Dep "not-so-safe-name"
+    , Dep "some-dep-sourced-from-git"
+    , Dep "depWithTag"
     ]
 
 spec :: T.Spec
@@ -121,23 +121,15 @@ spec = do
     T.describe "dep parser" $ do
       let shouldParseInto input = parseMatch depParser input
       T.it "parses names" $ do
-        "- atomFire (1.0.0)" `shouldParseInto` Dep "atomFire" Nothing
-        "- \"at/+om (1.0.0)\"" `shouldParseInto` Dep "at/+om" Nothing
-        "- \"not-so-safe-name (2.0.0)\"" `shouldParseInto` Dep "not-so-safe-name" Nothing
+        "- atomFire (1.0.0)" `shouldParseInto` Dep "atomFire"
+        "- \"at/+om (1.0.0)\"" `shouldParseInto` Dep "at/+om"
+        "- \"not-so-safe-name (2.0.0)\"" `shouldParseInto` Dep "not-so-safe-name"
 
     T.describe "pod parser" $ do
       let shouldParseInto input = parseMatch podParser input
       T.it "parses names" $ do
         "- atomFire (1.0.0)" `shouldParseInto` Pod "atomFire" "1.0.0" ([])
         "- \"atomFire (1.0.0)\"" `shouldParseInto` Pod "atomFire" "1.0.0" ([])
-
-    T.describe "pod dependency" $ do
-      let shouldParseInto input = parseMatch depGitSrcParser input
-      T.it "parses git dependency" $ do
-        "from `gitUrl`, commit `c`" `shouldParseInto` PodGitSrc "gitUrl" (Just "c")
-        "from `gitUrl`, tag `t`" `shouldParseInto` PodGitSrc "gitUrl" (Just "t")
-        "from `gitUrl`, branch `b`" `shouldParseInto` PodGitSrc "gitUrl" (Just "b")
-        "from `gitUrl`" `shouldParseInto` PodGitSrc "gitUrl" Nothing
 
     T.it "parses pod and dependency sections" $
       case runParser findSections "" podLockFile of

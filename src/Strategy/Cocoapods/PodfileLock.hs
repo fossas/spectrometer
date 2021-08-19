@@ -9,8 +9,6 @@ module Strategy.Cocoapods.PodfileLock (
   -- * for testing,
   podParser,
   depParser,
-  depGitSrcParser,
-  PodGitSrc (..),
 ) where
 
 import Control.Effect.Diagnostics
@@ -92,12 +90,8 @@ data Section
   | UnknownSection Text
   deriving (Eq, Ord, Show)
 
-data PodGitSrc = PodGitSrc Text (Maybe Text)
-  deriving (Eq, Ord, Show)
-
-data Dep = Dep
+newtype Dep = Dep
   { depName :: Text
-  , depGitSrc :: Maybe PodGitSrc
   }
   deriving (Eq, Ord, Show)
 
@@ -176,31 +170,8 @@ podParser = indentBlock $ do
 depParser :: Parser Dep
 depParser = do
   name <- symbol "-" *> ignoreDoubleQuote *> findDep
-  src <- optional . try $ (symbol "(" *> depGitSrcParser)
   _ <- restOfLine
-  pure $ Dep name (if isValidGitSrc src then src else Nothing)
-
-isValidGitSrc :: Maybe PodGitSrc -> Bool
-isValidGitSrc (Just (PodGitSrc t _)) =
-  any (`Text.isPrefixOf` t) ["git://", "git@"]
-    || ".git" `Text.isSuffixOf` t
-isValidGitSrc Nothing = False
-
-depGitSrcParser :: Parser PodGitSrc
-depGitSrcParser = do
-  _ <- symbol "from"
-  uri <-
-    lexeme $
-      between
-        (symbol "`")
-        (symbol "`")
-        $ takeWhileP (Just "git uri") (/= '`')
-  ref <-
-    optional $
-      symbol ","
-        *> (symbol "commit" <|> symbol "tag" <|> symbol "branch")
-        *> lexeme (between (symbol "`") (symbol "`") $ takeWhileP (Just "git ref") (/= '`'))
-  pure $ PodGitSrc uri ref
+  pure $ Dep name
 
 findDep :: Parser Text
 findDep = lexeme (takeWhile1P (Just "dep") isNotDoubleQuoteAndSpace)
