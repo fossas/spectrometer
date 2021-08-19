@@ -36,7 +36,7 @@ import Control.Carrier.Output.IO
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
-import Control.Effect.Diagnostics ((<||>), fromMaybeText)
+import Control.Effect.Diagnostics (fromMaybeText, (<||>))
 import Control.Effect.Exception (Lift, SomeException, throwIO, try)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (runRecord)
@@ -355,8 +355,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
 
   if fromFlag JsonOutput jsonOutput
     then do
-      summary <- Diag.context "Analysis ran successfully, but the server returned invalid metadata" $
-        buildProjectSummary revision (uploadLocator uploadResult) buildUrl
+      summary <-
+        Diag.context "Analysis ran successfully, but the server returned invalid metadata" $
+          buildProjectSummary revision (uploadLocator uploadResult) buildUrl
       logStdout . decodeUtf8 $ Aeson.encode summary
     else pure ()
 
@@ -445,13 +446,14 @@ buildProjectSummary :: Has Diag.Diagnostics sig m => ProjectRevision -> Text -> 
 buildProjectSummary project projectLocator projectUrl = do
   let locator = parseLocator projectLocator
   revision <- fromMaybeText "Server returned an invalid project revision" $ locatorRevision locator
-  pure $ Aeson.object
-    [ "project" .= locatorProject locator
-    , "revision" .= revision
-    , "branch" .= projectBranch project
-    , "url" .= projectUrl
-    , "id" .= projectLocator
-    ]
+  pure $
+    Aeson.object
+      [ "project" .= locatorProject locator
+      , "revision" .= revision
+      , "branch" .= projectBranch project
+      , "url" .= projectUrl
+      , "id" .= projectLocator
+      ]
 
 buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
 buildResult maybeSrcUnit projects =
