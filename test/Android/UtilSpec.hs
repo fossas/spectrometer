@@ -6,7 +6,7 @@ import Control.Monad (forM_)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
-import Test.Hspec ( describe, it, shouldBe, Spec )
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 defaultAndroidDevConfigs :: [Text]
 defaultAndroidDevConfigs =
