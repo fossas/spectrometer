@@ -18,7 +18,7 @@ import Data.Aeson (FromJSON (parseJSON), (.:))
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
-import Data.HashMap.Lazy qualified as HM
+import Data.HashMap.Lazy qualified as HashMap (toList)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -30,7 +30,7 @@ import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing)
 import Path
-import Text.Megaparsec (MonadParsec (takeWhileP), Parsec, between, empty, parse, some, takeWhile1P)
+import Text.Megaparsec (MonadParsec (takeWhileP), Parsec, between, empty, errorBundlePretty, parse, some, takeWhile1P)
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L
 
@@ -143,33 +143,29 @@ instance FromJSON PodLock where
     deps <- o .: "DEPENDENCIES"
     pure $ PodLock pods deps
 
-parserPod :: Text -> [Dep] -> Yaml.Parser Pod
-parserPod q deps = case parse parseNameAndVersion "" q of
-  Left pErr -> fail $ "could not parse pod name and version" <> show pErr
-  Right (name, version) -> pure $ Pod name version deps
-
 instance FromJSON Pod where
-  parseJSON (Yaml.String p) = parserPod p []
-  parseJSON (Yaml.Object o) =
-    if null listedValues
-      then fail $ "EMPTY deps in PODS: " <> show o
-      else do
-        let (key, value) = head $ HM.toList o
-        parsedValue :: [Dep] <- parseJSON value
-        parserPod key parsedValue
-    where
-      listedValues :: [(Text, Yaml.Value)]
-      listedValues = HM.toList o
-  parseJSON podErr = fail $ "could not parse: " <> show podErr
+  parseJSON (Yaml.String p) = parserPod p Nothing
+  parseJSON (Yaml.Object o) = case exactlyOne $ HashMap.toList o of
+    Just (podEntry, podDepsListing) -> parserPod podEntry $ Just podDepsListing
+    Nothing -> fail $ "Expected list of dependencies, but received: " <> show o
+  parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported
 
 instance FromJSON Dep where
-  parseJSON (Yaml.String p) = parseDepName p
-    where
-      parseDepName :: Text -> Yaml.Parser Dep
-      parseDepName q = case parse parseName "" q of
-        Left pErr -> fail $ "could not parse name of dependency" <> show pErr
-        Right name -> pure $ Dep name
-  parseJSON depErr = fail $ "could not parse: " <> show depErr
+  parseJSON (Yaml.String d) = case parse parseName "" d of
+    Left pErr -> fail $ show $ errorBundlePretty pErr
+    Right name -> pure $ Dep name
+  parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported
+
+parserPod :: Text -> Maybe Yaml.Value -> Yaml.Parser Pod
+parserPod query deps = case parse parseNameAndVersion "" query of
+  Left pErr -> fail $ show $ errorBundlePretty pErr
+  Right (name, version) -> case deps of
+    Nothing -> pure $ Pod name version []
+    Just podDeps -> Pod name version <$> parseJSON @[Dep] podDeps
+
+exactlyOne :: [a] -> Maybe a
+exactlyOne [a] = Just a
+exactlyOne _ = Nothing
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
