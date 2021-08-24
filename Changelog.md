@@ -2,8 +2,8 @@
 
 ## v2.15.7
 
-- Resolve an issue where errors running `fossa report` and `fossa test` would be made more confusing when the project isn't a monorepo project ([#321](https://github.com/fossas/spectrometer/pull/321))
-- Prevent uploading standard analysis results to monorepo projects, where they'd be silently ignored ([#341](https://github.com/fossas/spectrometer/pull/341))
+- Resolves an issue where errors running `fossa report` and `fossa test` would be made more confusing when the project isn't a monorepo project ([#321](https://github.com/fossas/spectrometer/pull/321))
+- Prevents uploading standard analysis results to monorepo projects, where they'd be silently ignored ([#341](https://github.com/fossas/spectrometer/pull/341))
 
 ## v2.15.6 
 

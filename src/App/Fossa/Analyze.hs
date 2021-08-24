@@ -336,8 +336,8 @@ uploadSuccessfulAnalysis ::
   m Locator
 uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = do
   revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-  saveRevision revision
   dieOnMonorepoUpload apiOpts revision
+  saveRevision revision
 
   logInfo ""
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
