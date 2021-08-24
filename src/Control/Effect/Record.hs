@@ -20,8 +20,8 @@ import Data.Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Kind
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as Map
 import Data.String.Conversion (decodeUtf8)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
@@ -39,7 +39,7 @@ class Recordable (r :: Type -> Type) where
   recordValue :: r a -> a -> Value
 
 -- | A journal contains all of the effect invocations recorded by RecordC
-newtype Journal eff = Journal {unJournal :: Map Value Value}
+newtype Journal eff = Journal {unJournal :: HashMap Value Value}
   deriving (Eq, Ord, Show)
 
 instance FromJSON (Journal eff) where
@@ -58,7 +58,7 @@ runRecord act = do
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
 newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
-  { runRecordC :: AtomicStateC (Map Value Value) m a
+  { runRecordC :: AtomicStateC (HashMap Value Value) m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 

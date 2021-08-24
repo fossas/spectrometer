@@ -20,8 +20,8 @@ import Data.Aeson.Types (Parser)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Kind
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as Map
 import Data.String.Conversion (encodeUtf8, toString)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
@@ -38,7 +38,7 @@ class Recordable r => Replayable (r :: Type -> Type) where
   replay :: r a -> Value -> Maybe a
 
 newtype ReplayC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = ReplayC
-  { runReplayC :: ReaderC (Map Value Value) m a
+  { runReplayC :: ReaderC (HashMap Value Value) m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
@@ -52,7 +52,7 @@ instance (Member e sig, Has (Lift IO) sig m, Replayable (e m)) => Algebra (e :+:
   alg hdl sig' ctx = ReplayC $ do
     case sig' of
       L eff -> do
-        mapping <- ask @(Map Value Value)
+        mapping <- ask @(HashMap Value Value)
         let eff' = unsafeCoerce eff :: e m a
         let keyVal = recordKey eff'
         case Map.lookup keyVal mapping >>= replay eff' of
