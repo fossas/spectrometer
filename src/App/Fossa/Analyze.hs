@@ -81,7 +81,7 @@ import Strategy.Haskell.Stack qualified as Stack
 import Strategy.Leiningen qualified as Leiningen
 import Strategy.Maven qualified as Maven
 import Strategy.Mix qualified as Mix
-import Strategy.Npm qualified as Npm
+import Strategy.Node qualified as Node
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import Strategy.NuGet.PackageReference qualified as PackageReference
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
@@ -95,7 +95,6 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
-import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
@@ -188,7 +187,7 @@ discoverFuncs =
   , Leiningen.discover
   , Maven.discover
   , Mix.discover
-  , Npm.discover
+  , Node.discover
   , Nuspec.discover
   , PackageReference.discover
   , PackagesConfig.discover
@@ -204,7 +203,6 @@ discoverFuncs =
   , Scala.discover
   , Setuptools.discover
   , Stack.discover
-  , Yarn.discover
   ]
 
 runDependencyAnalysis ::

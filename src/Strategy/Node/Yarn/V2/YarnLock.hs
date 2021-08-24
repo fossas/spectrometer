@@ -1,4 +1,4 @@
-module Strategy.Yarn.V2.YarnLock (
+module Strategy.Node.Yarn.V2.YarnLock (
   analyze,
   stitchLockfile,
   buildGraph,
@@ -18,8 +18,8 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Graphing qualified
 import Path
-import Strategy.Yarn.V2.Lockfile
-import Strategy.Yarn.V2.Resolvers
+import Strategy.Node.Yarn.V2.Lockfile
+import Strategy.Node.Yarn.V2.Resolvers
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m (Graphing Dependency)
 analyze file = context "Lockfile V2 analysis" $ do

@@ -222,9 +222,9 @@ library
     Effect.ReadFS
     Fossa.API.Types
     Graphing
-    Path.Extra
-    Parse.XML
     Network.HTTP.Req.Extra
+    Parse.XML
+    Path.Extra
     Srclib.Converter
     Srclib.Types
     Strategy.Bundler
@@ -267,10 +267,14 @@ library
     Strategy.Maven.Pom.PomFile
     Strategy.Maven.Pom.Resolver
     Strategy.Mix
+    Strategy.Node
     Strategy.Node.NpmList
     Strategy.Node.NpmLock
     Strategy.Node.PackageJson
-    Strategy.Npm
+    Strategy.Node.Yarn.V1.YarnLock
+    Strategy.Node.Yarn.V2.Lockfile
+    Strategy.Node.Yarn.V2.Resolvers
+    Strategy.Node.Yarn.V2.YarnLock
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
@@ -292,11 +296,6 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
-    Strategy.Yarn
-    Strategy.Yarn.V1.YarnLock
-    Strategy.Yarn.V2.Lockfile
-    Strategy.Yarn.V2.Resolvers
-    Strategy.Yarn.V2.YarnLock
     Text.URI.Builder
     Types
     VCS.Git
@@ -342,8 +341,8 @@ test-suite unit-tests
     Conda.EnvironmentYmlSpec
     Control.Carrier.DiagnosticsSpec
     Dart.PubDepsSpec
-    Dart.PubSpecSpec
     Dart.PubSpecLockSpec
+    Dart.PubSpecSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec

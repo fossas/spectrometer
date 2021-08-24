@@ -9,9 +9,9 @@ import Data.Map.Strict qualified as Map
 import Data.Yaml (decodeFileThrow)
 import DepTypes
 import GraphUtil
-import Strategy.Yarn.V2.Lockfile
-import Strategy.Yarn.V2.Resolvers
-import Strategy.Yarn.V2.YarnLock (buildGraph, stitchLockfile)
+import Strategy.Node.Yarn.V2.Lockfile
+import Strategy.Node.Yarn.V2.Resolvers
+import Strategy.Node.Yarn.V2.YarnLock (buildGraph, stitchLockfile)
 import Test.Hspec hiding (expectationFailure, shouldBe)
 import Test.Hspec.Expectations.Pretty
 

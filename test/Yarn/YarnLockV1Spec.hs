@@ -7,7 +7,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text.Encoding
 import DepTypes
 import GraphUtil
-import Strategy.Yarn.V1.YarnLock
+import Strategy.Node.Yarn.V1.YarnLock
 import Test.Hspec
 import Yarn.Lock qualified as YL
 
