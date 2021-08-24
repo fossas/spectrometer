@@ -294,7 +294,7 @@ dieOnMonorepoUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiO
 dieOnMonorepoUpload apiOpts revision = do
   project <- recover $ getProject apiOpts revision
   if maybe False projectIsMonorepo project
-    then fatalText "This project already exists as a monorepo project. Perhaps you meant to supply `--experimental-enable-monorepo`, or run `fossa vps analyze`?"
+    then fatalText "This project already exists as a monorepo project. Perhaps you meant to supply '--experimental-enable-monorepo', or meant to run 'fossa vps analyze' instead?"
     else pure ()
 
 data AnalyzeError
