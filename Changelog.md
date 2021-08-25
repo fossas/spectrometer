@@ -2,7 +2,7 @@
 
 ## v2.15.8
 
-- `fossa analyze --experimental-enable-monorepo` now turns off proprietary language scanning by default, and has this feature controlled by a feature flag.
+- `fossa analyze --experimental-enable-monorepo` now turns off proprietary language scanning by default, and has this feature controlled by a feature flag ([#343](https://github.com/fossas/spectrometer/pull/343))
 
 ## v2.15.7
 
