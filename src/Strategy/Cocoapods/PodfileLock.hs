@@ -132,22 +132,19 @@ parseVersion :: Parser Text
 parseVersion = between (char '(') (char ')') $ lexeme (takeWhileP (Just "version") (/= ')'))
 
 parseNameAndVersion :: Parser (Text, Text)
-parseNameAndVersion = do
-  name <- parseName
-  version <- parseVersion
-  pure (name, version)
+parseNameAndVersion = (,) <$> parseName <*> parseVersion
 
 instance FromJSON PodLock where
-  parseJSON = Yaml.withObject "Podfile.lock content" $ \o -> do
-    pods <- o .: "PODS"
-    deps <- o .: "DEPENDENCIES"
-    pure $ PodLock pods deps
+  parseJSON = Yaml.withObject "Podfile.lock content" $ \obj -> do
+    PodLock <$> obj .: "PODS"
+      <*> obj .: "DEPENDENCIES"
 
 instance FromJSON Pod where
   parseJSON (Yaml.String p) = parserPod p Nothing
-  parseJSON (Yaml.Object o) = case exactlyOne $ HashMap.toList o of
-    Just (podEntry, podDepsListing) -> parserPod podEntry $ Just podDepsListing
-    Nothing -> fail $ "Expected list of dependencies, but received: " <> show o
+  parseJSON (Yaml.Object obj) = case HashMap.toList obj of
+    [(podEntry, podDepsListing)] -> parserPod podEntry $ Just podDepsListing
+    [] -> fail $ "Expected non empty list of dependencies, but received empty list"
+    _ -> fail $ "Expected list of dependencies, but received: " <> show obj
   parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported
 
 instance FromJSON Dep where
@@ -162,10 +159,6 @@ parserPod query deps = case parse parseNameAndVersion "" query of
   Right (name, version) -> case deps of
     Nothing -> pure $ Pod name version []
     Just podDeps -> Pod name version <$> parseJSON @[Dep] podDeps
-
-exactlyOne :: [a] -> Maybe a
-exactlyOne [a] = Just a
-exactlyOne _ = Nothing
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
