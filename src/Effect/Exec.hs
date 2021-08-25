@@ -4,7 +4,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.Exec (
-  Exec (..),
+  Exec,
+  SExec (..),
   ExecErr (..),
   exec,
   execThrow,
@@ -31,7 +32,6 @@ import Control.Exception (IOException, try)
 import Data.Aeson
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
-import Data.Kind (Type)
 import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
@@ -107,14 +107,16 @@ type Stdout = BL.ByteString
 type Stderr = BL.ByteString
 
 -- TODO: add a "shell command" method; this would help in App.Fossa.VPS.NinjaGraph
-data Exec (m :: Type -> Type) k where
+data SExec a where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
   -- - a description of the command failure
-  Exec :: Path x Dir -> Command -> Exec m (Either CmdFailure Stdout)
+  Exec :: Path x Dir -> Command -> SExec (Either CmdFailure Stdout)
 
-$(deriveRecordable ''Exec)
-$(deriveReplayable ''Exec)
+type Exec = Simple SExec
+
+$(deriveRecordable ''SExec)
+$(deriveReplayable ''SExec)
 
 data ExecErr
   = -- | Command execution failed, usually from a non-zero exit
@@ -143,7 +145,7 @@ instance ToDiagnostic ExecErr where
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path x Dir -> Command -> m (Either CmdFailure Stdout)
-exec dir cmd = send (Exec dir cmd)
+exec dir cmd = sendSimple (Exec dir cmd)
 
 type Parser = Parsec Void Text
 
@@ -171,7 +173,7 @@ execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
-type ExecIOC = SimpleC Exec
+type ExecIOC = SimpleC SExec
 
 runExecIO :: Has (Lift IO) sig m => ExecIOC m a -> m a
 runExecIO = interpret $ \case

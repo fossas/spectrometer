@@ -14,10 +14,10 @@ deriveReplayable :: Name -> Q [Dec]
 deriveReplayable tyName = do
   TyConI (DataD _ctx _nm _tyVars _kind tyCons _deriv) <- reify tyName
   sequence
-    -- instance Replayable (MyEffect m) where
+    -- instance Replayable MyEffect where
     [ instanceD
         (pure [])
-        (appT [t|Replayable|] (appT (conT tyName) (varT (mkName "m"))))
+        (appT [t|Replayable|] (conT tyName))
         -- replay :: ...
         [ replayMethod tyCons
         ]

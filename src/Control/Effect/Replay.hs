@@ -11,6 +11,7 @@ module Control.Effect.Replay (
 import Control.Algebra
 import Control.Applicative
 import Control.Carrier.Reader
+import Control.Carrier.Simple
 import Control.Effect.Lift
 import Control.Effect.Record
 import Control.Effect.Sum
@@ -19,16 +20,15 @@ import Data.Aeson
 import Data.Aeson.Types (Parser)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.Kind
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map
+import Data.Kind
 import Data.String.Conversion (encodeUtf8, toString)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Text.Lazy qualified as TL
 import Path
 import System.Exit
-import Unsafe.Coerce
 
 -- | A class of "replayable" effects -- i.e. an effect whose "result values"
 -- (the @a@ in @e m a@) can be deserialized from JSON values produced by
@@ -37,7 +37,7 @@ class Recordable r => Replayable (r :: Type -> Type) where
   -- | Deserialize an effect data constructor's "return value" from JSON
   replay :: r a -> Value -> Maybe a
 
-newtype ReplayC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = ReplayC
+newtype ReplayC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = ReplayC
   { runReplayC :: ReaderC (HashMap Value Value) m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
@@ -48,17 +48,16 @@ newtype ReplayC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> 
 runReplay :: Journal e -> ReplayC e sig m a -> m a
 runReplay (Journal mapping) = runReader mapping . runReplayC
 
-instance (Member e sig, Has (Lift IO) sig m, Replayable (e m)) => Algebra (e :+: sig) (ReplayC e sig m) where
+instance (Member (Simple e) sig, Has (Lift IO) sig m, Replayable e) => Algebra (Simple e :+: sig) (ReplayC e sig m) where
   alg hdl sig' ctx = ReplayC $ do
     case sig' of
-      L eff -> do
+      L (Simple eff) -> do
         mapping <- ask @(HashMap Value Value)
-        let eff' = unsafeCoerce eff :: e m a
-        let keyVal = recordKey eff'
-        case Map.lookup keyVal mapping >>= replay eff' of
+        let keyVal = recordKey eff
+        case Map.lookup keyVal mapping >>= replay eff of
           Nothing -> do
             -- TODO: log warnings on key miss
-            res <- lift $ send eff'
+            res <- lift $ send (Simple eff)
             pure (res <$ ctx)
           Just result -> pure (result <$ ctx)
       R other -> alg (runReplayC . hdl) (R other) ctx

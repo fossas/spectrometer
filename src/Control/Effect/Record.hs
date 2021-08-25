@@ -13,21 +13,21 @@ module Control.Effect.Record (
 
 import Control.Algebra
 import Control.Carrier.AtomicState
+import Control.Carrier.Simple
 import Control.Effect.Lift
 import Control.Effect.Sum
 import Control.Monad.Trans
 import Data.Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.Kind
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map
+import Data.Kind
 import Data.String.Conversion (decodeUtf8)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Path
 import System.Exit
-import Unsafe.Coerce
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
 -- and "result values" (the @a@ in @e m a@) can be serialized to JSON values
@@ -57,7 +57,7 @@ runRecord act = do
   pure (Journal mapping, a)
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
-newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
+newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
   { runRecordC :: AtomicStateC (HashMap Value Value) m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
@@ -71,14 +71,13 @@ newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> 
 -- instantiated effect type 'e m a', 'm' must be a phantom type variable. This
 -- is reflected in our use of 'unsafeCoerce', and is required for us to 'send'
 -- the effect further down the handler stack
-instance (Member e sig, Has (Lift IO) sig m, Recordable (e m)) => Algebra (e :+: sig) (RecordC e sig m) where
+instance (Member (Simple e) sig, Has (Lift IO) sig m, Recordable e) => Algebra (Simple e :+: sig) (RecordC e sig m) where
   alg hdl sig' ctx = RecordC $ do
     case sig' of
-      L eff -> do
-        let eff' = unsafeCoerce eff :: e any a
-        res <- lift $ send eff'
+      L (Simple eff) -> do
+        res <- lift $ send (Simple eff)
 
-        let values = (recordKey eff', recordValue eff' res)
+        let values = (recordKey eff, recordValue eff res)
         modify (uncurry Map.insert values)
 
         pure (res <$ ctx)

@@ -108,6 +108,8 @@
 --     example7 = run $ runFilesystemDumb (readFile "/path/to/file")
 -- @
 module Control.Carrier.Simple (
+  Simple (..),
+  sendSimple,
   SimpleC (..),
   SimpleStateC,
   interpret,
@@ -121,12 +123,19 @@ import Control.Carrier.Reader
 import Control.Carrier.State.Strict
 import Control.Monad.Trans
 import Data.Kind (Type)
-import Unsafe.Coerce (unsafeCoerce)
+
+---------- Simple effects.. as an effect
+
+data Simple e m a where
+  Simple :: e a -> Simple e m a
+
+sendSimple :: Has (Simple eff) sig m => eff a -> m a
+sendSimple = send . Simple
 
 ---------- Direct interpretation
 
 -- | Given a function to turn effect calls @eff a@ into actions @m a@, interpret effect calls for @eff@
-interpret :: (forall x. eff Unused x -> m x) -> SimpleC eff m a -> m a
+interpret :: (forall x. eff x -> m x) -> SimpleC eff m a -> m a
 interpret f = runReader (HandlerFor f) . runSimpleC
 
 ---------- Stateful interpretation
@@ -135,31 +144,27 @@ interpret f = runReader (HandlerFor f) . runSimpleC
 type SimpleStateC s eff m = SimpleC eff (StateC s m)
 
 -- | A wrapper for 'interpret' that gives access to a state value ('get', 'put', 'modify', etc)
-interpretState :: s -> (forall a. eff Unused a -> StateC s m a) -> SimpleC eff (StateC s m) b -> m (s, b)
+interpretState :: s -> (forall a. eff a -> StateC s m a) -> SimpleC eff (StateC s m) b -> m (s, b)
 interpretState s f = runState s . interpret f
 
 ---------- Internals
 
--- | A carrier for arbitrary "first-order" effects (i.e. those that don't use
--- the @m@ in @data MyEffect m a@)
-newtype SimpleC (eff :: (Type -> Type) -> Type -> Type) m a = SimpleC {runSimpleC :: ReaderC (HandlerFor eff m) m a}
+-- | A carrier for arbitrary "first-order" effects
+newtype SimpleC (eff :: Type -> Type) m a = SimpleC {runSimpleC :: ReaderC (HandlerFor eff m) m a}
   deriving (Functor, Applicative, Alternative, Monad, MonadFail, MonadIO)
 
 -- | A wrapper for an effect handler function
-data HandlerFor (eff :: (Type -> Type) -> Type -> Type) m where
-  HandlerFor :: (eff Unused a -> m a) -> HandlerFor eff m
-
--- | Like 'Data.Void.Void', but with kind @Type -> Type@
-data Unused (a :: Type)
+data HandlerFor (eff :: Type -> Type) m where
+  HandlerFor :: (forall a. eff a -> m a) -> HandlerFor eff m
 
 instance MonadTrans (SimpleC eff) where
   lift = SimpleC . lift
 
-instance Algebra sig m => Algebra (eff :+: sig) (SimpleC eff m) where
+instance Algebra sig m => Algebra (Simple eff :+: sig) (SimpleC eff m) where
   alg hdl sig ctx = SimpleC $ do
     case sig of
-      L ours -> do
+      L (Simple ours) -> do
         HandlerFor g <- ask @(HandlerFor eff m)
-        res <- lift $ unsafeCoerce g ours
+        res <- lift $ g ours
         pure (res <$ ctx)
       R other -> alg (runSimpleC . hdl) (R other) ctx

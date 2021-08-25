@@ -59,9 +59,9 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec (Exec, runExecIO)
+import Effect.Exec (Exec, SExec, runExecIO)
 import Effect.Logger
-import Effect.ReadFS (ReadFS, runReadFSIO)
+import Effect.ReadFS (ReadFS, SReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
@@ -174,7 +174,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
         (execLogs, (readFSLogs, res)) <-
-          runRecord @Exec . runRecord @ReadFS . try @SomeException $
+          runRecord @SExec . runRecord @SReadFS . try @SomeException $
             doAnalyze basedir
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
         either throwIO pure res
@@ -185,8 +185,8 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
           Left err -> sendIO (die $ "Issue loading replay log: " <> err)
           Right journal -> do
             let effects = analyzeEffects journal
-            runReplay @ReadFS (effectsReadFS effects)
-              . runReplay @Exec (effectsExec effects)
+            runReplay @SReadFS (effectsReadFS effects)
+              . runReplay @SExec (effectsExec effects)
               $ doAnalyze basedir
   where
     doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput modeOptions filters

@@ -13,10 +13,10 @@ deriveRecordable :: Name -> Q [Dec]
 deriveRecordable tyName = do
   TyConI (DataD _ctx _nm _tyVars _kind tyCons _deriv) <- reify tyName
   sequence
-    -- instance Recordable (MyEffect m) where
+    -- instance Recordable MyEffect where
     [ instanceD
         (pure [])
-        (appT [t|Recordable|] (appT (conT tyName) (varT (mkName "m"))))
+        (appT [t|Recordable|] (conT tyName))
         -- recordKey :: ...
         [ recordKeyMethod tyCons
         , -- recordValue :: ...
