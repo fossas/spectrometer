@@ -24,7 +24,8 @@ import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
 import Language.Haskell.TH (TExpQ)
 import Language.Haskell.TH.Syntax (reportWarning, runIO)
-import Path (mkRelDir)
+import Path.IO (getCurrentDir)
+import Control.Effect.Lift (sendIO, Lift)
 
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =
@@ -43,10 +44,11 @@ getCurrentTag = do
     Left err -> reportWarning (show err) >> [||Nothing||]
     Right tags -> filterTags tags
 
-getTags :: (Has Exec sig m, Has Diagnostics sig m) => Text -> m [Text]
+getTags :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => Text -> m [Text]
 getTags hash = do
+  dir <- sendIO getCurrentDir
   -- FIXME: boy it would be nice to not shell out during compilation.  So much that could go wrong.
-  result <- exec $(mkRelDir ".") $ gitTagPointCommand hash
+  result <- exec dir $ gitTagPointCommand hash
   bsl <- fromEitherShow result
 
   pure . map Text.strip . Text.lines . decodeUtf8 $ BSL.toStrict bsl

@@ -469,7 +469,7 @@ tryUploadContributors ::
   , Has Exec sig m
   , Has (Lift IO) sig m
   ) =>
-  Path x Dir ->
+  Path Abs Dir ->
   ApiOpts ->
   -- | Locator
   Text ->
