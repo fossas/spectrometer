@@ -18,6 +18,7 @@ import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.Text (Text)
 import Effect.ReadFS
 import Path
+import Path.IO (getCurrentDir)
 import System.Exit (die)
 import Text.Megaparsec
 import Types
@@ -102,7 +103,7 @@ instance FromJSON ConfigPaths where
 defaultFile :: Path Rel File
 defaultFile = $(mkRelFile ".fossa.yml")
 
-readConfigFile :: (Has ReadFS sig m, Has Diag.Diagnostics sig m) => Path Rel File -> m (Maybe ConfigFile)
+readConfigFile :: (Has ReadFS sig m, Has Diag.Diagnostics sig m) => Path Abs File -> m (Maybe ConfigFile)
 readConfigFile file = do
   exists <- doesFileExist file
   if not exists
@@ -115,7 +116,8 @@ readConfigFile file = do
 
 readConfigFileIO :: IO (Maybe ConfigFile)
 readConfigFileIO = do
-  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile defaultFile
+  dir <- getCurrentDir
+  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> defaultFile)
   case config of
     Left err -> die $ show $ Diag.renderFailureBundle err
     Right a -> pure a

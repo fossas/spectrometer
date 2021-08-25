@@ -158,6 +158,9 @@ instance ReplayableValue (Path Abs File)
 instance ReplayableValue (Path Rel Dir)
 instance ReplayableValue (Path Rel File)
 
+instance ReplayableValue (SomeBase Dir)
+instance ReplayableValue (SomeBase File)
+
 instance ReplayableValue ExitCode where
   fromRecordedValue val = do
     i <- parseJSON val
