@@ -143,7 +143,7 @@ instance FromJSON Pod where
   parseJSON (Yaml.String p) = parserPod p Nothing
   parseJSON (Yaml.Object obj) = case HashMap.toList obj of
     [(podEntry, podDepsListing)] -> parserPod podEntry $ Just podDepsListing
-    [] -> fail $ "Expected non empty list of dependencies, but received empty list"
+    [] -> fail "Expected non empty list of dependencies, but received empty list"
     _ -> fail $ "Expected list of dependencies, but received: " <> show obj
   parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported
 
