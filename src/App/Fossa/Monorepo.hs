@@ -4,21 +4,17 @@ module App.Fossa.Monorepo (
   PathFilters (..),
 ) where
 
-import App.Fossa.EmbeddedBinary
-import App.Fossa.ProjectInference (
-  inferProjectDefault,
-  inferProjectFromVCS,
-  mergeOverride,
-  saveRevision,
- )
-import App.Fossa.VPS.Scan.RunWiggins
-import App.Types
-import Control.Carrier.Diagnostics
+import App.Fossa.EmbeddedBinary (BinaryPaths, withWigginsBinary)
+import App.Fossa.FossaAPIV1 (featureFlagEnabled)
+import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
+import App.Fossa.VPS.Scan.RunWiggins (PathFilters (..), WigginsOpts, execWiggins, generateWigginsMonorepoOpts, toPathFilters)
+import App.Types (BaseDir (..), FeatureFlag (..), MonorepoAnalysisOpts, OverrideProject, ProjectMetadata)
+import Control.Carrier.Diagnostics (Diagnostics, Has, context, fatalText, logWithExit_, recover, (<||>))
 import Control.Effect.Lift (Lift)
-import Data.Text
-import Effect.Exec
-import Effect.Logger
-import Fossa.API.Types
+import Data.Text (Text)
+import Effect.Exec (Exec, runExecIO)
+import Effect.Logger (Logger, Pretty (..), Severity, logInfo, withDefaultLogger)
+import Fossa.API.Types (ApiOpts)
 
 monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> PathFilters -> IO ()
 monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject filters = withDefaultLogger logSeverity $ do
@@ -26,6 +22,14 @@ monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overri
 
 monorepoScan :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => BaseDir -> MonorepoAnalysisOpts -> PathFilters -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> BinaryPaths -> m ()
 monorepoScan (BaseDir basedir) monorepoAnalysisOpts filters logSeverity apiOpts projectMeta projectOverride binaryPaths = do
+  -- The endpoint to disable this function if Monorepo analysis is disabled server-side is new.
+  -- For most feature flags, we'd want to default to the flag *not* enabled.
+  -- However in the case of Monorepo, we want to default to the flag being enabled if we fail to check it in Core to maintain existing functionality.
+  enabled <- recover $ featureFlagEnabled apiOpts FeatureFlagVSIMonorepo
+  if enabled == Just False
+    then fatalText "Monorepo analysis is not enabled in FOSSA. Please contact FOSSA for assistance."
+    else pure ()
+
   projectRevision <- mergeOverride projectOverride <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision projectRevision
 
