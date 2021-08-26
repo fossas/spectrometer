@@ -6,6 +6,8 @@ module App.Types (
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
   MonorepoAnalysisOpts (..),
+  FeatureFlag (..),
+  coreFlagName,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
@@ -60,3 +62,13 @@ data NinjaGraphCLIOptions = NinjaGraphCLIOptions
   , ninjaScanId :: Text
   , ninjaBuildName :: Text
   }
+
+-- | Feature flags are set in the FOSSA API.
+-- Not all feature flags are relevant to Spectrometer, but those that are can be found here.
+data FeatureFlag
+  = -- | Enable VSI and Monorepo functionality
+    FeatureFlagVSIMonorepo
+
+-- | Translate the flag to its name in the FOSSA API.
+coreFlagName :: FeatureFlag -> Text
+coreFlagName FeatureFlagVSIMonorepo = "vendoredPackageScanning"
