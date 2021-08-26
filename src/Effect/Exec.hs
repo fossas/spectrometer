@@ -153,7 +153,7 @@ exec dir cmd = sendSimple (Exec (Abs dir) cmd)
 type Parser = Parsec Void Text
 
 -- | Parse the stdout of a command
-execParser :: forall a sig m x. (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path Abs Dir -> Command -> m a
+execParser :: forall a sig m. (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path Abs Dir -> Command -> m a
 execParser parser dir cmd = do
   stdout <- execThrow dir cmd
   case runParser parser "" (decodeUtf8 stdout) of

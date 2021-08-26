@@ -1,5 +1,6 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Effect.Replay (
@@ -10,6 +11,7 @@ module Control.Effect.Replay (
 
 import Control.Algebra
 import Control.Applicative
+import Control.Carrier.AtomicState
 import Control.Carrier.Reader
 import Control.Carrier.Simple
 import Control.Effect.Lift
@@ -23,44 +25,63 @@ import Data.ByteString.Lazy qualified as BL
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map
 import Data.Kind
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as MMap
 import Data.String.Conversion (encodeUtf8, toString)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Text.Lazy qualified as TL
 import Path
 import System.Exit
+import Unsafe.Coerce
 
 -- | A class of "replayable" effects -- i.e. an effect whose "result values"
 -- (the @a@ in @e m a@) can be deserialized from JSON values produced by
 -- 'recordValue' from 'Recordable'
-class Recordable r => Replayable (r :: Type -> Type) where
+class (Recordable r, forall a. Ord (r a)) => Replayable (r :: Type -> Type) where
   -- | Deserialize an effect data constructor's "return value" from JSON
   replay :: r a -> Value -> Maybe a
 
+data Any
+
 newtype ReplayC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = ReplayC
-  { runReplayC :: ReaderC (HashMap Value Value) m a
+  { runReplayC :: ReaderC (HashMap Value Value) (AtomicStateC (Map (e Any) Some) m) a
   }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance MonadTrans (ReplayC e sig) where
+  lift = ReplayC . lift . lift
 
 -- | Wrap an effect carrier, and replay its effects given the log produced by
 -- 'runRecord'. If a log entry isn't available for a given effect invocation, we
 -- pass the effect call down to the wrapped carrier
-runReplay :: Journal e -> ReplayC e sig m a -> m a
-runReplay (Journal mapping) = runReader mapping . runReplayC
+runReplay :: forall e sig m a. Has (Lift IO) sig m => Journal e -> ReplayC e sig m a -> m a
+runReplay (Journal mapping) = fmap snd . runAtomicState MMap.empty . runReader mapping . runReplayC
+
+data Some where
+  Some :: a -> Some
 
 instance (Member (Simple e) sig, Has (Lift IO) sig m, Replayable e) => Algebra (Simple e :+: sig) (ReplayC e sig m) where
   alg hdl sig' ctx = ReplayC $ do
     case sig' of
       L (Simple eff) -> do
         mapping <- ask @(HashMap Value Value)
+        memo <- get @(Map (e Any) Some)
         let keyVal = recordKey eff
-        case Map.lookup keyVal mapping >>= replay eff of
+        case MMap.lookup (unsafeCoerce eff) memo of
+          Just (Some val) -> do
+            pure (unsafeCoerce val <$ ctx)
           Nothing -> do
-            -- TODO: log warnings on key miss
-            res <- lift $ send (Simple eff)
-            pure (res <$ ctx)
-          Just result -> pure (result <$ ctx)
-      R other -> alg (runReplayC . hdl) (R other) ctx
+            case Map.lookup keyVal mapping >>= replay eff of
+              Nothing -> do
+                -- TODO: log warnings on key miss
+                res <- lift $ send (Simple eff)
+                modify @(Map (e Any) Some) (MMap.insert (unsafeCoerce eff) (Some res))
+                pure (res <$ ctx)
+              Just result -> do
+                modify @(Map (e Any) Some) (MMap.insert (unsafeCoerce eff) (Some result))
+                pure (result <$ ctx)
+      R other -> alg (runReplayC . hdl) (R (R other)) ctx
 
 -- | ReplayableValue is essentially @FromJSON@ with a different name. We use
 -- ReplayableValue to avoid orphan FromJSON instances for, e.g., ByteString and
