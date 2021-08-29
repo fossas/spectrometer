@@ -7,7 +7,7 @@ module Strategy.Crystal.ShardYml (
   ShardYmlDepSource (..),
   GitSource (..),
   PackageName (..),
-  ShardYamlDepGitSource (..)
+  ShardYamlDepGitSource (..),
 ) where
 
 import Control.Applicative (Alternative ((<|>)))
@@ -30,7 +30,7 @@ import DepTypes (
 import Effect.ReadFS (Has, ReadFS, readContentsYaml)
 import Graphing (Graphing, fromList)
 import Path
-import Types ( GraphBreadth(Partial), DependencyResults(..) )
+import Types (DependencyResults (..), GraphBreadth (Partial))
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord, FromJSONKey)
 
@@ -75,12 +75,13 @@ instance FromJSON ShardYmlContent where
 
 instance FromJSON ShardYmlDepSource where
   parseJSON (Yaml.Object o) =
-    ShardYamlGitSource <$> ( ShardYamlDepGitSource <$> gitSource o
-        <*> o .:? "branch"
-        <*> o .:? "tag"
-        <*> o .:? "commit"
-        <*> o .:? "version"
-    )
+    ShardYamlGitSource
+      <$> ( ShardYamlDepGitSource <$> gitSource o
+              <*> o .:? "branch"
+              <*> o .:? "tag"
+              <*> o .:? "commit"
+              <*> o .:? "version"
+          )
       <|> (ShardYamlDepPathSource <$> o .: "path")
     where
       gitSource :: Yaml.Object -> Yaml.Parser GitSource
@@ -144,9 +145,10 @@ buildGraph ymlContent = fromList $ prodDeps ++ devDeps
 analyzeShardYmlFile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyzeShardYmlFile shardFile = do
   shardContent <- context "Reading shard.yml" $ readContentsYaml shardFile
-  context "building graphing from shard.yml only" $ pure DependencyResults
-      { dependencyGraph = buildGraph shardContent
-      , dependencyGraphBreadth = Partial
-      , dependencyManifestFiles = [shardFile]
-      }
- 
+  context "building graphing from shard.yml only" $
+    pure
+      DependencyResults
+        { dependencyGraph = buildGraph shardContent
+        , dependencyGraphBreadth = Partial
+        , dependencyManifestFiles = [shardFile]
+        }

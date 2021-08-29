@@ -11,9 +11,9 @@ import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Strategy.Crystal.ShardYml (
   GitSource (..),
   PackageName (..),
+  ShardYamlDepGitSource (..),
   ShardYmlContent (..),
   ShardYmlDepSource (..),
-  ShardYamlDepGitSource(..),
   buildGraph,
  )
 import Test.Hspec
@@ -37,7 +37,7 @@ gitSourceWithBranch :: GitSource -> Text -> ShardYmlDepSource
 gitSourceWithBranch git branch = ShardYamlGitSource $ ShardYamlDepGitSource git (Just branch) Nothing Nothing Nothing
 
 gitSourceWithCommit :: GitSource -> Text -> ShardYmlDepSource
-gitSourceWithCommit git commit = ShardYamlGitSource $  ShardYamlDepGitSource git Nothing Nothing (Just commit) Nothing
+gitSourceWithCommit git commit = ShardYamlGitSource $ ShardYamlDepGitSource git Nothing Nothing (Just commit) Nothing
 
 gitSourceWithTag :: GitSource -> Text -> ShardYmlDepSource
 gitSourceWithTag git tag = ShardYamlGitSource $ ShardYamlDepGitSource git Nothing (Just tag) Nothing Nothing
