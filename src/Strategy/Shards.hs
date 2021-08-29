@@ -16,7 +16,7 @@ import Types (DependencyResults (..), DiscoveredProject (..))
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "shards" $ do
   projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+  pure $ map mkProject projects
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ShardProject]
 findProjects = walk' $ \dir _ files -> do
