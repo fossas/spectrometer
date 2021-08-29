@@ -9,10 +9,9 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing)
 import Path
 import Strategy.Crystal.ShardYml (analyzeShardYmlFile)
-import Types (Dependency, DiscoveredProject (..), GraphBreadth)
+import Types (DiscoveredProject (..), DependencyResults (..))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "shards" $ do
@@ -36,10 +35,10 @@ mkProject project =
   DiscoveredProject
     { projectType = "shard"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = shardDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ShardProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ShardProject -> m DependencyResults
 getDeps project = analyzeShardYmlFile $ shardYml project

@@ -30,7 +30,7 @@ import DepTypes (
 import Effect.ReadFS (Has, ReadFS, readContentsYaml)
 import Graphing (Graphing, fromList)
 import Path
-import Types (GraphBreadth (Partial))
+import Types ( GraphBreadth(Partial), DependencyResults(..) )
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord, FromJSONKey)
 
@@ -141,7 +141,12 @@ buildGraph ymlContent = fromList $ prodDeps ++ devDeps
       uncurry (toDependency [EnvDevelopment])
         <$> maybe [] (Map.toList . Map.filter isSupported) (devDependencies ymlContent)
 
-analyzeShardYmlFile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyzeShardYmlFile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyzeShardYmlFile shardFile = do
   shardContent <- context "Reading shard.yml" $ readContentsYaml shardFile
-  context "building graphing from shard.yml only" $ pure (buildGraph shardContent, Partial)
+  context "building graphing from shard.yml only" $ pure DependencyResults
+      { dependencyGraph = buildGraph shardContent
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = [shardFile]
+      }
+ 
