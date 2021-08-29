@@ -4,7 +4,7 @@ Shards is crystal dependency manager, accompanied usual with language. It manage
 
 ## Project Discovery
 
-Find the first file named `shard.yml`
+Find the file named `shard.yml`
 
 ## Analysis: shard.yml
 
