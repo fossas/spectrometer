@@ -13,6 +13,7 @@ import Strategy.Crystal.ShardYml (
   PackageName (..),
   ShardYmlContent (..),
   ShardYmlDepSource (..),
+  ShardYamlDepGitSource(..),
   buildGraph,
  )
 import Test.Hspec
@@ -30,19 +31,19 @@ bitBucketOrigin :: GitSource
 bitBucketOrigin = BitBucket "bitbucket_username/repo"
 
 gitSourceOnly :: GitSource -> ShardYmlDepSource
-gitSourceOnly git = ShardYamlDepGitSource git Nothing Nothing Nothing Nothing
+gitSourceOnly git = ShardYamlGitSource $ ShardYamlDepGitSource git Nothing Nothing Nothing Nothing
 
 gitSourceWithBranch :: GitSource -> Text -> ShardYmlDepSource
-gitSourceWithBranch git branch = ShardYamlDepGitSource git (Just branch) Nothing Nothing Nothing
+gitSourceWithBranch git branch = ShardYamlGitSource $ ShardYamlDepGitSource git (Just branch) Nothing Nothing Nothing
 
 gitSourceWithCommit :: GitSource -> Text -> ShardYmlDepSource
-gitSourceWithCommit git commit = ShardYamlDepGitSource git Nothing Nothing (Just commit) Nothing
+gitSourceWithCommit git commit = ShardYamlGitSource $  ShardYamlDepGitSource git Nothing Nothing (Just commit) Nothing
 
 gitSourceWithTag :: GitSource -> Text -> ShardYmlDepSource
-gitSourceWithTag git tag = ShardYamlDepGitSource git Nothing (Just tag) Nothing Nothing
+gitSourceWithTag git tag = ShardYamlGitSource $ ShardYamlDepGitSource git Nothing (Just tag) Nothing Nothing
 
 gitSourceWithVersion :: GitSource -> Text -> ShardYmlDepSource
-gitSourceWithVersion git version = ShardYamlDepGitSource git Nothing Nothing Nothing (Just version)
+gitSourceWithVersion git version = ShardYamlGitSource $ ShardYamlDepGitSource git Nothing Nothing Nothing (Just version)
 
 pathSource :: Text -> ShardYmlDepSource
 pathSource = ShardYamlDepPathSource

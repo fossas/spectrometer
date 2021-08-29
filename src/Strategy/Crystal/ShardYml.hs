@@ -7,6 +7,7 @@ module Strategy.Crystal.ShardYml (
   ShardYmlDepSource (..),
   GitSource (..),
   PackageName (..),
+  ShardYamlDepGitSource (..)
 ) where
 
 import Control.Applicative (Alternative ((<|>)))
@@ -52,15 +53,18 @@ data GitSource
   | Git Text
   deriving (Show, Eq, Ord)
 
+data ShardYamlDepGitSource = ShardYamlDepGitSource
+  { gitSource :: GitSource
+  , gitBranch :: Maybe Text
+  , gitTag :: Maybe Text
+  , gitCommit :: Maybe Text
+  , version :: Maybe Text
+  }
+  deriving (Show, Eq, Ord)
+
 data ShardYmlDepSource
-  = ShardYamlDepGitSource
-      { gitSource :: GitSource
-      , gitBranch :: Maybe Text
-      , gitTag :: Maybe Text
-      , gitCommit :: Maybe Text
-      , version :: Maybe Text
-      }
-  | ShardYamlDepPathSource {hostPath :: Text}
+  = ShardYamlGitSource ShardYamlDepGitSource
+  | ShardYamlDepPathSource Text
   deriving (Show, Eq, Ord)
 
 instance FromJSON ShardYmlContent where
@@ -71,7 +75,7 @@ instance FromJSON ShardYmlContent where
 
 instance FromJSON ShardYmlDepSource where
   parseJSON (Yaml.Object o) =
-    ( ShardYamlDepGitSource <$> gitSource o
+    ShardYamlGitSource <$> ( ShardYamlDepGitSource <$> gitSource o
         <*> o .:? "branch"
         <*> o .:? "tag"
         <*> o .:? "commit"
@@ -90,7 +94,7 @@ instance FromJSON ShardYmlDepSource where
   parseJSON _ = fail "failed parsing shard dependency's source!"
 
 isSupported :: ShardYmlDepSource -> Bool
-isSupported ShardYamlDepGitSource{} = True
+isSupported ShardYamlGitSource{} = True
 isSupported _ = False
 
 buildGraph :: ShardYmlContent -> Graphing Dependency
@@ -109,7 +113,7 @@ buildGraph ymlContent = fromList $ prodDeps ++ devDeps
 
     depName :: ShardYmlDepSource -> Maybe Text
     depName src = case src of
-      ShardYamlDepGitSource gitOrigin _ _ _ _ -> case gitOrigin of
+      ShardYamlGitSource (ShardYamlDepGitSource gitOrigin _ _ _ _) -> case gitOrigin of
         Github repoPath -> Just $ "https://github.com/" <> repoPath <> ".git"
         Gitlab repoPath -> Just $ "https://gitlab.com/" <> repoPath <> ".git"
         BitBucket repoPath -> Just $ "https://bitbucket.com/" <> repoPath <> ".git"
@@ -118,7 +122,7 @@ buildGraph ymlContent = fromList $ prodDeps ++ devDeps
 
     depVersion :: ShardYmlDepSource -> Maybe VerConstraint
     depVersion src = case src of
-      ShardYamlDepGitSource _ branch tag commit version ->
+      ShardYamlGitSource (ShardYamlDepGitSource _ branch tag commit version) ->
         asum
           [ CEq <$> version
           , CEq <$> tag
