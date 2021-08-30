@@ -1,4 +1,5 @@
 module App.Fossa.VSI.IAT.Fingerprint (
+  fingerprintRaw,
   fingerprintContentsRaw,
 ) where
 
@@ -40,7 +41,7 @@ hashFile fp =
   sendIO (runConduitRes (sourceFile fp .| sinkHash))
     `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
 
-fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m Fingerprint
+fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path x File -> m Fingerprint
 fingerprintRaw file = do
   (fp :: Digest SHA256) <- hashFile $ toFilePath file
   let base16 = toText . show $ fp

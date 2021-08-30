@@ -16,6 +16,7 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
+import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), featureFlagEnabled, getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
@@ -259,6 +260,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
   vsiResults <- analyzeVSI enableVSI apiOpts basedir filters
+  binarySearchResults <- analyzeBinaryDeps basedir filters
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -271,7 +273,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults] of
+  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults, binarySearchResults] of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
