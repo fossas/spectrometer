@@ -121,6 +121,7 @@ depTypeToFetcher = \case
   URLType -> "url"
   UserType -> "user"
   PubType -> "pub"
+  DiscoveredBinaryType -> "discovered-binary"
 
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
 fetcherToDepType :: Text -> Maybe DepType
@@ -145,4 +146,5 @@ fetcherToDepType fetcher | depTypeToFetcher RPMType == fetcher = Just RPMType
 fetcherToDepType fetcher | depTypeToFetcher URLType == fetcher = Just URLType
 fetcherToDepType fetcher | depTypeToFetcher UserType == fetcher = Just UserType
 fetcherToDepType fetcher | depTypeToFetcher PubType == fetcher = Just PubType
+fetcherToDepType fetcher | depTypeToFetcher DiscoveredBinaryType == fetcher = Just DiscoveredBinaryType
 fetcherToDepType _ = Nothing

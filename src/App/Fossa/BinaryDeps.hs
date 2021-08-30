@@ -1,21 +1,25 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.BinaryDeps (analyzeBinaryDeps) where
 
+import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
 import App.Fossa.VSI.IAT.Types (Fingerprint (..))
-import App.Fossa.VSI.Types qualified as VSI
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
-import Data.Foldable (traverse_)
 import Data.Maybe (catMaybes)
-import Discovery.Filters (AllFilters)
+import Data.String.Conversion (toText)
+import Data.Text (Text)
+import DepTypes (Dependency (..))
+import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
-import Effect.Logger (Logger, Pretty (pretty), logInfo)
 import Effect.ReadFS (ReadFS, fileIsBinary)
-import Fossa.API.Types (ApiOpts)
-import Graphing qualified
-import Path (Abs, Dir, File, Path, Rel)
+import Graphing (Graphing, fromList)
+import Path (Abs, Dir, File, Path, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
+import Srclib.Converter qualified as Srclib
 import Srclib.Types (SourceUnit)
+import Types (DepType (DiscoveredBinaryType), GraphBreadth (Complete), VerConstraint (CEq))
 
 data BinaryFile = BinaryFile
   { binaryPath :: Path Abs File
@@ -27,19 +31,20 @@ data BinaryFile = BinaryFile
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.
 -- The goal of this feature is to enable a FOSSA user to flag all vendored binaries (as defined by git) in the project as dependencies.
 -- Users may then use standard FOSSA UX flows to ignore or add license information to the detected binaries.
-analyzeBinaryDeps :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
+analyzeBinaryDeps :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeBinaryDeps dir filters = do
-  binaries <- fingerprintBinaries filters dir
+  binaries <- fingerprintBinaries (toPathFilters dir filters) dir
+  if null binaries
+    then pure Nothing
+    else pure . Just $ Srclib.toSourceUnit (toProject dir (Graphing.fromList $ map (toDependency dir) binaries))
 
-  logInfo "Found binaries in project:"
-  traverse_ (logInfo . pretty . show) binaries
-
-  pure Nothing
-
-fingerprintBinaries :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => AllFilters -> Path Abs Dir -> m [BinaryFile]
-fingerprintBinaries filters = walk' $ \_ _ files -> do
-  someBinaries <- traverse fingerprintIfBinary files
-  pure (catMaybes someBinaries, WalkContinue)
+fingerprintBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [BinaryFile]
+fingerprintBinaries filters = walk' $ \dir _ files -> do
+  if shouldFingerprintDir dir filters
+    then do
+      someBinaries <- traverse fingerprintIfBinary files
+      pure (catMaybes someBinaries, WalkContinue)
+    else pure ([], WalkContinue)
 
 fingerprintIfBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m (Maybe BinaryFile)
 fingerprintIfBinary file = do
@@ -50,12 +55,43 @@ fingerprintIfBinary file = do
       pure . Just $ BinaryFile file fp
     else pure Nothing
 
--- undefined
+-- | PathFilters is a specialized filter mechanism that operates only on absolute directory paths.
+data PathFilters = PathFilters
+  { include :: [Path Abs Dir]
+  , exclude :: [Path Abs Dir]
+  }
+  deriving (Show)
 
--- (direct, userDeps) <- pluginAnalyze $ generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
+toPathFilters :: Path Abs Dir -> AllFilters -> PathFilters
+toPathFilters root filters =
+  PathFilters
+    { include = map (root </>) (combinedPaths $ includeFilters filters)
+    , exclude = map (root </>) (combinedPaths $ excludeFilters filters)
+    }
 
--- resolvedUserDeps <- resolveUserDefined apiOpts userDeps
--- resolvedGraph <- resolveGraph apiOpts direct
--- dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
+shouldFingerprintDir :: Path Abs Dir -> PathFilters -> Bool
+shouldFingerprintDir dir filters = (not shouldExclude) && shouldInclude
+  where
+    shouldExclude = (isPrefixedOrEqual dir) `any` (exclude filters)
+    shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
+    isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
--- pure $ toSourceUnit (toProject dir dependencies) resolvedUserDeps
+toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
+toProject dir graph = ProjectResult "binary-deps" dir graph Complete []
+
+toDependency :: Path Abs Dir -> BinaryFile -> Dependency
+toDependency root BinaryFile{..} =
+  Dependency
+    { dependencyType = DiscoveredBinaryType
+    , dependencyName = renderRelative root binaryPath
+    , dependencyVersion = Just . CEq $ unFingerprint binaryFingerprint
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = mempty
+    }
+
+renderRelative :: Path Abs Dir -> Path Abs File -> Text
+renderRelative absDir absFile =
+  case stripProperPrefix absDir absFile of
+    Left _ -> toText . toFilePath $ absFile
+    Right relFile -> toText . toFilePath $ relFile

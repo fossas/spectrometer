@@ -273,11 +273,12 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults, binarySearchResults] of
+  let additionalSourceUnits = [manualSrcUnits, vsiResults, binarySearchResults]
+  case checkForEmptyUpload projectResults filteredProjects additionalSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult additionalSourceUnits filteredProjects
       UploadScan opts metadata -> do
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
         doAssertRevisionBinaries iatAssertion opts locator
@@ -474,16 +475,14 @@ buildProjectSummary project projectLocator projectUrl = do
       , "id" .= projectLocator
       ]
 
-buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
-buildResult maybeSrcUnit projects =
+buildResult :: [Maybe SourceUnit] -> [ProjectResult] -> Aeson.Value
+buildResult maybeSrcUnits projects =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= finalSourceUnits
     ]
   where
-    finalSourceUnits = case maybeSrcUnit of
-      Just unit -> unit : scannedUnits
-      Nothing -> scannedUnits
+    finalSourceUnits = catMaybes maybeSrcUnits ++ scannedUnits
     scannedUnits = map Srclib.toSourceUnit projects
 
 buildProject :: ProjectResult -> Aeson.Value
