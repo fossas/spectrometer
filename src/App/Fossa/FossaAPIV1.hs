@@ -590,7 +590,7 @@ instance FromJSON FeatureFlagEnabledBody where
     FeatureFlagEnabledBody <$> obj .: "enabled"
 
 featureFlagEnabledEndpoint :: Url scheme -> FeatureFlag -> Url scheme
-featureFlagEnabledEndpoint baseurl featureFlag = baseurl /: "api" /: "feature_flag" /: "org" /: coreFlagName featureFlag
+featureFlagEnabledEndpoint baseurl featureFlag = baseurl /: "api" /: "feature_flags" /: "org" /: coreFlagName featureFlag
 
 featureFlagEnabled :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> FeatureFlag -> m Bool
 featureFlagEnabled apiOpts featureFlag = fossaReq $ do
