@@ -260,7 +260,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
   vsiResults <- analyzeVSI enableVSI apiOpts basedir filters
-  binarySearchResults <- analyzeBinaryDeps basedir filters
+  binarySearchResults <- analyzeDiscoverBinaries apiOpts basedir filters
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -297,6 +297,16 @@ analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
   results <- analyzeVSIDeps dir apiOpts filters
   pure $ Just results
 analyzeVSI _ _ _ _ = pure Nothing
+
+analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
+analyzeDiscoverBinaries Nothing _ _ = pure Nothing
+analyzeDiscoverBinaries (Just apiOpts) dir filters = do
+  enabled <- featureFlagEnabled apiOpts FeatureFlagIdentifyBinariesAsDeps
+  if enabled
+    then do
+      logInfo "Discovering binary files as dependencies"
+      analyzeBinaryDeps dir filters
+    else pure Nothing
 
 doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> ApiOpts -> Locator -> m ()
 doAssertRevisionBinaries (IATAssertionEnabled dir) apiOpts locator = assertRevisionBinaries dir apiOpts locator

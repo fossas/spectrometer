@@ -40,7 +40,7 @@ import App.Fossa.VSI.Types qualified as VSI
 import App.Types
 import App.Version (versionNumber)
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText, recover)
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
@@ -592,8 +592,9 @@ instance FromJSON FeatureFlagEnabledBody where
 featureFlagEnabledEndpoint :: Url scheme -> FeatureFlag -> Url scheme
 featureFlagEnabledEndpoint baseurl featureFlag = baseurl /: "api" /: "feature_flags" /: "org" /: coreFlagName featureFlag
 
+-- | Check whether a feature flag is enabled. If the request fails, assume that the result is that the feature flag is not enabled.
 featureFlagEnabled :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> FeatureFlag -> m Bool
 featureFlagEnabled apiOpts featureFlag = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  (response :: FeatureFlagEnabledBody) <- responseBody <$> req GET (featureFlagEnabledEndpoint baseUrl featureFlag) NoReqBody jsonResponse baseOpts
-  pure $ unFeatureFlagEnabled response
+  (response :: Maybe FeatureFlagEnabledBody) <- recover $ responseBody <$> req GET (featureFlagEnabledEndpoint baseUrl featureFlag) NoReqBody jsonResponse baseOpts
+  pure $ maybe False unFeatureFlagEnabled response
