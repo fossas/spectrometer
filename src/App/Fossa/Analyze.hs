@@ -301,8 +301,10 @@ analyzeVSI _ _ _ _ = pure Nothing
 analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeDiscoverBinaries Nothing _ _ = pure Nothing
 analyzeDiscoverBinaries (Just apiOpts) dir filters = do
-  enabled <- featureFlagEnabled apiOpts FeatureFlagIdentifyBinariesAsDeps
-  if enabled
+  -- Support for feature flag detection is new as of FOSSA v3.34.35.
+  -- Only run if feature flag successfully detects *and* is enabled.
+  enabled <- recover $ featureFlagEnabled apiOpts FeatureFlagIdentifyBinariesAsDeps
+  if enabled == Just True
     then do
       logInfo "Discovering binary files as dependencies"
       analyzeBinaryDeps dir filters
