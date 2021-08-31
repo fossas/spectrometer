@@ -96,6 +96,7 @@ instance ReplayableValue ReadFSErr
 $(deriveRecordable ''SReadFS)
 $(deriveReplayable ''SReadFS)
 
+deriving instance Show (SReadFS a)
 deriving instance Eq (SReadFS a)
 deriving instance Ord (SReadFS a)
 

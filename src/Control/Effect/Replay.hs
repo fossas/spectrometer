@@ -19,7 +19,6 @@ import Data.Aeson
 import Data.Aeson.Types (Parser, parse)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.HashMap.Strict qualified as HashMap
 import Data.Kind
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -35,7 +34,7 @@ import Unsafe.Coerce
 -- | A class of "replayable" effects -- i.e. an effect whose "result values"
 -- (the @a@ in @e m a@) can be deserialized from JSON values produced by
 -- 'recordValue' from 'Recordable'
-class (Recordable r, forall a. Ord (r a)) => Replayable (r :: Type -> Type) where
+class Recordable r => Replayable (r :: Type -> Type) where
   -- | Deserialize an effect data constructor and "return value" from JSON values
   replayDecode :: Value -> Value -> Parser (EffectResult r)
 
@@ -45,28 +44,23 @@ class (Recordable r, forall a. Ord (r a)) => Replayable (r :: Type -> Type) wher
 runReplay :: forall e sig m a. (Member (Simple e) sig, Algebra sig m, Replayable e) => Journal e -> SimpleC e m a -> m a
 runReplay journal = interpret $ \eff -> do
   case Map.lookup (unsafeCoerce eff) converted of
-    Just (Some val) -> pure (unsafeCoerce val)
+    Just (EffectResult _ val) -> pure (unsafeCoerce val)
     Nothing -> send (Simple eff)
   where
-    converted :: Map (e Void) Some
+    converted :: Map (e Void) (EffectResult e)
     converted = convertFromJournal @e journal
 
--- | The result of an effectful action
-data EffectResult r where
-  EffectResult :: r a -> a -> EffectResult r
+unsafeEffectResultToKey :: EffectResult r -> r Void
+unsafeEffectResultToKey (EffectResult r _) = unsafeCoerce r
 
--- | Some value
-data Some where
-  Some :: a -> Some
+keyBy :: Ord k => (v -> k) -> [v] -> Map k v
+keyBy f = Map.fromList . map (\v -> (f v, v))
 
-effectResultToPair :: EffectResult r -> (r Void, Some)
-effectResultToPair (EffectResult r a) = (unsafeCoerce r, Some a)
-
-convertFromJournal :: Replayable e => Journal e -> Map (e Void) Some
+convertFromJournal :: Replayable e => Journal e -> Map (e Void) (EffectResult e)
 convertFromJournal (Journal mapping) =
-  case parse id (fmap (Map.fromList . map effectResultToPair) . traverse (uncurry replayDecode) $ HashMap.toList mapping) of
-    Error str -> error str
-    Success a -> Map.map Some a
+  case parse id (fmap (keyBy unsafeEffectResultToKey) . traverse (uncurry replayDecode) $ Map.toList mapping) of
+    Error str -> error str -- FIXME
+    Success a -> a
 
 -- | ReplayableValue is essentially @FromJSON@ with a different name. We use
 -- ReplayableValue to avoid orphan FromJSON instances for, e.g., ByteString and

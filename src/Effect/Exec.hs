@@ -122,6 +122,7 @@ type Exec = Simple SExec
 $(deriveRecordable ''SExec)
 $(deriveReplayable ''SExec)
 
+deriving instance Show (SExec a)
 deriving instance Eq (SExec a)
 deriving instance Ord (SExec a)
 

@@ -2,6 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 
 module Control.Effect.Record (
   Recordable (..),
@@ -9,6 +10,7 @@ module Control.Effect.Record (
   RecordC (..),
   runRecord,
   Journal (..),
+  EffectResult (..),
 ) where
 
 import Control.Algebra
@@ -20,18 +22,20 @@ import Control.Monad.Trans
 import Data.Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as Map
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.Kind
 import Data.String.Conversion (decodeUtf8)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Path
 import System.Exit
+import Data.Void (Void)
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
 -- and "result values" (the @a@ in @e m a@) can be serialized to JSON values
-class Recordable (r :: Type -> Type) where
+class (forall a. Ord (r a)) => Recordable (r :: Type -> Type) where
   -- | Serialize a data constructor to JSON
   recordKey :: r a -> Value
 
@@ -39,8 +43,12 @@ class Recordable (r :: Type -> Type) where
   recordValue :: r a -> a -> Value
 
 -- | A journal contains all of the effect invocations recorded by RecordC
-newtype Journal eff = Journal {unJournal :: HashMap Value Value}
+newtype Journal eff = Journal {unJournal :: Map Value Value}
   deriving (Eq, Ord, Show)
+
+-- | The result of an effectful action
+data EffectResult r where
+  EffectResult :: r a -> a -> EffectResult r
 
 instance FromJSON (Journal eff) where
   parseJSON = fmap (Journal . Map.fromList) . parseJSON
@@ -51,14 +59,17 @@ instance ToJSON (Journal eff) where
 -- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
 --
 -- > runRecord @SomeEffect
-runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Journal e, a)
+runRecord :: forall e sig m a. (Recordable e, Has (Lift IO) sig m) => RecordC e sig m a -> m (Journal e, a)
 runRecord act = do
   (mapping, a) <- runAtomicState Map.empty . runRecordC $ act
-  pure (Journal mapping, a)
+  pure (convertToJournal (Map.elems mapping), a)
+
+convertToJournal :: Recordable e => [EffectResult e] -> Journal e
+convertToJournal = Journal . Map.fromList . map (\(EffectResult k v) -> (recordKey k, recordValue k v))
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
 newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
-  { runRecordC :: AtomicStateC (HashMap Value Value) m a
+  { runRecordC :: AtomicStateC (Map (e Void) (EffectResult e))  m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
@@ -72,11 +83,15 @@ instance (Member (Simple e) sig, Has (Lift IO) sig m, Recordable e) => Algebra (
       L (Simple eff) -> do
         res <- lift $ send (Simple eff)
 
-        let values = (recordKey eff, recordValue eff res)
-        modify (uncurry Map.insert values)
+        modify @(Map (e Void) (EffectResult e)) (insertUnlessExists (unsafeCoerce eff) (EffectResult eff res))
 
         pure (res <$ ctx)
       R other -> alg (runRecordC . hdl) (R other) ctx
+
+insertUnlessExists :: Ord k => k -> v -> Map k v -> Map k v
+insertUnlessExists k v m
+  | Map.member k m = m
+  | otherwise = Map.insert k v m
 
 -- | RecordableValue is essentially @ToJSON@ with a different name. We use
 -- RecordableValue to avoid orphan ToJSON instances for, e.g., ByteString and
