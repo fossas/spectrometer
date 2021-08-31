@@ -11,6 +11,7 @@ import Control.Effect.Lift (Lift)
 import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (Dependency (..))
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
@@ -84,11 +85,17 @@ toDependency root BinaryFile{..} =
   Dependency
     { dependencyType = DiscoveredBinaryType
     , dependencyName = renderRelative root binaryPath
-    , dependencyVersion = Just . CEq $ unFingerprint binaryFingerprint
+    , dependencyVersion = Just . CEq $ renderFingerprint binaryFingerprint
     , dependencyLocations = []
     , dependencyEnvironments = []
     , dependencyTags = mempty
     }
+
+-- | Just render the first few characters of the fingerprint.
+-- The goal is to provide a high confidence that future binaries with the same name won't collide,
+-- and we don't need all 256 bits for that.
+renderFingerprint :: Fingerprint -> Text
+renderFingerprint fingerprint = Text.take 12 $ unFingerprint fingerprint
 
 renderRelative :: Path Abs Dir -> Path Abs File -> Text
 renderRelative absDir absFile =
