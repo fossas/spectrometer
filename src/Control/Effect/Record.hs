@@ -62,15 +62,10 @@ newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
--- | We can handle an arbitrary effect 'e' -- @Algebra (e :+: sig) (RecordC e sig m)@
--- ..but we require a few things:
--- 1. 'e' must also appear somewhere else in the effect stack -- @Member e sig@
--- 2. 'e' is Recordable -- @Recordable (e m)@
+-- | We can handle a simple effect 'e' -- @Algebra (Simple e :+: sig) (RecordC e sig m)@ ..but we require a few things:
 --
--- There's a third claim we make, not reflected in the types: in the
--- instantiated effect type 'e m a', 'm' must be a phantom type variable. This
--- is reflected in our use of 'unsafeCoerce', and is required for us to 'send'
--- the effect further down the handler stack
+-- 1. 'e' must also appear somewhere else in the effect stack -- @Member (Simple e) sig@
+-- 2. 'e' is Recordable -- @Recordable e@
 instance (Member (Simple e) sig, Has (Lift IO) sig m, Recordable e) => Algebra (Simple e :+: sig) (RecordC e sig m) where
   alg hdl sig' ctx = RecordC $ do
     case sig' of

@@ -6,7 +6,7 @@
 module Control.Effect.Replay (
   Replayable (..),
   ReplayableValue (..),
-  Some (..),
+  EffectResult (..),
   runReplay,
 ) where
 
@@ -37,7 +37,7 @@ import Unsafe.Coerce
 -- 'recordValue' from 'Recordable'
 class (Recordable r, forall a. Ord (r a)) => Replayable (r :: Type -> Type) where
   -- | Deserialize an effect data constructor and "return value" from JSON values
-  replayDecode :: Value -> Value -> Parser (r Void, Some)
+  replayDecode :: Value -> Value -> Parser (EffectResult r)
 
 -- | Intercept effect calls to replay effects given the log produced by
 -- 'runRecord'. If a log entry isn't available for a given effect invocation, we
@@ -51,15 +51,22 @@ runReplay journal = interpret $ \eff -> do
     converted :: Map (e Void) Some
     converted = convertFromJournal @e journal
 
+-- | The result of an effectful action
+data EffectResult r where
+  EffectResult :: r a -> a -> EffectResult r
+
 -- | Some value
 data Some where
   Some :: a -> Some
 
+effectResultToPair :: EffectResult r -> (r Void, Some)
+effectResultToPair (EffectResult r a) = (unsafeCoerce r, Some a)
+
 convertFromJournal :: Replayable e => Journal e -> Map (e Void) Some
 convertFromJournal (Journal mapping) =
-  case parse id (fmap Map.fromList . traverse (uncurry replayDecode) $ HashMap.toList mapping) of
+  case parse id (fmap (Map.fromList . map effectResultToPair) . traverse (uncurry replayDecode) $ HashMap.toList mapping) of
     Error str -> error str
-    Success a -> a
+    Success a -> Map.map Some a
 
 -- | ReplayableValue is essentially @FromJSON@ with a different name. We use
 -- ReplayableValue to avoid orphan FromJSON instances for, e.g., ByteString and

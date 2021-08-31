@@ -8,7 +8,6 @@ import Control.Applicative ((<|>))
 import Control.Effect.Replay
 import Control.Monad (replicateM)
 import Language.Haskell.TH
-import Unsafe.Coerce (unsafeCoerce)
 
 deriveReplayable :: Name -> Q [Dec]
 deriveReplayable tyName = do
@@ -80,8 +79,8 @@ decodeSingle keyVal valVal con = do
     [ bindS constructorTupleP [e|fromRecordedValue $(varE keyVal)|]
     , -- decodedResultValue <- fromRecordedValue valVal
       bindS (sigP (varP resultNm) (getGadtTy con)) [e|fromRecordedValue $(varE valVal)|]
-    , -- pure (unsafeCoerce (Bar a b), Some decodedResultValue)
-      noBindS [e|pure (unsafeCoerce $(conAppliedE), Some $(varE resultNm))|]
+    , -- pure (EffectResult (Bar a b) decodedResultValue)
+      noBindS [e|pure (EffectResult $(conAppliedE) $(varE resultNm))|]
     ]
 
 -- | Get the Name of a data constructor
