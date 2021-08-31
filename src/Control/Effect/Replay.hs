@@ -6,31 +6,28 @@
 module Control.Effect.Replay (
   Replayable (..),
   ReplayableValue (..),
+  Some (..),
   runReplay,
 ) where
 
 import Control.Algebra
 import Control.Applicative
-import Control.Carrier.AtomicState
-import Control.Carrier.Reader
 import Control.Carrier.Simple
-import Control.Effect.Lift
 import Control.Effect.Record
 import Control.Effect.Sum
-import Control.Monad.Trans
 import Data.Aeson
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (Parser, parse)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as Map
+import Data.HashMap.Strict qualified as HashMap
 import Data.Kind
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as MMap
+import Data.Map.Strict qualified as Map
 import Data.String.Conversion (encodeUtf8, toString)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Text.Lazy qualified as TL
+import Data.Void (Void)
 import Path
 import System.Exit
 import Unsafe.Coerce
@@ -39,49 +36,30 @@ import Unsafe.Coerce
 -- (the @a@ in @e m a@) can be deserialized from JSON values produced by
 -- 'recordValue' from 'Recordable'
 class (Recordable r, forall a. Ord (r a)) => Replayable (r :: Type -> Type) where
-  -- | Deserialize an effect data constructor's "return value" from JSON
-  replay :: r a -> Value -> Maybe a
+  -- | Deserialize an effect data constructor and "return value" from JSON values
+  replayDecode :: Value -> Value -> Parser (r Void, Some)
 
-data Any
-
-newtype ReplayC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = ReplayC
-  { runReplayC :: ReaderC (HashMap Value Value) (AtomicStateC (Map (e Any) Some) m) a
-  }
-  deriving (Functor, Applicative, Monad, MonadIO)
-
-instance MonadTrans (ReplayC e sig) where
-  lift = ReplayC . lift . lift
-
--- | Wrap an effect carrier, and replay its effects given the log produced by
+-- | Intercept effect calls to replay effects given the log produced by
 -- 'runRecord'. If a log entry isn't available for a given effect invocation, we
--- pass the effect call down to the wrapped carrier
-runReplay :: forall e sig m a. Has (Lift IO) sig m => Journal e -> ReplayC e sig m a -> m a
-runReplay (Journal mapping) = fmap snd . runAtomicState MMap.empty . runReader mapping . runReplayC
+-- pass the effect call down to the real carrier
+runReplay :: forall e sig m a. (Member (Simple e) sig, Algebra sig m, Replayable e) => Journal e -> SimpleC e m a -> m a
+runReplay journal = interpret $ \eff -> do
+  case Map.lookup (unsafeCoerce eff) converted of
+    Just (Some val) -> pure (unsafeCoerce val)
+    Nothing -> send (Simple eff)
+  where
+    converted :: Map (e Void) Some
+    converted = convertFromJournal @e journal
 
+-- | Some value
 data Some where
   Some :: a -> Some
 
-instance (Member (Simple e) sig, Has (Lift IO) sig m, Replayable e) => Algebra (Simple e :+: sig) (ReplayC e sig m) where
-  alg hdl sig' ctx = ReplayC $ do
-    case sig' of
-      L (Simple eff) -> do
-        mapping <- ask @(HashMap Value Value)
-        memo <- get @(Map (e Any) Some)
-        let keyVal = recordKey eff
-        case MMap.lookup (unsafeCoerce eff) memo of
-          Just (Some val) -> do
-            pure (unsafeCoerce val <$ ctx)
-          Nothing -> do
-            case Map.lookup keyVal mapping >>= replay eff of
-              Nothing -> do
-                -- TODO: log warnings on key miss
-                res <- lift $ send (Simple eff)
-                modify @(Map (e Any) Some) (MMap.insert (unsafeCoerce eff) (Some res))
-                pure (res <$ ctx)
-              Just result -> do
-                modify @(Map (e Any) Some) (MMap.insert (unsafeCoerce eff) (Some result))
-                pure (result <$ ctx)
-      R other -> alg (runReplayC . hdl) (R (R other)) ctx
+convertFromJournal :: Replayable e => Journal e -> Map (e Void) Some
+convertFromJournal (Journal mapping) =
+  case parse id (fmap Map.fromList . traverse (uncurry replayDecode) $ HashMap.toList mapping) of
+    Error str -> error str
+    Success a -> a
 
 -- | ReplayableValue is essentially @FromJSON@ with a different name. We use
 -- ReplayableValue to avoid orphan FromJSON instances for, e.g., ByteString and

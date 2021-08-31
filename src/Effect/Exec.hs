@@ -57,6 +57,8 @@ data Command = Command
 
 instance ToJSON Command
 instance RecordableValue Command
+instance FromJSON Command
+instance ReplayableValue Command
 
 data CmdFailure = CmdFailure
   { cmdFailureName :: Text
@@ -101,6 +103,8 @@ data AllowErr
 
 instance ToJSON AllowErr
 instance RecordableValue AllowErr
+instance FromJSON AllowErr
+instance ReplayableValue AllowErr
 
 type Stdout = BL.ByteString
 
