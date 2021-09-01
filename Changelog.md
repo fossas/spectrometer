@@ -1,5 +1,12 @@
 # Spectrometer Changelog
 
+## Unreleased
+
+- Adds support for querying FOSSA for enabled feature flags ([#352]https://github.com/fossas/spectrometer/pull/352)
+## v2.15.10
+
+- Monorepo: Ignore permission errors when searching for ninja or buildspec files. ([#351](https://github.com/fossas/spectrometer/pull/351))
+
 ## v2.15.9
 
 - CocoaPods: Supports git sources in `Podfile.lock` analysis. ([#345](https://github.com/fossas/spectrometer/pull/345))
