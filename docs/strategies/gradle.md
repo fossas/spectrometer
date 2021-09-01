@@ -196,7 +196,7 @@ For more details, see the [manual dependencies](../userguide.md#manually-specify
 
 We classify following configurations, and any dependencies originating from it as a test environment dependency:
 ```
-Any dependencies with starting with any of following string:
+Any dependencies with following prefixes:
 - androidTest
 - debugAndroidTest
 - releaseUnitTest
