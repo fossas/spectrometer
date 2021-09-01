@@ -224,8 +224,8 @@ toDependency (GitSource pkgDep) =
     toFromExpression :: Text -> Text
     toFromExpression = toUpToNextMajorExpression
 
-    -- Fetcher accepts ~ operator, to perform
-    -- upToNext minor constraint validation.
+    -- Fetcher accepts ^ operator, to perform
+    -- upToNext major constraint validation.
     toUpToNextMajorExpression :: Text -> Text
     toUpToNextMajorExpression v = "^" <> v
 
