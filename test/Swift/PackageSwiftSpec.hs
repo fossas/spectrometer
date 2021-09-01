@@ -73,7 +73,7 @@ expectedSwiftPackage =
 
 spec :: Spec
 spec = do
-  packageDotSwiftFile <- runIO (TIO.readFile "test/Swift/testdata/Package.Swift")
+  packageDotSwiftFile <- runIO (TIO.readFile "test/Swift/testdata/Package.swift")
 
   describe "Parses Package.swift file" $ do
     it "should parse swift-tools-version" $ do
