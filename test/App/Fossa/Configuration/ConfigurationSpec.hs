@@ -10,9 +10,9 @@ import App.Types (ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Effect.ReadFS
 import Path
+import Path.IO (getCurrentDir)
 import Test.Hspec qualified as T
 import Types (BuildTarget (..), TargetFilter (..))
-import Path.IO (getCurrentDir)
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =

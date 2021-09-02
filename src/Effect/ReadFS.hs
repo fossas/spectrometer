@@ -60,11 +60,11 @@ import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path
 import Path.IO qualified as PIO
+import System.Directory qualified as Directory
 import System.IO (IOMode (ReadMode), withFile)
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
-import qualified System.Directory as Directory
 
 data ReadFSF a where
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)

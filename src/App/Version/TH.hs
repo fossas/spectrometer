@@ -6,6 +6,7 @@ module App.Version.TH (
 
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
+import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
@@ -25,7 +26,6 @@ import Instances.TH.Lift ()
 import Language.Haskell.TH (TExpQ)
 import Language.Haskell.TH.Syntax (reportWarning, runIO)
 import Path.IO (getCurrentDir)
-import Control.Effect.Lift (sendIO, Lift)
 
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =

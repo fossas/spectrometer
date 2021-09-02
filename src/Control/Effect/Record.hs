@@ -1,8 +1,8 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Control.Effect.Record (
   Recordable (..),
@@ -22,15 +22,15 @@ import Control.Monad.Trans
 import Data.Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Kind
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Kind
 import Data.String.Conversion (decodeUtf8)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
+import Data.Void (Void)
 import Path
 import System.Exit
-import Data.Void (Void)
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
@@ -69,7 +69,7 @@ convertToJournal = Journal . Map.fromList . map (\(EffectResult k v) -> recordEf
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
 newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
-  { runRecordC :: AtomicStateC (Map (e Void) (EffectResult e))  m a
+  { runRecordC :: AtomicStateC (Map (e Void) (EffectResult e)) m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
