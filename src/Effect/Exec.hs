@@ -5,7 +5,7 @@
 
 module Effect.Exec (
   Exec,
-  SExec (..),
+  ExecF (..),
   ExecErr (..),
   exec,
   execThrow,
@@ -111,20 +111,20 @@ type Stdout = BL.ByteString
 type Stderr = BL.ByteString
 
 -- TODO: add a "shell command" method; this would help in App.Fossa.VPS.NinjaGraph
-data SExec a where
+data ExecF a where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
   -- - a description of the command failure
-  Exec :: SomeBase Dir -> Command -> SExec (Either CmdFailure Stdout)
+  Exec :: SomeBase Dir -> Command -> ExecF (Either CmdFailure Stdout)
 
-type Exec = Simple SExec
+type Exec = Simple ExecF
 
-$(deriveRecordable ''SExec)
-$(deriveReplayable ''SExec)
+$(deriveRecordable ''ExecF)
+$(deriveReplayable ''ExecF)
 
-deriving instance Show (SExec a)
-deriving instance Eq (SExec a)
-deriving instance Ord (SExec a)
+deriving instance Show (ExecF a)
+deriving instance Eq (ExecF a)
+deriving instance Ord (ExecF a)
 
 data ExecErr
   = -- | Command execution failed, usually from a non-zero exit
@@ -181,7 +181,7 @@ execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
-type ExecIOC = SimpleC SExec
+type ExecIOC = SimpleC ExecF
 
 runExecIO :: Has (Lift IO) sig m => ExecIOC m a -> m a
 runExecIO = interpret $ \case

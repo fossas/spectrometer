@@ -5,7 +5,7 @@
 module Effect.ReadFS (
   -- * ReadFS Effect
   ReadFS,
-  SReadFS (..),
+  ReadFSF (..),
   ReadFSErr (..),
   ReadFSIOC,
   runReadFSIO,
@@ -66,17 +66,17 @@ import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
 import qualified System.Directory as Directory
 
-data SReadFS a where
-  ReadContentsBS' :: SomeBase File -> SReadFS (Either ReadFSErr ByteString)
-  ReadContentsBSLimit' :: SomeBase File -> Int -> SReadFS (Either ReadFSErr ByteString)
-  ReadContentsText' :: SomeBase File -> SReadFS (Either ReadFSErr Text)
-  DoesFileExist :: SomeBase File -> SReadFS Bool
-  DoesDirExist :: SomeBase Dir -> SReadFS Bool
-  ResolveFile' :: Path Abs Dir -> Text -> SReadFS (Either ReadFSErr (Path Abs File))
-  ResolveDir' :: Path Abs Dir -> Text -> SReadFS (Either ReadFSErr (Path Abs Dir))
-  ListDir :: Path Abs Dir -> SReadFS (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
+data ReadFSF a where
+  ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
+  ReadContentsBSLimit' :: SomeBase File -> Int -> ReadFSF (Either ReadFSErr ByteString)
+  ReadContentsText' :: SomeBase File -> ReadFSF (Either ReadFSErr Text)
+  DoesFileExist :: SomeBase File -> ReadFSF Bool
+  DoesDirExist :: SomeBase Dir -> ReadFSF Bool
+  ResolveFile' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs File))
+  ResolveDir' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs Dir))
+  ListDir :: Path Abs Dir -> ReadFSF (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
 
-type ReadFS = Simple SReadFS
+type ReadFS = Simple ReadFSF
 
 data ReadFSErr
   = -- | A file couldn't be read. file, err
@@ -93,12 +93,12 @@ instance ToJSON ReadFSErr
 instance RecordableValue ReadFSErr
 instance FromJSON ReadFSErr
 instance ReplayableValue ReadFSErr
-$(deriveRecordable ''SReadFS)
-$(deriveReplayable ''SReadFS)
+$(deriveRecordable ''ReadFSF)
+$(deriveReplayable ''ReadFSF)
 
-deriving instance Show (SReadFS a)
-deriving instance Eq (SReadFS a)
-deriving instance Ord (SReadFS a)
+deriving instance Show (ReadFSF a)
+deriving instance Eq (ReadFSF a)
+deriving instance Ord (ReadFSF a)
 
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
@@ -207,7 +207,7 @@ readContentsXML file = context ("Parsing XML file '" <> toText (fromAbsFile file
     Left err -> fatal (FileParseError (fromAbsFile file) (xmlErrorPretty err))
     Right a -> pure a
 
-type ReadFSIOC = SimpleC SReadFS
+type ReadFSIOC = SimpleC ReadFSF
 
 runReadFSIO :: Has (Lift IO) sig m => ReadFSIOC m a -> m a
 runReadFSIO = interpret $ \case

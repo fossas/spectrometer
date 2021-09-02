@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs #-}
 
 module Control.Effect.Output (
-  SOutput (..),
+  OutputF (..),
   Output,
   output,
   module X,
@@ -10,10 +10,10 @@ module Control.Effect.Output (
 import Control.Algebra as X
 import Control.Carrier.Simple (Simple, sendSimple)
 
-data SOutput o a where
-  Output :: o -> SOutput o ()
+data OutputF o a where
+  Output :: o -> OutputF o ()
 
-type Output o = Simple (SOutput o)
+type Output o = Simple (OutputF o)
 
 output :: Has (Output o) sig m => o -> m ()
 output o = sendSimple (Output o)

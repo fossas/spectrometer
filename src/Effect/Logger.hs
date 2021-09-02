@@ -3,7 +3,7 @@
 
 module Effect.Logger (
   Logger,
-  SLogger (..),
+  LoggerF (..),
   Severity (..),
   LoggerC,
   IgnoreLoggerC,
@@ -42,13 +42,13 @@ data LogCtx m = LogCtx
 
 type LogFormatter = Severity -> Doc AnsiStyle -> Text
 
-data SLogger a where
-  Log :: Severity -> Doc AnsiStyle -> SLogger ()
+data LoggerF a where
+  Log :: Severity -> Doc AnsiStyle -> LoggerF ()
   -- | A dummy effect constructor that ensures stdout logging happens within the
   -- context of a Logger carrier that can ensure output gets flushed
-  LogStdout :: SLogger ()
+  LogStdout :: LoggerF ()
 
-type Logger = Simple SLogger
+type Logger = Simple LoggerF
 
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
@@ -116,7 +116,7 @@ formatCommon sev msg = hang 2 (pretty '[' <> showSev sev <> pretty @String "] " 
     showSev SevInfo = annotate (color Cyan) (pretty @String " INFO")
     showSev SevDebug = annotate (color White) (pretty @String "DEBUG")
 
-type LoggerC = SimpleC SLogger
+type LoggerC = SimpleC LoggerF
 
 runLogger :: Applicative m => LogCtx m -> LoggerC m a -> m a
 runLogger LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} = interpret $ \case
@@ -125,7 +125,7 @@ runLogger LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} = interpret $ \ca
       logCtxWrite $ logCtxFormatter sev msg
   LogStdout -> pure ()
 
-type IgnoreLoggerC = SimpleC SLogger
+type IgnoreLoggerC = SimpleC LoggerF
 
 ignoreLogger :: Applicative m => IgnoreLoggerC m a -> m a
 ignoreLogger = interpret $ \case

@@ -1,7 +1,7 @@
 -- | An effect for "logging" to a sticky region in the console
 module Control.Effect.StickyLogger (
   StickyLogger,
-  SStickyLogger (..),
+  StickyLoggerF (..),
   logSticky,
   logSticky',
   module X,
@@ -13,10 +13,10 @@ import Data.Text (Text)
 import Prettyprinter (Doc, pretty)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 
-data SStickyLogger a where
-  LogSticky' :: Doc AnsiStyle -> SStickyLogger ()
+data StickyLoggerF a where
+  LogSticky' :: Doc AnsiStyle -> StickyLoggerF ()
 
-type StickyLogger = Simple SStickyLogger
+type StickyLogger = Simple StickyLoggerF
 
 -- | Set the contents of the sticky region to the provided message
 logSticky :: Has StickyLogger sig m => Text -> m ()

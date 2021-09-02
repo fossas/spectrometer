@@ -21,7 +21,7 @@ import Path.IO (getCurrentDir)
 import Strategy.Go.GoList
 import Test.Hspec
 
-type ConstExecC = SimpleC SExec
+type ConstExecC = SimpleC ExecF
 
 runConstExec :: Applicative m => BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = interpret $ \case
