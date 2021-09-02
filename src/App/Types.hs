@@ -71,10 +71,7 @@ data NinjaGraphCLIOptions = NinjaGraphCLIOptions
 data FeatureFlag
   = -- | Enable VSI and Monorepo functionality
     FeatureFlagVSIMonorepo
-  | -- | Enable discovering binaries as dependencies
-    FeatureFlagIdentifyBinariesAsDeps
 
 -- | Translate the flag to its name in the FOSSA API.
 coreFlagName :: FeatureFlag -> Text
 coreFlagName FeatureFlagVSIMonorepo = "vendoredPackageScanning"
-coreFlagName FeatureFlagIdentifyBinariesAsDeps = "identifyBinariesAsDeps"
