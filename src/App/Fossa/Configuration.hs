@@ -116,6 +116,8 @@ readConfigFile file = do
 
 readConfigFileIO :: IO (Maybe ConfigFile)
 readConfigFileIO = do
+  -- FIXME: we probably want to read from the target directory of analysis, not
+  -- the current directory
   dir <- getCurrentDir
   config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> defaultFile)
   case config of
