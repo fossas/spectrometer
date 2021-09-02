@@ -12,15 +12,13 @@ import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes (Dependency (..))
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.ReadFS (ReadFS, fileIsBinary)
-import Graphing (Graphing, fromList)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (SourceUnit)
-import Types (DepType (DiscoveredBinaryType), GraphBreadth (Complete), VerConstraint (CEq))
+import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
+import Types (GraphBreadth (Complete))
 
 data BinaryFile = BinaryFile
   { binaryPath :: Path Abs File
@@ -37,7 +35,7 @@ analyzeBinaryDeps dir filters = do
   binaries <- fingerprintBinaries (toPathFilters dir filters) dir
   if null binaries
     then pure Nothing
-    else pure . Just $ Srclib.toSourceUnit (toProject dir (Graphing.fromList $ map (toDependency dir) binaries))
+    else pure . Just $ toSourceUnit (toProject dir) binaries
 
 fingerprintBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [BinaryFile]
 fingerprintBinaries filters = walk' $ \dir _ files -> do
@@ -77,19 +75,24 @@ shouldFingerprintDir dir filters = (not shouldExclude) && shouldInclude
     shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
-toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-toProject dir graph = ProjectResult "binary-deps" dir graph Complete []
+toProject :: Path Abs Dir -> ProjectResult
+toProject dir = ProjectResult "binary-deps" dir mempty Complete []
 
-toDependency :: Path Abs Dir -> BinaryFile -> Dependency
+toDependency :: Path Abs Dir -> BinaryFile -> SourceUserDefDep
 toDependency root BinaryFile{..} =
-  Dependency
-    { dependencyType = DiscoveredBinaryType
-    , dependencyName = renderRelative root binaryPath
-    , dependencyVersion = Just . CEq $ renderFingerprint binaryFingerprint
-    , dependencyLocations = []
-    , dependencyEnvironments = []
-    , dependencyTags = mempty
+  SourceUserDefDep
+    { srcUserDepName = renderRelative root binaryPath
+    , srcUserDepVersion = renderFingerprint binaryFingerprint
+    , srcUserDepLicense = ""
+    , srcUserDepDescription = Just "Binary discovered in source tree"
+    , srcUserDepHomepage = Nothing
     }
+
+toSourceUnit :: ProjectResult -> [BinaryFile] -> SourceUnit
+toSourceUnit project binaries = do
+  let unit = Srclib.toSourceUnit project
+  let deps = map (toDependency $ projectResultPath project) binaries
+  unit{additionalData = Just $ AdditionalDepData (Just deps) Nothing}
 
 -- | Just render the first few characters of the fingerprint.
 -- The goal is to provide a high confidence that future binaries with the same name won't collide,

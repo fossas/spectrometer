@@ -95,8 +95,6 @@ data DepType
     HackageType
   | -- | A Carthage dependency -- effectively a "git" dependency. Name is repo path and version is tag/branch/hash
     CarthageType
-  | -- | A binary dependency discovered in the file tree. No registry or fetch work needed.
-    DiscoveredBinaryType
   deriving (Eq, Ord, Show, Generic)
 
 data VerConstraint
