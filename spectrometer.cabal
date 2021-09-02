@@ -293,6 +293,7 @@ library
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Strategy.SwiftPM
+    Strategy.Swift.PackageResolved
     Strategy.Swift.PackageSwift
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock
@@ -387,6 +388,7 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
+    Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec

@@ -7,7 +7,7 @@ module Strategy.SwiftPM (
 import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Discovery.Walk (
-  WalkStep (WalkContinue),
+  WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
   walk',
  )
@@ -30,9 +30,15 @@ discover dir = context "Swift" $ do
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SwiftPackageProject]
 findProjects = walk' $ \dir _ files -> do
-  case findFileNamed "Package.swift" files of
-    Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([SwiftPackageProject file dir Nothing], WalkContinue)
+  let swiftPackageManifestFile = findFileNamed "Package.swift" files
+  let swiftPackageResolvedFile = findFileNamed "Package.resolved" files
+
+  case (swiftPackageManifestFile, swiftPackageResolvedFile) of
+    (Just manifestFile, Just resolvedFile) -> pure ([SwiftPackageProject manifestFile dir (Just resolvedFile)], WalkSkipSome [".build"])
+    (Just manifestFile, Nothing) -> pure ([SwiftPackageProject manifestFile dir Nothing], WalkSkipSome [".build"])
+    -- Package.resolved without Package.swift is not Swift Package Project
+    (Nothing, Just _) -> pure ([], WalkContinue)
+    (Nothing, Nothing) -> pure ([], WalkContinue)
 
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SwiftPackageProject -> DiscoveredProject n
 mkProject project =
@@ -46,7 +52,7 @@ mkProject project =
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftPackageProject -> m DependencyResults
 getDeps project = do
-  graph <- analyzePackageSwift $ manifest project
+  graph <- analyzePackageSwift (manifest project) (resolved project)
   pure $
     DependencyResults
       { dependencyGraph = graph
