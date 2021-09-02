@@ -17,40 +17,26 @@ deriveRecordable tyName = do
     [ instanceD
         (pure [])
         (appT [t|Recordable|] (conT tyName))
-        -- recordKey :: ...
-        [ recordKeyMethod tyCons
-        , -- recordValue :: ...
-          recordValueMethod tyCons
+        [ -- recordEff :: ...
+          recordEffMethod tyCons
         ]
     ]
 
-recordKeyMethod :: [Con] -> Q Dec
-recordKeyMethod cons = funD 'recordKey (map recordKeyClause cons)
+recordEffMethod :: [Con] -> DecQ
+recordEffMethod cons = funD 'recordEff (map recordEffClause cons)
 
-recordKeyClause :: Con -> Q Clause
-recordKeyClause con = do
+recordEffClause :: Con -> ClauseQ
+recordEffClause con = do
   args <- mkArgs con
+  resultValueNm <- newName "resultValue"
   clause
-    -- recordKey (DataCon a b c) =
-    [conP (conNm con) (map varP args)]
-    -- toRecordedValue ("DataCon",a,b,c)
-    (normalB (appE [e|toRecordedValue|] (toJsonTuple con args)))
+    -- recordKey (DataCon a b c) resultValue =
+    [conP (conNm con) (map varP args), varP resultValueNm]
+    -- (toRecordedValue ("DataCon",a,b,c), toRecordedValue resultValue)
+    (normalB [e|(toRecordedValue $(toJsonTuple con args), toRecordedValue $(varE resultValueNm))|])
     []
 
-recordValueMethod :: [Con] -> Q Dec
-recordValueMethod cons = funD 'recordValue (map recordValueClause cons)
-
-recordValueClause :: Con -> Q Clause
-recordValueClause con = do
-  args <- mkArgs con
-  clause
-    -- recordKey (DataCon _ _ _) val =
-    [conP (conNm con) (map (const wildP) args), [p|resultValue|]]
-    -- toRecordedValue val
-    (normalB [e|toRecordedValue resultValue|])
-    []
-
-toJsonTuple :: Con -> [Name] -> Q Exp
+toJsonTuple :: Con -> [Name] -> ExpQ
 toJsonTuple con nms = tupE ([e|constructor :: String|] : map varE nms)
   where
     constructor = show $ conNm con

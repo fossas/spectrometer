@@ -34,13 +34,13 @@ import Data.Void (Void)
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
--- and "result values" (the @a@ in @e m a@) can be serialized to JSON values
+-- and "result values" (the @a@ in @e a@) can be serialized to JSON values
+--
+-- We require that all types @e a@ have an 'Ord' instance so they can be used
+-- as keys in a 'Map'
 class (forall a. Ord (r a)) => Recordable (r :: Type -> Type) where
-  -- | Serialize a data constructor to JSON
-  recordKey :: r a -> Value
-
-  -- | Serialize an effect data constructor's "return value" to JSON
-  recordValue :: r a -> a -> Value
+  -- | Serialize an effect data constructor and result value to JSON
+  recordEff :: r a -> a -> (Value, Value)
 
 -- | A journal contains all of the effect invocations recorded by RecordC
 newtype Journal eff = Journal {unJournal :: Map Value Value}
@@ -65,7 +65,7 @@ runRecord act = do
   pure (convertToJournal (Map.elems mapping), a)
 
 convertToJournal :: Recordable e => [EffectResult e] -> Journal e
-convertToJournal = Journal . Map.fromList . map (\(EffectResult k v) -> (recordKey k, recordValue k v))
+convertToJournal = Journal . Map.fromList . map (\(EffectResult k v) -> recordEff k v)
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
 newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
