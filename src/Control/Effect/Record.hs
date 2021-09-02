@@ -83,6 +83,9 @@ instance (Member (Simple e) sig, Has (Lift IO) sig m, Recordable e) => Algebra (
       L (Simple eff) -> do
         res <- lift $ send (Simple eff)
 
+        -- NOTE: this unsafeCoerce is safe, because declaring a 'Recordable'
+        -- instance necessarily requires that the @a@ in @e a@ is a phantom
+        -- type variable. We're safe to coerce it to @Void@
         modify @(Map (e Void) (EffectResult e)) (insertUnlessExists (unsafeCoerce eff) (EffectResult eff res))
 
         pure (res <$ ctx)

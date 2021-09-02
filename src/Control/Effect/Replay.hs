@@ -43,7 +43,14 @@ class Recordable r => Replayable (r :: Type -> Type) where
 -- pass the effect call down to the real carrier
 runReplay :: forall e sig m a. (Member (Simple e) sig, Algebra sig m, Replayable e) => Journal e -> SimpleC e m a -> m a
 runReplay journal = interpret $ \eff -> do
+  -- NOTE: unsafeCoerce is safe here, because while we're convinced that the
+  -- @a@ in an effect constructor @e a@ is a phantom type, we can't convince
+  -- GHC of this without dependent types
   case Map.lookup (unsafeCoerce eff) converted of
+    -- NOTE; unsafeCoerce is safe here, because we're looking for an @a@ value
+    -- that corresponds to our map lookup of @e a@. Again, we can't convince
+    -- GHC of this without making the Map lookup well-typed, which requires
+    -- dependent types
     Just (EffectResult _ val) -> pure (unsafeCoerce val)
     Nothing -> send (Simple eff)
   where
@@ -59,7 +66,11 @@ keyBy f = Map.fromList . map (\v -> (f v, v))
 convertFromJournal :: Replayable e => Journal e -> Map (e Void) (EffectResult e)
 convertFromJournal (Journal mapping) =
   case parse id (fmap (keyBy unsafeEffectResultToKey) . traverse (uncurry replayDecode) $ Map.toList mapping) of
-    Error str -> error str -- FIXME
+    -- FIXME: this error happens when we're not able to deserialize effect
+    -- constructors/results from a journal. Because replay mode is only used
+    -- by spectrometer contributors locally, plumbing the error through
+    -- our normal error machinery is not worth the effort
+    Error str -> error $ "Unable to deserialize effect Journal: the Journal was likely created on a different spectrometer version. Error: " <> str
     Success a -> a
 
 -- | ReplayableValue is essentially @FromJSON@ with a different name. We use
