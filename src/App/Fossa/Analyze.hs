@@ -7,6 +7,7 @@ module App.Fossa.Analyze (
   JsonOutput (..),
   VSIAnalysisMode (..),
   IATAssertionMode (..),
+  BinaryDiscoveryMode (..),
   discoverFuncs,
   RecordMode (..),
 ) where
@@ -135,6 +136,13 @@ data IATAssertionMode
   | -- | assertion not enabled
     IATAssertionDisabled
 
+-- | "Binary Discovery" modes
+data BinaryDiscoveryMode
+  = -- | Binary discovery enabled
+    BinaryDiscoveryEnabled
+  | -- | Binary discovery disabled
+    BinaryDiscoveryDisabled
+
 -- | "Replay logging" modes
 data RecordMode
   = -- | record effect invocations
@@ -144,8 +152,8 @@ data RecordMode
   | -- | don't record or replay
     RecordModeNone
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> IATAssertionMode -> AllFilters -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI assertionMode filters =
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> BinaryDiscoveryMode -> IATAssertionMode -> AllFilters -> IO ()
+analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI enableBinaryDiscovery assertionMode filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -172,7 +180,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
               . runReplay @Exec (effectsExec effects)
               $ doAnalyze basedir
   where
-    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI assertionMode filters
+    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI enableBinaryDiscovery assertionMode filters
 
 discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
@@ -248,10 +256,11 @@ analyze ::
   Flag UnpackArchives ->
   Flag JsonOutput ->
   VSIAnalysisMode ->
+  BinaryDiscoveryMode ->
   IATAssertionMode ->
   AllFilters ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI iatAssertion filters = do
+analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI enableBinaryDiscovery iatAssertion filters = do
   capabilities <- sendIO getNumCapabilities
 
   let apiOpts = case destination of
@@ -260,7 +269,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
   vsiResults <- analyzeVSI enableVSI apiOpts basedir filters
-  binarySearchResults <- analyzeDiscoverBinaries apiOpts basedir filters
+  binarySearchResults <- analyzeDiscoverBinaries enableBinaryDiscovery basedir filters
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -298,17 +307,11 @@ analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
   pure $ Just results
 analyzeVSI _ _ _ _ = pure Nothing
 
-analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
-analyzeDiscoverBinaries Nothing _ _ = pure Nothing
-analyzeDiscoverBinaries (Just apiOpts) dir filters = do
-  -- Support for feature flag detection is new as of FOSSA v3.34.35.
-  -- Only run if feature flag successfully detects *and* is enabled.
-  enabled <- recover $ featureFlagEnabled apiOpts FeatureFlagIdentifyBinariesAsDeps
-  if enabled == Just True
-    then do
-      logInfo "Discovering binary files as dependencies"
-      analyzeBinaryDeps dir filters
-    else pure Nothing
+analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => BinaryDiscoveryMode -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
+analyzeDiscoverBinaries BinaryDiscoveryEnabled dir filters = do
+  logInfo "Discovering binary files as dependencies"
+  analyzeBinaryDeps dir filters
+analyzeDiscoverBinaries _ _ _ = pure Nothing
 
 doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> ApiOpts -> Locator -> m ()
 doAssertRevisionBinaries (IATAssertionEnabled dir) apiOpts locator = assertRevisionBinaries dir apiOpts locator
