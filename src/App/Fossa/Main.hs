@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -191,7 +191,8 @@ appMain = do
 
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
-          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBinaryDiscoveryMode assertionMode combinedFilters
+          modeOptions = ModeOptions analyzeVSIMode assertionMode analyzeBinaryDiscoveryMode
+          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput modeOptions combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
