@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Adds support for querying FOSSA for enabled feature flags ([#352]https://github.com/fossas/spectrometer/pull/352)
+Adds another closed beta feature around FOSSA C/C++ support.
+For now this functionality is considered publicly undocumented, and is only used with support from FOSSA engineering.
+
 - Adds feature flagged support for reporting detected binaries as unlicensed dependencies ([#353](https://github.com/fossas/spectrometer/pull/353))
 
 ## v2.15.10
