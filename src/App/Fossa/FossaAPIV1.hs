@@ -590,7 +590,7 @@ instance FromJSON FeatureFlagEnabledBody where
     FeatureFlagEnabledBody <$> obj .: "enabled"
 
 featureFlagEnabledEndpoint :: Url scheme -> FeatureFlag -> Url scheme
-featureFlagEnabledEndpoint baseurl featureFlag = baseurl /: "api" /: "feature_flags" /: "org" /: coreFlagName featureFlag
+featureFlagEnabledEndpoint baseurl featureFlag = baseurl /: "api" /: "feature_flag" /: "org" /: coreFlagName featureFlag
 
 -- | Check whether a feature flag is enabled.
 -- Support for feature flag detection is new as of FOSSA v3.34.35, it is recommended to use recover to handle this call failing until that version is widespread.
