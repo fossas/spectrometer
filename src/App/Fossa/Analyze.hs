@@ -18,14 +18,13 @@ import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
-import App.Fossa.FossaAPIV1 (UploadResponse (..), featureFlagEnabled, getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
+import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
-  FeatureFlag (..),
   OverrideProject,
   ProjectMetadata,
   ProjectRevision (projectBranch, projectName, projectRevision),
@@ -294,14 +293,6 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
 analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
-  -- The endpoint to disable this function if VSI analysis is disabled server-side is new.
-  -- For most feature flags, we'd want to default to the flag *not* enabled.
-  -- However in the case of VSI, we want to default to the flag being enabled if we fail to check it in Core to maintain existing functionality.
-  enabled <- recover $ featureFlagEnabled apiOpts FeatureFlagVSIMonorepo
-  if enabled == Just False
-    then fatalText "VSI analysis is not enabled in FOSSA. Please contact FOSSA for assistance."
-    else pure ()
-
   logInfo "Running VSI analysis"
   results <- analyzeVSIDeps dir apiOpts filters
   pure $ Just results
