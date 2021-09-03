@@ -11,6 +11,7 @@ import Strategy.Swift.PackageSwift (
   SwiftPackage (..),
   SwiftPackageDep (..),
   SwiftPackageGitDep (..),
+  SwiftPackageGitDepRequirement (..),
   buildGraph,
   parsePackageSwiftFile,
  )
@@ -18,31 +19,31 @@ import Test.Hspec
 import Text.Megaparsec (runParser)
 
 gitDepWithoutConstraint :: Text -> SwiftPackageGitDep
-gitDepWithoutConstraint url = SwiftPackageGitDep url Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+gitDepWithoutConstraint url = SwiftPackageGitDep url Nothing
 
 gitDepWithBranch :: Text -> Text -> SwiftPackageGitDep
-gitDepWithBranch url branch = (gitDepWithoutConstraint url){branchOf = Just branch}
+gitDepWithBranch url branch = (gitDepWithoutConstraint url){versionRequirement = Just $ Branch branch}
 
 gitDepWithRevision :: Text -> Text -> SwiftPackageGitDep
-gitDepWithRevision url revision = (gitDepWithoutConstraint url){revisionOf = Just revision}
+gitDepWithRevision url revision = (gitDepWithoutConstraint url){versionRequirement = Just $ Revision revision}
 
 gitDepFrom :: Text -> Text -> SwiftPackageGitDep
-gitDepFrom url from = (gitDepWithoutConstraint url){fromOf = Just from}
+gitDepFrom url from = (gitDepWithoutConstraint url){versionRequirement = Just $ From from}
 
 gitDepExactly :: Text -> Text -> SwiftPackageGitDep
-gitDepExactly url exact = (gitDepWithoutConstraint url){exactOf = Just exact}
+gitDepExactly url exact = (gitDepWithoutConstraint url){versionRequirement = Just $ Exact exact}
 
 gitDepUpToNextMajor :: Text -> Text -> SwiftPackageGitDep
-gitDepUpToNextMajor url constraint = (gitDepWithoutConstraint url){upToNextMajorOf = Just constraint}
+gitDepUpToNextMajor url constraint = (gitDepWithoutConstraint url){versionRequirement = Just $ UpToNextMajor constraint}
 
 gitDepUpToNextMinor :: Text -> Text -> SwiftPackageGitDep
-gitDepUpToNextMinor url constraint = (gitDepWithoutConstraint url){upToNextMinorOf = Just constraint}
+gitDepUpToNextMinor url constraint = (gitDepWithoutConstraint url){versionRequirement = Just $ UpToNextMinor constraint}
 
 gitDepWithClosedRange :: Text -> Text -> Text -> SwiftPackageGitDep
-gitDepWithClosedRange url lhs rhs = (gitDepWithoutConstraint url){closedInterval = Just (lhs, rhs)}
+gitDepWithClosedRange url lhs rhs = (gitDepWithoutConstraint url){versionRequirement = Just $ ClosedInterval (lhs, rhs)}
 
 gitDepWithRhsHalfOpenInterval :: Text -> Text -> Text -> SwiftPackageGitDep
-gitDepWithRhsHalfOpenInterval url lhs rhs = (gitDepWithoutConstraint url){rhsHalfOpenInterval = Just (lhs, rhs)}
+gitDepWithRhsHalfOpenInterval url lhs rhs = (gitDepWithoutConstraint url){versionRequirement = Just $ RhsHalfOpenInterval (lhs, rhs)}
 
 expectedSwiftPackage :: SwiftPackage
 expectedSwiftPackage =

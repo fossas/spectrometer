@@ -14,7 +14,7 @@ import Discovery.Walk (
 import Effect.ReadFS (ReadFS)
 import Path
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
-import Types (DependencyResults (..), DiscoveredProject (..))
+import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
 
 data SwiftPackageProject = SwiftPackageProject
   { manifest :: Path Abs File
@@ -46,10 +46,10 @@ mkProject project =
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftPackageProject -> m DependencyResults
 getDeps project = do
-  (graph, graphBreadth) <- analyzePackageSwift $ manifest project
+  graph <- analyzePackageSwift $ manifest project
   pure $
     DependencyResults
       { dependencyGraph = graph
-      , dependencyGraphBreadth = graphBreadth
+      , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [manifest project]
       }
