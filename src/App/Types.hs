@@ -65,9 +65,6 @@ data NinjaGraphCLIOptions = NinjaGraphCLIOptions
 
 -- | Feature flags are set in the FOSSA API.
 -- Not all feature flags are relevant to Spectrometer, but those that are can be found here.
---
--- Since this is client side, the intent is to use the feature flag state to provide better errors to users,
--- or for FOSSA to selectively enable experimental or optional features in CLI on an organization's behalf org-wide.
 data FeatureFlag
   = -- | Enable VSI and Monorepo functionality
     FeatureFlagVSIMonorepo
