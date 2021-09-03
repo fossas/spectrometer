@@ -7,15 +7,14 @@ module Strategy.Swift.PackageSwift (
   SwiftPackage (..),
   SwiftPackageDep (..),
   SwiftPackageGitDep (..),
+  SwiftPackageGitDepRequirement (..),
 ) where
 
 import Control.Applicative (Alternative ((<|>)), optional)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Monad (void)
-import Control.Monad.Identity (Identity)
 import Data.Foldable (asum)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
@@ -25,7 +24,6 @@ import Path
 import Text.Megaparsec (
   MonadParsec (takeWhile1P, try),
   Parsec,
-  ParsecT,
   anySingle,
   between,
   empty,
@@ -34,7 +32,6 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-import Types (GraphBreadth (..))
 
 -- | Parsing
 -- *
@@ -97,16 +94,38 @@ data SwiftPackageDep
 
 data SwiftPackageGitDep = SwiftPackageGitDep
   { srcOf :: Text
-  , branchOf :: Maybe Text
-  , revisionOf :: Maybe Text
-  , fromOf :: Maybe Text
-  , exactOf :: Maybe Text
-  , upToNextMajorOf :: Maybe Text
-  , upToNextMinorOf :: Maybe Text
-  , closedInterval :: Maybe (Text, Text)
-  , rhsHalfOpenInterval :: Maybe (Text, Text)
+  , versionRequirement :: Maybe SwiftPackageGitDepRequirement
   }
   deriving (Show, Eq, Ord)
+
+data SwiftPackageGitDepRequirement
+  = Branch Text
+  | Revision Text
+  | Exact Text
+  | From Text
+  | UpToNextMajor Text
+  | UpToNextMinor Text
+  | ClosedInterval (Text, Text)
+  | RhsHalfOpenInterval (Text, Text)
+  deriving (Show, Eq, Ord)
+
+toConstraint :: SwiftPackageGitDepRequirement -> VerConstraint
+toConstraint (Branch b) = CEq b
+toConstraint (Revision r) = CEq r
+toConstraint (Exact e) = CEq e
+-- from constraint is equivalent to upToNextMajor
+-- Reference: https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#methods-3
+toConstraint (From f) = CEq $ "^" <> f
+toConstraint (UpToNextMajor c) = CEq $ "^" <> c
+toConstraint (UpToNextMinor c) = CEq $ "~" <> c
+toConstraint (ClosedInterval (lhs, rhs)) = CEq $ ">=" <> lhs <> " " <> "<=" <> rhs
+toConstraint (RhsHalfOpenInterval (lhs, rhs)) = CEq $ ">=" <> lhs <> " " <> "<" <> rhs
+
+isGitRefConstraint :: SwiftPackageGitDepRequirement -> Bool
+isGitRefConstraint (Branch _) = True
+isGitRefConstraint (Revision _) = True
+isGitRefConstraint (Exact _) = True
+isGitRefConstraint _ = False
 
 parsePackageDep :: Parser SwiftPackageDep
 parsePackageDep = try parsePathDep <|> parseGitDep
@@ -129,7 +148,7 @@ parsePackageDep = try parsePathDep <|> parseGitDep
       rhs <- parseQuotedText
       pure (lhs, rhs)
 
-    optionallyTry :: ParsecT Void Text Identity a -> ParsecT Void Text Identity (Maybe a)
+    optionallyTry :: Parser a -> Parser (Maybe a)
     optionallyTry p = optional . try $ p <* maybeComma
 
     parseGitDep :: Parser SwiftPackageDep
@@ -140,29 +159,22 @@ parsePackageDep = try parsePathDep <|> parseGitDep
       -- Url (Required Field)
       url <- parseKeyValue "url" $ parseQuotedText <* maybeComma
 
-      -- Version Constraint (Optional Fields)
-      revision <- optionallyTry $ parseRequirement "revision"
-      branch <- optionallyTry $ parseRequirement "branch"
-      from <- optionallyTry $ parseRequirement "from"
-      exact <- optionallyTry $ parseRequirement "exact"
-      upToMajor <- optionallyTry $ parseUpToOperator "upToNextMajor"
-      upToMinor <- optionallyTry $ parseUpToOperator "upToNextMinor"
-      closedInterval <- optionallyTry $ parseRange "..."
-      rhsHalfOpenRange <- optionallyTry $ parseRange "..<"
-
+      versionRequirement <-
+        optional $
+          asum $
+            map
+              try
+              [ Revision <$> parseRequirement "revision"
+              , Branch <$> parseRequirement "branch"
+              , From <$> parseRequirement "from"
+              , Exact <$> parseRequirement "exact"
+              , UpToNextMajor <$> parseUpToOperator "upToNextMajor"
+              , UpToNextMinor <$> parseUpToOperator "upToNextMinor"
+              , ClosedInterval <$> parseRange "..."
+              , RhsHalfOpenInterval <$> parseRange "..<"
+              ]
       _ <- symbol ")"
-      pure $
-        GitSource $
-          SwiftPackageGitDep
-            url
-            branch
-            revision
-            from
-            exact
-            upToMajor
-            upToMinor
-            closedInterval
-            rhsHalfOpenRange
+      pure $ GitSource $ SwiftPackageGitDep url (versionRequirement)
 
 parsePackageDependencies :: Parser [SwiftPackageDep]
 parsePackageDependencies = do
@@ -185,11 +197,19 @@ parsePackageSwiftFile = do
 
 -- | Analysis
 -- *
-analyzePackageSwift :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing.Graphing Dependency, GraphBreadth)
-analyzePackageSwift manifestFile = do
-  manifestContent <- context "Identifying dependencies in Package.swift" $ readContentsParser parsePackageSwiftFile manifestFile
-  graph <- context "Building dependency graph" $ pure $ buildGraph manifestContent
-  pure (graph, Partial)
+analyzePackageSwift :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing.Graphing Dependency)
+analyzePackageSwift manifestFile =
+  do
+    manifestContent <-
+      context
+        "Identifying dependencies in Package.swift"
+        $ readContentsParser parsePackageSwiftFile manifestFile
+    context "Building dependency graph" $
+      pure $ buildGraph manifestContent
+
+-- manifestContent <- context "Identifying dependencies in Package.swift" $ readContentsParser parsePackageSwiftFile manifestFile
+-- graph <- context "Building dependency graph" $ pure $ buildGraph manifestContent
+-- pure graph
 
 -- | Graph Building
 -- *
@@ -197,52 +217,23 @@ buildGraph :: SwiftPackage -> Graphing.Graphing Dependency
 buildGraph pkg = induceJust $ directs (map toDependency $ packageDependencies pkg)
 
 toDependency :: SwiftPackageDep -> Maybe Dependency
+toDependency (PathSource _) = Nothing
 toDependency (GitSource pkgDep) =
   Just $
     Dependency
       { dependencyType = depType
       , dependencyName = srcOf pkgDep
-      , dependencyVersion =
-          CEq
-            <$> asum
-              [ branchOf pkgDep
-              , revisionOf pkgDep
-              , exactOf pkgDep
-              , toFromExpression <$> fromOf pkgDep
-              , toUpToNextMajorExpression <$> upToNextMajorOf pkgDep
-              , toUpToNextMinorExpression <$> upToNextMinorOf pkgDep
-              , toClosedIntervalExpression <$> closedInterval pkgDep
-              , toRhsHalfOpenIntervalExpression <$> rhsHalfOpenInterval pkgDep
-              ]
+      , dependencyVersion = toConstraint <$> versionRequirement pkgDep
       , dependencyLocations = []
       , dependencyEnvironments = []
       , dependencyTags = Map.empty
       }
   where
-    -- from constraint is equivalent to upToNextMajor
-    -- Reference: https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#methods-3
-    toFromExpression :: Text -> Text
-    toFromExpression = toUpToNextMajorExpression
-
-    -- Fetcher accepts ^ operator, to perform
-    -- upToNext major constraint validation.
-    toUpToNextMajorExpression :: Text -> Text
-    toUpToNextMajorExpression v = "^" <> v
-
-    -- Fetcher accepts ~ operator, to perform
-    -- upToNext minor constraint validation.
-    toUpToNextMinorExpression :: Text -> Text
-    toUpToNextMinorExpression v = "~" <> v
-
-    toClosedIntervalExpression :: (Text, Text) -> Text
-    toClosedIntervalExpression (lhs, rhs) = ">=" <> lhs <> " " <> "<=" <> rhs
-
-    toRhsHalfOpenIntervalExpression :: (Text, Text) -> Text
-    toRhsHalfOpenIntervalExpression (lhs, rhs) = ">=" <> lhs <> " " <> "<" <> rhs
-
     depType :: DepType
     depType =
-      if isJust $ asum [branchOf pkgDep, revisionOf pkgDep, exactOf pkgDep]
-        then GitType
-        else SwiftType
-toDependency (PathSource _) = Nothing
+      case isGitRefConstraint <$> versionRequirement pkgDep of
+        Just True -> GitType
+        Just False -> SwiftType
+        -- We want to select highest priority tag (descending with semver versioning)
+        -- instead of HEAD of the repository
+        Nothing -> SwiftType
