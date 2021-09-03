@@ -24,7 +24,6 @@ data BinaryFile = BinaryFile
   { binaryPath :: Path Abs File
   , binaryFingerprint :: Fingerprint
   }
-  deriving (Show)
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.

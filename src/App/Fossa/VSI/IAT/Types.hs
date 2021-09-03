@@ -9,21 +9,12 @@ module App.Fossa.VSI.IAT.Types (
 ) where
 
 import App.Fossa.VSI.Types qualified as VSI
-import Data.Aeson (
-  FromJSON (parseJSON),
-  ToJSON (toJSON),
-  withObject,
-  (.:),
- )
-import Data.String.Conversion (toString)
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), withObject, (.:))
 import Data.Text (Text)
 
 -- | Fingerprint uniquely idenfies a file, derived from its content.
 -- Fingerprints are backed by base16 representations of underlying data.
 newtype Fingerprint = Fingerprint {unFingerprint :: Text}
-
-instance Show Fingerprint where
-  show f = toString $ unFingerprint f
 
 instance ToJSON Fingerprint where
   toJSON = toJSON . unFingerprint
