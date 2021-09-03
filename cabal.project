@@ -36,10 +36,14 @@ source-repository-package
   location: https://github.com/da-x/cpio-conduit
   tag: 30d92919e82c5033fffac7b34288f5a7fd28e9be
 
+-- Current implementation of yarn-lock throws runtime error, as described by patches:
+-- (a) https://github.com/Profpatsch/yarn2nix/pull/73
+-- (b) https://github.com/Profpatsch/yarn2nix/pull/72
+-- TODO: Remove once, both PRs are merged. 
 source-repository-package
   type: git
-  location: https://github.com/meghfossa/yarn2nix
-  tag: b09d3c8828202887412abc820658ba1b7bf79387
+  location: https://github.com/fossas/yarn2nix
+  tag: 45dd37ed7b82785b31a729d2eff30cd993670d75
   subdir: yarn-lock
 
 index-state: hackage.haskell.org 2021-08-02T13:16:20Z
