@@ -30,7 +30,6 @@ module App.Fossa.FossaAPIV1 (
   assertRevisionBinaries,
   resolveUserDefinedBinary,
   resolveProjectDependencies,
-  featureFlagEnabled,
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
@@ -580,22 +579,3 @@ resolveProjectDependencies apiOpts locator = fossaReq $ do
   (dependencies :: [ResolvedDependency]) <- responseBody <$> req GET (resolveProjectDependenciesEndpoint baseUrl locator) NoReqBody jsonResponse opts
 
   pure $ map unwrapResolvedDependency dependencies
-
-----------
-
-newtype FeatureFlagEnabledBody = FeatureFlagEnabledBody {unFeatureFlagEnabled :: Bool}
-
-instance FromJSON FeatureFlagEnabledBody where
-  parseJSON = withObject "FeatureFlagEnabledBody" $ \obj -> do
-    FeatureFlagEnabledBody <$> obj .: "enabled"
-
-featureFlagEnabledEndpoint :: Url scheme -> FeatureFlag -> Url scheme
-featureFlagEnabledEndpoint baseurl featureFlag = baseurl /: "api" /: "feature_flag" /: "org" /: coreFlagName featureFlag
-
--- | Check whether a feature flag is enabled.
--- Support for feature flag detection is new as of FOSSA v3.34.35, it is recommended to use recover to handle this call failing until that version is widespread.
-featureFlagEnabled :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> FeatureFlag -> m Bool
-featureFlagEnabled apiOpts featureFlag = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
-  (response :: FeatureFlagEnabledBody) <- responseBody <$> req GET (featureFlagEnabledEndpoint baseUrl featureFlag) NoReqBody jsonResponse baseOpts
-  pure $ unFeatureFlagEnabled response
