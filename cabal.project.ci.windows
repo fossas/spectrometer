@@ -50,7 +50,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/fossas/yarn2nix
-  tag: 45dd37ed7b82785b31a729d2eff30cd993670d75
+  tag: 711ba824560d1adc0656e99616f67c99a278180f
   subdir: yarn-lock
 
 index-state: hackage.haskell.org 2021-08-02T13:16:20Z
