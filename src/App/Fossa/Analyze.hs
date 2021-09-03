@@ -67,7 +67,7 @@ import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
+import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit (..), parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -273,9 +273,13 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
 
+  -- additional source units are built outside the standard strategy flow, because they either
+  -- require additional information (eg API credentials), or they return additional information (eg user deps).
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
   vsiResults <- analyzeVSI modeVSIAnalysis apiOpts basedir filters
   binarySearchResults <- analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
+  let additionalSourceUnits :: [SourceUnit]
+      additionalSourceUnits = catMaybes [manualSrcUnits, vsiResults, binarySearchResults]
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -288,7 +292,6 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  let additionalSourceUnits = [manualSrcUnits, vsiResults, binarySearchResults]
   case checkForEmptyUpload projectResults filteredProjects additionalSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
@@ -405,9 +408,8 @@ data CountedResult
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
-checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [Maybe SourceUnit] -> CountedResult
-checkForEmptyUpload xs ys potentialAdditionalUnits = do
-  let additionalUnits = catMaybes potentialAdditionalUnits
+checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> CountedResult
+checkForEmptyUpload xs ys additionalUnits = do
   if null additionalUnits
     then case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
@@ -488,14 +490,14 @@ buildProjectSummary project projectLocator projectUrl = do
       , "id" .= projectLocator
       ]
 
-buildResult :: [Maybe SourceUnit] -> [ProjectResult] -> Aeson.Value
-buildResult maybeSrcUnits projects =
+buildResult :: [SourceUnit] -> [ProjectResult] -> Aeson.Value
+buildResult srcUnits projects =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= finalSourceUnits
     ]
   where
-    finalSourceUnits = catMaybes maybeSrcUnits ++ scannedUnits
+    finalSourceUnits = srcUnits ++ scannedUnits
     scannedUnits = map Srclib.toSourceUnit projects
 
 buildProject :: ProjectResult -> Aeson.Value
