@@ -5,7 +5,11 @@
 Adds another closed beta feature around FOSSA C/C++ support.
 For now this functionality is considered publicly undocumented, and is only used with support from FOSSA engineering.
 
-- Adds feature flagged support for reporting detected binaries as unlicensed dependencies ([#353](https://github.com/fossas/spectrometer/pull/353))
+- Adds support for reporting detected binaries as unlicensed dependencies ([#353](https://github.com/fossas/spectrometer/pull/353))
+
+## v2.15.11
+
+- Gradle: Classifies dependency's environment correctly, when originating from common android development and test configurations. ([#338](https://github.com/fossas/spectrometer/pull/338))
 
 ## v2.15.10
 
