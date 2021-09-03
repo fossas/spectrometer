@@ -11,6 +11,7 @@ module Effect.ReadFS (
 
   -- * Reading raw file contents
   readContentsBS,
+  readContentsBSLimit,
   readContentsText,
 
   -- * Resolving relative filepaths
@@ -22,9 +23,6 @@ module Effect.ReadFS (
   -- * Checking whether files exist
   doesFileExist,
   doesDirExist,
-
-  -- * Checking file metadata
-  fileIsBinary,
 
   -- * Listing a directory
   listDir,
@@ -115,16 +113,13 @@ instance ToDiagnostic ReadFSErr where
 readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteString)
 readContentsBS' path = send (ReadContentsBS' path)
 
+-- | Read at most n bytes of file content into a strict 'ByteString'
+readContentsBSLimit :: Has ReadFS sig m => Path b File -> Int -> m (Either ReadFSErr ByteString)
+readContentsBSLimit path limit = send (ReadContentsBSLimit' path limit)
+
 -- | Read file contents into a strict 'ByteString'
 readContentsBS :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m ByteString
 readContentsBS = fromEither <=< readContentsBS'
-
-fileIsBinary :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m Bool
-fileIsBinary file = do
-  -- git defines binaries as "a file that contains a 0 byte in the first 8000 bytes of the file".
-  attemptedContent <- send (ReadContentsBSLimit' file 8000)
-  content <- fromEither attemptedContent
-  pure $ BS.elem 0 content
 
 -- | Read file contents into a strict 'Text'
 readContentsText' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr Text)

@@ -6,15 +6,16 @@ import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
 import App.Fossa.VSI.IAT.Types (Fingerprint (..))
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics)
+import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
+import Data.ByteString qualified as BS
 import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
-import Effect.ReadFS (ReadFS, fileIsBinary)
+import Effect.ReadFS (ReadFS, readContentsBSLimit)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
@@ -104,3 +105,11 @@ renderRelative absDir absFile =
   case stripProperPrefix absDir absFile of
     Left _ -> toText . toFilePath $ absFile
     Right relFile -> toText . toFilePath $ relFile
+
+-- | Determine if a file is binary using the same method as git:
+-- "is there a zero byte in the first 8000 bytes of the file"
+fileIsBinary :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
+fileIsBinary file = do
+  attemptedContent <- readContentsBSLimit file 8000
+  content <- fromEither attemptedContent
+  pure $ BS.elem 0 content
