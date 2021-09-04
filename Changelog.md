@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.12
+
+- Monorepo: Efficiently upload binary blobs for ninja & buildspec files ([#362](https://github.com/fossas/spectrometer/pull/362)).
+
 ## v2.15.11
 
 - Gradle: Classifies dependency's environment correctly, when originating from common android development and test configurations. ([#338](https://github.com/fossas/spectrometer/pull/338))
