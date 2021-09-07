@@ -207,10 +207,6 @@ analyzePackageSwift manifestFile =
     context "Building dependency graph" $
       pure $ buildGraph manifestContent
 
--- manifestContent <- context "Identifying dependencies in Package.swift" $ readContentsParser parsePackageSwiftFile manifestFile
--- graph <- context "Building dependency graph" $ pure $ buildGraph manifestContent
--- pure graph
-
 -- | Graph Building
 -- *
 buildGraph :: SwiftPackage -> Graphing.Graphing Dependency
