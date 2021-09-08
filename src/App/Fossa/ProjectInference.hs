@@ -47,8 +47,8 @@ mergeOverride OverrideProject{..} InferredProject{..} = ProjectRevision name rev
     branch = overrideBranch <|> inferredBranch
 
 -- TODO: pass ReadFS and Exec constraints upward
-inferProjectFromVCS :: (Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m InferredProject
-inferProjectFromVCS current = runReadFSIO $ runExecIO (inferGit current <||> inferSVN current)
+inferProjectFromVCS :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m InferredProject
+inferProjectFromVCS current = inferGit current <||> inferSVN current
 
 -- | Similar to 'inferProjectDefault', but uses a saved revision
 inferProjectCached :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject

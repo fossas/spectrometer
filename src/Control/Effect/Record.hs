@@ -11,6 +11,7 @@ module Control.Effect.Record (
   runRecord,
   Journal (..),
   EffectResult (..),
+  SomeEffectResult (..),
 ) where
 
 import Control.Algebra
@@ -49,6 +50,10 @@ newtype Journal eff = Journal {unJournal :: Map Value Value}
 -- | The result of an effectful action
 data EffectResult r where
   EffectResult :: r a -> a -> EffectResult r
+
+-- | The result of an effectful action, but we don't know the effect
+data SomeEffectResult where
+  SomeEffectResult :: Recordable r => r a -> a -> SomeEffectResult
 
 instance FromJSON (Journal eff) where
   parseJSON = fmap (Journal . Map.fromList) . parseJSON

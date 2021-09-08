@@ -103,6 +103,7 @@ import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
+import Control.Carrier.Debug
 
 type TaskEffs sig m =
   ( Has (Lift IO) sig m
@@ -170,11 +171,13 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
     $ case recordMode of
       RecordModeNone -> do
         basedir <- sendIO $ validateDir workdir
-        doAnalyze basedir
+        (scope, res) <- runDebug $ readFSToDebug $ diagToDebug $ doAnalyze basedir
+        logStdout $ ("\n" <>) $ decodeUtf8 $ Aeson.encode scope
+        pure res
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
         (execLogs, (readFSLogs, res)) <-
-          runRecord @ExecF . runRecord @ReadFSF . try @SomeException $
+          ignoreDebug . runRecord @ExecF . runRecord @ReadFSF . try @SomeException $ -- FIXME: ignoreDebug
             doAnalyze basedir
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
         either throwIO pure res
@@ -185,7 +188,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
           Left err -> sendIO (die $ "Issue loading replay log: " <> err)
           Right journal -> do
             let effects = analyzeEffects journal
-            runReplay @ReadFSF (effectsReadFS effects)
+            ignoreDebug . runReplay @ReadFSF (effectsReadFS effects) -- FIXME: ignoreDebug
               . runReplay @ExecF (effectsExec effects)
               $ doAnalyze basedir
   where
@@ -228,18 +231,18 @@ discoverFuncs =
   ]
 
 runDependencyAnalysis ::
-  (Has (Lift IO) sig m, Has AtomicCounter sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
+  (Has (Lift IO) sig m, Has AtomicCounter sig m, Has Debug sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
   BaseDir ->
   AllFilters ->
-  DiscoveredProject (StickyDiagC (Diag.DiagnosticsC m)) ->
+  DiscoveredProject (StickyDiagC (DiagDebugC (Diag.DiagnosticsC m))) ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project =
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyResults project targets
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ projectDependencyResults project targets
       Diag.withResult SevWarn graphResult (output . mkResult basedir project)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
@@ -256,6 +259,7 @@ analyze ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , Has Diag.Diagnostics sig m
+  , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
   , MonadIO m
@@ -268,7 +272,7 @@ analyze ::
   ModeOptions ->
   AllFilters ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOptions{..} filters = do
+analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOptions{..} filters = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
   let apiOpts = case destination of
@@ -277,14 +281,15 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
-  manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
-  vsiResults <- analyzeVSI modeVSIAnalysis apiOpts basedir filters
-  binarySearchResults <- analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
+  manualSrcUnits <- Diag.context "fossa-deps" $ analyzeFossaDepsFile basedir apiOpts
+  vsiResults <- Diag.context "analyze-vsi" $ analyzeVSI modeVSIAnalysis apiOpts basedir filters
+  binarySearchResults <- Diag.context "discover-binaries" $ analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = catMaybes [manualSrcUnits, vsiResults, binarySearchResults]
 
   (projectResults, ()) <-
-    runOutput @ProjectResult
+    Diag.context "discovery/analysis tasks"
+      . runOutput @ProjectResult
       . runStickyLogger SevInfo
       . runFinally
       . withTaskPool capabilities updateProgress
@@ -299,7 +304,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult additionalSourceUnits filteredProjects
-      UploadScan opts metadata -> do
+      UploadScan opts metadata -> Diag.context "upload-results" $ do
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
         doAssertRevisionBinaries modeIATAssertion opts locator
 
@@ -356,6 +361,8 @@ uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   BaseDir ->
   ApiOpts ->

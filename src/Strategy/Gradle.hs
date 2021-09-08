@@ -60,7 +60,7 @@ import Discovery.Walk (WalkStep (..), fileName, walk')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
-import Effect.ReadFS (ReadFS, doesFileExist, runReadFSIO)
+import Effect.ReadFS (ReadFS, doesFileExist)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
 import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
@@ -99,6 +99,7 @@ discover ::
   , Has Logger sig m
   , Has (Lift IO) rsig run
   , Has Exec rsig run
+  , Has ReadFS rsig run
   , Has Diagnostics rsig run
   ) =>
   Path Abs Dir ->
@@ -225,7 +226,7 @@ parseSubproject line =
     ("", _) -> Nothing -- no match
     (_, rest) -> Just $ Text.takeWhile (/= '\'') rest
 
-mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => GradleProject -> DiscoveredProject n
+mkProject :: (Has Exec sig n, Has ReadFS sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => GradleProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "gradle"
@@ -235,7 +236,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m DependencyResults
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m DependencyResults
 getDeps project targets = context "Gradle" $ do
   graph <- analyze targets (gradleDir project)
   pure $
@@ -254,6 +255,7 @@ initScript = $(embedFile "scripts/jsondeps.gradle")
 analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
   FoundTargets ->
@@ -268,7 +270,7 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
         FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
         ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
-  stdout <- context "running gradle script" $ runReadFSIO $ runGradle dir cmd
+  stdout <- context "running gradle script" $ runGradle dir cmd
 
   let text = decodeUtf8 $ BL.toStrict stdout
 

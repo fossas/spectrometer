@@ -61,7 +61,9 @@ analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject
 analyzeReqTxts = context "Analyzing requirements.txt files" . fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt
 
 analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeSetupPy project = context "Analyzing setup.py" (Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)) >>= SetupPy.analyze'
+analyzeSetupPy project = context "Analyzing setup.py" $ do
+  setupPy <- Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)
+  SetupPy.analyze' setupPy
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File]
