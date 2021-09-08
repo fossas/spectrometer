@@ -145,7 +145,8 @@ appMain = do
 
   let logSeverity = bool SevInfo SevDebug optDebug
 
-  maybeApiKey <- checkAPIKey optAPIKey
+  -- maybeApiKey <- checkAPIKey optAPIKey
+  let maybeApiKey = Just $ error "API key should not be accessed"
   let override =
         OverrideProject
           { overrideName = optProjectName
@@ -188,8 +189,9 @@ appMain = do
       if analyzeOutput
         then doAnalyze OutputStdout
         else do
-          key <- requireKey maybeApiKey
-          let apiOpts = ApiOpts optBaseUrl key
+          -- key <- requireKey maybeApiKey
+          -- let apiOpts = ApiOpts optBaseUrl key
+          let apiOpts = ApiOpts optBaseUrl $ ApiKey ""
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
 
           doAnalyze (UploadScan apiOpts metadata)

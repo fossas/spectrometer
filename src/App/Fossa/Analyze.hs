@@ -248,30 +248,33 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
   capabilities <- sendIO getNumCapabilities
   -- When running analysis, append the vsi discover function to the end of the discover functions list.
   -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
-  let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination filters]
+  let -- discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination filters]
       apiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
 
-  manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
+  -- manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
 
-  (projectResults, ()) <-
-    runOutput @ProjectResult
-      . runStickyLogger SevInfo
-      . runFinally
-      . withTaskPool capabilities updateProgress
-      . runAtomicCounter
-      $ withDiscoveredProjects discoverFuncs' (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+  -- (projectResults, ()) <-
+  --   runOutput @ProjectResult
+  --     . runStickyLogger SevInfo
+  --     . runFinally
+  --     . withTaskPool capabilities updateProgress
+  --     . runAtomicCounter
+  --     $ withDiscoveredProjects discoverFuncs' (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
-  let filteredProjects = filterProjects (BaseDir basedir) projectResults
+  -- let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
-    NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
-    FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
-    FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
-      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+  -- case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
+  --   NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
+  --   FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
+  --   FoundSome sourceUnits -> case destination of
+  --     OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
+  --     UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+  case destination of
+    UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override undefined
+    _ -> error "destination not upload scan"
 
 data AnalyzeError
   = ErrNoProjectsDiscovered
@@ -313,6 +316,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
   logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
   let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
   logInfo ("Using branch: `" <> pretty branchText <> "`")
+
+  _ <- error "done"
 
   uploadResult <- uploadAnalysis apiOpts revision metadata units
   buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult

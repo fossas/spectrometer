@@ -10,12 +10,20 @@ module App.Fossa.ProjectInference (
   mergeOverride,
   readCachedRevision,
   InferredProject (..),
+
+  -- * Exported for testing.
+  parseGitProjectRevision,
 ) where
 
-import App.Types
-import Control.Algebra
+import App.Types (OverrideProject (..), ProjectRevision (..))
+import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  fatal,
+  (<||>),
+ )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (unless)
 import Data.ByteString.Lazy qualified as BL
@@ -27,14 +35,43 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Effect.Exec
-import Effect.Logger
-import Effect.ReadFS
-import Path
+import Effect.Exec (
+  AllowErr (..),
+  Command (..),
+  Exec,
+  ExecErr (..),
+  execThrow,
+  runExecIO,
+ )
+import Effect.Logger (pretty)
+import Effect.ReadFS (
+  ReadFS,
+  doesDirExist,
+  doesFileExist,
+  readContentsText,
+  runReadFSIO,
+ )
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  dirname,
+  fromAbsFile,
+  fromRelDir,
+  mkRelFile,
+  parent,
+  parseRelFile,
+  reldir,
+  relfile,
+  (</>),
+ )
 import Path.IO (getTempDir)
 import System.FilePath.Posix qualified as FP
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
+import Debug.Trace (trace)
 
 revisionFileName :: Path Rel File
 revisionFileName = $(mkRelFile ".fossa.revision")
@@ -128,8 +165,9 @@ findGitDir :: Has ReadFS sig m => Path Abs Dir -> m (Maybe (Path Abs Dir))
 findGitDir dir = do
   let relGit = [reldir|.git|]
 
-  exists <- doesDirExist (dir </> relGit)
-  if exists
+  let x = dir </> relGit
+  exists <- doesDirExist $ trace ("testing dir: " <> show x) x
+  if trace ("findGitDir: " <> show exists) exists
     then pure (Just (dir </> relGit))
     else do
       let parentDir = parent dir
@@ -146,7 +184,7 @@ inferGit ::
 inferGit dir = do
   foundGitDir <- findGitDir dir
 
-  case foundGitDir of
+  case trace ("inferGit: " <> show foundGitDir) foundGitDir of
     Nothing -> fatal MissingGitDir
     Just gitDir -> do
       name <- parseGitProjectName gitDir
@@ -194,9 +232,13 @@ parseGitProjectRevision dir = do
 
   headExists <- doesFileExist (dir </> relHead)
 
+  _ <- trace ("headExists: " <> show headExists) pure ()
+
   unless headExists (fatal MissingGitHead)
 
   headText <- readContentsText (dir </> relHead)
+
+  _ <- trace ("headText: " <> show headText) pure ()
 
   if "ref: " `Text.isPrefixOf` headText
     then do

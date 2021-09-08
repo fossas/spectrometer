@@ -213,8 +213,8 @@ library
     Effect.ReadFS
     Fossa.API.Types
     Graphing
-    Path.Extra
     Parse.XML
+    Path.Extra
     Srclib.Converter
     Srclib.Types
     Strategy.Bundler
@@ -320,6 +320,7 @@ test-suite unit-tests
     App.Fossa.API.BuildLinkSpec
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.ManualDepsSpec
+    App.Fossa.ProjectInferenceSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
     Cargo.MetadataSpec
@@ -332,8 +333,8 @@ test-suite unit-tests
     Conda.EnvironmentYmlSpec
     Control.Carrier.DiagnosticsSpec
     Dart.PubDepsSpec
-    Dart.PubSpecSpec
     Dart.PubSpecLockSpec
+    Dart.PubSpecSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec
