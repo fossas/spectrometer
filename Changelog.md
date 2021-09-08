@@ -1,8 +1,23 @@
 # Spectrometer Changelog
 
-## v2.15.12
+## v2.15.15
 
 - Monorepo: Efficiently upload binary blobs for ninja & buildspec files ([#362](https://github.com/fossas/spectrometer/pull/362)).
+
+## v2.15.14
+
+- Yarn: Fixes missing dependency from the analyses, when dependency has zero deep dependencies, and is not a deep dependency of any other dependency. ([#359](https://github.com/fossas/spectrometer/pull/359))
+
+## v2.15.13
+
+Adds another closed beta feature around FOSSA C/C++ support.
+For now this functionality is considered publicly undocumented, and is only used with support from FOSSA engineering.
+
+- Adds support for reporting detected binaries as unlicensed dependencies ([#353](https://github.com/fossas/spectrometer/pull/353))
+
+## v2.15.12
+
+- Yarn: Analyzes yarn.lock without runtime error, when yarn.lock includes directory dependency. ([#361](https://github.com/fossas/spectrometer/pull/361))
 
 ## v2.15.11
 
