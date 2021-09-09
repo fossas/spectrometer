@@ -98,6 +98,7 @@ data SwiftPackageGitDep = SwiftPackageGitDep
   }
   deriving (Show, Eq, Ord)
 
+-- | Represents https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#methods-3.
 data SwiftPackageGitDepRequirement
   = Branch Text
   | Revision Text
@@ -109,6 +110,9 @@ data SwiftPackageGitDepRequirement
   | RhsHalfOpenInterval (Text, Text)
   deriving (Show, Eq, Ord)
 
+-- Note: Swift fetcher is able to resolve, >=, <, <=, ^, ~ operators.
+-- TODO: Leverage `VerConstraint` (CAnd, etc.)
+-- TODO: Modify Srclib.Converter.verConstraintToRevision to transform constraint for fetcher
 toConstraint :: SwiftPackageGitDepRequirement -> VerConstraint
 toConstraint (Branch b) = CEq b
 toConstraint (Revision r) = CEq r
