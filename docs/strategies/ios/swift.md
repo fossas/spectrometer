@@ -15,7 +15,7 @@ Find all swift manifest files, named: `Package.swift`
 
 ## Limitation
 
-- Path dependencies are ignored in the analyses (e.g. `package(path: "./../local-pkg")`)
+- Path dependencies are ignored in the analysis (e.g. `package(path: "./../local-pkg")`)
 
 ## Example 
 
@@ -45,7 +45,7 @@ let package = Package(
 )
 ```
 
-When analyses is performed (e.g. `fossa analyze -o`), we will identify following as direct dependencies:
+When analysis is performed (e.g. `fossa analyze -o`), we will identify following as direct dependencies:
 - https://github.com/apple/example-package-fisheryates.git
 - https://github.com/apple/example-package-playingcard.git
 
@@ -53,9 +53,9 @@ When analyses is performed (e.g. `fossa analyze -o`), we will identify following
 
 ### How do I *only perform analysis* for swift package dependencies?
 
-You can explicitly specify analyses target in `.fossa.yml` file. 
+You can explicitly specify analysis an target in `.fossa.yml` file. 
 
-Example below, will exclude all analyses targets except swift. 
+Example below, will exclude all analysis targets except swift. 
 
 ```yaml
 # .fossa.yml 
