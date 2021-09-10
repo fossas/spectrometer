@@ -9,6 +9,7 @@ module Control.Carrier.Debug (
   ignoreDebug,
   diagToDebug,
   readFSToDebug,
+  execToDebug,
   Scope (..),
   module X,
 ) where
@@ -27,6 +28,7 @@ import Data.Aeson.Types (Pair)
 import Data.Fixed
 import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
+import Effect.Exec (Exec, ExecF (Exec))
 import Effect.ReadFS
 import Path
 
@@ -114,6 +116,7 @@ instance Has (Lift IO) sig m => Algebra (Debug :+: sig) (DebugC m) where
       L (DebugError err) -> do
         output (EventError (SomeDiagnostic [] err)) -- FIXME: empty path?
         pure ctx
+      L (DebugBuildtool _) -> pure ctx -- FIXME
       L (DebugFile _) -> pure ctx -- FIXME
       R other -> alg (runDebugC . hdl) (R other) ctx
 
@@ -126,6 +129,7 @@ instance Algebra sig m => Algebra (Debug :+: sig) (IgnoreDebugC m) where
       L (DebugScope _ act) -> runIgnoreDebugC (hdl (act <$ ctx))
       L DebugError{} -> pure ctx
       L DebugEffect{} -> pure ctx
+      L DebugBuildtool{} -> pure ctx
       L DebugFile{} -> pure ctx
       R other -> alg (runIgnoreDebugC . hdl) other ctx
 
@@ -169,3 +173,11 @@ readFSToDebug = interpret $ \case
   cons@ResolveFile'{} -> recording cons
   cons@ResolveDir'{} -> recording cons
   cons -> sendSimple cons
+
+-----------------------------------------------
+
+type ExecDebugC = SimpleC ExecF
+
+execToDebug :: (Has Exec sig m, Has Debug sig m) => ExecDebugC m a -> m a
+execToDebug = interpret $ \case
+  cons@Exec{} -> recording cons

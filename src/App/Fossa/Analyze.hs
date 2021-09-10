@@ -32,6 +32,7 @@ import App.Types (
  )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
+import Control.Carrier.Debug
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally
@@ -103,7 +104,6 @@ import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
-import Control.Carrier.Debug
 
 type TaskEffs sig m =
   ( Has (Lift IO) sig m
@@ -171,7 +171,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
     $ case recordMode of
       RecordModeNone -> do
         basedir <- sendIO $ validateDir workdir
-        (scope, res) <- runDebug $ readFSToDebug $ diagToDebug $ doAnalyze basedir
+        (scope, res) <- runDebug $ readFSToDebug $ execToDebug $ diagToDebug $ doAnalyze basedir
         logStdout $ ("\n" <>) $ decodeUtf8 $ Aeson.encode scope
         pure res
       RecordModeRecord -> do
