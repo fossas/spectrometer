@@ -135,6 +135,10 @@ jobs:
     - name: Check Markdown links
       uses: gaurav-nelson/github-action-markdown-link-check@v1
 
+    - name: Disallow empty Markdown links
+      run: |
+        ! grep ']()' **/*.md
+
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
