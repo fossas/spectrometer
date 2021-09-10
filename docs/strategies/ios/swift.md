@@ -37,7 +37,7 @@ let package = Package(
 )
 ```
 
-We can resolve dependencies by performing `swift package update`. Executing this will create Package.resolved in the directory. Example file is shown below.
+We can resolve dependencies by performing `swift package update`. Executing this will create Package.resolved in the directory. Example file is shown below:
 
 ```json
 {
@@ -60,60 +60,6 @@ We can resolve dependencies by performing `swift package update`. Executing this
           "revision": "5d66f7ba25daf4f94100e7022febf3c75e37a6c7",
           "version": "1.4.2"
         }
-      },
-      {
-        "package": "swift-nio",
-        "repositoryURL": "https://github.com/apple/swift-nio.git",
-        "state": {
-          "branch": null,
-          "revision": "94f41c4121a82fae5c7b1cb03e630e9f9e5e20f1",
-          "version": "2.32.1"
-        }
-      },
-      {
-        "package": "swift-nio-extras",
-        "repositoryURL": "https://github.com/apple/swift-nio-extras.git",
-        "state": {
-          "branch": null,
-          "revision": "f72c4688f89c28502105509186eadc49a49cb922",
-          "version": "1.10.0"
-        }
-      },
-      {
-        "package": "swift-nio-http2",
-        "repositoryURL": "https://github.com/apple/swift-nio-http2.git",
-        "state": {
-          "branch": null,
-          "revision": "42bdcae4ac4913507a5ee7af963c559deb60d1fc",
-          "version": "1.18.2"
-        }
-      },
-      {
-        "package": "swift-nio-ssl",
-        "repositoryURL": "https://github.com/apple/swift-nio-ssl.git",
-        "state": {
-          "branch": null,
-          "revision": "4829979d9f5ed9a2f4c6efd9c1ed51d1ab4d0394",
-          "version": "2.14.1"
-        }
-      },
-      {
-        "package": "swift-nio-transport-services",
-        "repositoryURL": "https://github.com/apple/swift-nio-transport-services.git",
-        "state": {
-          "branch": null,
-          "revision": "9571a61d236c5253b6a255a2d13fac536a1e2625",
-          "version": "1.11.2"
-        }
-      },
-      {
-        "package": "SwiftProtobuf",
-        "repositoryURL": "https://github.com/apple/swift-protobuf.git",
-        "state": {
-          "branch": null,
-          "revision": "1f62db409f2c9b0223a3f68567b4a01333aae778",
-          "version": "1.17.0"
-        }
       }
     ]
   },
@@ -121,6 +67,7 @@ We can resolve dependencies by performing `swift package update`. Executing this
 }
 
 ```
+Note: Only few pins are shown above for brevity.
 
 ### `Package.resolved` exist in the directory
 
@@ -130,13 +77,10 @@ When analyses is performed (e.g. `fossa analyze -o`), we will identify following
 
 If the `Package.resolved` exists in the directory at the time of analyses, we would also identify, following deep dependencies:
 
-- https://github.com/apple/swift-nio.git@2.32.1
-- https://github.com/apple/swift-nio-http2.git@1.18.2
-- https://github.com/apple/swift-nio-ssl.git@2.14.1
-- https://github.com/apple/swift-nio-transport-services.git@1.11.2
-- https://github.com/apple/swift-nio-extras.git@1.10.0
 - https://github.com/apple/swift-log.git@1.4.2
-- https://github.com/apple/swift-protobuf.git@1.17.0
+- and any others dependencies that appear in `Package.resolved`
+
+We will not identify edges amongst them.
 
 ### `Package.resolved` does not exist in the directory
 

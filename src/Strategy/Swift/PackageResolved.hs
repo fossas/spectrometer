@@ -32,10 +32,9 @@ data SwiftResolvedPackage = SwiftResolvedPackage
   deriving (Show, Eq, Ord)
 
 instance FromJSON SwiftPackageResolvedFile where
-  parseJSON = withObject "Package.resolved content" $ \obj -> do
-    version <- obj .: "version"
-    pinnedPackages <- obj .: "object" |> "pins"
-    pure $ SwiftPackageResolvedFile version pinnedPackages
+  parseJSON = withObject "Package.resolved content" $ \obj ->
+    SwiftPackageResolvedFile <$> obj .: "version"
+      <*> (obj .: "object" |> "pins")
 
 (|>) :: FromJSON a => Parser Object -> Text -> Parser a
 (|>) parser key = do
@@ -50,13 +49,12 @@ instance FromJSON SwiftPackageResolvedFile where
     Just o -> o .:? key
 
 instance FromJSON SwiftResolvedPackage where
-  parseJSON = withObject "Package.resolved pinned object" $ \obj -> do
-    package <- obj .: "package"
-    repositoryURL <- obj .: "repositoryURL"
-    repositoryBranch <- obj .:? "state" |?> "branch"
-    repositoryRevision <- obj .:? "state" |?> "revision"
-    repositoryVersion <- obj .:? "state" |?> "version"
-    pure $ SwiftResolvedPackage package repositoryURL repositoryBranch repositoryRevision repositoryVersion
+  parseJSON = withObject "Package.resolved pinned object" $ \obj ->
+    SwiftResolvedPackage <$> obj .: "package"
+      <*> obj .: "repositoryURL"
+      <*> (obj .:? "state" |?> "branch")
+      <*> (obj .:? "state" |?> "revision")
+      <*> (obj .:? "state" |?> "version")
 
 -- Note, Package.resolved does not include path dependencies.
 resolvedDependenciesOf :: SwiftPackageResolvedFile -> [Dependency]
@@ -70,9 +68,9 @@ resolvedDependenciesOf resolvedContent = map toDependency $ pinnedPackages resol
         , dependencyVersion =
             CEq
               <$> asum
-                [ repositoryBranch pkg
-                , repositoryRevision pkg
+                [ repositoryRevision pkg
                 , repositoryVersion pkg
+                , repositoryBranch pkg
                 ]
         , dependencyLocations = []
         , dependencyEnvironments = []

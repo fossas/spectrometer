@@ -205,20 +205,13 @@ parsePackageSwiftFile = do
 -- *
 analyzePackageSwift :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Maybe (Path Abs File) -> m (Graphing.Graphing Dependency)
 analyzePackageSwift manifestFile resolvedFile = do
-  manifestContent <-
-    context
-      "Identifying dependencies in Package.swift"
-      $ readContentsParser parsePackageSwiftFile manifestFile
+  manifestContent <- context "Identifying dependencies in Package.swift" $ readContentsParser parsePackageSwiftFile manifestFile
 
   packageResolvedContent <- case resolvedFile of
     Nothing -> pure Nothing
-    Just packageResolved ->
-      do
-        context "Identifying dependencies in Package.swift" $
-          readContentsJson packageResolved
+    Just packageResolved -> context "Identifying dependencies in Package.swift" $ readContentsJson packageResolved
 
-  context "Building dependency graph" $
-    pure $ buildGraph manifestContent packageResolvedContent
+  context "Building dependency graph" $ pure $ buildGraph manifestContent packageResolvedContent
 
 -- | Graph Building
 -- *
