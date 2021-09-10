@@ -84,42 +84,55 @@ export FOSSA_API_KEY=XXXX # Use your API key here.
 
 Now we can run an analysis. To run an analysis, all you need to do is navigate to your project's directory and run `fossa analyze`.
 
+**NOTE:** While `fossa` will try its best to report available results for any kind of project, you'll get the best results by running in a directory with a working project build. A working build lets us integrate directly with your build tool to identify dependencies, instead of trying to infer dependencies from your source code.
+
 ```sh
 $ cd $MY_PROJECT_DIR # Use your actual project location here.
 
 $ fossa analyze
-# TODO: add output example here
-```
+[ INFO] Using project name: `https://github.com/fossas/spectrometer`
+[ INFO] Using revision: `09ca72e398bb32747b27c0f43731678fa42c3c26`
+[ INFO] Using branch: `No branch (detached HEAD)`
+[ INFO] ============================================================
 
-That's it, you're done!
+      View FOSSA Report:
+      https://app.fossa.com/projects/custom+1%2fgithub.com%2ffossas%2fspectrometer/refs/branch/master/09ca72e398bb32747b27c0f43731678fa42c3c26
+
+  ============================================================
+```
 
 #### Viewing your results
 
-You can now view your uploaded dependency analysis in the FOSSA web application.
+Once an analysis has been uploaded, you can view your results in the FOSSA web application. You can see your analysis by using the link provided as output by `fossa analyze`, or by navigating to your project and revision in the FOSSA web application.
 
-You might also want to `fossa test`
+#### What next?
 
-#### Debugging your integration
+Now that your analysis is complete, there are a couple things you might want to do after an initial integration:
 
-Sometimes, your
-
-Next, you'
-
-Generate API key
-
-Download `fossa`
-
-Run `fossa analyze`, ideally on a build
-
-Debugging? see (user manual section)
+- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide]() can help you diagnose and debug your integration.
+- **Scan for issues and generate a compliance report.**
+- **Set up FOSSA in your CI.** (`fossa test` + GH webhooks)
 
 ### Using Spectrometer as a standalone tool
+
+if you'd like to script
+
+some features won't work
+
+```sh
+```
+
+Note that Spectrometer's `--output` format is **not considered stable**. While we will try our best to maintain backwards compatibility, this output format may change without warning between releases.
 
 ## User Manual
 
 README
 
 Common topics
+
+Features that require config
+- Vendored
+- Config file
 
 FAQ, debugging, etc.
 
