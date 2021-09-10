@@ -9,6 +9,7 @@ import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
 import Data.ByteString qualified as BS
+import Data.Either (partitionEithers)
 import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -16,15 +17,11 @@ import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.ReadFS (ReadFS, readContentsBSLimit)
+import Graphing (fromList)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
-import Types (GraphBreadth (Complete))
-
-data BinaryFile = BinaryFile
-  { binaryPath :: Path Abs File
-  , binaryFingerprint :: Fingerprint
-  }
+import Types (Dependency, GraphBreadth (Complete))
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.
@@ -32,26 +29,27 @@ data BinaryFile = BinaryFile
 -- Users may then use standard FOSSA UX flows to ignore or add license information to the detected binaries.
 analyzeBinaryDeps :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeBinaryDeps dir filters = do
-  binaries <- fingerprintBinaries (toPathFilters dir filters) dir
-  if null binaries
+  binaryPaths <- findBinaries (toPathFilters dir filters) dir
+  if null binaryPaths
     then pure Nothing
-    else pure . Just $ toSourceUnit (toProject dir) binaries
+    else do
+      resolvedBinaries <- traverse (resolveBinary strategies dir) binaryPaths
+      let (plain, user) = partitionEithers resolvedBinaries
+      pure . Just $ toSourceUnit (toProject dir plain) user
 
-fingerprintBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [BinaryFile]
-fingerprintBinaries filters = walk' $ \dir _ files -> do
+findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [Path Abs File]
+findBinaries filters = walk' $ \dir _ files -> do
   if shouldFingerprintDir dir filters
     then do
-      someBinaries <- traverse fingerprintIfBinary files
+      someBinaries <- traverse pathIfBinary files
       pure (catMaybes someBinaries, WalkContinue)
     else pure ([], WalkContinue)
 
-fingerprintIfBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m (Maybe BinaryFile)
-fingerprintIfBinary file = do
+pathIfBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m (Maybe (Path Abs File))
+pathIfBinary file = do
   isBinary <- fileIsBinary file
   if isBinary
-    then do
-      fp <- fingerprintRaw file
-      pure . Just $ BinaryFile file fp
+    then pure . Just $ file
     else pure Nothing
 
 -- | PathFilters is a specialized filter mechanism that operates only on absolute directory paths.
@@ -75,24 +73,13 @@ shouldFingerprintDir dir filters = (not shouldExclude) && shouldInclude
     shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
-toProject :: Path Abs Dir -> ProjectResult
-toProject dir = ProjectResult "binary-deps" dir mempty Complete []
+toProject :: Path Abs Dir -> [Dependency] -> ProjectResult
+toProject dir deps = ProjectResult "binary-deps" dir (fromList deps) Complete []
 
-toDependency :: Path Abs Dir -> BinaryFile -> SourceUserDefDep
-toDependency root BinaryFile{..} =
-  SourceUserDefDep
-    { srcUserDepName = renderRelative root binaryPath
-    , srcUserDepVersion = renderFingerprint binaryFingerprint
-    , srcUserDepLicense = ""
-    , srcUserDepDescription = Just "Binary discovered in source tree"
-    , srcUserDepHomepage = Nothing
-    }
-
-toSourceUnit :: ProjectResult -> [BinaryFile] -> SourceUnit
+toSourceUnit :: ProjectResult -> [SourceUserDefDep] -> SourceUnit
 toSourceUnit project binaries = do
   let unit = Srclib.toSourceUnit project
-  let deps = map (toDependency $ projectResultPath project) binaries
-  unit{additionalData = Just $ AdditionalDepData (Just deps) Nothing}
+  unit{additionalData = Just $ AdditionalDepData (Just binaries) Nothing}
 
 -- | Just render the first few characters of the fingerprint.
 -- The goal is to provide a high confidence that future binaries with the same name won't collide,
@@ -113,3 +100,25 @@ fileIsBinary file = do
   attemptedContent <- readContentsBSLimit file 8000
   content <- fromEither attemptedContent
   pure $ BS.elem 0 content
+
+-- | Try the next strategy in the list. If successful, evaluate to its result; if not move down the list of strategies and try again.
+-- Eventually falls back to strategyRawFingerprint if no other strategy succeeds.
+resolveBinary :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe (Either Dependency SourceUserDefDep)))] -> Path Abs Dir -> Path Abs File -> m (Either Dependency SourceUserDefDep)
+resolveBinary (resolve : remainingStrategies) root file = do
+  result <- resolve root file
+  case result of
+    Just r -> pure r
+    Nothing -> resolveBinary remainingStrategies root file
+resolveBinary [] root file = strategyRawFingerprint root file
+
+-- | Functions which may be able to resolve a binary to a dependency.
+strategies :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe (Either Dependency SourceUserDefDep)))]
+strategies =
+  []
+
+-- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
+-- This strategy is used if no other strategy succeeds at resolving the binary.
+strategyRawFingerprint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m (Either Dependency SourceUserDefDep)
+strategyRawFingerprint root file = do
+  fp <- fingerprintRaw file
+  pure . Right $ SourceUserDefDep (renderRelative root file) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing
