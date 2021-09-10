@@ -134,6 +134,9 @@ jobs:
 
     - name: Check Markdown links
       uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        config-file: '.markdown-link-check.json'
 
     - name: Disallow empty Markdown links
       run: |
