@@ -182,6 +182,9 @@ jobs:
       run: |
         make lint
 
+    - name: Check Markdown links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
