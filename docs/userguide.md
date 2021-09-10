@@ -11,6 +11,7 @@
   - [clojure](#clojure)
   - [dart](#dart)
   - [erlang](#erlang)
+  - [elixir](#elixir)
   - [golang](#golang)
   - [haskell](#haskell)
   - [java](#java)
