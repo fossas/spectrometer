@@ -55,6 +55,56 @@ You can install Spectrometer releases manually by downloading the latest release
 
 ### Integrating your project with FOSSA
 
+#### TL;DR
+
+```sh
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+
+export FOSSA_API_KEY=XXXX
+
+cd $MY_PROJECT_DIR
+fossa analyze
+```
+
+#### Installing Spectrometer
+
+Follow [the installation instructions]() above to install Spectrometer. Once installed, you should have a new binary named `fossa` available on your `$PATH`.
+
+#### Generating an API key
+
+To get started with integrating your project into FOSSA, you'll need to [generate an API key](). You'll get this API key from the FOSSA web application ([app.fossa.com]()). You can follow the instructions [here]() to generate your API key.
+
+Once you have your API key:
+
+```sh
+export FOSSA_API_KEY=XXXX # Use your API key here.
+```
+
+#### Running an analysis
+
+Now we can run an analysis. To run an analysis, all you need to do is navigate to your project's directory and run `fossa analyze`.
+
+```sh
+$ cd $MY_PROJECT_DIR # Use your actual project location here.
+
+$ fossa analyze
+# TODO: add output example here
+```
+
+That's it, you're done!
+
+#### Viewing your results
+
+You can now view your uploaded dependency analysis in the FOSSA web application.
+
+You might also want to `fossa test`
+
+#### Debugging your integration
+
+Sometimes, your
+
+Next, you'
+
 Generate API key
 
 Download `fossa`
@@ -73,24 +123,7 @@ Common topics
 
 FAQ, debugging, etc.
 
-## Using Spectrometer
-
 See the [User Guide](docs/userguide.md) for detailed instructions.
-
-Usually, this is sufficient:
-
-``` sh
-# configure api key
-export FOSSA_API_KEY=your-api-key-goes-here
-
-# run dependency analysis in the current
-# directory, uploading results to FOSSA
-fossa analyze
-
-# check for FOSSA license- and vulnerability-scan results
-fossa test
-```
-
 
 ## Reporting Issues
 
