@@ -6,6 +6,7 @@ module App.Pathfinder.Scan (
 ) where
 
 import Control.Carrier.AtomicCounter (runAtomicCounter)
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
@@ -64,7 +65,8 @@ scan basedir = runFinally $ do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
-    runOutput @ProjectLicenseScan
+    ignoreDebug
+      . runOutput @ProjectLicenseScan
       . runStickyLogger SevInfo
       . runReadFSIO
       . runFinally

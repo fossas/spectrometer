@@ -7,6 +7,7 @@ module App.Fossa.ListTargets (
 import App.Fossa.Analyze (discoverFuncs)
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
@@ -29,7 +30,8 @@ listTargetsMain :: BaseDir -> IO ()
 listTargetsMain (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
-  withDefaultLogger SevInfo
+  ignoreDebug
+    . withDefaultLogger SevInfo
     . runStickyLogger SevInfo
     . runFinally
     . withTaskPool capabilities updateProgress

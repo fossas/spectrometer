@@ -4,6 +4,7 @@ module Discovery.Projects (
   withDiscoveredProjects,
 ) where
 
+import Control.Carrier.Debug (Debug, DiagDebugC, diagToDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Effect.AtomicCounter (AtomicCounter)
@@ -23,9 +24,9 @@ import Types (DiscoveredProject)
 -- on each discovered project. Note that the provided function is also run in
 -- parallel.
 withDiscoveredProjects ::
-  (Has AtomicCounter sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
+  (Has AtomicCounter sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Debug sig m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
   -- | Discover functions
-  [Path Abs Dir -> StickyDiagC (Diag.DiagnosticsC m) [DiscoveredProject run]] ->
+  [Path Abs Dir -> StickyDiagC (DiagDebugC (Diag.DiagnosticsC m)) [DiscoveredProject run]] ->
   -- | whether to unpack archives
   Bool ->
   Path Abs Dir ->
@@ -33,7 +34,7 @@ withDiscoveredProjects ::
   m ()
 withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
   for_ discoverFuncs $ \discover -> forkTask $ do
-    projectsResult <- Diag.runDiagnosticsIO . stickyDiag $ discover basedir
+    projectsResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ discover basedir
     Diag.withResult SevError projectsResult (traverse_ (forkTask . f))
 
   when unpackArchives $ do
