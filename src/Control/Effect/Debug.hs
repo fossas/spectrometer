@@ -4,6 +4,7 @@ module Control.Effect.Debug (
   debugError,
   debugEffect,
   debugFile,
+  debugBuildtool,
   module X,
 ) where
 
@@ -11,6 +12,7 @@ import Control.Algebra as X
 import Control.Effect.Diagnostics (ToDiagnostic)
 import Control.Effect.Record (Recordable)
 import Data.Text (Text)
+import Effect.Exec (Command)
 import Path
 
 data Debug m a where
@@ -18,8 +20,7 @@ data Debug m a where
   DebugError :: ToDiagnostic err => err -> Debug m ()
   DebugEffect :: Recordable r => r a -> a -> Debug m ()
   DebugFile :: Path Abs File -> Debug m ()
-
---DebugKV :: ToJSON a => Text -> a -> Debug m ()
+  DebugBuildtool :: Command -> Debug m ()
 
 debugScope :: Has Debug sig m => Text -> m a -> m a
 debugScope nm act = send (DebugScope nm act)
@@ -33,5 +34,5 @@ debugEffect k v = send (DebugEffect k v)
 debugFile :: Has Debug sig m => Path Abs File -> m ()
 debugFile = send . DebugFile
 
---debugKV :: (ToJSON a, Has Debug sig m) => Text -> a -> m ()
---debugKV k v = send (DebugKV k v)
+debugBuildtool :: Has Debug sig m => Command -> m ()
+debugBuildtool = send . DebugBuildtool

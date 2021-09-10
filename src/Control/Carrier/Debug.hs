@@ -23,6 +23,7 @@ import Control.Effect.Sum
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (lift)
 import Data.Aeson
+import Data.Aeson.Types (Pair)
 import Data.Fixed
 import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
@@ -43,12 +44,18 @@ data Scope = Scope
   deriving (Show)
 
 instance ToJSON Scope where
-  toJSON Scope{..} =
-    object
-      [ "duration" .= show (unDuration scopeTiming)
-      , "events" .= scopeEvents
-      , "files" .= scopeFiles
-      ]
+  toJSON = object . scopePairs
+
+scopePairs :: Scope -> [Pair]
+scopePairs Scope{..} =
+  [ "duration" .= show (unDuration scopeTiming)
+  , "events" .= scopeEvents
+  ]
+    ++ whenNonEmpty "files" scopeFiles
+
+whenNonEmpty :: ToJSON a => Text -> [a] -> [Pair]
+whenNonEmpty _ [] = []
+whenNonEmpty key val = [key .= val]
 
 data ScopeEvent
   = EventEffect SomeEffectResult
@@ -63,13 +70,12 @@ instance ToJSON ScopeEvent where
       ]
     where
       (encodedK, encodedV) = recordEff k v
-  toJSON (EventError (SomeDiagnostic _ err)) = object
-    [ "error" .= show (renderDiagnostic err)
-    ]
-  toJSON (EventScope nm scope) =
+  toJSON (EventError (SomeDiagnostic _ err)) =
     object
-      [ ("scope: " <> nm) .= scope
+      [ "error" .= show (renderDiagnostic err)
       ]
+  toJSON (EventScope nm scope) =
+    object $ ("scope" .= nm) : scopePairs scope
 
 instance Show ScopeEvent where -- FIXME
   show (EventEffect (SomeEffectResult k v)) = "SomeEffectResult " <> show (recordEff k v)
@@ -111,7 +117,7 @@ instance Has (Lift IO) sig m => Algebra (Debug :+: sig) (DebugC m) where
       L (DebugFile _) -> pure ctx -- FIXME
       R other -> alg (runDebugC . hdl) (R other) ctx
 
-newtype IgnoreDebugC m a = IgnoreDebugC { runIgnoreDebugC :: m a }
+newtype IgnoreDebugC m a = IgnoreDebugC {runIgnoreDebugC :: m a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance Algebra sig m => Algebra (Debug :+: sig) (IgnoreDebugC m) where
