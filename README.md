@@ -7,7 +7,7 @@
 Spectrometer is a zero-configuration polyglot dependency analysis tool. You can point Spectrometer at any codebase or build, and it will automatically detect dependencies being used by your project.
 
 <!-- TODO: Flesh out X and Y. Ideally, link to reference documentation. -->
-Spectrometer currently supports automatic dependency analysis for X languages and Y build tools. It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make Spectrometer a one-stop shop for all kinds of dependency analysis.
+Spectrometer currently supports automatic dependency analysis for X+ languages and Y+ build tools. It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make Spectrometer a single, universal tool for all kinds of dependency analysis.
 
 Spectrometer integrates deeply with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more. You can also use Spectrometer as a standalone dependency analysis tool, although some features (such as vendored dependency detection) may not work without a FOSSA integration.
 
@@ -59,13 +59,19 @@ Generate API key
 
 Download `fossa`
 
-Run `fossa analyze`
+Run `fossa analyze`, ideally on a build
 
-Debugging? see here
+Debugging? see (user manual section)
 
 ### Using Spectrometer as a standalone tool
 
 ## User Manual
+
+README
+
+Common topics
+
+FAQ, debugging, etc.
 
 ## Using Spectrometer
 

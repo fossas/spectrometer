@@ -12,6 +12,7 @@
   - [dart](#dart)
   - [erlang](#erlang)
   - [fortran](#fortran)
+  - [elixir](#elixir)
   - [golang](#golang)
   - [haskell](#haskell)
   - [java](#java)
