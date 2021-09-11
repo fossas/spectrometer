@@ -298,6 +298,7 @@ library
     Strategy.SwiftPM
     Strategy.Swift.PackageResolved
     Strategy.Swift.PackageSwift
+    Strategy.Xcode.Pbxproj
     Strategy.Xcode.PbxprojParser
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock

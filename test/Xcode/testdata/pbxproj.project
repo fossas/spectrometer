@@ -598,11 +598,36 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		170A463726ECEDEF002DDFB8 /* XCRemoteSwiftPackageReference "example-package-deckofplayingcards" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/example-package-deckofplayingcards";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		170A463A26ED051A002DDFB8 /* XCRemoteSwiftPackageReference "MyHTML" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PopFlamingo/MyHTML.git";
+			requirement = {
+				kind = exactVersion;
+				version = 2.0.0;
+			};
+		};
+		170A463D26ED054A002DDFB8 /* XCRemoteSwiftPackageReference "Spinetail" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/brightdigit/Spinetail.git";
+			requirement = {
+				kind = revision;
+				revision = 97ad8ba7a43fac299ef88f3200fccf852c778b67;
+			};
+		};
 		172D94BD26C5D824008A4DB2 /* XCRemoteSwiftPackageReference "vapor" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/vapor/vapor.git";
 			requirement = {
-				kind = upToNextMajorVersion;
+				kind = versionRange;
+				maximumVersion = 5.0.0;
 				minimumVersion = 4.48.3;
 			};
 		};
@@ -618,13 +643,28 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-syntax";
 			requirement = {
-				kind = upToNextMajorVersion;
+				kind = upToNextMinorVersion;
 				minimumVersion = 0.50400.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		170A463826ECEDF0002DDFB8 /* DeckOfPlayingCards */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 170A463726ECEDEF002DDFB8 /* XCRemoteSwiftPackageReference "example-package-deckofplayingcards" */;
+			productName = DeckOfPlayingCards;
+		};
+		170A463B26ED051A002DDFB8 /* MyHTML */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 170A463A26ED051A002DDFB8 /* XCRemoteSwiftPackageReference "MyHTML" */;
+			productName = MyHTML;
+		};
+		170A463E26ED054A002DDFB8 /* Spinetail */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 170A463D26ED054A002DDFB8 /* XCRemoteSwiftPackageReference "Spinetail" */;
+			productName = Spinetail;
+		};
 		172D94BE26C5D824008A4DB2 /* Vapor */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 172D94BD26C5D824008A4DB2 /* XCRemoteSwiftPackageReference "vapor" */;
@@ -651,6 +691,7 @@
 			productName = SwiftSyntaxBuilder;
 		};
 /* End XCSwiftPackageProductDependency section */
+
 	};
 	rootObject = 17874CD926C46B8500D16CA8 /* Project object */;
 }

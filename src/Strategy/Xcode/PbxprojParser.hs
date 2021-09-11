@@ -24,6 +24,10 @@ module Strategy.Xcode.PbxprojParser (
   parsePbxProj,
   PbxProj (..),
   AsciiValue (..),
+  isaOf,
+  lookupText,
+  textOf,
+  (|->),
 
   -- * for testing only
   parseAsciiText,
@@ -32,18 +36,23 @@ module Strategy.Xcode.PbxprojParser (
   parseAsciiValue,
 ) where
 
+import Data.Foldable (asum)
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
+import Data.Text.IO qualified as TIO
 import Data.Void (Void)
 import Text.Megaparsec (
   MonadParsec (takeWhile1P, try),
   Parsec,
   between,
+  errorBundlePretty,
   many,
   noneOf,
+  runParser,
   sepEndBy,
   some,
   (<?>),
@@ -141,6 +150,9 @@ textOf :: AsciiValue -> Maybe Text
 textOf (AText t) = Just t
 textOf _ = Nothing
 
+lookupText :: AsciiValue -> Text -> Maybe Text
+lookupText v key = (v |-> key) >>= textOf
+
 supportedEncoding :: Text
 supportedEncoding = "UTF8"
 
@@ -164,3 +176,15 @@ parsePbxProj = do
   let classes = (allValues |-> "classes")
   let objects = (allValues |-> "objects")
   pure $ PbxProj archiveVersion objectVersion rootObject classes objects
+
+isaOf :: Text -> AsciiValue -> [Map Text AsciiValue]
+isaOf _ (AText _) = []
+isaOf _ (AList _) = []
+isaOf key (ADict val) = mapMaybe getDict $ Map.elems filteredMap
+  where
+    filteredMap :: Map Text AsciiValue
+    filteredMap = Map.filterWithKey (\_ v -> Just key == (textOf =<< v |-> "isa")) val
+
+    getDict :: AsciiValue -> Maybe (Map Text AsciiValue)
+    getDict (ADict v) = Just v
+    getDict _ = Nothing
