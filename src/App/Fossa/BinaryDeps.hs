@@ -6,22 +6,24 @@ import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
 import App.Fossa.VSI.IAT.Types (Fingerprint (..))
 import Control.Algebra (Has)
+import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
 import Data.ByteString qualified as BS
 import Data.Either (partitionEithers)
+import Data.List (isSuffixOf)
 import Data.Maybe (catMaybes)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.ReadFS (ReadFS, readContentsBSLimit)
 import Graphing (fromList)
-import Path (Abs, Dir, File, Path, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, filename, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
-import Types (Dependency, GraphBreadth (Complete))
+import Types (Dependency (..), GraphBreadth (Complete))
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.
@@ -114,7 +116,7 @@ resolveBinary [] root file = strategyRawFingerprint root file
 -- | Functions which may be able to resolve a binary to a dependency.
 strategies :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe (Either Dependency SourceUserDefDep)))]
 strategies =
-  []
+  [strategyJar]
 
 -- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
 -- This strategy is used if no other strategy succeeds at resolving the binary.
@@ -122,3 +124,18 @@ strategyRawFingerprint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path A
 strategyRawFingerprint root file = do
   fp <- fingerprintRaw file
   pure . Right $ SourceUserDefDep (renderRelative root file) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing
+
+-- | Implement JAR resolution using a similar method to Ant analysis in CLIv1
+strategyJar :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m (Maybe (Either Dependency SourceUserDefDep))
+strategyJar _ file =
+  if validSuffix
+    then case fromPom <|> fromMetaInf of
+      Just dep -> pure . Just $ Left dep
+      Nothing -> pure Nothing
+    else pure Nothing
+  where
+    validSuffix = any (isSuffixOf (toString $ filename file)) [".jar", ".aar"]
+    fromPom :: Maybe Dependency
+    fromPom = Nothing
+    fromMetaInf :: Maybe Dependency
+    fromMetaInf = Nothing
