@@ -110,7 +110,7 @@ Once an analysis has been uploaded, you can view your results in the FOSSA web a
 Now that your analysis is complete, there are a couple things you might want to do after an initial integration:
 
 - **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide]() can help you diagnose and debug your integration.
-- **Scan for issues and generate a compliance report.**
+- **Scan for issues and generate a compliance report.** TODO: finish
 - **Set up FOSSA in your CI.** (`fossa test` + GH webhooks)
 
 ### Using Spectrometer as a standalone tool
@@ -126,19 +126,17 @@ Note that Spectrometer's `--output` format is **not considered stable**. While w
 
 ## User Manual
 
-README
+For most users, Spectrometer should work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
 
-Common topics
+Users who need more advanced customizations or features should see the [User Manual](). Some common topics of interest include:
 
-Features that require config
-- Vendored
-- Config file
-
-FAQ, debugging, etc.
-
-See the [User Guide](docs/userguide.md) for detailed instructions.
+- Vendored dependencies.
+- Config file.
+- Debugging.
 
 ## Reporting Issues
+
+TODO: --- reword
 
 If you are experiencing an issue related to the results on the FOSSA
 website/dashboard, please contact [support@fossa.com](mailto:support@fossa.com)
