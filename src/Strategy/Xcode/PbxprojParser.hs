@@ -9,6 +9,7 @@
 --  * Binary
 --  * Date
 --  * String
+--  * Number
 --  * List
 --  * Dictionary
 --
@@ -121,7 +122,7 @@ parseAsciiKeyValue = do
   pure (key, value)
 
 -- | Represents Xcode's pbxproj.project file elementary structure.
--- Reference:
+-- Reference: http://www.monobjc.net/xcode-project-file-format.html
 data PbxProj = PbxProj
   { archiveVersion :: Text
   , objectVersion :: Text
