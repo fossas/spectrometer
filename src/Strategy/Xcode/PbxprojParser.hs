@@ -1,5 +1,24 @@
-{-# LANGUAGE QuasiQuotes #-}
-
+-- | Module      : Strategy.Xcode.PbxprojParser
+--
+-- Provides elementary parsing of xcode's pbxproj.project file.
+-- Xcode uses plist ascii, encoded in UTF-8 to perform record configurations.
+--
+-- There is no official spec, for the file format.
+--
+-- It can represents data in:
+--  * Binary
+--  * Date
+--  * String
+--  * List
+--  * Dictionary
+--
+-- Relevant References:
+--   * For ASCII types: https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/PropertyLists/OldStylePlists/OldStylePLists.html
+--   * Various `pbxproj.project` format's articles (unofficial):
+--     * http://www.monobjc.net/xcode-project-file-format.html
+--
+-- We intentionally parse all types into one of String, List, and Dictionary.
+-- We do not distinguish between types of "configuration" or "xcode specific property type".
 module Strategy.Xcode.PbxprojParser (
   parsePbxProj,
   PbxProj (..),
@@ -12,7 +31,6 @@ module Strategy.Xcode.PbxprojParser (
   parseAsciiValue,
 ) where
 
-import Data.Char qualified as C
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
@@ -25,25 +43,13 @@ import Text.Megaparsec (
   between,
   many,
   noneOf,
-  oneOf,
   sepEndBy,
   some,
   (<?>),
   (<|>),
  )
-import Text.Megaparsec.Char (char)
+import Text.Megaparsec.Char (char, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-
--- XCode uses ASCII property list format.
--- Apple Reference: https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/PropertyLists/OldStylePlists/OldStylePLists.html
---
--- String: "some string"
--- Data: <0fbd777 1c2735ae>
--- Array: ("awesome", "weather")
--- Dictionary: { user = superadmin; birth = 1564; }
---
--- Other References:
--- - http://www.monobjc.net/xcode-project-file-format.html
 
 type Parser = Parsec Void Text
 
@@ -63,36 +69,35 @@ symbol = Lexer.symbol sc
 betweenCurlyBrackets :: Parser a -> Parser a
 betweenCurlyBrackets = between (symbol "{") (symbol "}")
 
+betweenParentheses :: Parser a -> Parser a
+betweenParentheses = between (symbol "(") (symbol ")")
+
 parseQuotedText :: Parser Text
-parseQuotedText = between (symbol "\"") (symbol "\"") (toText <$> many (escapedChar <|> normalChar))
+parseQuotedText = between (symbol "\"") (symbol "\"") quoted
   where
-    escapedChar =
-      (char '\\')
-        *> ( oneOf
-              [ '\\'
-              , '"'
-              , 'n'
-              , 'r'
-              , 't'
-              , 'v'
-              , '\''
-              , 'f'
-              , 'e'
-              , 'a'
-              ]
-           )
-    normalChar = noneOf ['\"']
+    quoted :: Parser Text
+    quoted = toText <$> many (nullifiedQuote <|> notEscapedQuote)
+
+    nullifiedQuote :: Parser Char
+    nullifiedQuote = string "\\\"" >> pure '"'
+
+    notEscapedQuote :: Parser Char
+    notEscapedQuote = noneOf ['\"']
 
 parseText :: Parser Text
-parseText = takeWhile1P (Just "text") isNotSpaceOrColonOrComma
+parseText = takeWhile1P (Just "text") (\c -> c `notElem` [';', ',', ')', ' ', '\t', '\n', '\r'])
 
-isNotSpaceOrColonOrComma :: Char -> Bool
-isNotSpaceOrColonOrComma c = (c /= ';' && c /= ',' && c /= ')') && (not . C.isSpace) c
-
+-- | Potential type represented in Ascii plist file.
+-- Reference : https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/PropertyLists/OldStylePlists/OldStylePLists.html
 data AsciiValue
-  = AText Text
-  | ADict (Map Text AsciiValue)
-  | AList [AsciiValue]
+  = -- | Represents SomeText or "SomeText"
+    -- Since we are only interested in textual representation of package name, and package version
+    -- We represent potential binary, date, boolean ascii type as text.
+    AText Text
+  | -- | Represents {key = value;}
+    ADict (Map Text AsciiValue)
+  | -- | Represents (A, B,)
+    AList [AsciiValue]
   deriving (Show, Eq, Ord)
 
 data AsciiKeyValue = AsciiKeyValue Text AsciiValue deriving (Show, Eq, Ord)
@@ -101,11 +106,7 @@ parseAsciiText :: Parser AsciiValue
 parseAsciiText = AText <$> lexeme (try parseQuotedText <|> parseText)
 
 parseAsciiList :: Parser AsciiValue
-parseAsciiList = do
-  _ <- symbol "("
-  val <- AList <$> sepEndBy (parseAsciiValue) (symbol ",")
-  _ <- symbol ")"
-  pure val
+parseAsciiList = AList <$> betweenParentheses (sepEndBy parseAsciiValue (symbol ","))
 
 parseAsciiValue :: Parser AsciiValue
 parseAsciiValue = try parseAsciiDict <|> try parseAsciiList <|> parseAsciiText
@@ -119,6 +120,8 @@ parseAsciiKeyValue = do
   value <- lexeme $ try parseAsciiList <|> try parseAsciiDict <|> parseAsciiText
   pure (key, value)
 
+-- | Represents Xcode's pbxproj.project file elementary structure.
+-- Reference:
 data PbxProj = PbxProj
   { archiveVersion :: Text
   , objectVersion :: Text

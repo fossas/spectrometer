@@ -67,14 +67,19 @@ spec :: Spec
 spec = do
   describe "parseAsciiText" $ do
     let shouldParseInto = parseMatch parseAsciiText
+
     it "should parse text" $ do
       "a" `shouldParseInto` AText "a"
       "ab" `shouldParseInto` AText "ab"
       "ab-c" `shouldParseInto` AText "ab-c"
       "ab-c.d" `shouldParseInto` AText "ab-c.d"
 
-    it "should parse quoted text" $
-      "\"ab-c.d e\"" `shouldParseInto` AText "ab-c.d e"
+    it "should parse quoted text" $ do
+      [r|"ab-c.d e"|] `shouldParseInto` AText [r|ab-c.d e|]
+      [r|"\"$(A)/$(B)\""|] `shouldParseInto` AText [r|"$(A)/$(B)"|]
+      [r|"$(A)\..\A\B"|] `shouldParseInto` AText [r|$(A)\..\A\B|]
+      [r|"exp A=\"${B:=0}\"\necho \"exp C=${D}\" > \"${E}/../.F.env\"\n if [-z \"${Z}\"]; \n"|]
+        `shouldParseInto` AText [r|exp A="${B:=0}"\necho "exp C=${D}" > "${E}/../.F.env"\n if [-z "${Z}"]; \n|]
 
   describe "parseAsciiList" $ do
     let shouldParseInto = parseMatch parseAsciiList
@@ -149,7 +154,6 @@ spec = do
 
   describe "parsePbxProj" $ do
     pbxprojFile <- runIO (TIO.readFile "test/Xcode/testdata/pbxproj.project")
-
     it "should parse pbxproj.project" $
       case runParser parsePbxProj "" pbxprojFile of
         Left _ -> expectationFailure "failed to parse"
