@@ -2,29 +2,34 @@
 
 ## Project Discovery
 
-Find all swift manifest files, named: `Package.swift`
+Find all files named: `Package.swift` or find Xcode's project file named: `project.pbxproj`. 
+We will not scan `.build` directory if the `Package.swift` or Xcode project file is discovered. 
 
-# Swift Package Analysis
+# Swift Analysis
 
-| Strategy                                                             | Direct Deps        | Deep Deps          | Edges | Classifies Test Dependencies |
-| -------------------------------------------------------------------- | ------------------ | ------------------ | ----- | ---------------------------- |
-| parse package dependencies in `Package.swift`                        | :white_check_mark: | :x:                | :x:   | :x:                          |
-| parse package dependencies in `Package.swift` and `Package.resolved` | :white_check_mark: | :white_check_mark: | :x:   | :x:                          |
+| Strategy                                                                 | Direct Deps        | Deep Deps          | Edges | Classifies Test Dependencies |
+| ------------------------------------------------------------------------ | ------------------ | ------------------ | ----- | ---------------------------- |
+| Parse dependencies from `Package.swift`                                  | :white_check_mark: | :x:                | :x:   | :x:                          |
+| Parse dependencies from `Package.swift` and `Package.resolved`           | :white_check_mark: | :white_check_mark: | :x:   | :x:                          |
+| Parse dependencies from Xcode's `project.pbxproj`                        | :white_check_mark: | :x:                | :x:   | :x:                          |
+| Parse dependencies from Xcode's `project.pbxproj` and `Package.resolved` | :white_check_mark: | :white_check_mark: | :x:   | :x:                          |
 
-- Manifest file - `Package.swift`, must begin with `// swift-tools-version:` string, followed by version number specifier. 
-- We follow swift package manager's convention, and presume properties of package are defined in a single nested initializer statement, and are not modified after initialization.
+- Manifest file: `Package.swift`, must begin with `// swift-tools-version:` string, followed by version number specifier. 
+- We follow swift package manager's convention and presume properties of the package are defined in a single nested initializer statement and are not modified after initialization.
+- Valid Xcode project for swift, is defined by the discovery of `project.pbxproj` file in ASCII plist format with at least one `XCRemoteSwiftPackageReference` object in its content.
 
-## Limitation
+## Limitations
 
 - Path dependencies are ignored in the analysis (e.g. `package(path: "./../local-pkg")`)
+- In in the Xcode project dependencies are sourced via a local path, they will be be ignored in the analysis.
+- Only Xcode project files in ASCII plist format with UTF-8 encoding are supported.
 
-## Example 
+## Example
 
 Create Package.swift file in the directory. Add dependencies, targets, products, and source code. Example Package.swift file is shown below. By convention, the properties of a Package are defined in a single nested initializer statement, and not modified after initialization.
 
 ```swift
 // swift-tools-version:5.4.0
-
 import PackageDescription
 
 let package = Package(
@@ -37,7 +42,7 @@ let package = Package(
 )
 ```
 
-We can resolve dependencies by performing `swift package update`. Executing this will create Package.resolved in the directory. Example file is shown below:
+We can update and resolve dependencies by performing `swift package update`. Executing this will create Package.resolved in the directory. An example file is shown below:
 
 ```json
 {
@@ -67,34 +72,60 @@ We can resolve dependencies by performing `swift package update`. Executing this
 }
 
 ```
-Note: Only few pins are shown above for brevity.
+Note: Only a few pins are shown above for brevity.
 
-### `Package.resolved` exist in the directory
+### `Package.swift` and `Package.resolved`
 
-When analyses is performed (e.g. `fossa analyze -o`), we will identify following as direct dependencies:
+When the analysis is performed (e.g. `fossa analyze -o`), we will identify the following as direct dependencies:
 
 - https://github.com/grpc/grpc-swift.git@1.3.0
 
-If the `Package.resolved` exists in the directory at the time of analyses, we would also identify, following deep dependencies:
+If the `Package.resolved` is discovered, deep dependencies will be identified. We will not identify edges among dependencies.
 
 - https://github.com/apple/swift-log.git@1.4.2
-- and any others dependencies that appear in `Package.resolved`
+- and any other dependencies that appear in `Package.resolved`
 
-We will not identify edges amongst them.
+If `Package.resolved` is not discovered, only direct dependencies will be reported. 
 
-### `Package.resolved` does not exist in the directory
+### Xcode Project and `Package.resolved`
 
-When analyses is performed (e.g. `fossa analyze -o`), we will identify following as direct dependencies:
+For Xcode project using swift package manager to manage swift package dependencies, Xcode project file named: `project.pbxproj` will be analyzed. In the Xcode project file, `XCRemoteSwiftPackageReference` objects will be used to identify swift packages that are direct dependencies. For the analysis, at least one such reference must exist in the file. If no such references are found, we will not consider the Xcode project in the swift analysis.
 
-- https://github.com/grpc/grpc-swift.git
+Excerpt from example `project.pbxproj`:
 
-We will not identify any deep dependencies.
+```
+// !$*UTF8*$!
+{
+  archiveVersion = 1;
+  classes = {
+  };
+  objectVersion = 52;
+  objects = {
+    
+    ...
+
+    170A463726ECEDEF002DDFB8 /* XCRemoteSwiftPackageReference "example-package-deckofplayingcards" */ = {
+      isa = XCRemoteSwiftPackageReference;
+      repositoryURL = "https://github.com/apple/example-package-deckofplayingcards";
+      requirement = {
+        branch = main;
+        kind = branch;
+      };
+    };
+
+    ...
+  };
+  rootObject = 17874CD926C46B8500D16CA8 /* Project object */;
+} 
+```
+
+If the `Package.resolved` is discovered, deep dependencies will be identified. If not, only direct dependencies listed in xcode project file will be identified. In either case, no edges among dependencies will be reported.
 
 ## F.A.Q
 
 ### How do I *only perform analysis* for swift package dependencies?
 
-You can explicitly specify analysis an target in `.fossa.yml` file. 
+You can explicitly specify analysis target in `.fossa.yml` file.
 
 Example below, will exclude all analysis targets except swift. 
 
@@ -107,8 +138,32 @@ targets:
     - type: swift
 ```
 
+### Swift packages sourced from local directories are not discovered in the analysis. Is there a workaround?
+
+This is a current limitation. For swift package manager analysis, we only support non-path dependencies at the moment. 
+To include local dependencies, you can use `fossa-deps.yml` file to upload the local package for license scanning and analysis.
+
+```yaml
+# in fossa-deps.yml
+
+vendored-dependencies:
+- name: MyLocalPackage
+  path: /Jenkins/App/Resources/MyLocalPackage # path can be either a file or a folder.
+  version: 3.4.16 # revision will be set to the MD5 hash of the file path if left unspecified.
+```
+
+Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
+Refer to [User guide](../../userguide.md) for more details. 
+
+### When performing `fossa list-targets`, Xcode project using swift packages are not getting discovered.
+
+For swift, we consider the Xcode project to be a valid Xcode project, if and only if it meets the following requirements:
+- Xcode project file named: `project.pbxproj` exists in the directory.
+- Xcode project file must be in ASCII plist format with UTF-8 encoding.
+- Xcode project file has at least one object, with isa of `XCRemoteSwiftPackageReference`. 
+
 ## References
 
 - [Swift Package Manager](https://github.com/apple/swift-package-manager)
 - [Package.swift, must begin with version specifier](https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#about-the-swift-tools-version)
-- [Package.swift, must be defined in single nested statement, and should not be modified after initialization](https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#package)
+- [Package.swift, must be defined in a single nested statement, and should not be modified after initialization](https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#package)
