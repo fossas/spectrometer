@@ -6,6 +6,9 @@
 	objectVersion = 52;
 	objects = {
 
+/* Common Special Characters */
+		11111111111111111111111 = {isa = "※üAÆÁÂÄÀÅÃBCÇDEÉÊËÈÐ€FGHIÍÎÏÌJKLŁMNÑOŒÓÔÖÒØÕPQRSŠTÞUÚÛÜÙVWXYÝŸZŽaáâ ́äæà&å^~*@ãb\|{}[] ̆¦•cˇç ̧¢ˆ:,©¤d†‡° ̈÷$ ̇ıeéêëè8…—–=ð!¡fﬁ5ﬂƒ4⁄gß`>«»‹›h ̋-iíîïìjkl<¬łm ̄−μ×n9ñ#oóôöœ ̨ò1½¼1aoøõp¶()%.·‰+±q?¿r® ̊sš§;76/£tþ3¾3 ̃™22uúûüùýÿ¥zž0"};
+
 /* Begin PBXBuildFile section */
 		172D94BF26C5D824008A4DB2 /* Vapor in Frameworks */ = {isa = PBXBuildFile; productRef = 172D94BE26C5D824008A4DB2 /* Vapor */; };
 		17874CE526C46B8500D16CA8 /* ExampleProjectApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17874CE426C46B8500D16CA8 /* ExampleProjectApp.swift */; };

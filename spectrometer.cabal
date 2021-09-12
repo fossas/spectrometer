@@ -298,8 +298,8 @@ library
     Strategy.SwiftPM
     Strategy.Swift.PackageResolved
     Strategy.Swift.PackageSwift
-    Strategy.Xcode.Pbxproj
-    Strategy.Xcode.PbxprojParser
+    Strategy.Swift.Xcode.Pbxproj
+    Strategy.Swift.Xcode.PbxprojParser
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock
     Strategy.Yarn.V2.Lockfile
@@ -396,7 +396,8 @@ test-suite unit-tests
     Ruby.GemfileLockSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
-    Xcode.PbxprojParserSpec
+    Swift.Xcode.PbxprojSpec
+    Swift.Xcode.PbxprojParserSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec

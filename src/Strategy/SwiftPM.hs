@@ -1,61 +1,128 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Strategy.SwiftPM (
   discover,
-  findProjects,
   mkProject,
 ) where
 
 import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Functor (($>))
+import Data.Maybe (listToMaybe)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
   walk',
  )
+import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
 import Path
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
+import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
 import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
 
+data SwiftProject
+  = PackageProject SwiftPackageProject
+  | XcodeProject XcodeProjectUsingSwiftPm
+  deriving (Show, Eq, Ord)
+
 data SwiftPackageProject = SwiftPackageProject
-  { manifest :: Path Abs File
-  , projectDir :: Path Abs Dir
-  , resolved :: Maybe (Path Abs File)
+  { swiftPkgManifest :: Path Abs File
+  , swiftPkgProjectDir :: Path Abs Dir
+  , swiftPkgResolved :: Maybe (Path Abs File)
   }
   deriving (Show, Eq, Ord)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+data XcodeProjectUsingSwiftPm = XcodeProjectUsingSwiftPm
+  { xCodeProjectFile :: Path Abs File
+  , xCodeProjectDir :: Path Abs Dir
+  , xCodeResolvedFile :: Maybe (Path Abs File)
+  }
+  deriving (Show, Eq, Ord)
+
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Swift" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+  swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
+  xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
+  pure $ map mkProject (swiftPackageProjects ++ xCodeProjects)
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SwiftPackageProject]
-findProjects = walk' $ \dir _ files -> do
-  let swiftPackageManifestFile = findFileNamed "Package.swift" files
-  let swiftPackageResolvedFile = findFileNamed "Package.resolved" files
+findSwiftPackageProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SwiftProject]
+findSwiftPackageProjects = walk' $ \dir _ files -> do
+  let packageManifestFile = findFileNamed "Package.swift" files
+  let packageResolvedFile = findFileNamed "Package.resolved" files
+  case (packageManifestFile, packageResolvedFile) of
+    -- If the Package.swift exists, than it is swift package project.
+    -- Use Package.swift as primary source of truth.
+    (Just manifestFile, resolvedFile) -> pure ([PackageProject $ SwiftPackageProject manifestFile dir resolvedFile], WalkSkipSome [".build"])
+    -- Package.resolved without Package.swift or Xcode project file is not a valid swift project.
+    (Nothing, _) -> pure ([], WalkContinue)
 
-  case (swiftPackageManifestFile, swiftPackageResolvedFile) of
-    (Just manifestFile, Just resolvedFile) -> pure ([SwiftPackageProject manifestFile dir (Just resolvedFile)], WalkSkipSome [".build"])
-    (Just manifestFile, Nothing) -> pure ([SwiftPackageProject manifestFile dir Nothing], WalkSkipSome [".build"])
-    -- Package.resolved without Package.swift is not Swift Package Project
-    (Nothing, Just _) -> pure ([], WalkContinue)
-    (Nothing, Nothing) -> pure ([], WalkContinue)
+findXcodeProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [SwiftProject]
+findXcodeProjects = walk' $ \dir _ files -> do
+  let xcodeProjectFile = findFileNamed "project.pbxproj" files
+  case xcodeProjectFile of
+    Nothing -> pure ([], WalkContinue)
+    Just projFile -> do
+      resolvedFile <- findFirstResolvedFileRecursively dir
+      isValidXCodeProj <- hasSomeSwiftDeps projFile
+      if isValidXCodeProj
+        then pure ([XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile], WalkSkipSome [".build"])
+        else debugXCodeWithoutSwiftDeps projFile $> ([], WalkContinue)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SwiftPackageProject -> DiscoveredProject n
+-- | Walks directory and finds fist file named 'Package.resolved'.
+-- XCode projects using swift package manager retain Package.resolved,
+-- not in the same directory as project file, but rather in workspace's xcshareddata/swiftpm directory.
+-- Reference: https://developer.apple.com/documentation/swift_packages/adding_package_dependencies_to_your_app.
+findFirstResolvedFileRecursively :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
+findFirstResolvedFileRecursively baseDir = listToMaybe <$> walk' findFile baseDir
+  where
+    isParentDirSwiftPm :: Path Abs Dir -> Bool
+    isParentDirSwiftPm d = (dirname d) == [reldir|swiftpm|]
+
+    findFile = \dir _ files -> do
+      let foundFile = findFileNamed "Package.resolved" files
+      case (foundFile) of
+        (Just ff) ->
+          if (isParentDirSwiftPm dir)
+            then pure ([ff], WalkSkipSome [".build"])
+            else pure ([], WalkContinue)
+        _ -> pure ([], WalkContinue)
+
+debugXCodeWithoutSwiftDeps :: Has Logger sig m => Path Abs File -> m ()
+debugXCodeWithoutSwiftDeps projFile =
+  (logDebug . pretty) $
+    "XCode project file ("
+      <> show projFile
+      <> "), did not have any XCRemoteSwiftPackageReference, ignoring from swift analyses."
+
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SwiftProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "swift"
     , projectBuildTargets = mempty
     , projectDependencyResults = const $ getDeps project
-    , projectPath = projectDir project
+    , projectPath = getProjectDir
     , projectLicenses = pure []
     }
+  where
+    getProjectDir :: Path Abs Dir
+    getProjectDir = case project of
+      PackageProject prj -> swiftPkgProjectDir prj
+      XcodeProject prj -> xCodeProjectDir prj
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftPackageProject -> m DependencyResults
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftProject -> m DependencyResults
 getDeps project = do
-  graph <- analyzePackageSwift (manifest project) (resolved project)
+  graph <- case project of
+    PackageProject prj -> analyzePackageSwift (swiftPkgManifest prj) (swiftPkgResolved prj)
+    XcodeProject prj -> analyzeXcodeProjForSwiftPkg (xCodeProjectFile prj) (xCodeResolvedFile prj)
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Partial
-      , dependencyManifestFiles = [manifest project]
+      , dependencyManifestFiles = manifestFiles
       }
+  where
+    manifestFiles :: [Path Abs File]
+    manifestFiles = case project of
+      PackageProject prj -> [swiftPkgManifest prj]
+      XcodeProject prj -> [xCodeProjectFile prj]

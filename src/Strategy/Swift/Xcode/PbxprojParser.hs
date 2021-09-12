@@ -15,12 +15,12 @@
 --
 -- Relevant References:
 --   * For ASCII types: https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/PropertyLists/OldStylePlists/OldStylePLists.html
---   * Various `pbxproj.project` format's articles (unofficial):
+--   * Unofficial References:
 --     * http://www.monobjc.net/xcode-project-file-format.html
 --
 -- We intentionally parse all types into one of String, List, and Dictionary.
--- We do not distinguish between types of "configuration" or "xcode specific property type".
-module Strategy.Xcode.PbxprojParser (
+-- We do not distinguish between types of Xcode specific configurations.
+module Strategy.Swift.Xcode.PbxprojParser (
   parsePbxProj,
   PbxProj (..),
   AsciiValue (..),
@@ -36,23 +36,19 @@ module Strategy.Xcode.PbxprojParser (
   parseAsciiValue,
 ) where
 
-import Data.Foldable (asum)
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe
+import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
-import Data.Text.IO qualified as TIO
 import Data.Void (Void)
 import Text.Megaparsec (
   MonadParsec (takeWhile1P, try),
   Parsec,
   between,
-  errorBundlePretty,
   many,
   noneOf,
-  runParser,
   sepEndBy,
   some,
   (<?>),
@@ -177,6 +173,7 @@ parsePbxProj = do
   let objects = (allValues |-> "objects")
   pure $ PbxProj archiveVersion objectVersion rootObject classes objects
 
+-- | Gets list of objects with given isa value.
 isaOf :: Text -> AsciiValue -> [Map Text AsciiValue]
 isaOf _ (AText _) = []
 isaOf _ (AList _) = []

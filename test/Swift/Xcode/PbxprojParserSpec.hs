@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Xcode.PbxprojParserSpec (
+module Swift.Xcode.PbxprojParserSpec (
   spec,
 ) where
 
@@ -8,7 +8,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Void (Void)
-import Strategy.Xcode.PbxprojParser (
+import Strategy.Swift.Xcode.PbxprojParser (
   AsciiValue (..),
   PbxProj (..),
   parseAsciiDict,
@@ -153,7 +153,7 @@ spec = do
       "{ b = c; d = \"e\" }" `shouldParseInto` ADict (Map.fromList [("b", AText "c"), ("d", AText "e")])
 
   describe "parsePbxProj" $ do
-    pbxprojFile <- runIO (TIO.readFile "test/Xcode/testdata/pbxproj.project")
+    pbxprojFile <- runIO (TIO.readFile "test/Swift/Xcode/testdata/project.pbxproj")
     it "should parse pbxproj.project" $
       case runParser parsePbxProj "" pbxprojFile of
         Left _ -> expectationFailure "failed to parse"
