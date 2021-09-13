@@ -312,7 +312,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ Map.traverseWithK
         edge projAsDep dep
         mkRecursiveEdges dep envLabel
 
-    -- | Infers environment label based on the name of configuration.
+    -- Infers environment label based on the name of configuration.
     -- Ref: https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
     configNameToLabel :: ConfigName -> GradleLabel
     configNameToLabel conf = case unConfigName conf of
