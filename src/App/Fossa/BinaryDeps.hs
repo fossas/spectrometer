@@ -4,30 +4,27 @@
 module App.Fossa.BinaryDeps (analyzeBinaryDeps) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.BinaryDeps.Jar (resolveJar)
 import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
 import App.Fossa.VSI.IAT.Types (Fingerprint (..))
-import Codec.Archive.Zip qualified as Zip
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, fromEither, (<||>))
-import Control.Effect.Exception (bracket)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Carrier.Diagnostics (Diagnostics, fromEither)
+import Control.Effect.Lift (Lift)
 import Data.ByteString qualified as BS
 import Data.Either (partitionEithers)
-import Data.List (isSuffixOf)
 import Data.Maybe (catMaybes)
-import Data.String.Conversion (ToString (toString), toText)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Debug.Trace qualified as Debug
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
-import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), findFileNamed, walk')
+import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.ReadFS (ReadFS, readContentsBSLimit)
-import GHC.Base (join)
 import Graphing (fromList)
-import Path (Abs, Dir, File, Path, filename, fromAbsDir, fromAbsFile, isProperPrefixOf, mkRelDir, stripProperPrefix, toFilePath, (</>))
-import Path.IO (getTempDir, removeDirRecur)
+import Path (Abs, Dir, File, Path, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
-import Types (DepType (MavenType), Dependency (..), GraphBreadth (Complete))
+import Types (Dependency (..), GraphBreadth (Complete))
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.
@@ -115,12 +112,12 @@ resolveBinary (resolve : remainingStrategies) root file = do
   case result of
     Just r -> pure r
     Nothing -> resolveBinary remainingStrategies root file
-resolveBinary [] root file = strategyRawFingerprint root file
+resolveBinary [] root file = Debug.trace "Falling back to raw fingerprint strategy" $ strategyRawFingerprint root file
 
 -- | Functions which may be able to resolve a binary to a dependency.
 strategies :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe (Either Dependency SourceUserDefDep)))]
 strategies =
-  [strategyJar]
+  [resolveJar]
 
 -- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
 -- This strategy is used if no other strategy succeeds at resolving the binary.
@@ -128,41 +125,3 @@ strategyRawFingerprint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path A
 strategyRawFingerprint root file = do
   fp <- fingerprintRaw file
   pure . Right $ SourceUserDefDep (renderRelative root file) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing
-
--- | Implement JAR resolution using a similar method to Ant analysis in CLIv1
-strategyJar :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe (Either Dependency SourceUserDefDep))
-strategyJar _ file | not (fileHasSuffix file [".jar", ".aar"]) = pure Nothing
-strategyJar _ file = do
-  result <- join $ withArchive extractZip file $ \dir -> pure (fromPom dir <||> fromMetaInf dir)
-  case result of
-    Just dep -> pure . Just $ Left dep
-    Nothing -> pure Nothing
-  where
-    fromPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe Dependency)
-    fromPom archive = pure Nothing
-    fromMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe Dependency)
-    fromMetaInf dir = pure Nothing
-
-withArchive :: Has (Lift IO) sig m => (Path Abs File -> Path Abs Dir -> m ()) -> Path Abs File -> (Path Abs Dir -> m c) -> m c
-withArchive extract archive = bracket (extractArchive extract archive) cleanupDir
-
-cleanupDir :: Has (Lift IO) sig m => Path Abs Dir -> m ()
-cleanupDir dir = sendIO $ removeDirRecur dir
-
-mkExtractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
-mkExtractDir = do
-  wd <- sendIO getTempDir
-  pure (wd </> $(mkRelDir "fossa-extract"))
-
-extractArchive :: Has (Lift IO) sig m => (Path Abs File -> Path Abs Dir -> m ()) -> Path Abs File -> m (Path Abs Dir)
-extractArchive extract archive = do
-  container <- mkExtractDir
-  extract archive container
-  pure container
-
-extractZip :: Has (Lift IO) sig m => Path Abs File -> Path Abs Dir -> m ()
-extractZip archive to =
-  sendIO $ Zip.withArchive (fromAbsFile archive) (Zip.unpackInto (fromAbsDir to))
-
-fileHasSuffix :: Path a File -> [String] -> Bool
-fileHasSuffix file = any (isSuffixOf (toString $ filename file))
