@@ -8,15 +8,17 @@ import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, recover)
 import Control.Effect.Lift (Lift)
 import Data.List (isSuffixOf, sortOn)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Debug.Trace qualified as Debug
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), findFileNamed, walk')
-import Effect.ReadFS (ReadFS, readContentsXML)
+import Effect.ReadFS (ReadFS, readContentsText, readContentsXML)
 import GHC.Base ((<|>))
-import Path (Abs, Dir, File, Path, filename, mkRelDir, stripProperPrefix, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, stripProperPrefix, toFilePath, (</>))
 import Srclib.Types (SourceUserDefDep (..))
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), RawPom, pomLicenseName, validatePom)
 
@@ -37,7 +39,23 @@ resolveJar root file = Debug.trace ("JAR strategy: Inspecting " <> toString file
   pure $ fmap (toUserDefDep root file) result
 
 fromMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe JarMetadata)
-fromMetaInf dir = Debug.trace "Skipping meta-inf discovery: unimplemented" $ pure Nothing
+fromMetaInf dir = Debug.trace ("JAR strategy: Inspecting META-INF manifest") $ do
+  content <- recover $ readContentsText (dir </> $(mkRelDir "META-INF") </> $(mkRelFile "MANIFEST.MF"))
+  pure $ (metaInfManifestToMeta . parseMetaInfManifest) =<< content
+
+parseMetaInfManifest :: Text -> Map Text Text
+parseMetaInfManifest t = Map.fromList . map strip' . filter' $ map (Text.breakOn ":") (Text.lines t)
+  where
+    null' (a, b) = a == "" || b == ""
+    strip' (a, b) = (Text.strip a, Text.strip $ Text.tail b)
+    filter' pairs = filter (not . null') pairs
+
+metaInfManifestToMeta :: Map Text Text -> Maybe JarMetadata
+metaInfManifestToMeta manifest = do
+  JarMetadata
+    <$> (Map.lookup "Bundle-SymbolicName" manifest <|> Map.lookup "Implementation-Title" manifest)
+    <*> Map.lookup "Implementation-Version" manifest
+    <*> Just (Map.findWithDefault "Bundle-License" "" manifest)
 
 fromPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe JarMetadata)
 fromPom archive = do
