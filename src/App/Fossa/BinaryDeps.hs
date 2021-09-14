@@ -15,7 +15,6 @@ import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Debug.Trace qualified as Debug
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.ReadFS (ReadFS, readContentsBSLimit)
@@ -105,12 +104,12 @@ fileIsBinary file = do
 -- | Try the next strategy in the list. If successful, evaluate to its result; if not move down the list of strategies and try again.
 -- Eventually falls back to strategyRawFingerprint if no other strategy succeeds.
 resolveBinary :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))] -> Path Abs Dir -> Path Abs File -> m SourceUserDefDep
-resolveBinary (resolve : remainingStrategies) root file = do
+resolveBinary (resolve : remainingStrategies) = \root file -> do
   result <- resolve root file
   case result of
     Just r -> pure r
     Nothing -> resolveBinary remainingStrategies root file
-resolveBinary [] root file = Debug.trace "Falling back to raw fingerprint strategy" $ strategyRawFingerprint root file
+resolveBinary [] = strategyRawFingerprint
 
 -- | Functions which may be able to resolve a binary to a dependency.
 strategies :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))]
