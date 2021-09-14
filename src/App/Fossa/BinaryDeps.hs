@@ -11,7 +11,6 @@ import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
 import Data.ByteString qualified as BS
-import Data.Either (partitionEithers)
 import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -37,8 +36,7 @@ analyzeBinaryDeps dir filters = do
     then pure Nothing
     else do
       resolvedBinaries <- traverse (resolveBinary strategies dir) binaryPaths
-      let (plain, user) = partitionEithers resolvedBinaries
-      pure . Just $ toSourceUnit (toProject dir plain) user
+      pure . Just $ toSourceUnit (toProject dir []) resolvedBinaries
 
 findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [Path Abs File]
 findBinaries filters = walk' $ \dir _ files -> do
@@ -106,7 +104,7 @@ fileIsBinary file = do
 
 -- | Try the next strategy in the list. If successful, evaluate to its result; if not move down the list of strategies and try again.
 -- Eventually falls back to strategyRawFingerprint if no other strategy succeeds.
-resolveBinary :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe (Either Dependency SourceUserDefDep)))] -> Path Abs Dir -> Path Abs File -> m (Either Dependency SourceUserDefDep)
+resolveBinary :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))] -> Path Abs Dir -> Path Abs File -> m SourceUserDefDep
 resolveBinary (resolve : remainingStrategies) root file = do
   result <- resolve root file
   case result of
@@ -115,13 +113,13 @@ resolveBinary (resolve : remainingStrategies) root file = do
 resolveBinary [] root file = Debug.trace "Falling back to raw fingerprint strategy" $ strategyRawFingerprint root file
 
 -- | Functions which may be able to resolve a binary to a dependency.
-strategies :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe (Either Dependency SourceUserDefDep)))]
+strategies :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))]
 strategies =
   [resolveJar]
 
 -- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
 -- This strategy is used if no other strategy succeeds at resolving the binary.
-strategyRawFingerprint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m (Either Dependency SourceUserDefDep)
+strategyRawFingerprint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m SourceUserDefDep
 strategyRawFingerprint root file = do
   fp <- fingerprintRaw file
-  pure . Right $ SourceUserDefDep (renderRelative root file) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing
+  pure $ SourceUserDefDep (renderRelative root file) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing
