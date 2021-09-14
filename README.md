@@ -110,16 +110,19 @@ Once an analysis has been uploaded, you can view your results in the FOSSA web a
 Now that your analysis is complete, there are a couple things you might want to do after an initial integration:
 
 - **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide]() can help you diagnose and debug your integration.
-- **Scan for issues and generate a compliance report.** TODO: finish
-- **Set up FOSSA in your CI.** (`fossa test` + GH webhooks)
+
+- **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. If you want to try out different issue scanning configurations, you can [change your policy]() or [run a manual issue scan](). Once an issue scan is complete, you can also [generate a report]() from the web application.
+
+- **Set up FOSSA in your CI.** You can also use your issue scan results as inputs to CI scripts. For GitHub repositories, you can use FOSSA's [native GitHub integration]() to report a status check on your PRs. For other CI integrations, you can also [use `fossa test`]() to get programmatic issue status in CI.
 
 ### Using Spectrometer as a standalone tool
 
-if you'd like to script
+You can also use Spectrometer as a standalone tool for dependency analysis. Note that some features (like vendored dependency identification) won't work without a full FOSSA account and integration, since they rely on backend services.
 
-some features won't work
+You can get the output of `fossa` using the `--output` flag:
 
 ```sh
+fossa analyze --output
 ```
 
 Note that Spectrometer's `--output` format is **not considered stable**. While we will try our best to maintain backwards compatibility, this output format may change without warning between releases.
@@ -130,26 +133,19 @@ For most users, Spectrometer should work out-of-the-box without any configuratio
 
 Users who need more advanced customizations or features should see the [User Manual](). Some common topics of interest include:
 
-- Vendored dependencies.
-- Config file.
-- Debugging.
+- [Configuring your FOSSA project]()
+- [Debugging your integration]()
+- [Specifying vendored dependencies]()
+- [Adding manual dependencies]()
 
 ## Reporting Issues
 
-TODO: --- reword
+If you've found a bug or need support, the best way to get support is to email [support@fossa.com](mailto:support@fossa.com).
 
-If you are experiencing an issue related to the results on the FOSSA
-website/dashboard, please contact [support@fossa.com](mailto:support@fossa.com)
+Make sure to include reproduction steps and any relevant project files (e.g. `pom.xml`s, `package.json`s, etc.).
 
-Issues specific to Spectrometer should be filed through the [Github issues
-page](https://github.com/fossas/spectrometer/issues/new).
-
-Please include the following in your bug report:
-
-- Steps to reproduce your issue
-- Relevant project manifest files (e.g., `pom.xml` or `package.json`)
+We'll try to respond to issues opened in this repository on a best-effort basis, but we mostly provide support via our [`support@`](support@fossa.com) email.
 
 ## Contributing
 
-For development documentation (still WIP, but not empty), see our [Development
-Docs Homepage](devdocs/index.md).
+If you're interested in contributing, check out our [contributor documentation](./docs/contributing/README.md). PRs are welcome!
