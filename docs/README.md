@@ -113,7 +113,7 @@ fossa analyze --help
 ### java
 
 - [maven](quickreference/maven.md)
-- [gradle](quickreference/gradle.md)
+- [gradle](strategies/gradle.md)
 
 ### javascript/typescript
 
