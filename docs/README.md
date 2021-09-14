@@ -1,4 +1,4 @@
-# Spectrometer User Guide
+# User Manual
 
 <!-- omit in toc -->
 ## Table of contents

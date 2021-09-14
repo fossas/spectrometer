@@ -71,11 +71,11 @@ fossa analyze
 
 #### Installing Spectrometer
 
-Follow [the installation instructions]() above to install Spectrometer. Once installed, you should have a new binary named `fossa` available on your `$PATH`.
+Follow [the installation instructions](#installation) above to install Spectrometer. Once installed, you should have a new binary named `fossa` available on your `$PATH`.
 
 #### Generating an API key
 
-To get started with integrating your project into FOSSA, you'll need to [generate an API key](). You'll get this API key from the FOSSA web application ([app.fossa.com]()). You can follow the instructions [here]() to generate your API key.
+To get started with integrating your project into FOSSA, you'll need to [generate an API key](TODO). You'll get this API key from the FOSSA web application ([app.fossa.com](https://app.fossa.com)). You can follow the instructions [here](TODO) to generate your API key.
 
 Once you have your API key:
 
@@ -112,11 +112,11 @@ Once an analysis has been uploaded, you can view your results in the FOSSA web a
 
 Now that your analysis is complete, there are a couple things you might want to do after an initial integration:
 
-- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide]() can help you diagnose and debug your integration.
+- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](TODO) can help you diagnose and debug your integration.
 
-- **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. If you want to try out different issue scanning configurations, you can [change your policy]() or [run a manual issue scan](). Once an issue scan is complete, you can also [generate a report]() from the web application.
+- **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. If you want to try out different issue scanning configurations, you can [change your policy](TODO) or [run a manual issue scan](TODO). Once an issue scan is complete, you can also [generate a report](TODO) from the web application.
 
-- **Set up FOSSA in your CI.** You can also use your issue scan results as inputs to CI scripts. For GitHub repositories, you can use FOSSA's [native GitHub integration]() to report a status check on your PRs. For other CI integrations, you can also [use `fossa test`]() to get programmatic issue status in CI.
+- **Set up FOSSA in your CI.** You can also use your issue scan results as inputs to CI scripts. For GitHub repositories, you can use FOSSA's [native GitHub integration](TODO) to report a status check on your PRs. For other CI integrations, you can also [use `fossa test`](TODO) to get programmatic issue status in CI.
 
 ### Using Spectrometer as a standalone tool
 
@@ -136,10 +136,11 @@ For most users, Spectrometer should work out-of-the-box without any configuratio
 
 Users who need more advanced customizations or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
-- [Configuring your FOSSA project]()
-- [Debugging your integration]()
-- [Specifying vendored dependencies]()
-- [Adding manual dependencies]()
+- [Configuring your FOSSA project](TODO)
+- [Debugging your integration](TODO)
+- [Excluding developer tools from your dependencies](TODO)
+- [Specifying vendored dependencies](TODO)
+- [Adding manual dependencies](TODO)
 
 ## Reporting Issues
 
@@ -147,7 +148,7 @@ If you've found a bug or need support, the best way to get support is to email [
 
 Make sure to include reproduction steps and any relevant project files (e.g. `pom.xml`s, `package.json`s, etc.).
 
-We'll try to respond to issues opened in this repository on a best-effort basis, but we mostly provide support via our [`support@`](support@fossa.com) email.
+We'll try to respond to issues opened in this repository on a best-effort basis, but we mostly provide support via our [`support@`](mailto:support@fossa.com) email.
 
 ## Contributing
 

@@ -4,7 +4,7 @@ This is a collection of development-related docs for working on the spectrometer
 
 ## Building and Running the project
 
-The [HACKING](../HACKING.md) doc describes our current dev tools and build practices, as well
+The [HACKING](../../HACKING.md) doc describes our current dev tools and build practices, as well
 as providing som info about our CI setup.
 
 ## Style Guide
