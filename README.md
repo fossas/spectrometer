@@ -58,10 +58,13 @@ You can install Spectrometer releases manually by downloading the latest release
 #### TL;DR
 
 ```sh
+# Download FOSSA.
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
 
+# Set your API key. Get this from the FOSSA web application.
 export FOSSA_API_KEY=XXXX
 
+# Run an analysis in your project's directory.
 cd $MY_PROJECT_DIR
 fossa analyze
 ```
@@ -131,7 +134,7 @@ Note that Spectrometer's `--output` format is **not considered stable**. While w
 
 For most users, Spectrometer should work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
 
-Users who need more advanced customizations or features should see the [User Manual](). Some common topics of interest include:
+Users who need more advanced customizations or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
 - [Configuring your FOSSA project]()
 - [Debugging your integration]()
