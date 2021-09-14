@@ -12,3 +12,14 @@
 - Edge
 - Successor
 - Neighbor
+
+# FOSSA topics
+
+- Issue
+- Policy
+- Project
+- Scan
+  - Dependency Scan
+    - Prefer "Analysis"
+  - Issue Scan
+  - License Scan
