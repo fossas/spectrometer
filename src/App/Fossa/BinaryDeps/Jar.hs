@@ -62,12 +62,9 @@ fromPom archive = do
   poms <- recover $ walk' (collectFilesNamed "pom.xml") (archive </> $(mkRelDir "META-INF"))
   parsePom $ choosePom poms
 
--- | Use the POM file with the shortest path as the representative for this JAR.
 choosePom :: Maybe [Path Abs File] -> Maybe (Path Abs File)
-choosePom Nothing = Nothing
-choosePom (Just []) = Nothing
 choosePom (Just [pom]) = Just pom
-choosePom (Just poms) = Just $ head (sortOn (length . toString) poms)
+choosePom poms = fmap (head . sortOn (length . toString)) poms
 
 parsePom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Maybe (Path Abs File) -> m (Maybe JarMetadata)
 parsePom Nothing = pure Nothing
