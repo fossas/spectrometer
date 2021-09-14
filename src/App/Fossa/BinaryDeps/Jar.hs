@@ -27,7 +27,12 @@ data JarMetadata = JarMetadata
   , jarLicense :: Text
   }
 
--- | Implement JAR resolution using a similar method to Ant analysis in CLIv1
+-- | Implement JAR resolution using a similar method to Ant analysis in CLIv1.
+-- The overall idea is to:
+--   1. Extract the JAR to a temporary directory (it's a zip!)
+--   2. Search inside for a file named `pom.xml`; if there are multiple pick the one with the shortest path.
+--      If a representative pom.xml was found, parse it and return metadata derived from it.
+--   3. Attempt to open `META-INF/MANIFEST.MF`, parse it, and return metadata derived from it.
 resolveJar :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)
 resolveJar _ file | not (fileHasSuffix file [".jar", ".aar"]) = pure Nothing
 resolveJar root file = do
