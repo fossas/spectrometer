@@ -28,7 +28,7 @@ Every piece of documentation is accessible via hyperlink from this user manual. 
 
 Concept guides explain the nuances behind how basic FOSSA primitives work. If you're looking to accomplish a specific goal, you should probably start with [Walkthroughs](#walkthroughs), but if you come across confusing behavior, understanding Concepts can help you debug what's going on.
 
-- [The FOSSA Ontology: Projects, Revisions, Analyses, and Targets](TODO)
+- [The FOSSA ontology: Projects, Revisions, Analyses, and Targets](TODO)
 - [Anatomy of a Dependency](TODO)
 - [Locators, Project Identity, and Dependency Identity](TODO)
 - [Lifecycle of an Analysis](TODO)
@@ -37,26 +37,33 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 
 Walkthrough guides explain how to accomplish specific tasks. They'll also include common troubleshooting steps and follow-ups, and answer common questions.
 
-- Integrating a project
+- [Integrating a project](TODO)
+- [Excluding test or development dependencies](TODO)
+- [Integrating with a custom build tool](TODO)
+- [Specifying vendored dependencies](TODO)
+- [Debugging a strategy](TODO)
 
 ## Features
 
 Feature guides explain how to use specific features. These are most useful if there's a specific feature that a walkthrough has pointed you to.
 
-- Configuring the CLI's project
-- Analysis target configuration
+- [FOSSA project configuration](TODO)
+- [Analysis target configuration](TODO)
+- [Manual dependencies](TODO)
+  - referenced, custom, and remote (anything where we "add a dep that isn't there")
+- [Vendored dependencies](TODO)
 
 ## References
 
 Reference guides provide an exhaustive listing of all CLI functionality. If you can't find documentation on how something works elsewhere, it should be here.
 
 - CLI commands
-  - [`fossa init`]()
-  - [`fossa analyze`]()
-  - [`fossa test`]()
-  - [`fossa report`]()
-  - [`fossa list-targets`]()
+  - [`fossa init`](TODO)
+  - [`fossa analyze`](TODO)
+  - [`fossa test`](TODO)
+  - [`fossa report`](TODO)
+  - [`fossa list-targets`](TODO)
 - CLI configuration files
-  - [`.fossa.yml`]()
-  - [`fossa-deps.{yml,json}`]()
+  - [`.fossa.yml`](TODO)
+  - [`fossa-deps.{yml,json}`](TODO)
 - [CLI analysis strategies](./references/strategies/README.md)
