@@ -15,6 +15,7 @@ module App.Fossa.Analyze (
 
 import App.Docs (userGuideUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
+import App.Fossa.Analyze.Debug (DiagDebugC, diagToDebug, debugEverything)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
@@ -32,7 +33,7 @@ import App.Types (
  )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, DiagDebugC, debugEverything, diagToDebug, ignoreDebug, runDebug)
+import Control.Carrier.Debug (Debug, ignoreDebug, runDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally

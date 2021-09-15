@@ -4,7 +4,8 @@ module Discovery.Projects (
   withDiscoveredProjects,
 ) where
 
-import Control.Carrier.Debug (Debug, DiagDebugC, diagToDebug)
+import App.Fossa.Analyze.Debug (DiagDebugC, diagToDebug)
+import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Effect.AtomicCounter (AtomicCounter)

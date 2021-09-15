@@ -4,25 +4,20 @@
 
 module Control.Carrier.Debug (
   DebugC,
-  DiagDebugC,
   runDebug,
   ignoreDebug,
-  diagToDebug,
-  readFSToDebug,
-  execToDebug,
-  logToDebug,
-  debugEverything,
+  recording,
+  ignoring,
   Scope (..),
   module X,
 ) where
 
 import Control.Carrier.Diagnostics
 import Control.Carrier.Output.IO
-import Control.Carrier.Simple (Simple, SimpleC, interpret, sendSimple)
+import Control.Carrier.Simple (Simple, sendSimple)
 import Control.Effect.Debug as X
 import Control.Effect.Lift
 import Control.Effect.Record (Recordable, SomeEffectResult (SomeEffectResult), recordEff)
-import Control.Effect.Sum
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (lift)
 import Data.Aeson
@@ -30,9 +25,6 @@ import Data.Aeson.Types (Pair)
 import Data.Fixed
 import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
-import Effect.Exec (Exec, ExecF (Exec))
-import Effect.Logger (Logger, LoggerF (..))
-import Effect.ReadFS
 import Path
 
 newtype DebugC m a = DebugC {runDebugC :: OutputC ScopeEvent m a}
@@ -123,6 +115,8 @@ instance Has (Lift IO) sig m => Algebra (Debug :+: sig) (DebugC m) where
       L (DebugFile _) -> pure ctx -- FIXME
       R other -> alg (runDebugC . hdl) (R other) ctx
 
+-----------------------------------------------
+
 newtype IgnoreDebugC m a = IgnoreDebugC {runIgnoreDebugC :: m a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
@@ -141,28 +135,6 @@ ignoreDebug = runIgnoreDebugC
 
 -----------------------------------------------
 
------------------------------------------------
-
-newtype DiagDebugC m a = DiagDebugC {runDiagDebugC :: m a}
-  deriving (Functor, Applicative, Monad, MonadIO)
-
-instance (Member Diagnostics sig, Member Debug sig, Algebra sig m) => Algebra (Diagnostics :+: sig) (DiagDebugC m) where
-  alg hdl sig ctx = DiagDebugC $
-    case sig of
-      L thing@(Context nm _) -> debugScope nm $ alg (runDiagDebugC . hdl) (inj thing) ctx
-      L thing@(Fatal err) -> do
-        debugError err
-        alg (runDiagDebugC . hdl) (inj thing) ctx
-      L ours -> alg (runDiagDebugC . hdl) (inj ours) ctx
-      R other -> alg (runDiagDebugC . hdl) other ctx
-
-diagToDebug :: DiagDebugC m a -> m a
-diagToDebug = runDiagDebugC
-
------------------------------------------------
-
-type ReadFSDebugC = SimpleC ReadFSF
-
 -- | Wrap an effect invocation, recording its input/output values with 'debugEffect'
 recording :: (Recordable r, Has Debug sig m, Has (Simple r) sig m) => r a -> m a
 recording r = do
@@ -170,43 +142,7 @@ recording r = do
   debugEffect r res
   pure res
 
+-- | Ignore an effect invocation (just @send@ it)
 ignoring :: Has (Simple r) sig m => r a -> m a
 ignoring = sendSimple
 {-# INLINE ignoring #-}
-
--- | Record most ReadFS constructors, ignoring ListDir because it explodes the
--- size of the debug bundle
-readFSToDebug :: (Has ReadFS sig m, Has Debug sig m) => ReadFSDebugC m a -> m a
-readFSToDebug = interpret $ \case
-  cons@ReadContentsBS'{} -> recording cons
-  cons@ReadContentsText'{} -> recording cons
-  cons@DoesFileExist{} -> recording cons
-  cons@DoesDirExist{} -> recording cons
-  cons@ResolveFile'{} -> recording cons
-  cons@ResolveDir'{} -> recording cons
-  cons@ListDir{} -> ignoring cons
-
------------------------------------------------
-
-type ExecDebugC = SimpleC ExecF
-
-execToDebug :: (Has Exec sig m, Has Debug sig m) => ExecDebugC m a -> m a
-execToDebug = interpret $ \case
-  cons@Exec{} -> recording cons
-
------------------------------------------------
-
-type LogDebugC = SimpleC LoggerF
-
-logToDebug :: (Has Logger sig m, Has Debug sig m) => LogDebugC m a -> m a
-logToDebug = interpret $ \case
-  cons@Log{} -> recording cons
-  cons@LogStdout{} -> ignoring cons
-
------------------------------------------------
-
--- | Combine all of our debug wrappers into a mega-wrapper
-type DebugEverythingC m = DiagDebugC (ReadFSDebugC (ExecDebugC (LogDebugC m)))
-
-debugEverything :: (Has Debug sig m, Has Exec sig m, Has ReadFS sig m, Has Logger sig m) => DebugEverythingC m a -> m a
-debugEverything = logToDebug . execToDebug . readFSToDebug . diagToDebug

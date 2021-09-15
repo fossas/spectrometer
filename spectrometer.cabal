@@ -134,6 +134,7 @@ library
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
     App.Fossa.Analyze
+    App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
