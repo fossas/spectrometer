@@ -23,47 +23,47 @@ Every piece of documentation is accessible via hyperlink from this user manual. 
 3. [Features](#features)
 4. [References](#references)
 
-
 ## Concepts
 
 Concept guides explain the nuances behind how basic FOSSA primitives work. If you're looking to accomplish a specific goal, you should probably start with [Walkthroughs](#walkthroughs), but if you come across confusing behavior, understanding Concepts can help you debug what's going on.
 
-- [The FOSSA ontology: Projects, Revisions, Analyses, and Targets](TODO)
-- [Anatomy of a Dependency](TODO)
-- [Locators, Project Identity, and Dependency Identity](TODO)
-- [Lifecycle of an Analysis](TODO)
+- [The FOSSA ontology: Projects, Revisions, Analyses, and Targets](./concepts/ontology.md)
+- [What is a Dependency?](./concepts/dependencies.md)
+- [Locators, Project Identity, and Dependency Identity](./concepts/locators-and-identity.md)
+- [Lifecycle of an Analysis](./concepts/analysis-and-analyzers.md)
 
 ## Walkthroughs
 
 Walkthrough guides explain how to accomplish specific tasks. They'll also include common troubleshooting steps and follow-ups, and answer common questions.
 
-- [Integrating a project](TODO)
-- [Excluding test or development dependencies](TODO)
-- [Integrating with a custom build tool](TODO)
-- [Specifying vendored dependencies](TODO)
-- [Debugging a strategy](TODO)
+- [Integrating a project](./walkthroughs/integrating.md)
+- [Excluding test or development dependencies](./walkthroughs/excluding-test-dev-deps.md)
+- [Integrating with a custom build tool](./walkthroughs/integrating-with-custom-tools.md)
+- [Specifying vendored dependencies](./walkthroughs/specifying-vendored-deps.md)
+- [Debugging a strategy](./walkthroughs/debugging-your-integration.md)
+- [Upgrading from a VCS Import](./walkthroughs/upgrading-from-vcs.md)
 
 ## Features
 
 Feature guides explain how to use specific features. These are most useful if there's a specific feature that a walkthrough has pointed you to.
 
-- [FOSSA project configuration](TODO)
-- [Analysis target configuration](TODO)
-- [Manual dependencies](TODO)
-  - referenced, custom, and remote (anything where we "add a dep that isn't there")
-- [Vendored dependencies](TODO)
+- [FOSSA project configuration](./features/project-configuration.md)
+- [Analysis target configuration](./features/analysis-target-configuration.md)
+- [Manual dependencies](./features/manual-dependencies.md)
+- [Vendored dependencies](./features/vendored-dependencies.md)
 
 ## References
 
 Reference guides provide an exhaustive listing of all CLI functionality. If you can't find documentation on how something works elsewhere, it should be here.
 
 - CLI commands
-  - [`fossa init`](TODO)
-  - [`fossa analyze`](TODO)
-  - [`fossa test`](TODO)
-  - [`fossa report`](TODO)
-  - [`fossa list-targets`](TODO)
+  - [`fossa init`](./references/subcommands/init.md)
+  - [`fossa analyze`](./references/subcommands/analyze.md)
+  - [`fossa test`](./references/subcommands/test.md)
+  - [`fossa report`](./references/subcommands/report.md)
+  - [`fossa list-targets`](./references/subcommands/list-targets.md)
+  - [Common flags and options](./references/subcommands/README.md)
 - CLI configuration files
-  - [`.fossa.yml`](TODO)
-  - [`fossa-deps.{yml,json}`](TODO)
+  - [`.fossa.yml`](./references/files/fossa-yml.md)
+  - [`fossa-deps.{yml,json}`](./references/files/fossa-deps.md)
 - [CLI analysis strategies](./references/strategies/README.md)
