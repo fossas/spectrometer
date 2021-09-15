@@ -13,8 +13,6 @@ The python buildtool ecosystem consists of three major toolchains: setuptools
 | [conda][conda] (conda)                      | :heavy_check_mark: | :heavy_check_mark: | :x:                |
 | [poetry][poetry] (poetry)                   | :heavy_check_mark: | :white_check_mark: | :white_check_mark: |
 
-Where, 
-
 * :heavy_check_mark: - Supported in all projects
 * :white_check_mark: - Supported only when relevant data is available (e.g. lockfiles are present)
 * :x: - Not Supported
