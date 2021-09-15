@@ -118,8 +118,6 @@ instance Has (Lift IO) sig m => Algebra (Debug :+: sig) (DebugC m) where
       L (DebugError err) -> do
         output (EventError (SomeDiagnostic [] err)) -- FIXME: empty path?
         pure ctx
-      L (DebugBuildtool _) -> pure ctx -- FIXME
-      L (DebugFile _) -> pure ctx -- FIXME
       R other -> alg (runDebugC . hdl) (R (R other)) ctx
 
 -----------------------------------------------
@@ -134,8 +132,6 @@ instance Algebra sig m => Algebra (Debug :+: sig) (IgnoreDebugC m) where
       L DebugMetadata{} -> pure ctx
       L DebugError{} -> pure ctx
       L DebugEffect{} -> pure ctx
-      L DebugBuildtool{} -> pure ctx
-      L DebugFile{} -> pure ctx
       R other -> alg (runIgnoreDebugC . hdl) other ctx
 
 ignoreDebug :: IgnoreDebugC m a -> m a

@@ -38,6 +38,7 @@ module Control.Effect.Diagnostics (
 
 import Control.Algebra as X
 import Control.Exception (SomeException (..))
+import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.List (intersperse)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -68,6 +69,13 @@ instance ToDiagnostic SomeException where
 -- | An error with a ToDiagnostic instance and an associated stack trace
 data SomeDiagnostic where
   SomeDiagnostic :: ToDiagnostic a => [Text] -> a -> SomeDiagnostic
+
+instance ToJSON SomeDiagnostic where
+  toJSON (SomeDiagnostic path cause) =
+    object
+      [ "errorPath" .= path
+      , "errorCause" .= show (renderDiagnostic cause)
+      ]
 
 -- | Analagous to @throwError@ from the error effect
 fatal :: (Has Diagnostics sig m, ToDiagnostic diag) => diag -> m a
