@@ -48,8 +48,8 @@ scanMain basedir debug = do
 
 runAll ::
   ( Has ReadFS sig m
-  , Has (Output ProjectLicenseScan) sig m
   , Has Exec sig m
+  , Has (Output ProjectLicenseScan) sig m
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Lift IO) sig m
@@ -67,6 +67,8 @@ runAll basedir = do
 
 runSingle ::
   ( LicenseAnalyzeProject a
+  , Has ReadFS sig m
+  , Has Exec sig m
   , Has (Output ProjectLicenseScan) sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
@@ -75,7 +77,7 @@ runSingle ::
   DiscoveredProject a ->
   m ()
 runSingle project = do
-  licenseResult <- Diag.runDiagnosticsIO . runExecIO . runReadFSIO $ licenseAnalyzeProject (projectData project)
+  licenseResult <- Diag.runDiagnosticsIO $ licenseAnalyzeProject (projectData project)
   Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
 
 scan ::

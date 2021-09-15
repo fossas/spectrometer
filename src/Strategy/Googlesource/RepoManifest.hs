@@ -40,13 +40,12 @@ import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
 import Text.URI
 import Types
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "RepoManifest" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject RepoManifestProject]
+discover dir = context "RepoManifest" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RepoManifestProject]
@@ -63,15 +62,17 @@ newtype RepoManifestProject = RepoManifestProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => RepoManifestProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "repomanifest"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = parent $ repoManifestXml project
---     , projectLicenses = pure []
---     }
+mkProject :: RepoManifestProject -> DiscoveredProject RepoManifestProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "repomanifest"
+    , projectBuildTargets = mempty
+    , projectData = project
+    , projectPath = parent $ repoManifestXml project
+    }
+
+instance AnalyzeProject RepoManifestProject where
+  analyzeProject _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m DependencyResults
 getDeps = analyze' . repoManifestXml

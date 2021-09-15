@@ -13,6 +13,7 @@ module Strategy.Python.Pipenv (
   buildGraph,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.Foldable (for_, traverse_)
@@ -30,11 +31,10 @@ import Graphing (Graphing)
 import Path
 import Types
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Pipenv" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-discover = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
+discover dir = context "Pipenv" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PipenvProject]
 findProjects = walk' $ \_ _ files -> do
@@ -61,21 +61,22 @@ getDeps project = context "Pipenv" $ do
       , dependencyManifestFiles = [pipenvLockfile project]
       }
 
--- mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => PipenvProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "pipenv"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = parent $ pipenvLockfile project
---     , projectLicenses = pure []
---     }
-mkProject = undefined
+mkProject :: PipenvProject -> DiscoveredProject PipenvProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "pipenv"
+    , projectBuildTargets = mempty
+    , projectPath = parent $ pipenvLockfile project
+    , projectData = project
+    }
 
 newtype PipenvProject = PipenvProject
   { pipenvLockfile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
+
+instance AnalyzeProject PipenvProject where
+  analyzeProject _ = getDeps
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd =

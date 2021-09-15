@@ -14,6 +14,7 @@ module Strategy.Haskell.Cabal (
   buildGraph,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Control.Monad (when)
 import Data.Aeson.Types
@@ -110,13 +111,10 @@ cabalGenPlanCmd =
 cabalPlanFilePath :: Path Rel File
 cabalPlanFilePath = $(mkRelFile "dist-newstyle/cache/plan.json")
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Cabal" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CabalProject]
+discover dir = context "Cabal" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 isCabalFile :: Path Abs File -> Bool
 isCabalFile file = isDotCabal || isCabalDotProject
@@ -135,15 +133,14 @@ findProjects = walk' $ \dir _ files -> do
     then pure ([CabalProject dir manifestFiles], WalkSkipAll)
     else pure ([], WalkContinue)
 
--- mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CabalProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "cabal"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = cabalDir project
---     , projectLicenses = pure []
---     }
+mkProject :: CabalProject -> DiscoveredProject CabalProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "cabal"
+    , projectBuildTargets = mempty
+    , projectPath = cabalDir project
+    , projectData = project
+    }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
 getDeps project =
@@ -156,6 +153,9 @@ data CabalProject = CabalProject
   , cabalFiles :: [Path Abs File]
   }
   deriving (Eq, Ord, Show)
+
+instance AnalyzeProject CabalProject where
+  analyzeProject _ = getDeps
 
 doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
 doGraph plan = do

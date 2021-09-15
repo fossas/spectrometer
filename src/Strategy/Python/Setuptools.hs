@@ -5,6 +5,7 @@ module Strategy.Python.Setuptools (
   mkProject,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Diagnostics qualified as Diag
@@ -18,11 +19,10 @@ import Strategy.Python.ReqTxt qualified as ReqTxt
 import Strategy.Python.SetupPy qualified as SetupPy
 import Types
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Setuptools" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-discover = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
+discover dir = context "Setuptools" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walk' $ \dir _ files -> do
@@ -73,13 +73,14 @@ data SetuptoolsProject = SetuptoolsProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SetuptoolsProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "setuptools"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = setuptoolsDir project
---     , projectLicenses = pure []
---     }
-mkProject = undefined
+instance AnalyzeProject SetuptoolsProject where
+  analyzeProject _ = getDeps
+
+mkProject :: SetuptoolsProject -> DiscoveredProject SetuptoolsProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "setuptools"
+    , projectBuildTargets = mempty
+    , projectPath = setuptoolsDir project
+    , projectData = project
+    }

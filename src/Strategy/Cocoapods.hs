@@ -14,13 +14,12 @@ import Path
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
 import Types
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Cocoapods" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
+discover dir = context "Cocoapods" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CocoapodsProject]
 findProjects = walk' $ \dir _ files -> do
@@ -45,15 +44,17 @@ data CocoapodsProject = CocoapodsProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => CocoapodsProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "cocoapods"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = cocoapodsDir project
---     , projectLicenses = pure []
---     }
+instance AnalyzeProject CocoapodsProject where
+  analyzeProject _ = getDeps
+
+mkProject :: CocoapodsProject -> DiscoveredProject CocoapodsProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "cocoapods"
+    , projectBuildTargets = mempty
+    , projectPath = cocoapodsDir project
+    , projectData = project
+    }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 getDeps project =

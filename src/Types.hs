@@ -58,7 +58,6 @@ data DiscoveredProject a = DiscoveredProject
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
   , projectData :: a
-  --, projectLicenses :: m [LicenseResult] -- FIXME: remove
   }
 
 -- | The results from analyzing dependencies on a project. This contains the graph,

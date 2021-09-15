@@ -7,6 +7,7 @@ module Strategy.Python.Poetry (
   PoetryProject (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
@@ -41,11 +42,13 @@ data PoetryProject = PoetryProject
   }
   deriving (Show, Eq, Ord)
 
-discover = undefined
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has Logger rsig run, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Poetry" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
+instance AnalyzeProject PoetryProject where
+  analyzeProject _ = getDeps
+
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [DiscoveredProject PoetryProject]
+discover dir = context "Poetry" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 -- | Poetry build backend identifier required in [pyproject.toml](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517).
 usesPoetryBackend :: Text -> Bool
@@ -91,16 +94,14 @@ findProjects = walk' $ \dir _ files -> do
     (Just _, Nothing) -> context "poetry.lock file found without accompanying pyproject.toml!" $ pure ([], WalkContinue)
     (Nothing, Nothing) -> pure ([], WalkContinue)
 
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n, Has Logger sig n) => PoetryProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "poetry"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = pyProjectPath $ projectDir project
---     , projectLicenses = pure []
---     }
-mkProject = undefined
+mkProject :: PoetryProject -> DiscoveredProject PoetryProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "poetry"
+    , projectBuildTargets = mempty
+    , projectPath = pyProjectPath $ projectDir project
+    , projectData = project
+    }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PoetryProject -> m DependencyResults
 getDeps project = do

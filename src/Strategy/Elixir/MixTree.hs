@@ -17,6 +17,7 @@ module Strategy.Elixir.MixTree (
   analyze,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
@@ -99,6 +100,9 @@ data MixProject = MixProject
   , mixFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
+
+instance AnalyzeProject MixProject where
+  analyzeProject _ = analyze
 
 -- | Name of the Package.
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord)

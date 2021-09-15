@@ -9,6 +9,7 @@ module Strategy.NuGet.ProjectAssetsJson (
   ProjectAssetsJson (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.Map.Strict qualified as Map
@@ -22,11 +23,10 @@ import Graphing (Graphing, unfold)
 import Path
 import Types
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "ProjectAssetsJson" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-discover = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ProjectAssetsJsonProject]
+discover dir = context "ProjectAssetsJson" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ProjectAssetsJsonProject]
 findProjects = walk' $ \_ _ files -> do
@@ -39,16 +39,17 @@ newtype ProjectAssetsJsonProject = ProjectAssetsJsonProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ProjectAssetsJsonProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "projectassetsjson"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = parent $ projectAssetsJsonFile project
---     , projectLicenses = pure []
---     }
-mkProject = undefined
+instance AnalyzeProject ProjectAssetsJsonProject where
+  analyzeProject _ = getDeps
+
+mkProject :: ProjectAssetsJsonProject -> DiscoveredProject ProjectAssetsJsonProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "projectassetsjson"
+    , projectBuildTargets = mempty
+    , projectPath = parent $ projectAssetsJsonFile project
+    , projectData = project
+    }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectAssetsJsonProject -> m DependencyResults
 getDeps = context "ProjectAssetsJson" . context "Static analysis" . analyze' . projectAssetsJsonFile

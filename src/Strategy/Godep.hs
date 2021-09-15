@@ -2,6 +2,7 @@ module Strategy.Godep (
   discover,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
@@ -13,10 +14,8 @@ import Strategy.Go.GopkgLock qualified as GopkgLock
 import Strategy.Go.GopkgToml qualified as GopkgToml
 import Types
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = map mkProject <$> findProjects dir
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject GodepProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GodepProject]
 findProjects = walk' $ \dir _ files -> do
@@ -40,15 +39,17 @@ data GodepProject = GodepProject
   , godepLock :: Maybe (Path Abs File)
   }
 
--- mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => GodepProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "godep"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = godepDir project
---     , projectLicenses = pure []
---     }
+instance AnalyzeProject GodepProject where
+  analyzeProject _ = getDeps
+
+mkProject :: GodepProject -> DiscoveredProject GodepProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "godep"
+    , projectBuildTargets = mempty
+    , projectPath = godepDir project
+    , projectData = project
+    }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 getDeps project =

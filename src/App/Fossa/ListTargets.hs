@@ -8,7 +8,6 @@ module App.Fossa.ListTargets (
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter
 import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
@@ -55,6 +54,7 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
+import Strategy.SwiftPM qualified as SwiftPM
 import Strategy.Yarn qualified as Yarn
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
@@ -115,6 +115,7 @@ runAll basedir = do
   single Scala.discover
   single Setuptools.discover
   single Stack.discover
+  single SwiftPM.discover
   single Yarn.discover
   where
     single f = withDiscoveredProjects f basedir (printSingle basedir)

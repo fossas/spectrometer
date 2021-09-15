@@ -21,6 +21,7 @@ module Strategy.Gradle (
   ConfigName (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Algebra (Has, run)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -91,24 +92,18 @@ gradleJsonDepsCmd initScriptFilepath baseCmd =
     , cmdAllowErr = Never
     }
 
--- discover ::
---   ( Has (Lift IO) sig m
---   , Has ReadFS sig m
---   , Has Diagnostics sig m
---   , Has Exec sig m
---   , Has Logger sig m
---   , Has (Lift IO) rsig run
---   , Has Exec rsig run
---   , Has ReadFS rsig run
---   , Has Diagnostics rsig run
---   ) =>
---   Path Abs Dir ->
---   m [DiscoveredProject run]
--- discover dir = context "Gradle" $ do
---   found <- context "Finding projects" $ findProjects dir
---   pure $ mkProject <$> found
-discover = undefined
-mkProject = undefined
+discover ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  ) =>
+  Path Abs Dir ->
+  m [DiscoveredProject GradleProject]
+discover dir = context "Gradle" $ do
+  found <- context "Finding projects" $ findProjects dir
+  pure $ mkProject <$> found
 
 -- Run a Gradle command in a specific working directory, while correctly trying
 -- Gradle wrappers.
@@ -184,6 +179,9 @@ data GradleProject = GradleProject
   }
   deriving (Eq, Ord, Show)
 
+instance AnalyzeProject GradleProject where
+  analyzeProject = getDeps
+
 gradleProjectsCmd :: Text -> Command
 gradleProjectsCmd baseCmd =
   Command
@@ -228,18 +226,17 @@ parseSubproject line =
     ("", _) -> Nothing -- no match
     (_, rest) -> Just $ Text.takeWhile (/= '\'') rest
 
--- mkProject :: (Has Exec sig n, Has ReadFS sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => GradleProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "gradle"
---     , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget $ gradleProjects project
---     , projectDependencyResults = getDeps project
---     , projectPath = gradleDir project
---     , projectLicenses = pure []
---     }
+mkProject :: GradleProject -> DiscoveredProject GradleProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "gradle"
+    , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget $ gradleProjects project
+    , projectPath = gradleDir project
+    , projectData = project
+    }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m DependencyResults
-getDeps project targets = context "Gradle" $ do
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => FoundTargets -> GradleProject -> m DependencyResults
+getDeps targets project = context "Gradle" $ do
   graph <- analyze targets (gradleDir project)
   pure $
     DependencyResults

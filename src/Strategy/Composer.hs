@@ -5,6 +5,7 @@ module Strategy.Composer (
   CompDep (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson.Types
 import Data.Foldable (traverse_)
@@ -21,12 +22,10 @@ import Graphing (Graphing)
 import Path
 import Types
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Composer" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ComposerProject]
+discover dir = context "Composer" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ComposerProject]
 findProjects = walk' $ \dir _ files -> do
@@ -41,15 +40,14 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkContinue)
 
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ComposerProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "composer"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = composerDir project
---     , projectLicenses = pure []
---     }
+mkProject :: ComposerProject -> DiscoveredProject ComposerProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "composer"
+    , projectBuildTargets = mempty
+    , projectPath = composerDir project
+    , projectData = project
+    }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m DependencyResults
 getDeps project = context "Composer" $ do
@@ -67,6 +65,9 @@ data ComposerProject = ComposerProject
   , composerLock :: Path Abs File
   }
   deriving (Eq, Ord, Show)
+
+instance AnalyzeProject ComposerProject where
+  analyzeProject _ = getDeps
 
 data ComposerLock = ComposerLock
   { lockPackages :: [CompDep]

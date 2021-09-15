@@ -1,5 +1,6 @@
 module Strategy.Pub (discover) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
@@ -11,12 +12,10 @@ import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
 import Types (DependencyResults (..), DiscoveredProject (..))
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run, Has Logger rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Pub" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
+discover dir = context "Pub" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PubProject]
 findProjects = walk' $ \dir _ files -> do
@@ -39,15 +38,17 @@ data PubProject = PubProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n, Has Logger sig n) => PubProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "pub"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = pubSpecDir project
---     , projectLicenses = pure []
---     }
+instance AnalyzeProject PubProject where
+  analyzeProject _ = getDeps
+
+mkProject :: PubProject -> DiscoveredProject PubProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "pub"
+    , projectBuildTargets = mempty
+    , projectPath = pubSpecDir project
+    , projectData = project
+    }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
 getDeps project = do

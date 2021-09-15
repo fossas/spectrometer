@@ -9,6 +9,7 @@ module Strategy.NuGet.ProjectJson (
   ProjectJson (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
 import Data.Aeson.Types
@@ -24,9 +25,8 @@ import Graphing qualified
 import Path
 import Types
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = map mkProject <$> findProjects dir
-discover = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ProjectJsonProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ProjectJsonProject]
 findProjects = walk' $ \_ _ files -> do
@@ -39,16 +39,17 @@ newtype ProjectJsonProject = ProjectJsonProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ProjectJsonProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "projectjson"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = parent $ projectJsonFile project
---     , projectLicenses = pure []
---     }
-mkProject = undefined
+instance AnalyzeProject ProjectJsonProject where
+  analyzeProject _ = getDeps
+
+mkProject :: ProjectJsonProject -> DiscoveredProject ProjectJsonProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "projectjson"
+    , projectBuildTargets = mempty
+    , projectPath = parent $ projectJsonFile project
+    , projectData = project
+    }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectJsonProject -> m DependencyResults
 getDeps = analyze' . projectJsonFile

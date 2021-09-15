@@ -11,6 +11,7 @@ module Strategy.Scala (
   findProjects,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Carrier.Diagnostics
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
@@ -28,44 +29,41 @@ import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Types
 
--- discover ::
---   ( Has Exec sig m
---   , Has ReadFS sig m
---   , Has Logger sig m
---   , Has Diagnostics sig m
---   , Applicative run
---   ) =>
---   Path Abs Dir ->
---   m [DiscoveredProject run]
--- discover dir = context "Scala" $ do
---   projects <- findProjects dir
---   pure (map (mkProject dir) projects)
+discover ::
+  ( Has Exec sig m
+  , Has ReadFS sig m
+  , Has Logger sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m [DiscoveredProject ScalaProject]
+discover dir = context "Scala" $ do
+  projects <- findProjects dir
+  pure (map mkProject projects)
 
---mkProject ::
---   Applicative n =>
---   -- | basedir; required for licenses
---   Path Abs Dir ->
---   MavenProjectClosure ->
---   DiscoveredProject n
--- mkProject basedir closure =
---   DiscoveredProject
---     { projectType = "scala"
---     , projectPath = parent $ PomClosure.closurePath closure
---     , projectBuildTargets = mempty
---     , -- only do static analysis of generated pom files
---       projectDependencyResults =
---         const $
---           pure
---             DependencyResults
---               { dependencyGraph = Pom.analyze' closure
---               , dependencyGraphBreadth = Complete
---               , dependencyManifestFiles = [PomClosure.closurePath closure]
---               }
---     , projectLicenses = pure $ Pom.getLicenses basedir closure
---     }
+newtype ScalaProject = ScalaProject {unScalaProject :: PomClosure.MavenProjectClosure}
+  deriving (Eq, Ord, Show)
 
-discover = undefined
-mkProject = undefined
+instance AnalyzeProject ScalaProject where
+  analyzeProject _ = pure . getDeps
+
+mkProject :: MavenProjectClosure -> DiscoveredProject ScalaProject
+mkProject closure =
+  DiscoveredProject
+    { projectType = "scala"
+    , projectPath = parent $ PomClosure.closurePath closure
+    , projectBuildTargets = mempty
+    , projectData = ScalaProject closure
+    }
+
+-- only do static analysis of generated pom files
+getDeps :: ScalaProject -> DependencyResults
+getDeps (ScalaProject closure) =
+  DependencyResults
+    { dependencyGraph = Pom.analyze' closure
+    , dependencyGraphBreadth = Complete
+    , dependencyManifestFiles = [PomClosure.closurePath closure]
+    }
 
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath

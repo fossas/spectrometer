@@ -5,6 +5,7 @@ module Strategy.SwiftPM (
   mkProject,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject (..))
 import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Functor (($>))
@@ -40,12 +41,11 @@ data XcodeProjectUsingSwiftPm = XcodeProjectUsingSwiftPm
   }
   deriving (Show, Eq, Ord)
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Swift" $ do
---   swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
---   xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
---   pure $ map mkProject (swiftPackageProjects ++ xCodeProjects)
-discover = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [DiscoveredProject SwiftProject]
+discover dir = context "Swift" $ do
+  swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
+  xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
+  pure $ map mkProject (swiftPackageProjects ++ xCodeProjects)
 
 findSwiftPackageProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SwiftProject]
 findSwiftPackageProjects = walk' $ \dir _ files -> do
@@ -97,21 +97,19 @@ debugXCodeWithoutSwiftDeps projFile =
       <> show projFile
       <> "), did not have any XCRemoteSwiftPackageReference, ignoring from swift analyses."
 
-mkProject = undefined
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SwiftProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "swift"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = getProjectDir
---     , projectLicenses = pure []
---     }
---   where
---     getProjectDir :: Path Abs Dir
---     getProjectDir = case project of
---       PackageProject prj -> swiftPkgProjectDir prj
---       XcodeProject prj -> xCodeProjectDir prj
+mkProject :: SwiftProject -> DiscoveredProject SwiftProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "swift"
+    , projectBuildTargets = mempty
+    , projectPath = case project of
+        PackageProject p -> swiftPkgProjectDir p
+        XcodeProject p -> xCodeProjectDir p
+    , projectData = project
+    }
+
+instance AnalyzeProject SwiftProject where
+  analyzeProject _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftProject -> m DependencyResults
 getDeps project = do

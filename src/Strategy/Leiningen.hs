@@ -20,6 +20,7 @@ module Strategy.Leiningen (
   LeiningenProject (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
 import Data.EDN qualified as EDN
@@ -58,13 +59,10 @@ leinVersionCmd =
     , cmdAllowErr = Always
     }
 
---discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
---discover dir = context "Leiningen" $ do
-  --projects <- context "Finding projects" $ findProjects dir
-  --pure (map mkProject projects)
-
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject LeiningenProject]
+discover dir = context "Leiningen" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [LeiningenProject]
 findProjects = walk' $ \dir _ files -> do
@@ -79,15 +77,14 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkContinue)
 
--- mkProject :: (Has Exec sig n, Has Diagnostics sig n) => LeiningenProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "leiningen"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = leinDir project
---     , projectLicenses = pure []
---     }
+mkProject :: LeiningenProject -> DiscoveredProject LeiningenProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "leiningen"
+    , projectBuildTargets = mempty
+    , projectPath = leinDir project
+    , projectData = project
+    }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m DependencyResults
 getDeps = context "Leiningen" . context "Dynamic analysis" . analyze . leinProjectClj
@@ -97,6 +94,9 @@ data LeiningenProject = LeiningenProject
   , leinProjectClj :: Path Abs File
   }
   deriving (Eq, Ord, Show)
+
+instance AnalyzeProject LeiningenProject where
+  analyzeProject _ = getDeps
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze file = do

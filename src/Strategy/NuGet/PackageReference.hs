@@ -11,6 +11,7 @@ module Strategy.NuGet.PackageReference (
   Package (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
@@ -29,12 +30,10 @@ import Types
 isPackageRefFile :: Path b File -> Bool
 isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "PackageReference" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PackageReferenceProject]
+discover dir = context "PackageReference" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PackageReferenceProject]
 findProjects = walk' $ \_ _ files -> do
@@ -47,15 +46,17 @@ newtype PackageReferenceProject = PackageReferenceProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PackageReferenceProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "packagereference"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = parent $ packageReferenceFile project
---     , projectLicenses = pure []
---     }
+instance AnalyzeProject PackageReferenceProject where
+  analyzeProject _ = getDeps
+
+mkProject :: PackageReferenceProject -> DiscoveredProject PackageReferenceProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "packagereference"
+    , projectBuildTargets = mempty
+    , projectPath = parent $ packageReferenceFile project
+    , projectData = project
+    }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m DependencyResults
 getDeps = context "PackageReference" . context "Static analysis" . analyze' . packageReferenceFile

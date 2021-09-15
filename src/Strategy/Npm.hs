@@ -12,14 +12,12 @@ import Strategy.Node.NpmList qualified as NpmList
 import Strategy.Node.NpmLock qualified as NpmLock
 import Strategy.Node.PackageJson qualified as PackageJson
 import Types
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = context "Npm" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NpmProject]
+discover dir = context "Npm" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NpmProject]
 findProjects = walk' $ \dir _ files -> do
@@ -49,15 +47,17 @@ data NpmProject = NpmProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => NpmProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "npm"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = npmDir project
---     , projectLicenses = pure []
---     }
+instance AnalyzeProject NpmProject where
+  analyzeProject _ = getDeps
+
+mkProject :: NpmProject -> DiscoveredProject NpmProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "npm"
+    , projectBuildTargets = mempty
+    , projectPath = npmDir project
+    , projectData = project
+    }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 getDeps project = context "Npm" $ analyzeNpmList project <||> analyzeNpmLock project <||> analyzeNpmJson project

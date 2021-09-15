@@ -103,6 +103,7 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
+import Strategy.SwiftPM qualified as SwiftPM
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
@@ -188,42 +189,6 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
   where
     doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput modeOptions filters
 
---discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
---discoverFuncs =
--- [ Bundler.discover
--- , Cabal.discover
--- , Cargo.discover
--- , Carthage.discover
--- , Cocoapods.discover
--- , Composer.discover
--- , Conda.discover
--- , Glide.discover
--- , Godep.discover
--- , Gomodules.discover
--- , Gradle.discover
--- , Leiningen.discover
--- , Maven.discover
--- , Mix.discover
--- , Npm.discover
--- , Nuspec.discover
--- , PackageReference.discover
--- , PackagesConfig.discover
--- , Paket.discover
--- , Pipenv.discover
--- , Poetry.discover
--- , ProjectAssetsJson.discover
--- , ProjectJson.discover
--- , Pub.discover
--- , RPM.discover
--- , Rebar3.discover
--- , RepoManifest.discover
--- , Scala.discover
--- , Setuptools.discover
--- , Stack.discover
--- , SwiftPM.discover
--- , Yarn.discover
--- ]
-
 runDependencyAnalysis ::
   ( AnalyzeProject a
   , Has (Lift IO) sig m
@@ -273,36 +238,37 @@ runAnalyzers ::
   AllFilters ->
   m ()
 runAnalyzers basedir filters = do
-  -- single Bundler.discover
-  -- single Cabal.discover
-  -- single Cargo.discover
-  -- single Carthage.discover
-  -- single Cocoapods.discover
-  -- single Composer.discover
-  -- single Conda.discover
-  -- single Glide.discover
-  -- single Godep.discover
-  -- single Gomodules.discover
-  -- single Gradle.discover
-  -- single Leiningen.discover
+  single Bundler.discover
+  single Cabal.discover
+  single Cargo.discover
+  single Carthage.discover
+  single Cocoapods.discover
+  single Composer.discover
+  single Conda.discover
+  single Glide.discover
+  single Godep.discover
+  single Gomodules.discover
+  single Gradle.discover
+  single Leiningen.discover
   single Maven.discover
-  -- single Mix.discover
-  -- single Npm.discover
+  single Mix.discover
+  single Npm.discover
   single Nuspec.discover
-  -- single PackageReference.discover
-  -- single PackagesConfig.discover
-  -- single Paket.discover
-  -- single Pipenv.discover
-  -- single Poetry.discover
-  -- single ProjectAssetsJson.discover
-  -- single ProjectJson.discover
-  -- single Pub.discover
-  -- single RPM.discover
-  -- single Rebar3.discover
-  -- single RepoManifest.discover
-  -- single Scala.discover
-  -- single Setuptools.discover
-  -- single Stack.discover
+  single PackageReference.discover
+  single PackagesConfig.discover
+  single Paket.discover
+  single Pipenv.discover
+  single Poetry.discover
+  single ProjectAssetsJson.discover
+  single ProjectJson.discover
+  single Pub.discover
+  single RPM.discover
+  single Rebar3.discover
+  single RepoManifest.discover
+  single Scala.discover
+  single Setuptools.discover
+  single Stack.discover
+  single SwiftPM.discover
   single Yarn.discover
   where
     single f = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
@@ -346,12 +312,10 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      -- withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
       $ do
         runAnalyzers basedir filters
         when (fromFlag UnpackArchives unpackArchives) $
           forkTask $ do
-            -- FIXME: cleanup?
             res <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ Archive.discover (`runAnalyzers` filters) basedir
             Diag.withResult SevError res (const (pure ()))
 

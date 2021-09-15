@@ -10,11 +10,10 @@ import Path
 import Strategy.Conda.CondaList qualified as CondaList
 import Strategy.Conda.EnvironmentYml qualified as EnvironmentYml
 import Types
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 
--- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
--- discover dir = map mkProject <$> findProjects dir
-discover = undefined
-mkProject = undefined
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
+discover dir = map mkProject <$> findProjects dir
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CondaProject]
 findProjects = walk' $ \dir _ files -> do
@@ -34,15 +33,17 @@ data CondaProject = CondaProject
   }
   deriving (Eq, Ord, Show)
 
--- mkProject :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CondaProject -> DiscoveredProject m
--- mkProject project =
---   DiscoveredProject
---     { projectType = "conda"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = condaDir project
---     , projectLicenses = pure []
---     }
+instance AnalyzeProject CondaProject where
+  analyzeProject _ = getDeps
+
+mkProject :: CondaProject -> DiscoveredProject CondaProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "conda"
+    , projectBuildTargets = mempty
+    , projectPath = condaDir project
+    , projectData = project
+    }
 
 -- Prefer analyzeCondaList over analyzeEnvironmentYml, results shoudln't be combined, it's either/or.
 -- There might be a dep with a version spec in an environment.yml file: i.e. conda+foo$1.2.*, and perhaps
