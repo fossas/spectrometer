@@ -2,10 +2,12 @@ module Strategy.Pub (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Data.Aeson (ToJSON)
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Path
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
@@ -36,7 +38,9 @@ data PubProject = PubProject
   , pubLock :: Maybe (Path Abs File)
   , pubSpecDir :: Path Abs Dir
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PubProject
 
 instance AnalyzeProject PubProject where
   analyzeProject _ = getDeps

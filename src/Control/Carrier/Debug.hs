@@ -12,6 +12,7 @@ module Control.Carrier.Debug (
   module X,
 ) where
 
+import Control.Carrier.AtomicState
 import Control.Carrier.Diagnostics
 import Control.Carrier.Output.IO
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -23,11 +24,12 @@ import Control.Monad.Trans (lift)
 import Data.Aeson
 import Data.Aeson.Types (Pair)
 import Data.Fixed
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
 import Path
 
-newtype DebugC m a = DebugC {runDebugC :: OutputC ScopeEvent m a}
+newtype DebugC m a = DebugC {runDebugC :: OutputC ScopeEvent (AtomicStateC (Map.Map Text Value) m) a}
   deriving (Functor, Applicative, Monad, MonadIO) -- TODO: MonadTrans
 
 newtype Duration = Duration {unDuration :: Nano}
@@ -37,6 +39,7 @@ data Scope = Scope
   { scopeTiming :: Duration
   , scopeEvents :: [ScopeEvent]
   , scopeFiles :: [ScopeFile]
+  , scopeMetadata :: Map.Map Text Value
   }
   deriving (Show)
 
@@ -46,9 +49,10 @@ instance ToJSON Scope where
 scopePairs :: Scope -> [Pair]
 scopePairs Scope{..} =
   [ "duration" .= show (unDuration scopeTiming)
-  , "events" .= scopeEvents
   ]
+    ++ whenNonEmpty "events" scopeEvents
     ++ whenNonEmpty "files" scopeFiles
+    ++ Map.toList scopeMetadata
 
 whenNonEmpty :: ToJSON a => Text -> [a] -> [Pair]
 whenNonEmpty _ [] = []
@@ -92,19 +96,22 @@ timeBetween (MkSystemTime sec ns) (MkSystemTime sec' ns') =
 runDebug :: Has (Lift IO) sig m => DebugC m a -> m (Scope, a)
 runDebug act = do
   before <- sendIO getSystemTime
-  (evs, res) <- runOutput @ScopeEvent $ runDebugC act
+  (metadata, (evs, res)) <- runAtomicState Map.empty . runOutput @ScopeEvent $ runDebugC act
   after <- sendIO getSystemTime
   let duration = timeBetween before after
-  pure (Scope duration evs [], res)
+  pure (Scope duration evs [] metadata, res)
 
 instance Has (Lift IO) sig m => Algebra (Debug :+: sig) (DebugC m) where
   alg hdl sig ctx = DebugC $
     case sig of
       L (DebugScope nm act) -> do
         let act' = hdl (act <$ ctx)
-        (inner, res) <- lift $ runDebug act'
+        (inner, res) <- lift . lift $ runDebug act'
         output (EventScope nm inner)
         pure res
+      L (DebugMetadata k v) -> do
+        modify (Map.insert k (toJSON v))
+        pure ctx
       L (DebugEffect k v) -> do
         output (EventEffect (SomeEffectResult k v))
         pure ctx
@@ -113,7 +120,7 @@ instance Has (Lift IO) sig m => Algebra (Debug :+: sig) (DebugC m) where
         pure ctx
       L (DebugBuildtool _) -> pure ctx -- FIXME
       L (DebugFile _) -> pure ctx -- FIXME
-      R other -> alg (runDebugC . hdl) (R other) ctx
+      R other -> alg (runDebugC . hdl) (R (R other)) ctx
 
 -----------------------------------------------
 
@@ -124,6 +131,7 @@ instance Algebra sig m => Algebra (Debug :+: sig) (IgnoreDebugC m) where
   alg hdl sig ctx = IgnoreDebugC $
     case sig of
       L (DebugScope _ act) -> runIgnoreDebugC (hdl (act <$ ctx))
+      L DebugMetadata{} -> pure ctx
       L DebugError{} -> pure ctx
       L DebugEffect{} -> pure ctx
       L DebugBuildtool{} -> pure ctx

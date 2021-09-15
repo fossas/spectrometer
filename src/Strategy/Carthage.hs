@@ -12,6 +12,7 @@ module Strategy.Carthage (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON)
 import Data.Char (isSpace)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
@@ -24,6 +25,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing qualified as G
 import Path
 import Text.Megaparsec
@@ -53,7 +55,9 @@ data CarthageProject = CarthageProject
   { carthageDir :: Path Abs Dir
   , carthageLock :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON CarthageProject
 
 instance AnalyzeProject CarthageProject where
   analyzeProject _ = getDeps

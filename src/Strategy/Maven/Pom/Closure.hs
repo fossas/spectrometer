@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Maven.Pom.Closure (
   findProjects,
   MavenProjectClosure (..),
@@ -9,6 +11,7 @@ import Algebra.Graph.AdjacencyMap.Algorithm qualified as AM
 import Control.Algebra
 import Control.Carrier.State.Strict
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
@@ -18,6 +21,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Path.IO qualified as PIO
 import Strategy.Maven.Pom.PomFile
@@ -104,4 +108,15 @@ data MavenProjectClosure = MavenProjectClosure
   , closureGraph :: AM.AdjacencyMap MavenCoordinate
   , closurePoms :: Map MavenCoordinate (Path Abs File, Pom)
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MavenProjectClosure where
+  toJSON MavenProjectClosure{..} =
+    object
+      [ "closureAnalysisRoot" .= closureAnalysisRoot
+      , "closurePath" .= closurePath
+      , "closureRootCoord" .= closureRootCoord
+      , "closureRootPom" .= closureRootPom
+      , "closureGraph" .= AM.adjacencyMap closureGraph
+      , "closurePoms" .= closurePoms
+      ]

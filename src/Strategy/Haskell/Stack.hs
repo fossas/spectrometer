@@ -22,6 +22,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Graphing qualified as G
 import Path
 import Types
@@ -89,7 +90,9 @@ data StackProject = StackProject
   { stackDir :: Path Abs Dir
   , stackFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON StackProject
 
 instance AnalyzeProject StackProject where
   analyzeProject _ = getDeps

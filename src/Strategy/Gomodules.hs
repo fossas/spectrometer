@@ -7,9 +7,11 @@ module Strategy.Gomodules (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.Gomod qualified as Gomod
@@ -30,6 +32,9 @@ data GomodulesProject = GomodulesProject
   { gomodulesGomod :: Path Abs File
   , gomodulesDir :: Path Abs Dir
   }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
   analyzeProject _ = getDeps

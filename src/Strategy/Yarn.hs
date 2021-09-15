@@ -2,15 +2,17 @@ module Strategy.Yarn (
   discover,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject (..))
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Yarn.V1.YarnLock qualified as V1
 import Strategy.Yarn.V2.YarnLock qualified as V2
 import Types
 import Prelude
-import App.Fossa.Analyze.Types (AnalyzeProject (..))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject YarnProject]
 discover dir = context "Yarn" $ do
@@ -70,4 +72,6 @@ data YarnProject = YarnProject
   { yarnDir :: Path Abs Dir
   , yarnLock :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON YarnProject

@@ -20,9 +20,11 @@ module Strategy.Googlesource.RepoManifest (
 
 import Prelude
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics
 import Control.Monad (unless)
+import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
@@ -33,6 +35,7 @@ import Data.Text.Prettyprint.Doc (pretty)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
 import Parse.XML
 import Path
@@ -40,7 +43,6 @@ import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
 import Text.URI
 import Types
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject RepoManifestProject]
 discover dir = context "RepoManifest" $ do
@@ -60,7 +62,9 @@ findProjects = walk' $ \_ _ files -> do
 newtype RepoManifestProject = RepoManifestProject
   { repoManifestXml :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON RepoManifestProject
 
 mkProject :: RepoManifestProject -> DiscoveredProject RepoManifestProject
 mkProject project =

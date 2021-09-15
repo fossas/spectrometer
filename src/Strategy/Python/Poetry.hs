@@ -11,6 +11,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Aeson (ToJSON)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -23,6 +24,7 @@ import Discovery.Walk (
  )
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsToml)
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path)
@@ -31,16 +33,22 @@ import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), Poe
 import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
 import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
 
-newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show)
-newtype PoetryLockFile = PoetryLockFile {poetryLockPath :: Path Abs File} deriving (Eq, Ord, Show)
-newtype ProjectDir = ProjectDir {pyProjectPath :: Path Abs Dir} deriving (Eq, Ord, Show)
+newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
+newtype PoetryLockFile = PoetryLockFile {poetryLockPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
+newtype ProjectDir = ProjectDir {pyProjectPath :: Path Abs Dir} deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PyProjectTomlFile
+instance ToJSON PoetryLockFile
+instance ToJSON ProjectDir
 
 data PoetryProject = PoetryProject
   { projectDir :: ProjectDir
   , pyProjectToml :: PyProjectTomlFile
   , poetryLock :: Maybe PoetryLockFile
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON PoetryProject
 
 instance AnalyzeProject PoetryProject where
   analyzeProject _ = getDeps

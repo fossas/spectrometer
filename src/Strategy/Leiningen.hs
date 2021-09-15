@@ -23,6 +23,7 @@ module Strategy.Leiningen (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON)
 import Data.EDN qualified as EDN
 import Data.EDN.Class.Parser (Parser)
 import Data.Foldable (traverse_)
@@ -39,6 +40,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
 import Types
@@ -93,7 +95,9 @@ data LeiningenProject = LeiningenProject
   { leinDir :: Path Abs Dir
   , leinProjectClj :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON LeiningenProject
 
 instance AnalyzeProject LeiningenProject where
   analyzeProject _ = getDeps

@@ -31,6 +31,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
 import Path
@@ -152,7 +153,9 @@ data CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
   , cabalFiles :: [Path Abs File]
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON CabalProject
 
 instance AnalyzeProject CabalProject where
   analyzeProject _ = getDeps

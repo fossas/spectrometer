@@ -20,6 +20,7 @@ import Data.Text qualified as Text
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Path
@@ -37,7 +38,9 @@ findProjects = walk' $ \_ _ files -> do
 newtype ProjectJsonProject = ProjectJsonProject
   { projectJsonFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ProjectJsonProject
 
 instance AnalyzeProject ProjectJsonProject where
   analyzeProject _ = getDeps

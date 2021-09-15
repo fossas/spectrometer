@@ -33,7 +33,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Data.Aeson (FromJSON (..), Value (..), decodeStrict, withObject, (.:))
+import Data.Aeson (FromJSON (..), ToJSON, Value (..), decodeStrict, withObject, (.:))
 import Data.Aeson.Types (Parser, unexpected)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -62,6 +62,7 @@ import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS, doesFileExist)
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
 import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
@@ -177,7 +178,9 @@ data GradleProject = GradleProject
   , gradleBuildFile :: Path Abs File
   , gradleProjects :: Set Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GradleProject
 
 instance AnalyzeProject GradleProject where
   analyzeProject = getDeps

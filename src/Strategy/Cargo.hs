@@ -23,6 +23,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path
 import Types
@@ -147,7 +148,9 @@ data CargoProject = CargoProject
   { cargoDir :: Path Abs Dir
   , cargoToml :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON CargoProject
 
 instance AnalyzeProject CargoProject where
   analyzeProject _ = getDeps

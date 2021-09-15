@@ -13,6 +13,7 @@ module Strategy.Scala (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Carrier.Diagnostics
+import Data.Aeson (ToJSON)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
@@ -22,6 +23,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Logger hiding (group)
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
@@ -42,7 +44,9 @@ discover dir = context "Scala" $ do
   pure (map mkProject projects)
 
 newtype ScalaProject = ScalaProject {unScalaProject :: PomClosure.MavenProjectClosure}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ScalaProject
 
 instance AnalyzeProject ScalaProject where
   analyzeProject _ = pure . getDeps

@@ -18,9 +18,8 @@ import Effect.Logger
 import Path
 import Types
 
--- | Run a list of discover functions in parallel, running the provided function
--- on each discovered project. Note that the provided function is also run in
--- parallel.
+-- | Fork a task to run a discover function, forking a task with the provided
+-- continuation applied to each discovered project
 withDiscoveredProjects ::
   ( Has AtomicCounter sig m
   , Has (Lift IO) sig m

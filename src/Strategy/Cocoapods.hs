@@ -5,16 +5,18 @@ module Strategy.Cocoapods (
   mkProject,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
 import Types
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
 discover dir = context "Cocoapods" $ do
@@ -42,7 +44,9 @@ data CocoapodsProject = CocoapodsProject
   , cocoapodsPodfileLock :: Maybe (Path Abs File)
   , cocoapodsDir :: Path Abs Dir
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON CocoapodsProject
 
 instance AnalyzeProject CocoapodsProject where
   analyzeProject _ = getDeps

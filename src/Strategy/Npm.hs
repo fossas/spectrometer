@@ -13,6 +13,8 @@ import Strategy.Node.NpmLock qualified as NpmLock
 import Strategy.Node.PackageJson qualified as PackageJson
 import Types
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import GHC.Generics (Generic)
+import Data.Aeson (ToJSON)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NpmProject]
 discover dir = context "Npm" $ do
@@ -45,7 +47,9 @@ data NpmProject = NpmProject
   , npmPackageJson :: Path Abs File
   , npmPackageLock :: Maybe (Path Abs File)
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON NpmProject
 
 instance AnalyzeProject NpmProject where
   analyzeProject _ = getDeps

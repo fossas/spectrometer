@@ -9,10 +9,12 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Data.List (isInfixOf, isSuffixOf)
 import Data.Maybe (maybeToList)
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
 import Strategy.Python.ReqTxt qualified as ReqTxt
@@ -71,7 +73,9 @@ data SetuptoolsProject = SetuptoolsProject
   , setuptoolsSetupPy :: Maybe (Path Abs File)
   , setuptoolsDir :: Path Abs Dir
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON SetuptoolsProject
 
 instance AnalyzeProject SetuptoolsProject where
   analyzeProject _ = getDeps

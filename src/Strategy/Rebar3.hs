@@ -7,9 +7,11 @@ module Strategy.Rebar3 (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Erlang.Rebar3Tree qualified as Rebar3Tree
 import Types
@@ -29,7 +31,9 @@ data RebarProject = RebarProject
   { rebarDir :: Path Abs Dir
   , rebarFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON RebarProject
 
 instance AnalyzeProject RebarProject where
   analyzeProject _ = getDeps

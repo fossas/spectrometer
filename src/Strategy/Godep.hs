@@ -6,9 +6,11 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Go.GopkgLock qualified as GopkgLock
 import Strategy.Go.GopkgToml qualified as GopkgToml
@@ -38,6 +40,9 @@ data GodepProject = GodepProject
   , godepToml :: Maybe (Path Abs File)
   , godepLock :: Maybe (Path Abs File)
   }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GodepProject
 
 instance AnalyzeProject GodepProject where
   analyzeProject _ = getDeps

@@ -34,7 +34,7 @@ import App.Types (
  )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, ignoreDebug, runDebug)
+import Control.Carrier.Debug (Debug, ignoreDebug, runDebug, debugMetadata)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally
@@ -190,7 +190,8 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
     doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput modeOptions filters
 
 runDependencyAnalysis ::
-  ( AnalyzeProject a
+  ( AnalyzeProject proj
+  , Aeson.ToJSON proj
   , Has (Lift IO) sig m
   , Has AtomicCounter sig m
   , Has Debug sig m
@@ -203,14 +204,16 @@ runDependencyAnalysis ::
   -- | Analysis base directory
   Path Abs Dir ->
   AllFilters ->
-  DiscoveredProject a ->
+  DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters project =
+runDependencyAnalysis basedir filters project = do
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ analyzeProject targets (projectData project)
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . Diag.context "Project Analysis" $ do
+        debugMetadata "DiscoveredProject" project
+        analyzeProject targets (projectData project)
       Diag.withResult SevWarn graphResult (output . mkResult basedir project)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets

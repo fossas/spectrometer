@@ -8,9 +8,11 @@ module Strategy.Bundler (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Ruby.BundleShow qualified as BundleShow
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
@@ -43,7 +45,9 @@ data BundlerProject = BundlerProject
   , bundlerGemfileLock :: Maybe (Path Abs File)
   , bundlerDir :: Path Abs Dir
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON BundlerProject
 
 instance AnalyzeProject BundlerProject where
   analyzeProject _ = getDeps

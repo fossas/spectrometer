@@ -18,6 +18,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
 import Types
@@ -64,7 +65,9 @@ data ComposerProject = ComposerProject
   { composerDir :: Path Abs Dir
   , composerLock :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ComposerProject
 
 instance AnalyzeProject ComposerProject where
   analyzeProject _ = getDeps

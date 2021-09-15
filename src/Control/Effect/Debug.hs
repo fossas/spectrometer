@@ -1,6 +1,7 @@
 module Control.Effect.Debug (
   Debug (..),
   debugScope,
+  debugMetadata,
   debugError,
   debugEffect,
   debugFile,
@@ -14,9 +15,11 @@ import Control.Effect.Record (Recordable)
 import Data.Text (Text)
 import Effect.Exec (Command)
 import Path
+import Data.Aeson (ToJSON)
 
 data Debug m a where
   DebugScope :: Text -> m a -> Debug m a
+  DebugMetadata :: ToJSON a => Text -> a -> Debug m ()
   DebugError :: ToDiagnostic err => err -> Debug m ()
   DebugEffect :: Recordable r => r a -> a -> Debug m ()
   DebugFile :: Path Abs File -> Debug m ()
@@ -24,6 +27,11 @@ data Debug m a where
 
 debugScope :: Has Debug sig m => Text -> m a -> m a
 debugScope nm act = send (DebugScope nm act)
+
+-- | Add a key/value pair to the top-level scope. When using an overlapping key,
+-- only the latest value is used
+debugMetadata :: (ToJSON a, Has Debug sig m) => Text -> a -> m ()
+debugMetadata key val = send (DebugMetadata key val)
 
 debugError :: (ToDiagnostic err, Has Debug sig m) => err -> m ()
 debugError = send . DebugError

@@ -2,15 +2,17 @@ module Strategy.Conda (
   discover,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Conda.CondaList qualified as CondaList
 import Strategy.Conda.EnvironmentYml qualified as EnvironmentYml
 import Types
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
 discover dir = map mkProject <$> findProjects dir
@@ -31,7 +33,9 @@ data CondaProject = CondaProject
   { condaDir :: Path Abs Dir
   , condaEnvironmentYml :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON CondaProject
 
 instance AnalyzeProject CondaProject where
   analyzeProject _ = getDeps

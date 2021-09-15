@@ -16,6 +16,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.List qualified as L
 import Data.Map.Strict qualified as Map
@@ -24,6 +25,7 @@ import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Parse.XML
@@ -51,7 +53,9 @@ findProjects = walk' $ \_ _ files -> do
 newtype NuspecProject = NuspecProject
   { nuspecFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON NuspecProject
 
 mkProject :: NuspecProject -> DiscoveredProject NuspecProject
 mkProject project =

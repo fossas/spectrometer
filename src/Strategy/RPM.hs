@@ -14,6 +14,7 @@ module Strategy.RPM (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Data.List (isSuffixOf)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
@@ -23,6 +24,7 @@ import Data.Text.Extra (splitOnceOn)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
 import Path
@@ -66,7 +68,9 @@ data RpmProject = RpmProject
   { rpmDir :: Path Abs Dir
   , rpmFiles :: [Path Abs File]
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON RpmProject
 
 instance AnalyzeProject RpmProject where
   analyzeProject _ = getDeps

@@ -27,6 +27,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
 import Types
@@ -73,7 +74,9 @@ mkProject project =
 newtype PipenvProject = PipenvProject
   { pipenvLockfile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PipenvProject
 
 instance AnalyzeProject PipenvProject where
   analyzeProject _ = getDeps

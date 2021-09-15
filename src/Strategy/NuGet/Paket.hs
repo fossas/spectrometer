@@ -13,6 +13,7 @@ module Strategy.NuGet.Paket (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Control.Monad (guard)
+import Data.Aeson (ToJSON)
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -25,6 +26,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
 import Text.Megaparsec hiding (label)
@@ -48,7 +50,9 @@ findProjects = walk' $ \_ _ files -> do
 newtype PaketProject = PaketProject
   { paketLock :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PaketProject
 
 instance AnalyzeProject PaketProject where
   analyzeProject _ = getDeps

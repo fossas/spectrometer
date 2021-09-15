@@ -78,7 +78,7 @@ logToDebug = interpret $ \case
 -----------------------------------------------
 
 -- | Combine all of our debug wrappers into a mega-wrapper
-type DebugEverythingC m = DiagDebugC (ReadFSDebugC (ExecDebugC (LogDebugC m)))
+type DebugEverythingC m = DiagDebugC (ReadFSDebugC (ExecDebugC m))
 
 debugEverything :: (Has Debug sig m, Has Exec sig m, Has ReadFS sig m, Has Logger sig m) => DebugEverythingC m a -> m a
-debugEverything = logToDebug . execToDebug . readFSToDebug . diagToDebug
+debugEverything = execToDebug . readFSToDebug . diagToDebug

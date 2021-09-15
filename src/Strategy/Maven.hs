@@ -11,8 +11,10 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson (ToJSON)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
@@ -46,7 +48,9 @@ mkProject closure =
     }
 
 newtype MavenProject = MavenProject {unMavenProject :: PomClosure.MavenProjectClosure}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MavenProject
 
 instance AnalyzeProject MavenProject where
   analyzeProject _ = getDeps
