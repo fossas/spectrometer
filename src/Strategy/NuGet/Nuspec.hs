@@ -35,10 +35,11 @@ import Types (
   LicenseType (..),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Nuspec" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover = undefined
+--discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+--discover dir = context "Nuspec" $ do
+  --projects <- context "Finding projects" $ findProjects dir
+  --pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NuspecProject]
 findProjects = walk' $ \_ _ files -> do
@@ -51,15 +52,16 @@ newtype NuspecProject = NuspecProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => NuspecProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "nuspec"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = parent $ nuspecFile project
-    , projectLicenses = analyzeLicenses (nuspecFile project)
-    }
+mkProject = undefined
+-- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => NuspecProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "nuspec"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = parent $ nuspecFile project
+--     , projectLicenses = analyzeLicenses (nuspecFile project)
+--     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m DependencyResults
 getDeps = context "Nuspec" . context "Static analysis" . analyze' . nuspecFile

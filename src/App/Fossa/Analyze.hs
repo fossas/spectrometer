@@ -10,12 +10,12 @@ module App.Fossa.Analyze (
   BinaryDiscoveryMode (..),
   RecordMode (..),
   ModeOptions (..),
-  discoverFuncs,
+  -- discoverFuncs,
 ) where
 
 import App.Docs (userGuideUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
-import App.Fossa.Analyze.Debug (DiagDebugC, diagToDebug, debugEverything)
+import App.Fossa.Analyze.Debug (debugEverything, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
@@ -69,51 +69,46 @@ import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit (..), parseLocator)
-import Strategy.Bundler qualified as Bundler
-import Strategy.Cargo qualified as Cargo
-import Strategy.Carthage qualified as Carthage
-import Strategy.Cocoapods qualified as Cocoapods
-import Strategy.Composer qualified as Composer
-import Strategy.Conda qualified as Conda
-import Strategy.Glide qualified as Glide
-import Strategy.Godep qualified as Godep
-import Strategy.Gomodules qualified as Gomodules
-import Strategy.Googlesource.RepoManifest qualified as RepoManifest
-import Strategy.Gradle qualified as Gradle
-import Strategy.Haskell.Cabal qualified as Cabal
-import Strategy.Haskell.Stack qualified as Stack
-import Strategy.Leiningen qualified as Leiningen
-import Strategy.Maven qualified as Maven
-import Strategy.Mix qualified as Mix
-import Strategy.Npm qualified as Npm
-import Strategy.NuGet.Nuspec qualified as Nuspec
-import Strategy.NuGet.PackageReference qualified as PackageReference
-import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
-import Strategy.NuGet.Paket qualified as Paket
-import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
-import Strategy.NuGet.ProjectJson qualified as ProjectJson
-import Strategy.Pub qualified as Pub
-import Strategy.Python.Pipenv qualified as Pipenv
-import Strategy.Python.Poetry qualified as Poetry
-import Strategy.Python.Setuptools qualified as Setuptools
-import Strategy.RPM qualified as RPM
-import Strategy.Rebar3 qualified as Rebar3
-import Strategy.Scala qualified as Scala
-import Strategy.SwiftPM qualified as SwiftPM
+import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
+
+--import Strategy.Bundler qualified as Bundler
+--import Strategy.Cargo qualified as Cargo
+--import Strategy.Carthage qualified as Carthage
+--import Strategy.Cocoapods qualified as Cocoapods
+--import Strategy.Composer qualified as Composer
+--import Strategy.Conda qualified as Conda
+--import Strategy.Glide qualified as Glide
+--import Strategy.Godep qualified as Godep
+--import Strategy.Gomodules qualified as Gomodules
+--import Strategy.Googlesource.RepoManifest qualified as RepoManifest
+--import Strategy.Gradle qualified as Gradle
+--import Strategy.Haskell.Cabal qualified as Cabal
+--import Strategy.Haskell.Stack qualified as Stack
+--import Strategy.Leiningen qualified as Leiningen
+--import Strategy.Maven qualified as Maven
+--import Strategy.Mix qualified as Mix
+--import Strategy.Npm qualified as Npm
+--import Strategy.NuGet.Nuspec qualified as Nuspec
+--import Strategy.NuGet.PackageReference qualified as PackageReference
+--import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
+--import Strategy.NuGet.Paket qualified as Paket
+--import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
+--import Strategy.NuGet.ProjectJson qualified as ProjectJson
+--import Strategy.Pub qualified as Pub
+--import Strategy.Python.Pipenv qualified as Pipenv
+--import Strategy.Python.Poetry qualified as Poetry
+--import Strategy.Python.Setuptools qualified as Setuptools
+--import Strategy.RPM qualified as RPM
+--import Strategy.Rebar3 qualified as Rebar3
+--import Strategy.Scala qualified as Scala
+
+import App.Fossa.Analyze.Types
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
-
-type TaskEffs sig m =
-  ( Has (Lift IO) sig m
-  , MonadIO m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  , Has Logger sig m
-  , Has Diag.Diagnostics sig m
-  )
+import Control.Monad (when)
+import qualified Discovery.Archive as Archive
 
 data ScanDestination
   = -- | upload to fossa with provided api key and base url
@@ -195,55 +190,64 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
   where
     doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput modeOptions filters
 
-discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
-discoverFuncs =
-  [ Bundler.discover
-  , Cabal.discover
-  , Cargo.discover
-  , Carthage.discover
-  , Cocoapods.discover
-  , Composer.discover
-  , Conda.discover
-  , Glide.discover
-  , Godep.discover
-  , Gomodules.discover
-  , Gradle.discover
-  , Leiningen.discover
-  , Maven.discover
-  , Mix.discover
-  , Npm.discover
-  , Nuspec.discover
-  , PackageReference.discover
-  , PackagesConfig.discover
-  , Paket.discover
-  , Pipenv.discover
-  , Poetry.discover
-  , ProjectAssetsJson.discover
-  , ProjectJson.discover
-  , Pub.discover
-  , RPM.discover
-  , Rebar3.discover
-  , RepoManifest.discover
-  , Scala.discover
-  , Setuptools.discover
-  , Stack.discover
-  , SwiftPM.discover
-  , Yarn.discover
-  ]
+--discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
+--discoverFuncs =
+-- [ Bundler.discover
+-- , Cabal.discover
+-- , Cargo.discover
+-- , Carthage.discover
+-- , Cocoapods.discover
+-- , Composer.discover
+-- , Conda.discover
+-- , Glide.discover
+-- , Godep.discover
+-- , Gomodules.discover
+-- , Gradle.discover
+-- , Leiningen.discover
+-- , Maven.discover
+-- , Mix.discover
+-- , Npm.discover
+-- , Nuspec.discover
+-- , PackageReference.discover
+-- , PackagesConfig.discover
+-- , Paket.discover
+-- , Pipenv.discover
+-- , Poetry.discover
+-- , ProjectAssetsJson.discover
+-- , ProjectJson.discover
+-- , Pub.discover
+-- , RPM.discover
+-- , Rebar3.discover
+-- , RepoManifest.discover
+-- , Scala.discover
+-- , Setuptools.discover
+-- , Stack.discover
+-- , SwiftPM.discover
+-- , Yarn.discover
+-- ]
 
 runDependencyAnalysis ::
-  (Has (Lift IO) sig m, Has AtomicCounter sig m, Has Debug sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
+  ( AnalyzeProject a
+  , Has (Lift IO) sig m
+  , Has AtomicCounter sig m
+  , Has Debug sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has (Output ProjectResult) sig m
+  , MonadIO m
+  ) =>
   -- | Analysis base directory
-  BaseDir ->
+  Path Abs Dir ->
   AllFilters ->
-  DiscoveredProject (StickyDiagC (DiagDebugC (Diag.DiagnosticsC m))) ->
+  DiscoveredProject a ->
   m ()
-runDependencyAnalysis (BaseDir basedir) filters project =
+runDependencyAnalysis basedir filters project =
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ projectDependencyResults project targets
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ analyzeProject targets (projectData project)
       Diag.withResult SevWarn graphResult (output . mkResult basedir project)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
@@ -255,6 +259,25 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     Nothing -> Just projectBuildTargets
     Just rel -> do
       applyFilters filters projectType rel projectBuildTargets
+
+runAnalyzers ::
+  ( Has (Output ProjectResult) sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  , Has TaskPool sig m
+  , Has AtomicCounter sig m
+  , Has (Lift IO) sig m
+  , Has Debug sig m
+  , MonadIO m
+  ) =>
+  Path Abs Dir ->
+  AllFilters ->
+  m ()
+runAnalyzers basedir filters = do
+  single Yarn.discover
+  where
+    single f = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -295,7 +318,12 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+      -- withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+      $ do
+          runAnalyzers basedir filters
+          when (fromFlag UnpackArchives unpackArchives) $ forkTask $ do -- FIXME: cleanup?
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ Archive.discover (`runAnalyzers` filters) basedir
+            Diag.withResult SevError res (const (pure ()))
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 

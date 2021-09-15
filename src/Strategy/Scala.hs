@@ -28,41 +28,44 @@ import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Types
 
-discover ::
-  ( Has Exec sig m
-  , Has ReadFS sig m
-  , Has Logger sig m
-  , Has Diagnostics sig m
-  , Applicative run
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject run]
-discover dir = context "Scala" $ do
-  projects <- findProjects dir
-  pure (map (mkProject dir) projects)
+-- discover ::
+--   ( Has Exec sig m
+--   , Has ReadFS sig m
+--   , Has Logger sig m
+--   , Has Diagnostics sig m
+--   , Applicative run
+--   ) =>
+--   Path Abs Dir ->
+--   m [DiscoveredProject run]
+-- discover dir = context "Scala" $ do
+--   projects <- findProjects dir
+--   pure (map (mkProject dir) projects)
 
-mkProject ::
-  Applicative n =>
-  -- | basedir; required for licenses
-  Path Abs Dir ->
-  MavenProjectClosure ->
-  DiscoveredProject n
-mkProject basedir closure =
-  DiscoveredProject
-    { projectType = "scala"
-    , projectPath = parent $ PomClosure.closurePath closure
-    , projectBuildTargets = mempty
-    , -- only do static analysis of generated pom files
-      projectDependencyResults =
-        const $
-          pure
-            DependencyResults
-              { dependencyGraph = Pom.analyze' closure
-              , dependencyGraphBreadth = Complete
-              , dependencyManifestFiles = [PomClosure.closurePath closure]
-              }
-    , projectLicenses = pure $ Pom.getLicenses basedir closure
-    }
+--mkProject ::
+--   Applicative n =>
+--   -- | basedir; required for licenses
+--   Path Abs Dir ->
+--   MavenProjectClosure ->
+--   DiscoveredProject n
+-- mkProject basedir closure =
+--   DiscoveredProject
+--     { projectType = "scala"
+--     , projectPath = parent $ PomClosure.closurePath closure
+--     , projectBuildTargets = mempty
+--     , -- only do static analysis of generated pom files
+--       projectDependencyResults =
+--         const $
+--           pure
+--             DependencyResults
+--               { dependencyGraph = Pom.analyze' closure
+--               , dependencyGraphBreadth = Complete
+--               , dependencyManifestFiles = [PomClosure.closurePath closure]
+--               }
+--     , projectLicenses = pure $ Pom.getLicenses basedir closure
+--     }
+
+discover = undefined
+mkProject = undefined
 
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath

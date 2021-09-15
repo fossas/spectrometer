@@ -4,7 +4,7 @@ module App.Fossa.ListTargets (
   listTargetsMain,
 ) where
 
-import App.Fossa.Analyze (discoverFuncs)
+--import App.Fossa.Analyze (discoverFuncs)
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter
 import Control.Carrier.Debug (ignoreDebug)
@@ -26,6 +26,9 @@ import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
 type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC (LoggerC IO)))
 
+listTargetsMain = undefined
+
+{-
 listTargetsMain :: BaseDir -> IO ()
 listTargetsMain (BaseDir basedir) = do
   capabilities <- getNumCapabilities
@@ -79,3 +82,5 @@ updateProgress Progress{..} =
         <> " Completed"
         <> " ]"
     )
+
+-}

@@ -110,10 +110,13 @@ cabalGenPlanCmd =
 cabalPlanFilePath :: Path Rel File
 cabalPlanFilePath = $(mkRelFile "dist-newstyle/cache/plan.json")
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Cabal" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Cabal" $ do
+--   projects <- context "Finding projects" $ findProjects dir
+--   pure (map mkProject projects)
+
+discover = undefined
+mkProject = undefined
 
 isCabalFile :: Path Abs File -> Bool
 isCabalFile file = isDotCabal || isCabalDotProject
@@ -132,15 +135,15 @@ findProjects = walk' $ \dir _ files -> do
     then pure ([CabalProject dir manifestFiles], WalkSkipAll)
     else pure ([], WalkContinue)
 
-mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CabalProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "cabal"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = cabalDir project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CabalProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "cabal"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = cabalDir project
+--     , projectLicenses = pure []
+--     }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
 getDeps project =

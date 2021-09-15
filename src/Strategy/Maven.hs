@@ -17,36 +17,38 @@ import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
 
-discover ::
-  ( MonadIO m
-  , Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
-  , Has Exec rsig run
-  , Has ReadFS rsig run
-  , Has Diagnostics rsig run
-  , Has (Lift IO) rsig run
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject run]
-discover dir = context "Maven" $ do
-  closures <- context "Finding projects" (PomClosure.findProjects dir)
-  pure (map (mkProject dir) closures)
+-- discover ::
+--   ( MonadIO m
+--   , Has (Lift IO) sig m
+--   , Has Diagnostics sig m
+--   , Has ReadFS sig m
+--   , Has Exec rsig run
+--   , Has ReadFS rsig run
+--   , Has Diagnostics rsig run
+--   , Has (Lift IO) rsig run
+--   ) =>
+--   Path Abs Dir ->
+--   m [DiscoveredProject run]
+-- discover dir = context "Maven" $ do
+--   closures <- context "Finding projects" (PomClosure.findProjects dir)
+--   pure (map (mkProject dir) closures)
 
-mkProject ::
-  (Has ReadFS sig n, Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) =>
-  -- | basedir; required for licenses
-  Path Abs Dir ->
-  PomClosure.MavenProjectClosure ->
-  DiscoveredProject n
-mkProject basedir closure =
-  DiscoveredProject
-    { projectType = "maven"
-    , projectPath = parent $ PomClosure.closurePath closure
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps closure
-    , projectLicenses = pure $ Pom.getLicenses basedir closure
-    }
+discover = undefined
+mkProject = undefined
+-- mkProject ::
+--   (Has ReadFS sig n, Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) =>
+--   -- | basedir; required for licenses
+--   Path Abs Dir ->
+--   PomClosure.MavenProjectClosure ->
+--   DiscoveredProject n
+-- mkProject basedir closure =
+--   DiscoveredProject
+--     { projectType = "maven"
+--     , projectPath = parent $ PomClosure.closurePath closure
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps closure
+--     , projectLicenses = pure $ Pom.getLicenses basedir closure
+--     }
 
 getDeps ::
   ( Has (Lift IO) sig m

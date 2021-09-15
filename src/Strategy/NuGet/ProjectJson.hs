@@ -24,8 +24,9 @@ import Graphing qualified
 import Path
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = map mkProject <$> findProjects dir
+discover = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ProjectJsonProject]
 findProjects = walk' $ \_ _ files -> do
@@ -38,15 +39,16 @@ newtype ProjectJsonProject = ProjectJsonProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ProjectJsonProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "projectjson"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = parent $ projectJsonFile project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ProjectJsonProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "projectjson"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = parent $ projectJsonFile project
+--     , projectLicenses = pure []
+--     }
+mkProject = undefined
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectJsonProject -> m DependencyResults
 getDeps = analyze' . projectJsonFile

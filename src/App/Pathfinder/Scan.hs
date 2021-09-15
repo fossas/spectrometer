@@ -45,13 +45,14 @@ scanMain basedir debug = do
 
   withDefaultLogger (bool SevInfo SevDebug debug) $ scan basedir
 
-runLicenseAnalysis ::
-  (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>
-  DiscoveredProject (ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))) ->
-  m ()
-runLicenseAnalysis project = do
-  licenseResult <- sendIO . Diag.runDiagnosticsIO . runExecIO . runReadFSIO $ projectLicenses project
-  Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
+runLicenseAnalysis = undefined
+-- runLicenseAnalysis ::
+--   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>
+--   DiscoveredProject (ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))) ->
+--   m ()
+-- runLicenseAnalysis project = do
+--   licenseResult <- sendIO . Diag.runDiagnosticsIO . runExecIO . runReadFSIO $ projectLicenses project
+--   Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
 
 scan ::
   ( Has (Lift IO) sig m
@@ -72,23 +73,24 @@ scan basedir = runFinally $ do
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
+      $ undefined
+      -- $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
 
   sendIO (BL.putStr (encode projectResults))
 
-discoverFuncs ::
-  ( Has Diag.Diagnostics sig m
-  , Has (Lift IO) sig m
-  , MonadIO m
-  , Has ReadFS sig m
-  , Has ReadFS rsig run
-  , Has Exec rsig run
-  , Has Diag.Diagnostics rsig run
-  , Has (Lift IO) rsig run
-  ) =>
-  -- | Discover functions
-  [Path Abs Dir -> m [DiscoveredProject run]]
-discoverFuncs = [Maven.discover, Nuspec.discover]
+--discoverFuncs ::
+  --( Has Diag.Diagnostics sig m
+  --, Has (Lift IO) sig m
+  --, MonadIO m
+  --, Has ReadFS sig m
+  --, Has ReadFS rsig run
+  --, Has Exec rsig run
+  --, Has Diag.Diagnostics rsig run
+  --, Has (Lift IO) rsig run
+  --) =>
+  ---- | Discover functions
+  --[Path Abs Dir -> m [DiscoveredProject run]]
+--discoverFuncs = [Maven.discover, Nuspec.discover]
 
 data ProjectLicenseScan = ProjectLicenseScan
   { licenseStrategyType :: Text

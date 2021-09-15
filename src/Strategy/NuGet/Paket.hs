@@ -33,10 +33,12 @@ import Types
 
 type Parser = Parsec Void Text
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Paket" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Paket" $ do
+--   projects <- context "Finding projects" $ findProjects dir
+--   pure (map mkProject projects)
+discover = undefined
+mkProject = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PaketProject]
 findProjects = walk' $ \_ _ files -> do
@@ -49,15 +51,15 @@ newtype PaketProject = PaketProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PaketProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "paket"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = parent $ paketLock project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PaketProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "paket"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = parent $ paketLock project
+--     , projectLicenses = pure []
+--     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m DependencyResults
 getDeps = context "Paket" . context "Static analysis" . analyze' . paketLock

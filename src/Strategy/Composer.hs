@@ -21,10 +21,12 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Composer" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Composer" $ do
+--   projects <- context "Finding projects" $ findProjects dir
+--   pure (map mkProject projects)
+discover = undefined
+mkProject = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ComposerProject]
 findProjects = walk' $ \dir _ files -> do
@@ -39,15 +41,15 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkContinue)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ComposerProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "composer"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = composerDir project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ComposerProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "composer"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = composerDir project
+--     , projectLicenses = pure []
+--     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m DependencyResults
 getDeps project = context "Composer" $ do

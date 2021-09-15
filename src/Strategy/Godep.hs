@@ -13,8 +13,10 @@ import Strategy.Go.GopkgLock qualified as GopkgLock
 import Strategy.Go.GopkgToml qualified as GopkgToml
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = map mkProject <$> findProjects dir
+discover = undefined
+mkProject = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GodepProject]
 findProjects = walk' $ \dir _ files -> do
@@ -38,15 +40,15 @@ data GodepProject = GodepProject
   , godepLock :: Maybe (Path Abs File)
   }
 
-mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => GodepProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "godep"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = godepDir project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => GodepProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "godep"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = godepDir project
+--     , projectLicenses = pure []
+--     }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 getDeps project =

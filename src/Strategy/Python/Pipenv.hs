@@ -30,10 +30,11 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Pipenv" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Pipenv" $ do
+--   projects <- context "Finding projects" $ findProjects dir
+--   pure (map mkProject projects)
+discover = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PipenvProject]
 findProjects = walk' $ \_ _ files -> do
@@ -60,15 +61,16 @@ getDeps project = context "Pipenv" $ do
       , dependencyManifestFiles = [pipenvLockfile project]
       }
 
-mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => PipenvProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "pipenv"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = parent $ pipenvLockfile project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => PipenvProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "pipenv"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = parent $ pipenvLockfile project
+--     , projectLicenses = pure []
+--     }
+mkProject = undefined
 
 newtype PipenvProject = PipenvProject
   { pipenvLockfile :: Path Abs File

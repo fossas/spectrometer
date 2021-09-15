@@ -30,10 +30,12 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Carthage" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Carthage" $ do
+--   projects <- context "Finding projects" $ findProjects dir
+--   pure (map mkProject projects)
+discover = undefined
+mkProject = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CarthageProject]
 findProjects = walk' $ \dir _ files -> do
@@ -54,15 +56,15 @@ data CarthageProject = CarthageProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => CarthageProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "carthage"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = carthageDir project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => CarthageProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "carthage"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = carthageDir project
+--     , projectLicenses = pure []
+--     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m DependencyResults
 getDeps project = do

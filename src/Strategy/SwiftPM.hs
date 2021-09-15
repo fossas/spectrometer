@@ -40,11 +40,12 @@ data XcodeProjectUsingSwiftPm = XcodeProjectUsingSwiftPm
   }
   deriving (Show, Eq, Ord)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Swift" $ do
-  swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
-  xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
-  pure $ map mkProject (swiftPackageProjects ++ xCodeProjects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Swift" $ do
+--   swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
+--   xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
+--   pure $ map mkProject (swiftPackageProjects ++ xCodeProjects)
+discover = undefined
 
 findSwiftPackageProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SwiftProject]
 findSwiftPackageProjects = walk' $ \dir _ files -> do
@@ -96,20 +97,21 @@ debugXCodeWithoutSwiftDeps projFile =
       <> show projFile
       <> "), did not have any XCRemoteSwiftPackageReference, ignoring from swift analyses."
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SwiftProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "swift"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = getProjectDir
-    , projectLicenses = pure []
-    }
-  where
-    getProjectDir :: Path Abs Dir
-    getProjectDir = case project of
-      PackageProject prj -> swiftPkgProjectDir prj
-      XcodeProject prj -> xCodeProjectDir prj
+mkProject = undefined
+-- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SwiftProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "swift"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = getProjectDir
+--     , projectLicenses = pure []
+--     }
+--   where
+--     getProjectDir :: Path Abs Dir
+--     getProjectDir = case project of
+--       PackageProject prj -> swiftPkgProjectDir prj
+--       XcodeProject prj -> xCodeProjectDir prj
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftProject -> m DependencyResults
 getDeps project = do

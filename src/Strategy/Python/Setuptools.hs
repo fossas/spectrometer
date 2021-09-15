@@ -18,10 +18,11 @@ import Strategy.Python.ReqTxt qualified as ReqTxt
 import Strategy.Python.SetupPy qualified as SetupPy
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Setuptools" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Setuptools" $ do
+--   projects <- context "Finding projects" $ findProjects dir
+--   pure (map mkProject projects)
+discover = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walk' $ \dir _ files -> do
@@ -72,12 +73,13 @@ data SetuptoolsProject = SetuptoolsProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SetuptoolsProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "setuptools"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = setuptoolsDir project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SetuptoolsProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "setuptools"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = setuptoolsDir project
+--     , projectLicenses = pure []
+--     }
+mkProject = undefined

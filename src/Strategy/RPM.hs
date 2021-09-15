@@ -48,10 +48,11 @@ data Dependencies = Dependencies
   }
   deriving (Eq, Ord, Show)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "RPM" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover = undefined
+--discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+--discover dir = context "RPM" $ do
+  --projects <- context "Finding projects" $ findProjects dir
+  --pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RpmProject]
 findProjects = walk' $ \dir _ files -> do
@@ -67,15 +68,16 @@ data RpmProject = RpmProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => RpmProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "rpm"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = rpmDir project
-    , projectLicenses = pure []
-    }
+mkProject = undefined
+-- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => RpmProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "rpm"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = rpmDir project
+--     , projectLicenses = pure []
+--     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m DependencyResults
 getDeps = context "RPM" . context "Static analysis" . analyze . rpmFiles

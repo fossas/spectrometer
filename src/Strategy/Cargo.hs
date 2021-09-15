@@ -124,10 +124,12 @@ instance FromJSON CargoMetadata where
       <*> (obj .: "workspace_members" >>= traverse parsePkgId)
       <*> obj .: "resolve"
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Cargo" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Cargo" $ do
+--   projects <- context "Finding projects" $ findProjects dir
+--   pure (map mkProject projects)
+discover = undefined
+mkProject = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CargoProject]
 findProjects = walk' $ \dir _ files -> do
@@ -148,15 +150,15 @@ data CargoProject = CargoProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has Exec sig n, Has Diagnostics sig n) => CargoProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "cargo"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = cargoDir project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has Exec sig n, Has Diagnostics sig n) => CargoProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "cargo"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = cargoDir project
+--     , projectLicenses = pure []
+--     }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m DependencyResults
 getDeps project = do

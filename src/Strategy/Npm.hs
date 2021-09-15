@@ -13,10 +13,13 @@ import Strategy.Node.NpmLock qualified as NpmLock
 import Strategy.Node.PackageJson qualified as PackageJson
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = context "Npm" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+-- discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+-- discover dir = context "Npm" $ do
+--   projects <- context "Finding projects" $ findProjects dir
+--   pure (map mkProject projects)
+
+discover = undefined
+mkProject = undefined
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NpmProject]
 findProjects = walk' $ \dir _ files -> do
@@ -46,15 +49,15 @@ data NpmProject = NpmProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => NpmProject -> DiscoveredProject n
-mkProject project =
-  DiscoveredProject
-    { projectType = "npm"
-    , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = npmDir project
-    , projectLicenses = pure []
-    }
+-- mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => NpmProject -> DiscoveredProject n
+-- mkProject project =
+--   DiscoveredProject
+--     { projectType = "npm"
+--     , projectBuildTargets = mempty
+--     , projectDependencyResults = const $ getDeps project
+--     , projectPath = npmDir project
+--     , projectLicenses = pure []
+--     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 getDeps project = context "Npm" $ analyzeNpmList project <||> analyzeNpmLock project <||> analyzeNpmJson project

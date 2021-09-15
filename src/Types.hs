@@ -53,12 +53,12 @@ instance Monoid FoundTargets where
 
 -- | A project found during project discovery, parameterized by the monad
 -- used to perform dependency analysis
-data DiscoveredProject m = DiscoveredProject
+data DiscoveredProject a = DiscoveredProject
   { projectType :: Text
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
-  , projectDependencyResults :: FoundTargets -> m DependencyResults
-  , projectLicenses :: m [LicenseResult]
+  , projectData :: a
+  --, projectLicenses :: m [LicenseResult] -- FIXME: remove
   }
 
 -- | The results from analyzing dependencies on a project. This contains the graph,
