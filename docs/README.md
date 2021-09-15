@@ -1,8 +1,35 @@
 # User Manual
 
+## Table of Contents
+
+1. Concepts
+2. Walkthroughs
+3. Features
+4. Reference
+
+## Concepts
+
+Concept guides are ...
+
+- [Projects]()
+
+## Walkthroughs
+
+
+## Features
+
+
+## References
+
+
 <!-- omit in toc -->
 ## Table of contents
 
+- [Table of Contents](#table-of-contents)
+- [Concepts](#concepts)
+- [Walkthroughs](#walkthroughs)
+- [Features](#features)
+- [References](#references)
 - [Quick Start](#quick-start)
   - [Configure your API key](#configure-your-api-key)
   - [Run Analysis](#run-analysis)
