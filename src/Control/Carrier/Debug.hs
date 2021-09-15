@@ -10,6 +10,8 @@ module Control.Carrier.Debug (
   diagToDebug,
   readFSToDebug,
   execToDebug,
+  logToDebug,
+  debugEverything,
   Scope (..),
   module X,
 ) where
@@ -29,6 +31,7 @@ import Data.Fixed
 import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
 import Effect.Exec (Exec, ExecF (Exec))
+import Effect.Logger (Logger, LoggerF (..))
 import Effect.ReadFS
 import Path
 
@@ -138,6 +141,8 @@ ignoreDebug = runIgnoreDebugC
 
 -----------------------------------------------
 
+-----------------------------------------------
+
 newtype DiagDebugC m a = DiagDebugC {runDiagDebugC :: m a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
@@ -158,12 +163,19 @@ diagToDebug = runDiagDebugC
 
 type ReadFSDebugC = SimpleC ReadFSF
 
+-- | Wrap an effect invocation, recording its input/output values with 'debugEffect'
 recording :: (Recordable r, Has Debug sig m, Has (Simple r) sig m) => r a -> m a
 recording r = do
   res <- sendSimple r
   debugEffect r res
   pure res
 
+ignoring :: Has (Simple r) sig m => r a -> m a
+ignoring = sendSimple
+{-# INLINE ignoring #-}
+
+-- | Record most ReadFS constructors, ignoring ListDir because it explodes the
+-- size of the debug bundle
 readFSToDebug :: (Has ReadFS sig m, Has Debug sig m) => ReadFSDebugC m a -> m a
 readFSToDebug = interpret $ \case
   cons@ReadContentsBS'{} -> recording cons
@@ -172,7 +184,7 @@ readFSToDebug = interpret $ \case
   cons@DoesDirExist{} -> recording cons
   cons@ResolveFile'{} -> recording cons
   cons@ResolveDir'{} -> recording cons
-  cons -> sendSimple cons
+  cons@ListDir{} -> ignoring cons
 
 -----------------------------------------------
 
@@ -181,3 +193,20 @@ type ExecDebugC = SimpleC ExecF
 execToDebug :: (Has Exec sig m, Has Debug sig m) => ExecDebugC m a -> m a
 execToDebug = interpret $ \case
   cons@Exec{} -> recording cons
+
+-----------------------------------------------
+
+type LogDebugC = SimpleC LoggerF
+
+logToDebug :: (Has Logger sig m, Has Debug sig m) => LogDebugC m a -> m a
+logToDebug = interpret $ \case
+  cons@Log{} -> recording cons
+  cons@LogStdout{} -> ignoring cons
+
+-----------------------------------------------
+
+-- | Combine all of our debug wrappers into a mega-wrapper
+type DebugEverythingC m = DiagDebugC (ReadFSDebugC (ExecDebugC (LogDebugC m)))
+
+debugEverything :: (Has Debug sig m, Has Exec sig m, Has ReadFS sig m, Has Logger sig m) => DebugEverythingC m a -> m a
+debugEverything = logToDebug . execToDebug . readFSToDebug . diagToDebug

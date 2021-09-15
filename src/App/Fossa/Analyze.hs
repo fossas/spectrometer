@@ -32,7 +32,7 @@ import App.Types (
  )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug
+import Control.Carrier.Debug (Debug, DiagDebugC, debugEverything, diagToDebug, ignoreDebug, runDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally
@@ -171,8 +171,8 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
     $ case recordMode of
       RecordModeNone -> do
         basedir <- sendIO $ validateDir workdir
-        (scope, res) <- runDebug $ readFSToDebug $ execToDebug $ diagToDebug $ doAnalyze basedir
-        logStdout $ ("\n" <>) $ decodeUtf8 $ Aeson.encode scope
+        (scope, res) <- runDebug $ debugEverything $ doAnalyze basedir
+        sendIO $ Aeson.encodeFile "fossa.debug.json" scope
         pure res
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir

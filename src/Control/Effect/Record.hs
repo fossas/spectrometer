@@ -31,15 +31,14 @@ import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Void (Void)
 import Path
+import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty)
 import System.Exit
 import Unsafe.Coerce (unsafeCoerce)
+import Prettyprinter.Render.Text (renderStrict)
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
 -- and "result values" (the @a@ in @e a@) can be serialized to JSON values
---
--- We require that all types @e a@ have an 'Ord' instance so they can be used
--- as keys in a 'Map'
-class (forall a. Ord (r a)) => Recordable (r :: Type -> Type) where
+class Recordable (r :: Type -> Type) where
   -- | Serialize an effect data constructor and result value to JSON
   recordEff :: r a -> a -> (Value, Value)
 
@@ -82,7 +81,7 @@ newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :
 --
 -- 1. 'e' must also appear somewhere else in the effect stack -- @Member (Simple e) sig@
 -- 2. 'e' is Recordable -- @Recordable e@
-instance (Member (Simple e) sig, Has (Lift IO) sig m, Recordable e) => Algebra (Simple e :+: sig) (RecordC e sig m) where
+instance (forall a. Ord (e a), Member (Simple e) sig, Has (Lift IO) sig m) => Algebra (Simple e :+: sig) (RecordC e sig m) where
   alg hdl sig' ctx = RecordC $ do
     case sig' of
       L (Simple eff) -> do
@@ -182,3 +181,6 @@ instance RecordableValue (SomeBase a)
 instance RecordableValue ExitCode where
   toRecordedValue ExitSuccess = toJSON (0 :: Int)
   toRecordedValue (ExitFailure i) = toJSON (i :: Int)
+
+instance RecordableValue (Doc a) where
+  toRecordedValue = toJSON . renderStrict . layoutPretty defaultLayoutOptions
