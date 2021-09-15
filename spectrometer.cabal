@@ -178,6 +178,7 @@ library
     App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
+    App.Pathfinder.Types
     App.Types
     App.Util
     App.Version

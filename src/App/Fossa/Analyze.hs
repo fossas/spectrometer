@@ -285,10 +285,10 @@ runAnalyzers basedir filters = do
   -- single Gomodules.discover
   -- single Gradle.discover
   -- single Leiningen.discover
-  -- single Maven.discover
+  single Maven.discover
   -- single Mix.discover
   -- single Npm.discover
-  -- single Nuspec.discover
+  single Nuspec.discover
   -- single PackageReference.discover
   -- single PackagesConfig.discover
   -- single Paket.discover

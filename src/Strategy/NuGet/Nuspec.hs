@@ -12,6 +12,8 @@ module Strategy.NuGet.Nuspec (
   NuspecLicense (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
@@ -35,11 +37,10 @@ import Types (
   LicenseType (..),
  )
 
-discover = undefined
---discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
---discover dir = context "Nuspec" $ do
-  --projects <- context "Finding projects" $ findProjects dir
-  --pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NuspecProject]
+discover dir = context "Nuspec" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NuspecProject]
 findProjects = walk' $ \_ _ files -> do
@@ -52,16 +53,20 @@ newtype NuspecProject = NuspecProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject = undefined
--- mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => NuspecProject -> DiscoveredProject n
--- mkProject project =
---   DiscoveredProject
---     { projectType = "nuspec"
---     , projectBuildTargets = mempty
---     , projectDependencyResults = const $ getDeps project
---     , projectPath = parent $ nuspecFile project
---     , projectLicenses = analyzeLicenses (nuspecFile project)
---     }
+mkProject :: NuspecProject -> DiscoveredProject NuspecProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "nuspec"
+    , projectBuildTargets = mempty
+    , projectData = project
+    , projectPath = parent $ nuspecFile project
+    }
+
+instance AnalyzeProject NuspecProject where
+  analyzeProject _ = getDeps
+
+instance LicenseAnalyzeProject NuspecProject where
+  licenseAnalyzeProject = analyzeLicenses . nuspecFile
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m DependencyResults
 getDeps = context "Nuspec" . context "Static analysis" . analyze' . nuspecFile

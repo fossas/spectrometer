@@ -15,6 +15,7 @@ import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Lift)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (for_)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty
@@ -77,6 +78,7 @@ runAll ::
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Lift IO) sig m
+  , MonadIO m
   , Has AtomicCounter sig m
   , Has Debug sig m
   ) =>

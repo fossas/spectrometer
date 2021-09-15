@@ -5,8 +5,9 @@ module App.Pathfinder.Scan (
   scanMain,
 ) where
 
-import Control.Carrier.AtomicCounter (runAtomicCounter)
-import Control.Carrier.Debug (ignoreDebug)
+import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
+import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
@@ -45,14 +46,37 @@ scanMain basedir debug = do
 
   withDefaultLogger (bool SevInfo SevDebug debug) $ scan basedir
 
-runLicenseAnalysis = undefined
--- runLicenseAnalysis ::
---   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>
---   DiscoveredProject (ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))) ->
---   m ()
--- runLicenseAnalysis project = do
---   licenseResult <- sendIO . Diag.runDiagnosticsIO . runExecIO . runReadFSIO $ projectLicenses project
---   Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
+runAll ::
+  ( Has ReadFS sig m
+  , Has (Output ProjectLicenseScan) sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  , Has TaskPool sig m
+  , Has (Lift IO) sig m
+  , Has AtomicCounter sig m
+  , Has Debug sig m
+  , MonadIO m
+  ) =>
+  Path Abs Dir ->
+  m ()
+runAll basedir = do
+  single Maven.discover
+  single Nuspec.discover
+  where
+    single f = withDiscoveredProjects f basedir runSingle
+
+runSingle ::
+  ( LicenseAnalyzeProject a
+  , Has (Output ProjectLicenseScan) sig m
+  , Has Logger sig m
+  , Has (Lift IO) sig m
+  , MonadIO m
+  ) =>
+  DiscoveredProject a ->
+  m ()
+runSingle project = do
+  licenseResult <- Diag.runDiagnosticsIO . runExecIO . runReadFSIO $ licenseAnalyzeProject (projectData project)
+  Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
 
 scan ::
   ( Has (Lift IO) sig m
@@ -70,27 +94,13 @@ scan basedir = runFinally $ do
       . runOutput @ProjectLicenseScan
       . runStickyLogger SevInfo
       . runReadFSIO
+      . runExecIO
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      $ undefined
-      -- $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
+      $ runAll basedir
 
   sendIO (BL.putStr (encode projectResults))
-
---discoverFuncs ::
-  --( Has Diag.Diagnostics sig m
-  --, Has (Lift IO) sig m
-  --, MonadIO m
-  --, Has ReadFS sig m
-  --, Has ReadFS rsig run
-  --, Has Exec rsig run
-  --, Has Diag.Diagnostics rsig run
-  --, Has (Lift IO) rsig run
-  --) =>
-  ---- | Discover functions
-  --[Path Abs Dir -> m [DiscoveredProject run]]
---discoverFuncs = [Maven.discover, Nuspec.discover]
 
 data ProjectLicenseScan = ProjectLicenseScan
   { licenseStrategyType :: Text

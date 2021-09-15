@@ -43,7 +43,7 @@ buildProjectClosures basedir global = closures
     closures = map (\(path, (coord, pom)) -> toClosure path coord pom) (Map.toList projectRoots)
 
     toClosure :: Path Abs File -> MavenCoordinate -> Pom -> MavenProjectClosure
-    toClosure path coord pom = MavenProjectClosure path coord pom reachableGraph reachablePomMap
+    toClosure path coord pom = MavenProjectClosure basedir path coord pom reachableGraph reachablePomMap
       where
         reachableGraph = AM.induce (`Set.member` reachablePoms) $ globalGraph global
         reachablePomMap = Map.filterWithKey (\k _ -> Set.member k reachablePoms) $ globalPoms global
@@ -95,7 +95,10 @@ determineProjectRoots rootDir closure = go . Set.fromList
         frontier = Set.unions $ Set.map (\coord -> AM.postSet coord (globalGraph closure)) remainingCoords
 
 data MavenProjectClosure = MavenProjectClosure
-  { closurePath :: Path Abs File
+  { -- | the root of global fossa-analyze analysis; needed for pathfinder license scan
+    closureAnalysisRoot :: Path Abs Dir
+  , -- | path of the pom file used as the root of this project closure
+    closurePath :: Path Abs File
   , closureRootCoord :: MavenCoordinate
   , closureRootPom :: Pom
   , closureGraph :: AM.AdjacencyMap MavenCoordinate
