@@ -35,6 +35,7 @@ import GHC.Environment qualified as Environment
 import GHC.Generics (Generic)
 import GHC.Stats qualified as Stats
 import System.Info qualified as Info
+import Control.Effect.Record (runRecord, RecordC, Journal)
 
 collectDebugBundle ::
   ( Has Exec sig m
@@ -42,10 +43,10 @@ collectDebugBundle ::
   , Has Diagnostics sig m
   , Has (Lift IO) sig m
   ) =>
-  DebugEverythingC (DebugC m) a ->
+  DebugEverythingC (RecordC ReadFSF (RecordC ExecF (DebugC m))) a ->
   m (DebugBundle, a)
 collectDebugBundle act = do
-  (scope, res) <- runDebug . debugEverything $ act
+  (scope, (execJournal, (readFSJournal, res))) <- runDebug . runRecord @ExecF . runRecord @ReadFSF . debugEverything $ act
   sysInfo <- sendIO collectSystemInfo
   args <- sendIO Environment.getFullArgs
   let bundle =
@@ -53,17 +54,12 @@ collectDebugBundle act = do
           { bundleScope = scope
           , bundleSystem = sysInfo
           , bundleArgs = args
+          , bundleJournals = BundleJournals
+              { bundleJournalReadFS = readFSJournal
+              , bundleJournalExec = execJournal
+              }
           }
   pure (bundle, res)
-
-data DebugBundle = DebugBundle
-  { bundleScope :: Scope
-  , bundleSystem :: SystemInfo
-  , bundleArgs :: [String]
-  }
-  deriving (Show, Generic)
-
-instance ToJSON DebugBundle
 
 collectSystemInfo :: IO SystemInfo
 collectSystemInfo = do
@@ -84,6 +80,16 @@ collectSystemInfo = do
       processors
       systemMemory
 
+data DebugBundle = DebugBundle
+  { bundleScope :: Scope
+  , bundleSystem :: SystemInfo
+  , bundleArgs :: [String]
+  , bundleJournals :: BundleJournals
+  }
+  deriving (Show, Generic)
+
+instance ToJSON DebugBundle
+
 data SystemInfo = SystemInfo
   { systemInfoOs :: String
   , systemInfoArch :: String
@@ -102,6 +108,13 @@ data SystemMemory = SystemMemory
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON SystemMemory
+
+data BundleJournals = BundleJournals
+  { bundleJournalReadFS :: Journal ReadFSF
+  , bundleJournalExec :: Journal ExecF
+  } deriving (Show, Generic)
+
+instance ToJSON BundleJournals
 
 -----------------------------------------------
 

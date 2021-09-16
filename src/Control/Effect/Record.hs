@@ -63,7 +63,7 @@ instance ToJSON (Journal eff) where
 -- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
 --
 -- > runRecord @SomeEffect
-runRecord :: forall e sig m a. (Recordable e, Has (Lift IO) sig m) => RecordC e sig m a -> m (Journal e, a)
+runRecord :: forall e sig m a. (Recordable e, Has (Lift IO) sig m) => RecordC e m a -> m (Journal e, a)
 runRecord act = do
   (mapping, a) <- runAtomicState Map.empty . runRecordC $ act
   pure (convertToJournal (Map.elems mapping), a)
@@ -72,7 +72,7 @@ convertToJournal :: Recordable e => [EffectResult e] -> Journal e
 convertToJournal = Journal . Map.fromList . map (\(EffectResult k v) -> recordEff k v)
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
-newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
+newtype RecordC (e :: Type -> Type) (m :: Type -> Type) a = RecordC
   { runRecordC :: AtomicStateC (Map (e Void) (EffectResult e)) m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
@@ -81,7 +81,7 @@ newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :
 --
 -- 1. 'e' must also appear somewhere else in the effect stack -- @Member (Simple e) sig@
 -- 2. 'e' is Recordable -- @Recordable e@
-instance (forall a. Ord (e a), Member (Simple e) sig, Has (Lift IO) sig m) => Algebra (Simple e :+: sig) (RecordC e sig m) where
+instance (forall a. Ord (e a), Member (Simple e) sig, Has (Lift IO) sig m) => Algebra (Simple e :+: sig) (RecordC e m) where
   alg hdl sig' ctx = RecordC $ do
     case sig' of
       L (Simple eff) -> do
