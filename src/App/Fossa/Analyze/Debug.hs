@@ -26,7 +26,7 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Record (Journal, RecordC, runRecord)
 import Control.Effect.Sum (Member, inj)
 import Control.Monad.IO.Class (MonadIO)
-import Data.Aeson (ToJSON)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.String.Conversion (toText)
 import Data.Word (Word64)
 import Effect.Exec (Exec, ExecF (..))
@@ -91,7 +91,8 @@ data DebugBundle = DebugBundle
   }
   deriving (Show, Generic)
 
-instance ToJSON DebugBundle
+instance ToJSON DebugBundle where
+  toEncoding = genericToEncoding defaultOptions
 
 data SystemInfo = SystemInfo
   { systemInfoOs :: String
@@ -102,7 +103,8 @@ data SystemInfo = SystemInfo
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON SystemInfo
+instance ToJSON SystemInfo where
+  toEncoding = genericToEncoding defaultOptions
 
 data SystemMemory = SystemMemory
   { systemMemoryLiveBytes :: Word64
@@ -110,7 +112,8 @@ data SystemMemory = SystemMemory
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON SystemMemory
+instance ToJSON SystemMemory where
+  toEncoding = genericToEncoding defaultOptions
 
 data BundleJournals = BundleJournals
   { bundleJournalReadFS :: Journal ReadFSF
@@ -118,7 +121,8 @@ data BundleJournals = BundleJournals
   }
   deriving (Show, Generic)
 
-instance ToJSON BundleJournals
+instance ToJSON BundleJournals where
+  toEncoding = genericToEncoding defaultOptions
 
 -----------------------------------------------
 

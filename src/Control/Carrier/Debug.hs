@@ -27,7 +27,6 @@ import Data.Fixed
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
-import Path
 
 newtype DebugC m a = DebugC {runDebugC :: OutputC ScopeEvent (AtomicStateC (Map.Map Text Value) m) a}
   deriving (Functor, Applicative, Monad, MonadIO) -- TODO: MonadTrans
@@ -38,7 +37,6 @@ newtype Duration = Duration {unDuration :: Nano}
 data Scope = Scope
   { scopeTiming :: Duration
   , scopeEvents :: [ScopeEvent]
-  , scopeFiles :: [ScopeFile]
   , scopeMetadata :: Map.Map Text Value
   }
   deriving (Show)
@@ -51,7 +49,6 @@ scopePairs Scope{..} =
   [ "duration" .= show (unDuration scopeTiming)
   ]
     ++ whenNonEmpty "events" scopeEvents
-    ++ whenNonEmpty "files" scopeFiles
     ++ Map.toList scopeMetadata
 
 whenNonEmpty :: ToJSON a => Text -> [a] -> [Pair]
@@ -80,17 +77,11 @@ instance ToJSON ScopeEvent where
     object $ ("scope" .= nm) : scopePairs scope
   toJSON (EventLog txt) = String txt
 
-instance Show ScopeEvent where -- FIXME
+instance Show ScopeEvent where
   show (EventEffect (SomeEffectResult k v)) = "SomeEffectResult " <> show (recordEff k v)
   show (EventScope txt sc) = "EventScope " <> show txt <> " " <> show sc
   show (EventError (SomeDiagnostic _ err)) = "EventError " <> show (renderDiagnostic err)
   show (EventLog txt) = "EventLog " <> show txt
-
-data ScopeFile = ScopeFile (Path Abs Dir) Text
-  deriving (Show)
-
-instance ToJSON ScopeFile where
-  toJSON _ = toJSON @Text "TODO"
 
 timeBetween :: SystemTime -> SystemTime -> Duration
 timeBetween (MkSystemTime sec ns) (MkSystemTime sec' ns') =
@@ -102,7 +93,7 @@ runDebug act = do
   (metadata, (evs, res)) <- runAtomicState Map.empty . runOutput @ScopeEvent $ runDebugC act
   after <- sendIO getSystemTime
   let duration = timeBetween before after
-  pure (Scope duration evs [] metadata, res)
+  pure (Scope duration evs metadata, res)
 
 instance (Has (Lift IO) sig m, Has Diagnostics sig m) => Algebra (Debug :+: sig) (DebugC m) where
   alg hdl sig ctx = DebugC $

@@ -59,6 +59,7 @@ instance FromJSON (Journal eff) where
 
 instance ToJSON (Journal eff) where
   toJSON = toJSON . Map.toList . unJournal
+  toEncoding = toEncoding . Map.toList . unJournal
 
 -- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
 --
