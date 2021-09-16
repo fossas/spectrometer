@@ -20,7 +20,7 @@ import Control.Effect.Debug as X
 import Control.Effect.Lift
 import Control.Effect.Record (Recordable, SomeEffectResult (SomeEffectResult), recordEff)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans (lift)
+import Control.Monad.Trans (MonadTrans, lift)
 import Data.Aeson
 import Data.Aeson.Types (Pair)
 import Data.Fixed
@@ -29,7 +29,10 @@ import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
 
 newtype DebugC m a = DebugC {runDebugC :: OutputC ScopeEvent (AtomicStateC (Map.Map Text Value) m) a}
-  deriving (Functor, Applicative, Monad, MonadIO) -- TODO: MonadTrans
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance MonadTrans DebugC where
+  lift = DebugC . lift . lift
 
 newtype Duration = Duration {unDuration :: Nano}
   deriving (Show)
