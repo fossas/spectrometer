@@ -55,7 +55,7 @@ You can install Spectrometer releases manually by downloading the latest release
 
 ### Integrating your project with FOSSA
 
-#### TL;DR
+#### TL;DR, Linux, Mac, *nix-like
 
 ```sh
 # Download FOSSA.
@@ -63,6 +63,20 @@ curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spect
 
 # Set your API key. Get this from the FOSSA web application.
 export FOSSA_API_KEY=XXXX
+
+# Run an analysis in your project's directory.
+cd $MY_PROJECT_DIR
+fossa analyze
+```
+
+#### TL;DR, Windows
+
+```powershell
+# Download FOSSA.
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/spectrometer/master/install.ps1'))
+
+# Set your API key. Get this from the FOSSA web application.
+$env:FOSSA_API_KEY=XXXX
 
 # Run an analysis in your project's directory.
 cd $MY_PROJECT_DIR
@@ -112,7 +126,7 @@ Once an analysis has been uploaded, you can view your results in the FOSSA web a
 
 Now that your analysis is complete, there are a couple things you might want to do after an initial integration:
 
-- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](TODO) can help you diagnose and debug your integration.
+- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](./docs/walkthroughs/debugging-your-integration.md) can help you diagnose and debug your integration.
 
 - **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. If you want to try out different issue scanning configurations, you can [change your policy](TODO) or [run a manual issue scan](TODO). Once an issue scan is complete, you can also [generate a report](TODO) from the web application.
 
@@ -136,11 +150,10 @@ For most users, Spectrometer should work out-of-the-box without any configuratio
 
 Users who need more advanced customizations or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
-- [Configuring your FOSSA project](TODO)
-- [Debugging your integration](TODO)
-- [Excluding developer tools from your dependencies](TODO)
-- [Specifying vendored dependencies](TODO)
-- [Adding manual dependencies](TODO)
+- [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
+- [Excluding developer tools from your dependencies](./docs/walkthroughs/excluding-test-dev-deps.md)
+- [Specifying vendored dependencies](./docs/walkthroughs/specifying-vendored-deps.md)
+- [Adding manual dependencies](./docs/walkthroughs/integrating-with-custom-tools.md)
 
 ## Reporting Issues
 
