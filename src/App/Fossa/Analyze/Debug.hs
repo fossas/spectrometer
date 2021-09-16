@@ -2,6 +2,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module App.Fossa.Analyze.Debug (
+  collectDebugBundle,
+
   -- * Debug individual effects
   DiagDebugC,
   diagToDebug,
@@ -18,12 +20,89 @@ module App.Fossa.Analyze.Debug (
 
 import Control.Carrier.Debug
 import Control.Carrier.Diagnostics (Diagnostics (Context, Fatal))
+import Control.Carrier.Lift (sendIO)
 import Control.Carrier.Simple (SimpleC, interpret)
+import Control.Effect.Lift (Lift)
 import Control.Effect.Sum (Member, inj)
 import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson (ToJSON)
+import Data.Word (Word64)
 import Effect.Exec (Exec, ExecF (..))
 import Effect.Logger (Logger, LoggerF (..))
 import Effect.ReadFS (ReadFS, ReadFSF (..))
+import GHC.Conc qualified as Conc
+import GHC.Environment qualified as Environment
+import GHC.Generics (Generic)
+import GHC.Stats qualified as Stats
+import System.Info qualified as Info
+
+collectDebugBundle ::
+  ( Has Exec sig m
+  , Has ReadFS sig m
+  , Has (Lift IO) sig m
+  ) =>
+  DebugEverythingC (DebugC m) a ->
+  m (DebugBundle, a)
+collectDebugBundle act = do
+  (scope, res) <- runDebug . debugEverything $ act
+  sysInfo <- sendIO collectSystemInfo
+  args <- sendIO Environment.getFullArgs
+  let bundle =
+        DebugBundle
+          { bundleScope = scope
+          , bundleSystem = sysInfo
+          , bundleArgs = args
+          }
+  pure (bundle, res)
+
+data DebugBundle = DebugBundle
+  { bundleScope :: Scope
+  , bundleSystem :: SystemInfo
+  , bundleArgs :: [String]
+  }
+  deriving (Show, Generic)
+
+instance ToJSON DebugBundle
+
+collectSystemInfo :: IO SystemInfo
+collectSystemInfo = do
+  capabilities <- Conc.getNumCapabilities
+  processors <- Conc.getNumProcessors
+  systemMemory <- do
+    rtsStatsEnabled <- Stats.getRTSStatsEnabled
+    if rtsStatsEnabled
+      then do
+        rtsStats <- Stats.getRTSStats
+        pure (SystemMemory (Stats.max_live_bytes rtsStats) (Stats.allocated_bytes rtsStats))
+      else pure (SystemMemory 0 0)
+  pure $
+    SystemInfo
+      Info.os
+      Info.arch
+      capabilities
+      processors
+      systemMemory
+
+data SystemInfo = SystemInfo
+  { systemInfoOs :: String
+  , systemInfoArch :: String
+  , systemCapabilities :: Int
+  , systemProcessors :: Int
+  , systemMemory :: SystemMemory
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON SystemInfo
+
+data SystemMemory = SystemMemory
+  { systemMemoryLiveBytes :: Word64
+  , systemMemoryAllocatedBytes :: Word64
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON SystemMemory
+
+-----------------------------------------------
 
 newtype DiagDebugC m a = DiagDebugC {runDiagDebugC :: m a}
   deriving (Functor, Applicative, Monad, MonadIO)

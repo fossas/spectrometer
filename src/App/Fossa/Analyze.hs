@@ -15,7 +15,7 @@ module App.Fossa.Analyze (
 
 import App.Docs (userGuideUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
-import App.Fossa.Analyze.Debug (debugEverything, diagToDebug)
+import App.Fossa.Analyze.Debug (diagToDebug, collectDebugBundle)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
@@ -34,7 +34,7 @@ import App.Types (
  )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, ignoreDebug, runDebug, debugMetadata)
+import Control.Carrier.Debug (Debug, ignoreDebug, debugMetadata)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally
@@ -166,7 +166,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
     $ case recordMode of
       RecordModeNone -> do
         basedir <- sendIO $ validateDir workdir
-        (scope, res) <- runDebug $ debugEverything $ doAnalyze basedir
+        (scope, res) <- collectDebugBundle $ doAnalyze basedir
         sendIO $ Aeson.encodeFile "fossa.debug.json" scope
         pure res
       RecordModeRecord -> do
