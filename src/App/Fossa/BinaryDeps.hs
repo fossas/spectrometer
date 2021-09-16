@@ -7,7 +7,6 @@ import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
 import App.Fossa.VSI.IAT.Types (Fingerprint (..))
-import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
 import Data.ByteString qualified as BS
@@ -17,6 +16,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
+import Effect.Logger
 import Effect.ReadFS (ReadFS, readContentsBSLimit)
 import Graphing (fromList)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
@@ -28,7 +28,7 @@ import Types (Dependency (..), GraphBreadth (Complete))
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.
 -- The goal of this feature is to enable a FOSSA user to flag all vendored binaries (as defined by git) in the project as dependencies.
 -- Users may then use standard FOSSA UX flows to ignore or add license information to the detected binaries.
-analyzeBinaryDeps :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
+analyzeBinaryDeps :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeBinaryDeps dir filters = do
   binaryPaths <- findBinaries (toPathFilters dir filters) dir
   if null binaryPaths
@@ -112,7 +112,7 @@ resolveBinary (resolve : remainingStrategies) = \root file -> do
 resolveBinary [] = strategyRawFingerprint
 
 -- | Functions which may be able to resolve a binary to a dependency.
-strategies :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))]
+strategies :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))]
 strategies =
   [resolveJar]
 

@@ -15,6 +15,7 @@ import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), findFileNamed, walk')
+import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS, readContentsText, readContentsXML)
 import GHC.Base ((<|>))
 import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, stripProperPrefix, toFilePath, (</>))
@@ -33,15 +34,18 @@ data JarMetadata = JarMetadata
 --   2. Search inside for a file named `pom.xml`; if there are multiple pick the one with the shortest path.
 --      If a representative pom.xml was found, parse it and return metadata derived from it.
 --   3. Attempt to open `META-INF/MANIFEST.MF`, parse it, and return metadata derived from it.
-resolveJar :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)
-resolveJar _ file | not (fileHasSuffix file [".jar", ".aar"]) = pure Nothing
+resolveJar :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)
+resolveJar _ file | not $ fileHasSuffix file [".jar", ".aar"] = pure Nothing
 resolveJar root file = do
-  result <- recover $ context ("Infer metadata from " <> toText file) $ withArchive extractZip file $ \dir -> fromPom dir <||> fromMetaInf dir
+  let fileDescription = toText file
+  logDebug $ "Inferring metadata from " <> pretty fileDescription
+  result <- recover $ context ("Infer metadata from " <> fileDescription) $ withArchive extractZip file $ \dir -> fromPom dir <||> fromMetaInf dir
   pure $ fmap (toUserDefDep root file) result
 
-fromMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
+fromMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
 fromMetaInf archive = context ("Parse " <> toText metaInfPath) $ do
   content <- readContentsText metaInfPath
+  logDebug $ "Parsing META-INF manifest: " <> pretty (renderRelative archive metaInfPath)
   metaInfManifestToMeta $ parseMetaInfManifest content
   where
     metaInfPath = archive </> $(mkRelDir "META-INF") </> $(mkRelFile "MANIFEST.MF")
@@ -60,10 +64,11 @@ metaInfManifestToMeta manifest =
     <*> fromMaybeText "Missing implementation version" (Map.lookup "Implementation-Version" manifest)
     <*> pure (Map.findWithDefault "Bundle-License" "" manifest)
 
-fromPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
+fromPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
 fromPom archive = context ("Parse representative pom.xml in " <> toText archive) $ do
   poms <- context "Find pom.xml files" $ walk' (collectFilesNamed "pom.xml") (archive </> $(mkRelDir "META-INF"))
   pom <- fromMaybeText "No pom.xml files found" $ choosePom poms
+  logDebug $ "Chose representative pom.xml: " <> pretty (renderRelative archive pom)
   parsePom pom
 
 choosePom :: [Path Abs File] -> Maybe (Path Abs File)
