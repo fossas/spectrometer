@@ -9,8 +9,8 @@ import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
 import App.Fossa.VSI.IAT.Types (Fingerprint (..))
 import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
+import Control.Monad (filterM)
 import Data.ByteString qualified as BS
-import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -41,16 +41,9 @@ findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) =
 findBinaries filters = walk' $ \dir _ files -> do
   if shouldFingerprintDir dir filters
     then do
-      someBinaries <- traverse pathIfBinary files
-      pure (catMaybes someBinaries, WalkContinue)
+      binaries <- filterM fileIsBinary files
+      pure (binaries, WalkContinue)
     else pure ([], WalkContinue)
-
-pathIfBinary :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m (Maybe (Path Abs File))
-pathIfBinary file = do
-  isBinary <- fileIsBinary file
-  if isBinary
-    then pure . Just $ file
-    else pure Nothing
 
 -- | PathFilters is a specialized filter mechanism that operates only on absolute directory paths.
 data PathFilters = PathFilters
