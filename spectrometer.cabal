@@ -333,6 +333,7 @@ test-suite unit-tests
     Android.UtilSpec
     App.DocsSpec
     App.Fossa.API.BuildLinkSpec
+    App.Fossa.BinaryDeps.ArchiveSpec
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.Report.AttributionSpec
