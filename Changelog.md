@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## Unreleased
+
+- When using `--experimental-enable-binary-discovery`, prepopulates information discovered in JAR manfiests. ([#372](https://github.com/fossas/spectrometer/pull/372))
+
 ## v2.15.18
 
 - Monorepo: Speeds up commercial phrase detection by doing a first pass before trying to parse context. ([#371](https://github.com/fossas/spectrometer/issues/371))
