@@ -8,9 +8,7 @@ module App.Fossa.Analyze (
   VSIAnalysisMode (..),
   IATAssertionMode (..),
   BinaryDiscoveryMode (..),
-  RecordMode (..),
   ModeOptions (..),
-  -- discoverFuncs,
 ) where
 
 import App.Docs (userGuideUrl)
@@ -18,7 +16,6 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
-import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.Analyze.Types
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
@@ -34,7 +31,7 @@ import App.Types (
  )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, debugLog, debugMetadata, debugScope, ignoreDebug)
+import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally
@@ -45,8 +42,6 @@ import Control.Concurrent
 import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover, (<||>))
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
-import Control.Effect.Record (runRecord)
-import Control.Effect.Replay (runReplay)
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
@@ -57,20 +52,19 @@ import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (decodeUtf8, toText)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Archive qualified as Archive
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec (Exec, ExecF, runExecIO)
+import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
-import Effect.ReadFS (ReadFS, ReadFSF, runReadFSIO)
+import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
-import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
 import Strategy.Bundler qualified as Bundler
@@ -105,7 +99,6 @@ import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
 import Strategy.Yarn qualified as Yarn
-import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 
@@ -148,44 +141,22 @@ data BinaryDiscoveryMode
   | -- | Binary discovery disabled
     BinaryDiscoveryDisabled
 
--- | "Replay logging" modes
-data RecordMode
-  = -- | record effect invocations
-    RecordModeRecord
-  | -- | replay effect invocations from a file
-    RecordModeReplay FilePath
-  | -- | don't record or replay
-    RecordModeNone
-
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> ModeOptions -> AllFilters -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput modeOptions filters =
+analyzeMain :: FilePath -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> ModeOptions -> AllFilters -> IO ()
+analyzeMain workdir logSeverity destination project unpackArchives jsonOutput modeOptions filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
     . runExecIO
-    $ case recordMode of
-      RecordModeNone -> do
+    $ case logSeverity of
+      -- In --debug mode, emit a debug bundle to "fossa.debug.json"
+      SevDebug -> do
         basedir <- sendIO $ validateDir workdir
         (scope, res) <- collectDebugBundle . Diag.errorBoundaryIO $ doAnalyze basedir
         sendIO $ Aeson.encodeFile "fossa.debug.json" scope
         either Diag.rethrow pure res
-      RecordModeRecord -> do
+      _ -> do
         basedir <- sendIO $ validateDir workdir
-        (execLogs, (readFSLogs, res)) <-
-          ignoreDebug . runRecord @ExecF . runRecord @ReadFSF . Diag.errorBoundaryIO $ -- FIXME: ignoreDebug
-            doAnalyze basedir
-        sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
-        either Diag.rethrow pure res
-      RecordModeReplay file -> do
-        basedir <- BaseDir <$> P.resolveDir' workdir
-        maybeJournal <- sendIO $ loadReplayLog file
-        case maybeJournal of
-          Left err -> sendIO (die $ "Issue loading replay log: " <> err)
-          Right journal -> do
-            let effects = analyzeEffects journal
-            ignoreDebug . runReplay @ReadFSF (effectsReadFS effects) -- FIXME: ignoreDebug
-              . runReplay @ExecF (effectsExec effects)
-              $ doAnalyze basedir
+        ignoreDebug $ doAnalyze basedir
   where
     doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput modeOptions filters
 
@@ -396,7 +367,6 @@ uploadSuccessfulAnalysis ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   , Has ReadFS sig m
-  , Has Debug sig m
   ) =>
   BaseDir ->
   ApiOpts ->

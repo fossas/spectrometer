@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -192,7 +192,7 @@ appMain = do
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
           modeOptions = ModeOptions analyzeVSIMode assertionMode analyzeBinaryDiscoveryMode
-          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput modeOptions combinedFilters
+          doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput modeOptions combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -418,7 +418,6 @@ analyzeOpts =
     <*> binaryDiscoveryOpt
     <*> iatAssertionOpt
     <*> monorepoOpts
-    <*> analyzeReplayOpt
     <*> baseDirArg
 
 vsiAnalyzeOpt :: Parser VSIAnalysisMode
@@ -435,12 +434,6 @@ iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
 iatAssertionOpt =
   (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-link-project-binary" <> hidden))
     <|> pure AnalyzeVSIAssertionDisabled
-
-analyzeReplayOpt :: Parser RecordMode
-analyzeReplayOpt =
-  flag' RecordModeRecord (long "record" <> hidden)
-    <|> (RecordModeReplay <$> strOption (long "replay" <> hidden))
-    <|> pure RecordModeNone
 
 filterOpt :: Parser TargetFilter
 filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecated) Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
@@ -713,7 +706,6 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeBinaryDiscoveryMode :: BinaryDiscoveryMode
   , analyzeAssertMode :: AnalyzeVSIAssertionMode
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
-  , analyzeRecordMode :: RecordMode
   , analyzeBaseDir :: FilePath
   }
 
