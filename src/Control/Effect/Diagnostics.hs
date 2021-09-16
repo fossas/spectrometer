@@ -14,6 +14,7 @@ module Control.Effect.Diagnostics (
   recover,
   recover',
   errorBoundary,
+  rethrow,
 
   -- * Diagnostic result types
   FailureBundle (..),
@@ -54,6 +55,7 @@ data Diagnostics m k where
   Recover' :: m a -> Diagnostics m (Either SomeDiagnostic a)
   Context :: Text -> m a -> Diagnostics m a
   ErrorBoundary :: m a -> Diagnostics m (Either FailureBundle a)
+  Rethrow :: FailureBundle -> Diagnostics m a
 
 -- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where
@@ -100,6 +102,10 @@ recover' = send . Recover'
 -- This returns a FailureBundle if the action failed; otherwise returns the result of the action
 errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
 errorBoundary = send . ErrorBoundary
+
+-- | Rethrow a FailureBundle from an 'errorBoundary'
+rethrow :: Has Diagnostics sig m => FailureBundle -> m a
+rethrow = send . Rethrow
 
 -- | Push context onto the stack for "stack traces"/"tracebacks" in diagnostics.
 --

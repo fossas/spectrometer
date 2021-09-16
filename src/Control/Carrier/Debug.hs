@@ -101,14 +101,14 @@ runDebug act = do
   let duration = timeBetween before after
   pure (Scope duration evs [] metadata, res)
 
-instance Has (Lift IO) sig m => Algebra (Debug :+: sig) (DebugC m) where
+instance (Has (Lift IO) sig m, Has Diagnostics sig m) => Algebra (Debug :+: sig) (DebugC m) where
   alg hdl sig ctx = DebugC $
     case sig of
       L (DebugScope nm act) -> do
-        let act' = hdl (act <$ ctx)
+        let act' = errorBoundaryIO $ hdl (act <$ ctx)
         (inner, res) <- lift . lift $ runDebug act'
         output (EventScope nm inner)
-        pure res
+        either rethrow pure res
       L (DebugMetadata k v) -> do
         modify (Map.insert k (toJSON v))
         pure ctx

@@ -39,6 +39,7 @@ import System.Info qualified as Info
 collectDebugBundle ::
   ( Has Exec sig m
   , Has ReadFS sig m
+  , Has Diagnostics sig m
   , Has (Lift IO) sig m
   ) =>
   DebugEverythingC (DebugC m) a ->

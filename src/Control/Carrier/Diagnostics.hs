@@ -12,6 +12,7 @@ module Control.Carrier.Diagnostics (
   logErrorBundle,
   logWithExit_,
   runDiagnosticsIO,
+  errorBoundaryIO,
   withResult,
 
   -- * Re-exports
@@ -30,6 +31,7 @@ import Data.Monoid (Endo (..))
 import Data.Text (Text)
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
+import Data.Foldable (traverse_)
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -91,11 +93,18 @@ instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
       case res' of
         Left e -> pure (Left e <$ ctx)
         Right a -> pure (Right <$> a)
+    L (Rethrow bundle) -> do
+      traverse_ (\diag -> tell (Endo (diag :))) (failureWarnings bundle)
+      throwError (failureCause bundle)
     R other -> alg (runDiagnosticsC . hdl) (R (R (R other))) ctx
 
 -- | Run the DiagnosticsC carrier, also catching IO exceptions
 runDiagnosticsIO :: Has (Lift IO) sig m => DiagnosticsC m a -> m (Either FailureBundle a)
 runDiagnosticsIO act = runDiagnostics $ act `safeCatch` (\(e :: SomeException) -> fatal e)
+
+-- | Like 'errorBoundary', but also catches IO exceptions
+errorBoundaryIO :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (Either FailureBundle a)
+errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> fatal e)
 
 -- | Use the result of a Diagnostics computation, logging an error on failure
 withResult :: Has Logger sig m => Severity -> Either FailureBundle a -> (a -> m ()) -> m ()

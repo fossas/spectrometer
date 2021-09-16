@@ -43,7 +43,7 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover, (<||>))
-import Control.Effect.Exception (Lift, SomeException, throwIO, try)
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (runRecord)
 import Control.Effect.Replay (runReplay)
@@ -166,16 +166,16 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
     $ case recordMode of
       RecordModeNone -> do
         basedir <- sendIO $ validateDir workdir
-        (scope, res) <- collectDebugBundle $ doAnalyze basedir
+        (scope, res) <- collectDebugBundle . Diag.errorBoundaryIO $ doAnalyze basedir
         sendIO $ Aeson.encodeFile "fossa.debug.json" scope
-        pure res
+        either Diag.rethrow pure res
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
         (execLogs, (readFSLogs, res)) <-
-          ignoreDebug . runRecord @ExecF . runRecord @ReadFSF . try @SomeException $ -- FIXME: ignoreDebug
+          ignoreDebug . runRecord @ExecF . runRecord @ReadFSF . Diag.errorBoundaryIO $ -- FIXME: ignoreDebug
             doAnalyze basedir
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
-        either throwIO pure res
+        either Diag.rethrow pure res
       RecordModeReplay file -> do
         basedir <- BaseDir <$> P.resolveDir' workdir
         maybeJournal <- sendIO $ loadReplayLog file

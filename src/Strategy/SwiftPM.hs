@@ -17,29 +17,35 @@ import Discovery.Walk (
  )
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Path
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
 import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
+import Data.Aeson (ToJSON)
 
 data SwiftProject
   = PackageProject SwiftPackageProject
   | XcodeProject XcodeProjectUsingSwiftPm
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
 data SwiftPackageProject = SwiftPackageProject
   { swiftPkgManifest :: Path Abs File
   , swiftPkgProjectDir :: Path Abs Dir
   , swiftPkgResolved :: Maybe (Path Abs File)
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
 data XcodeProjectUsingSwiftPm = XcodeProjectUsingSwiftPm
   { xCodeProjectFile :: Path Abs File
   , xCodeProjectDir :: Path Abs Dir
   , xCodeResolvedFile :: Maybe (Path Abs File)
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON SwiftPackageProject
+instance ToJSON XcodeProjectUsingSwiftPm
+instance ToJSON SwiftProject
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [DiscoveredProject SwiftProject]
 discover dir = context "Swift" $ do
