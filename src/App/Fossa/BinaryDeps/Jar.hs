@@ -62,11 +62,14 @@ metaInfManifestToMeta manifest =
   JarMetadata
     <$> fromMaybeText "Missing bundle name" (Map.lookup "Bundle-SymbolicName" manifest <|> Map.lookup "Implementation-Title" manifest)
     <*> fromMaybeText "Missing implementation version" (Map.lookup "Implementation-Version" manifest)
-    <*> pure (Map.findWithDefault "Bundle-License" "" manifest)
+    <*> pure "" -- Don't attempt to use Bundle-License; it's a URL and we don't parse it on the backend
 
 fromPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
 fromPom archive = context ("Parse representative pom.xml in " <> toText archive) $ do
   poms <- context "Find pom.xml files" $ walk' (collectFilesNamed "pom.xml") (archive </> $(mkRelDir "META-INF"))
+  if length poms > 1
+    then logDebug $ "Found multiple pom.xml files: " <> pretty (Text.intercalate "; " $ map (renderRelative archive) poms)
+    else pure ()
   pom <- fromMaybeText "No pom.xml files found" $ choosePom poms
   logDebug $ "Chose representative pom.xml: " <> pretty (renderRelative archive pom)
   parsePom pom
