@@ -18,7 +18,8 @@ import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), findFileNamed, walk
 import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS, readContentsText, readContentsXML)
 import GHC.Base ((<|>))
-import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, stripProperPrefix, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, (</>))
+import Path.Extra (renderRelative)
 import Srclib.Types (SourceUserDefDep (..))
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), RawPom, pomLicenseName, validatePom)
 
@@ -98,12 +99,6 @@ collectFilesNamed name _ _ files = case findFileNamed name files of
 
 fileHasSuffix :: Path a File -> [String] -> Bool
 fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file))
-
-renderRelative :: Path Abs Dir -> Path Abs File -> Text
-renderRelative absDir absFile =
-  case stripProperPrefix absDir absFile of
-    Left _ -> toText . toFilePath $ absFile
-    Right relFile -> toText . toFilePath $ relFile
 
 toUserDefDep :: Path Abs Dir -> Path Abs File -> JarMetadata -> SourceUserDefDep
 toUserDefDep root file JarMetadata{..} =

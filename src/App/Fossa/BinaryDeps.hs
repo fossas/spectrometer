@@ -11,18 +11,17 @@ import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
 import Control.Monad (filterM)
 import Data.ByteString qualified as BS
-import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.Logger
 import Effect.ReadFS (ReadFS, readContentsBSLimit)
-import Graphing (fromList)
-import Path (Abs, Dir, File, Path, isProperPrefixOf, stripProperPrefix, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
+import Path.Extra (renderRelative)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
-import Types (Dependency (..), GraphBreadth (Complete))
+import Types (GraphBreadth (Complete))
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.
@@ -35,7 +34,7 @@ analyzeBinaryDeps dir filters = do
     then pure Nothing
     else do
       resolvedBinaries <- traverse (resolveBinary strategies dir) binaryPaths
-      pure . Just $ toSourceUnit (toProject dir []) resolvedBinaries
+      pure . Just $ toSourceUnit (toProject dir) resolvedBinaries
 
 findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [Path Abs File]
 findBinaries filters = walk' $ \dir _ files -> do
@@ -66,25 +65,19 @@ shouldFingerprintDir dir filters = (not shouldExclude) && shouldInclude
     shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
-toProject :: Path Abs Dir -> [Dependency] -> ProjectResult
-toProject dir deps = ProjectResult "binary-deps" dir (fromList deps) Complete []
+toProject :: Path Abs Dir -> ProjectResult
+toProject dir = ProjectResult "binary-deps" dir mempty Complete []
 
 toSourceUnit :: ProjectResult -> [SourceUserDefDep] -> SourceUnit
-toSourceUnit project binaries = do
+toSourceUnit project deps = do
   let unit = Srclib.toSourceUnit project
-  unit{additionalData = Just $ AdditionalDepData (Just binaries) Nothing}
+  unit{additionalData = Just $ AdditionalDepData (Just deps) Nothing}
 
 -- | Just render the first few characters of the fingerprint.
 -- The goal is to provide a high confidence that future binaries with the same name won't collide,
 -- and we don't need all 256 bits for that.
 renderFingerprint :: Fingerprint -> Text
 renderFingerprint fingerprint = Text.take 12 $ unFingerprint fingerprint
-
-renderRelative :: Path Abs Dir -> Path Abs File -> Text
-renderRelative absDir absFile =
-  case stripProperPrefix absDir absFile of
-    Left _ -> toText . toFilePath $ absFile
-    Right relFile -> toText . toFilePath $ relFile
 
 -- | Determine if a file is binary using the same method as git:
 -- "is there a zero byte in the first 8000 bytes of the file"
