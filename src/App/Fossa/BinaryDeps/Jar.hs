@@ -40,11 +40,11 @@ resolveJar _ file | not $ fileHasSuffix file [".jar", ".aar"] = pure Nothing
 resolveJar root file = do
   let fileDescription = toText file
   logDebug $ "Inferring metadata from " <> pretty fileDescription
-  result <- recover $ context ("Infer metadata from " <> fileDescription) $ withArchive extractZip file $ \dir -> fromPom dir <||> fromMetaInf dir
+  result <- recover $ context ("Infer metadata from " <> fileDescription) $ withArchive extractZip file $ \dir -> tacticPom dir <||> tacticMetaInf dir
   pure $ fmap (toUserDefDep root file) result
 
-fromMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
-fromMetaInf archive = context ("Parse " <> toText metaInfPath) $ do
+tacticMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
+tacticMetaInf archive = context ("Parse " <> toText metaInfPath) $ do
   content <- readContentsText metaInfPath
   logDebug $ "Parsing META-INF manifest: " <> pretty (renderRelative archive metaInfPath)
   metaInfManifestToMeta $ parseMetaInfManifest content
@@ -65,8 +65,8 @@ metaInfManifestToMeta manifest =
     <*> fromMaybeText "Missing implementation version" (Map.lookup "Implementation-Version" manifest)
     <*> pure "" -- Don't attempt to use Bundle-License; it's a URL and we don't parse it on the backend
 
-fromPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
-fromPom archive = context ("Parse representative pom.xml in " <> toText archive) $ do
+tacticPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
+tacticPom archive = context ("Parse representative pom.xml in " <> toText archive) $ do
   poms <- context "Find pom.xml files" $ walk' (collectFilesNamed "pom.xml") (archive </> $(mkRelDir "META-INF"))
   if length poms > 1
     then logDebug $ "Found multiple pom.xml files: " <> pretty (Text.intercalate "; " $ map (renderRelative archive) poms)
