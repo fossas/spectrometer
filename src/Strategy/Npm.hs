@@ -2,19 +2,19 @@ module Strategy.Npm (
   discover,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Node.NpmList qualified as NpmList
 import Strategy.Node.NpmLock qualified as NpmLock
 import Strategy.Node.PackageJson qualified as PackageJson
 import Types
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import GHC.Generics (Generic)
-import Data.Aeson (ToJSON)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NpmProject]
 discover dir = context "Npm" $ do

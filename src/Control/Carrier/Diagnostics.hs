@@ -27,11 +27,11 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
 import Control.Monad.Trans
+import Data.Foldable (traverse_)
 import Data.Monoid (Endo (..))
 import Data.Text (Text)
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
-import Data.Foldable (traverse_)
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)

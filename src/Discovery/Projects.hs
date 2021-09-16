@@ -1,6 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 module Discovery.Projects (
   withDiscoveredProjects,
 ) where

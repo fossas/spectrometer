@@ -2,14 +2,14 @@ module App.Pathfinder.Types (
   LicenseAnalyzeProject (..),
 ) where
 
-import Types
-import Control.Effect.Diagnostics (Diagnostics)
-import Effect.Logger (Logger)
-import Effect.Exec (Exec)
-import Effect.ReadFS (ReadFS)
-import Control.Monad.IO.Class (MonadIO)
-import Control.Effect.Lift (Lift)
 import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Lift (Lift)
+import Control.Monad.IO.Class (MonadIO)
+import Effect.Exec (Exec)
+import Effect.Logger (Logger)
+import Effect.ReadFS (ReadFS)
+import Types
 
 type TaskEffs sig m =
   ( Has (Lift IO) sig m

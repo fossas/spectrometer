@@ -32,9 +32,9 @@ import Data.Text.Lazy qualified as LText
 import Data.Void (Void)
 import Path
 import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty)
+import Prettyprinter.Render.Text (renderStrict)
 import System.Exit
 import Unsafe.Coerce (unsafeCoerce)
-import Prettyprinter.Render.Text (renderStrict)
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
 -- and "result values" (the @a@ in @e a@) can be serialized to JSON values

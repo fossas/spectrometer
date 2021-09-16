@@ -26,6 +26,7 @@ import Control.Carrier.Simple
 import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
@@ -37,7 +38,6 @@ import System.Console.ANSI (hSupportsANSI)
 import System.Console.Concurrent (errorConcurrent, outputConcurrent)
 import System.IO (stderr)
 import Prelude hiding (log)
-import Control.Effect.Record (RecordableValue)
 
 data LogCtx m = LogCtx
   { logCtxSeverity :: Severity

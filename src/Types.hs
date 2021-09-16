@@ -35,9 +35,9 @@ import DepTypes (
   insertLocation,
   insertTag,
  )
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, Rel, parseRelDir)
-import GHC.Generics (Generic)
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
 
@@ -61,7 +61,8 @@ data DiscoveredProject a = DiscoveredProject
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
   , projectData :: a
-  } deriving (Eq, Ord, Show, Generic)
+  }
+  deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON a => ToJSON (DiscoveredProject a)
 
