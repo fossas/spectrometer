@@ -1,10 +1,14 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module App.Fossa.BinaryDeps.JarSpec (spec) where
 
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Data.String.Conversion (toText)
+import Data.Text (Text)
 import Effect.Logger (Severity (SevError), withDefaultLogger)
 import Effect.ReadFS (runReadFSIO)
-import Path (Abs, Dir, File, Path)
+import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO qualified as PIO
 import Srclib.Types (SourceUserDefDep (..))
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
@@ -51,10 +55,10 @@ withMetaInfManifest :: IO (Path Abs File)
 withMetaInfManifest = PIO.resolveFile' "test/App/Fossa/BinaryDeps/testdata/micrometer-registry-prometheus-1.5.4.jar"
 
 expectedMultiplePoms :: SourceUserDefDep
-expectedMultiplePoms = SourceUserDefDep "testdata/jruby-complete-1.7.12.jar" "1.0" "" (Just "org.jruby:yecht") Nothing
+expectedMultiplePoms = SourceUserDefDep (toText $ $(mkRelDir "testdata") </> $(mkRelFile "jruby-complete-1.7.12.jar")) "1.0" "" (Just "org.jruby:yecht") Nothing
 
 expectedLicenseInPom :: SourceUserDefDep
-expectedLicenseInPom = SourceUserDefDep "testdata/json-simple-1.1.1.7.jar" "1.1.1" "The Apache Software License, Version 2.0" (Just "com.googlecode.json-simple:json-simple") Nothing
+expectedLicenseInPom = SourceUserDefDep (toText $ $(mkRelDir "testdata") </> $(mkRelFile "json-simple-1.1.1.7.jar")) "1.1.1" "The Apache Software License, Version 2.0" (Just "com.googlecode.json-simple:json-simple") Nothing
 
 expectedMetaInfManifest :: SourceUserDefDep
-expectedMetaInfManifest = SourceUserDefDep "testdata/micrometer-registry-prometheus-1.5.4.jar" "1.5.4" "" (Just "io.micrometer#micrometer-registry-prometheus;1.5.4") Nothing
+expectedMetaInfManifest = SourceUserDefDep (toText $ $(mkRelDir "testdata") </> $(mkRelFile "micrometer-registry-prometheus-1.5.4.jar")) "1.5.4" "" (Just "io.micrometer#micrometer-registry-prometheus;1.5.4") Nothing

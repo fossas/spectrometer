@@ -56,7 +56,7 @@ parseMetaInfManifest t = Map.fromList . map strip' . filter' $ map (Text.breakOn
   where
     null' (a, b) = any Text.null [a, b]
     strip' (a, b) = (Text.strip a, Text.strip $ Text.tail b)
-    filter' pairs = filter (not . null') pairs
+    filter' = filter (not . null')
 
 metaInfManifestToMeta :: Has Diagnostics sig m => Map Text Text -> m JarMetadata
 metaInfManifestToMeta manifest =

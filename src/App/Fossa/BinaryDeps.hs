@@ -1,6 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 module App.Fossa.BinaryDeps (analyzeBinaryDeps) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
