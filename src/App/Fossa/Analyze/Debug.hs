@@ -21,11 +21,13 @@ module App.Fossa.Analyze.Debug (
 import Control.Carrier.Debug
 import Control.Carrier.Diagnostics (Diagnostics (Context, Fatal))
 import Control.Carrier.Lift (sendIO)
-import Control.Carrier.Simple (SimpleC, interpret)
+import Control.Carrier.Simple (SimpleC, interpret, sendSimple)
 import Control.Effect.Lift (Lift)
+import Control.Effect.Record (Journal, RecordC, runRecord)
 import Control.Effect.Sum (Member, inj)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON)
+import Data.String.Conversion (toText)
 import Data.Word (Word64)
 import Effect.Exec (Exec, ExecF (..))
 import Effect.Logger (Logger, LoggerF (..))
@@ -35,12 +37,12 @@ import GHC.Environment qualified as Environment
 import GHC.Generics (Generic)
 import GHC.Stats qualified as Stats
 import System.Info qualified as Info
-import Control.Effect.Record (runRecord, RecordC, Journal)
 
 collectDebugBundle ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Lift IO) sig m
   ) =>
   DebugEverythingC (RecordC ReadFSF (RecordC ExecF (DebugC m))) a ->
@@ -54,10 +56,11 @@ collectDebugBundle act = do
           { bundleScope = scope
           , bundleSystem = sysInfo
           , bundleArgs = args
-          , bundleJournals = BundleJournals
-              { bundleJournalReadFS = readFSJournal
-              , bundleJournalExec = execJournal
-              }
+          , bundleJournals =
+              BundleJournals
+                { bundleJournalReadFS = readFSJournal
+                , bundleJournalExec = execJournal
+                }
           }
   pure (bundle, res)
 
@@ -112,7 +115,8 @@ instance ToJSON SystemMemory
 data BundleJournals = BundleJournals
   { bundleJournalReadFS :: Journal ReadFSF
   , bundleJournalExec :: Journal ExecF
-  } deriving (Show, Generic)
+  }
+  deriving (Show, Generic)
 
 instance ToJSON BundleJournals
 
@@ -165,13 +169,15 @@ type LogDebugC = SimpleC LoggerF
 
 logToDebug :: (Has Logger sig m, Has Debug sig m) => LogDebugC m a -> m a
 logToDebug = interpret $ \case
-  cons@Log{} -> recording cons
+  cons@(Log _ txt) -> do
+    debugLog (toText (show txt))
+    sendSimple cons
   cons@LogStdout{} -> ignoring cons
 
 -----------------------------------------------
 
 -- | Combine all of our debug wrappers into a mega-wrapper
-type DebugEverythingC m = DiagDebugC (ReadFSDebugC (ExecDebugC m))
+type DebugEverythingC m = DiagDebugC (ReadFSDebugC (ExecDebugC (LogDebugC m)))
 
-debugEverything :: (Has Debug sig m, Has Exec sig m, Has ReadFS sig m) => DebugEverythingC m a -> m a
-debugEverything = execToDebug . readFSToDebug . diagToDebug
+debugEverything :: (Has Debug sig m, Has Exec sig m, Has ReadFS sig m, Has Logger sig m) => DebugEverythingC m a -> m a
+debugEverything = logToDebug . execToDebug . readFSToDebug . diagToDebug

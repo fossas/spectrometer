@@ -4,6 +4,7 @@ module Control.Effect.Debug (
   debugMetadata,
   debugError,
   debugEffect,
+  debugLog,
   module X,
 ) where
 
@@ -18,6 +19,7 @@ data Debug m a where
   DebugMetadata :: ToJSON a => Text -> a -> Debug m ()
   DebugError :: ToDiagnostic err => err -> Debug m ()
   DebugEffect :: Recordable r => r a -> a -> Debug m ()
+  DebugLog :: Text -> Debug m ()
 
 debugScope :: Has Debug sig m => Text -> m a -> m a
 debugScope nm act = send (DebugScope nm act)
@@ -32,3 +34,6 @@ debugError = send . DebugError
 
 debugEffect :: (Recordable r, Has Debug sig m) => r a -> a -> m ()
 debugEffect k v = send (DebugEffect k v)
+
+debugLog :: Has Debug sig m => Text -> m ()
+debugLog = send . DebugLog

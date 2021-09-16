@@ -15,7 +15,7 @@ module App.Fossa.Analyze (
 
 import App.Docs (userGuideUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
-import App.Fossa.Analyze.Debug (diagToDebug, collectDebugBundle)
+import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
@@ -34,7 +34,7 @@ import App.Types (
  )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, ignoreDebug, debugMetadata)
+import Control.Carrier.Debug (Debug, debugLog, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally
@@ -57,7 +57,7 @@ import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -329,7 +329,14 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult additionalSourceUnits filteredProjects
+      OutputStdout -> do
+        debugScope "DEBUG: Project inference" $ do
+          inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+          logDebug $ "Inferred revision: " <> viaShow inferred
+
+          let revision = mergeOverride override inferred
+          logDebug $ "Merged revision: " <> viaShow revision
+        logStdout . decodeUtf8 . Aeson.encode $ buildResult additionalSourceUnits filteredProjects
       UploadScan opts metadata -> Diag.context "upload-results" $ do
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
         doAssertRevisionBinaries modeIATAssertion opts locator
@@ -389,6 +396,7 @@ uploadSuccessfulAnalysis ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Debug sig m
   ) =>
   BaseDir ->
   ApiOpts ->
@@ -397,16 +405,21 @@ uploadSuccessfulAnalysis ::
   OverrideProject ->
   NE.NonEmpty SourceUnit ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = do
-  revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-  dieOnMonorepoUpload apiOpts revision
-  saveRevision revision
+uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = Diag.context "Uploading analysis" $ do
+  inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+  logDebug $ "Inferred revision: " <> viaShow inferred
+
+  let revision = mergeOverride override inferred
+  logDebug $ "Merged revision: " <> viaShow revision
 
   logInfo ""
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
   let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
   logInfo ("Using branch: `" <> pretty branchText <> "`")
+
+  dieOnMonorepoUpload apiOpts revision
+  saveRevision revision
 
   uploadResult <- uploadAnalysis apiOpts revision metadata units
   let locator = parseLocator $ uploadLocator uploadResult

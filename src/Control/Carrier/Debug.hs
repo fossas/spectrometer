@@ -62,6 +62,7 @@ data ScopeEvent
   = EventEffect SomeEffectResult
   | EventScope Text Scope
   | EventError SomeDiagnostic
+  | EventLog Text
 
 instance ToJSON ScopeEvent where
   toJSON (EventEffect (SomeEffectResult k v)) =
@@ -77,11 +78,13 @@ instance ToJSON ScopeEvent where
       ]
   toJSON (EventScope nm scope) =
     object $ ("scope" .= nm) : scopePairs scope
+  toJSON (EventLog txt) = String txt
 
 instance Show ScopeEvent where -- FIXME
   show (EventEffect (SomeEffectResult k v)) = "SomeEffectResult " <> show (recordEff k v)
   show (EventScope txt sc) = "EventScope " <> show txt <> " " <> show sc
   show (EventError (SomeDiagnostic _ err)) = "EventError " <> show (renderDiagnostic err)
+  show (EventLog txt) = "EventLog " <> show txt
 
 data ScopeFile = ScopeFile (Path Abs Dir) Text
   deriving (Show)
@@ -118,6 +121,9 @@ instance (Has (Lift IO) sig m, Has Diagnostics sig m) => Algebra (Debug :+: sig)
       L (DebugError err) -> do
         output (EventError (SomeDiagnostic [] err)) -- FIXME: empty path?
         pure ctx
+      L (DebugLog txt) -> do
+        output (EventLog txt)
+        pure ctx
       R other -> alg (runDebugC . hdl) (R (R other)) ctx
 
 -----------------------------------------------
@@ -132,6 +138,7 @@ instance Algebra sig m => Algebra (Debug :+: sig) (IgnoreDebugC m) where
       L DebugMetadata{} -> pure ctx
       L DebugError{} -> pure ctx
       L DebugEffect{} -> pure ctx
+      L DebugLog{} -> pure ctx
       R other -> alg (runIgnoreDebugC . hdl) other ctx
 
 ignoreDebug :: IgnoreDebugC m a -> m a

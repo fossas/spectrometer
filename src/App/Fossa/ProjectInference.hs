@@ -60,8 +60,8 @@ inferProjectCached dir = do
 -- | Infer a default project name from the directory, and a default
 -- revision from the current time. Writes `.fossa.revision` to the system
 -- temp directory for use by `fossa test`
-inferProjectDefault :: Has (Lift IO) sig m => Path b Dir -> m InferredProject
-inferProjectDefault dir = sendIO $ do
+inferProjectDefault :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
+inferProjectDefault dir = context "Inferring project from directory name / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
   time <- floor <$> getPOSIXTime :: IO Int
 
@@ -76,7 +76,7 @@ svnCommand =
     }
 
 inferSVN :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m InferredProject
-inferSVN dir = do
+inferSVN dir = context "Inferring project from SVN" $ do
   output <- execThrow dir svnCommand
   let props = toProps output
 
@@ -143,7 +143,7 @@ inferGit ::
   ) =>
   Path Abs Dir ->
   m InferredProject
-inferGit dir = do
+inferGit dir = context "Inferring project from git" $ do
   foundGitDir <- findGitDir dir
 
   case foundGitDir of
