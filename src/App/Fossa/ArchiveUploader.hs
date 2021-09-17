@@ -97,8 +97,6 @@ arcToLocator arc =
 
 compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
-  -- Without using `fromAbsDir` for each of these directories, the conversion
-  -- is incorrect. `show outputDir` gives an incorrect result even though it typechecks.
   let finalFile = toString outputDir </> safeSeparators fileToTar
   entries <- Tar.pack (toString directory) [fileToTar]
   BS.writeFile finalFile $ GZip.compress $ Tar.write entries
