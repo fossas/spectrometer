@@ -5,10 +5,9 @@ module App.Fossa.BinaryDeps.JarSpec (spec) where
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Data.String.Conversion (toText)
-import Data.Text (Text)
 import Effect.Logger (Severity (SevError), withDefaultLogger)
 import Effect.ReadFS (runReadFSIO)
-import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO qualified as PIO
 import Srclib.Types (SourceUserDefDep (..))
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
