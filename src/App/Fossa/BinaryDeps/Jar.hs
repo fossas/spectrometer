@@ -3,9 +3,9 @@
 
 module App.Fossa.BinaryDeps.Jar (resolveJar) where
 
-import App.Fossa.BinaryDeps.Archive (extractZip, withArchive)
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, context, fromMaybeText, recover, (<||>))
+import Control.Carrier.Finally (runFinally)
 import Control.Effect.Lift (Lift)
 import Data.List (isSuffixOf, sortOn)
 import Data.Map (Map)
@@ -14,6 +14,7 @@ import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Discovery.Archive (extractZip, withArchive)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), findFileNamed, walk')
 import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS, readContentsText, readContentsXML)
@@ -40,7 +41,7 @@ resolveJar _ file | not $ fileHasSuffix file [".jar", ".aar"] = pure Nothing
 resolveJar root file = do
   let fileDescription = toText file
   logDebug $ "Inferring metadata from " <> pretty fileDescription
-  result <- recover $ context ("Infer metadata from " <> fileDescription) $ withArchive extractZip file $ \dir -> tacticPom dir <||> tacticMetaInf dir
+  result <- recover . context ("Infer metadata from " <> fileDescription) . runFinally $ withArchive extractZip file $ \dir -> tacticPom dir <||> tacticMetaInf dir
   pure $ fmap (toUserDefDep root file) result
 
 tacticMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata

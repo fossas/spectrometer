@@ -1,10 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.BinaryDeps.ArchiveSpec (spec) where
+module Discovery.ArchiveSpec (spec) where
 
-import App.Fossa.BinaryDeps.Archive (extractZip, withArchive)
+import Control.Carrier.Finally (runFinally)
+import Control.Effect.Lift (sendIO)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
+import Discovery.Archive (extractZip, withArchive)
 import Path (Abs, File, Path, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO qualified as PIO
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
@@ -14,9 +16,9 @@ spec = do
   describe "extract zip archive to a temporary location" $ do
     target <- runIO simpleZipPath
     (extractedDir, extractedContentA, extractedContentB) <- runIO $
-      withArchive extractZip target $ \dir -> do
-        contentA <- TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
-        contentB <- TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
+      runFinally . withArchive extractZip target $ \dir -> do
+        contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
+        contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
         pure (dir, contentA, contentB)
     tempDirExists <- runIO $ PIO.doesDirExist extractedDir
 
@@ -28,7 +30,7 @@ spec = do
       tempDirExists `shouldBe` False
 
 simpleZipPath :: IO (Path Abs File)
-simpleZipPath = PIO.resolveFile' "test/App/Fossa/BinaryDeps/testdata/simple.zip"
+simpleZipPath = PIO.resolveFile' "test/Discovery/testdata/simple.zip"
 
 expectedContentA :: Text
 expectedContentA = "6b5effe3-215a-49ec-9286-f0702f7eb529"
