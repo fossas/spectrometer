@@ -1,6 +1,6 @@
 # Spectrometer Changelog
 
-## Unreleased
+## v2.15.19
 
 - Fixes an issue with `fossa-deps.yml` `vendored-dependencies` entries where uploads would fail if the dependency was in a subdirectory. ([#373](https://github.com/fossas/spectrometer/pull/373))
 
