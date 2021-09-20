@@ -10,7 +10,7 @@ import Control.Effect.Lift (Lift)
 import Data.List (isSuffixOf, sortOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (mapMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -77,9 +77,7 @@ tacticPom archive = context ("Parse representative pom.xml in " <> toText archiv
   parsePom pom
 
 choosePom :: [Path Abs File] -> Maybe (Path Abs File)
-choosePom [] = Nothing
-choosePom [pom] = Just pom
-choosePom poms = Just . head $ sortOn (length . toString) poms
+choosePom = listToMaybe . sortOn (length . toString)
 
 parsePom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m JarMetadata
 parsePom file = context ("Parse pom file: " <> toText file) $ do
