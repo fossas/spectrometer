@@ -21,7 +21,7 @@ We will not scan `.build` directory if the `Package.swift` or Xcode project file
 ## Limitations
 
 - Path dependencies are ignored in the analysis (e.g. `package(path: "./../local-pkg")`)
-- In in the Xcode project dependencies are sourced via a local path, they will be be ignored in the analysis.
+- If the Xcode project dependencies are sourced via a local path, they will be ignored in the analysis.
 - Only Xcode project files in ASCII plist format with UTF-8 encoding are supported.
 
 ## Example
@@ -80,16 +80,15 @@ When the analysis is performed (e.g. `fossa analyze -o`), we will identify the f
 
 - https://github.com/grpc/grpc-swift.git@1.3.0
 
-If the `Package.resolved` is discovered, deep dependencies will be identified. We will not identify edges among dependencies.
+If `Package.resolved` is discovered, the following deep dependencies will be identified, however, we will not identify the edges in the dependency graph:
 
 - https://github.com/apple/swift-log.git@1.4.2
-- and any other dependencies that appear in `Package.resolved`
 
 If `Package.resolved` is not discovered, only direct dependencies will be reported. 
 
 ### Xcode Project and `Package.resolved`
 
-For Xcode project using swift package manager to manage swift package dependencies, Xcode project file named: `project.pbxproj` will be analyzed. In the Xcode project file, `XCRemoteSwiftPackageReference` objects will be used to identify swift packages that are direct dependencies. For the analysis, at least one such reference must exist in the file. If no such references are found, we will not consider the Xcode project in the swift analysis.
+For Xcode project using swift package manager to manage swift package dependencies, Xcode project file named `project.pbxproj` will be analyzed. In the Xcode project file, `XCRemoteSwiftPackageReference` objects will be used to identify swift packages that are direct dependencies. For the analysis, at least one such reference must exist in the file. If no such references are found, we will not consider the Xcode project in the swift analysis.
 
 Excerpt from example `project.pbxproj`:
 
@@ -125,9 +124,9 @@ If the `Package.resolved` is discovered, deep dependencies will be identified. I
 
 ### How do I *only perform analysis* for swift package dependencies?
 
-You can explicitly specify analysis target in `.fossa.yml` file.
+You can explicitly specify the analysis target in `.fossa.yml` file.
 
-Example below, will exclude all analysis targets except swift. 
+The example below will exclude all analysis targets except swift. 
 
 ```yaml
 # .fossa.yml 

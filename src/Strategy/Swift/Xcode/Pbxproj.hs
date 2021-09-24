@@ -12,7 +12,7 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Foldable (asum)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set (fromList, member)
 import Data.Text (Text)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..))
@@ -25,7 +25,7 @@ import Strategy.Swift.PackageSwift (
   isGitRefConstraint,
   toConstraint,
  )
-import Strategy.Swift.Xcode.PbxprojParser (AsciiValue (..), PbxProj (..), isaOf, lookupText, parsePbxProj, textOf)
+import Strategy.Swift.Xcode.PbxprojParser (AsciiValue (..), PbxProj (..), lookupText, objectsFromIsa, parsePbxProj, textOf)
 
 -- | Represents the version rules for a Swift Package as defined in Xcode project file.
 data XCRemoteSwiftPackageReference = XCRemoteSwiftPackageReference
@@ -37,10 +37,10 @@ data XCRemoteSwiftPackageReference = XCRemoteSwiftPackageReference
   deriving (Show, Eq, Ord)
 
 swiftPackageReferencesOf :: PbxProj -> [XCRemoteSwiftPackageReference]
-swiftPackageReferencesOf pbx = mapMaybe toSwiftPkgRef (fromMaybe [] swiftPkgRefObjects)
+swiftPackageReferencesOf pbx = mapMaybe toSwiftPkgRef swiftPkgRefObjects
   where
-    swiftPkgRefObjects :: Maybe [Map Text AsciiValue]
-    swiftPkgRefObjects = isaOf "XCRemoteSwiftPackageReference" <$> objects pbx
+    swiftPkgRefObjects :: [Map Text AsciiValue]
+    swiftPkgRefObjects = maybe [] (objectsFromIsa "XCRemoteSwiftPackageReference") (objects pbx)
 
     toSwiftPkgRef :: Map Text AsciiValue -> Maybe XCRemoteSwiftPackageReference
     toSwiftPkgRef candidate = case (repositoryURL candidate, requirement candidate) of
@@ -53,44 +53,44 @@ swiftPackageReferencesOf pbx = mapMaybe toSwiftPkgRef (fromMaybe [] swiftPkgRefO
     requirement :: Map Text AsciiValue -> Maybe SwiftPackageGitDepRequirement
     requirement v = Map.lookup "requirement" v >>= toReferenceRequirement
 
-toReferenceRequirement :: AsciiValue -> Maybe SwiftPackageGitDepRequirement
-toReferenceRequirement value =
-  asum
-    [ upToNextMajor
-    , upToNextMinor
-    , versionRange
-    , revision
-    , exactVersion
-    , branch
-    ]
-  where
-    get = lookupText value
-    kind = get "kind"
+    toReferenceRequirement :: AsciiValue -> Maybe SwiftPackageGitDepRequirement
+    toReferenceRequirement value =
+      asum
+        [ upToNextMajor
+        , upToNextMinor
+        , versionRange
+        , revision
+        , exactVersion
+        , branch
+        ]
+      where
+        get = lookupText value
+        kind = get "kind"
 
-    upToNextMajor =
-      if kind == Just "upToNextMajorVersion"
-        then UpToNextMajor <$> get "minimumVersion"
-        else Nothing
-    upToNextMinor =
-      if kind == Just "upToNextMinorVersion"
-        then UpToNextMinor <$> get "minimumVersion"
-        else Nothing
-    versionRange =
-      if kind == Just "versionRange"
-        then ClosedInterval <$> ((,) <$> get "minimumVersion" <*> get "maximumVersion")
-        else Nothing
-    branch =
-      if kind == Just "branch"
-        then Branch <$> get "branch"
-        else Nothing
-    revision =
-      if kind == Just "revision"
-        then Revision <$> get "revision"
-        else Nothing
-    exactVersion =
-      if kind == Just "exactVersion"
-        then Exact <$> get "version"
-        else Nothing
+        upToNextMajor =
+          if kind == Just "upToNextMajorVersion"
+            then UpToNextMajor <$> get "minimumVersion"
+            else Nothing
+        upToNextMinor =
+          if kind == Just "upToNextMinorVersion"
+            then UpToNextMinor <$> get "minimumVersion"
+            else Nothing
+        versionRange =
+          if kind == Just "versionRange"
+            then ClosedInterval <$> ((,) <$> get "minimumVersion" <*> get "maximumVersion")
+            else Nothing
+        branch =
+          if kind == Just "branch"
+            then Branch <$> get "branch"
+            else Nothing
+        revision =
+          if kind == Just "revision"
+            then Revision <$> get "revision"
+            else Nothing
+        exactVersion =
+          if kind == Just "exactVersion"
+            then Exact <$> get "version"
+            else Nothing
 
 toDependency :: XCRemoteSwiftPackageReference -> Dependency
 toDependency src =

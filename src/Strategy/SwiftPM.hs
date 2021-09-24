@@ -64,12 +64,12 @@ findXcodeProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just projFile -> do
       resolvedFile <- findFirstResolvedFileRecursively dir
-      isValidXCodeProj <- hasSomeSwiftDeps projFile
-      if isValidXCodeProj
+      xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
+      if xCodeProjWithDependencies
         then pure ([XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile], WalkSkipSome [".build"])
         else debugXCodeWithoutSwiftDeps projFile $> ([], WalkContinue)
 
--- | Walks directory and finds fist file named 'Package.resolved'.
+-- | Walks directory and finds first file named 'Package.resolved'.
 -- XCode projects using swift package manager retain Package.resolved,
 -- not in the same directory as project file, but rather in workspace's xcshareddata/swiftpm directory.
 -- Reference: https://developer.apple.com/documentation/swift_packages/adding_package_dependencies_to_your_app.

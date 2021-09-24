@@ -24,10 +24,10 @@ module Strategy.Swift.Xcode.PbxprojParser (
   parsePbxProj,
   PbxProj (..),
   AsciiValue (..),
-  isaOf,
+  objectsFromIsa,
   lookupText,
   textOf,
-  (|->),
+  lookupTextFromAsciiDict,
 
   -- * for testing only
   parseAsciiText,
@@ -137,17 +137,17 @@ data PbxProj = PbxProj
   }
   deriving (Show, Eq, Ord)
 
-(|->) :: AsciiValue -> Text -> Maybe AsciiValue
-(|->) (AText _) _ = Nothing
-(|->) (AList _) _ = Nothing
-(|->) (ADict val) key = Map.lookup key val
+lookupTextFromAsciiDict :: AsciiValue -> Text -> Maybe AsciiValue
+lookupTextFromAsciiDict (AText _) _ = Nothing
+lookupTextFromAsciiDict (AList _) _ = Nothing
+lookupTextFromAsciiDict (ADict val) key = Map.lookup key val
 
 textOf :: AsciiValue -> Maybe Text
 textOf (AText t) = Just t
 textOf _ = Nothing
 
 lookupText :: AsciiValue -> Text -> Maybe Text
-lookupText v key = (v |-> key) >>= textOf
+lookupText v key = (v `lookupTextFromAsciiDict` key) >>= textOf
 
 supportedEncoding :: Text
 supportedEncoding = "UTF8"
@@ -157,30 +157,30 @@ parsePbxProj = do
   _ <- symbol ("// !$*" <> supportedEncoding <> "*$!") <?> "to have UTF8 Encoding!"
   allValues <- parseAsciiDict
 
-  archiveVersion <- case (textOf =<< (allValues |-> "archiveVersion")) of
-    Nothing -> fail "could not find, archiveVersion"
+  archiveVersion <- case (textOf =<< (allValues `lookupTextFromAsciiDict` "archiveVersion")) of
+    Nothing -> fail "could not find archiveVersion"
     Just av -> pure av
 
-  objectVersion <- case (textOf =<< (allValues |-> "objectVersion")) of
-    Nothing -> fail "could not find, objectVersion"
+  objectVersion <- case (textOf =<< (allValues `lookupTextFromAsciiDict` "objectVersion")) of
+    Nothing -> fail "could not find objectVersion"
     Just ov -> pure ov
 
-  rootObject <- case (textOf =<< (allValues |-> "rootObject")) of
-    Nothing -> fail "could not find, rootObject"
+  rootObject <- case (textOf =<< (allValues `lookupTextFromAsciiDict` "rootObject")) of
+    Nothing -> fail "could not find rootObject"
     Just ro -> pure ro
 
-  let classes = (allValues |-> "classes")
-  let objects = (allValues |-> "objects")
+  let classes = (allValues `lookupTextFromAsciiDict` "classes")
+  let objects = (allValues `lookupTextFromAsciiDict` "objects")
   pure $ PbxProj archiveVersion objectVersion rootObject classes objects
 
 -- | Gets list of objects with given isa value.
-isaOf :: Text -> AsciiValue -> [Map Text AsciiValue]
-isaOf _ (AText _) = []
-isaOf _ (AList _) = []
-isaOf key (ADict val) = mapMaybe getDict $ Map.elems filteredMap
+objectsFromIsa :: Text -> AsciiValue -> [Map Text AsciiValue]
+objectsFromIsa _ (AText _) = []
+objectsFromIsa _ (AList _) = []
+objectsFromIsa key (ADict val) = mapMaybe getDict $ Map.elems filteredMap
   where
     filteredMap :: Map Text AsciiValue
-    filteredMap = Map.filterWithKey (\_ v -> Just key == (textOf =<< v |-> "isa")) val
+    filteredMap = Map.filterWithKey (\_ v -> Just key == (textOf =<< v `lookupTextFromAsciiDict` "isa")) val
 
     getDict :: AsciiValue -> Maybe (Map Text AsciiValue)
     getDict (ADict v) = Just v
