@@ -145,7 +145,7 @@ allprojects {
                     // We know that we are working against gradle version greater or equal to v3.3
                     // So, configuration has resolvable property. If the configuration is not resolvable return null.
                     if (config.respondsTo("isCanBeResolved")) {
-                        if (config.isCanBeResolved()) {
+                        if (config.isCanBeResolved() == false) {
                             println "DEBUG: Configuration is not resolvable"
                             return null
                         }
