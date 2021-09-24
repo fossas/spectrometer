@@ -55,42 +55,18 @@ swiftPackageReferencesOf pbx = mapMaybe toSwiftPkgRef swiftPkgRefObjects
 
     toReferenceRequirement :: AsciiValue -> Maybe SwiftPackageGitDepRequirement
     toReferenceRequirement value =
-      asum
-        [ upToNextMajor
-        , upToNextMinor
-        , versionRange
-        , revision
-        , exactVersion
-        , branch
-        ]
+      case kind of
+        Just "upToNextMajorVersion" -> UpToNextMajor <$> get "minimumVersion"
+        Just "upToNextMinorVersion" -> UpToNextMinor <$> get "minimumVersion"
+        Just "versionRange" -> ClosedInterval <$> ((,) <$> get "minimumVersion" <*> get "maximumVersion")
+        Just "branch" -> Branch <$> get "branch"
+        Just "revision" -> Revision <$> get "revision"
+        Just "exactVersion" -> Exact <$> get "version"
+        Just _ -> Nothing
+        Nothing -> Nothing
       where
         get = lookupText value
         kind = get "kind"
-
-        upToNextMajor =
-          if kind == Just "upToNextMajorVersion"
-            then UpToNextMajor <$> get "minimumVersion"
-            else Nothing
-        upToNextMinor =
-          if kind == Just "upToNextMinorVersion"
-            then UpToNextMinor <$> get "minimumVersion"
-            else Nothing
-        versionRange =
-          if kind == Just "versionRange"
-            then ClosedInterval <$> ((,) <$> get "minimumVersion" <*> get "maximumVersion")
-            else Nothing
-        branch =
-          if kind == Just "branch"
-            then Branch <$> get "branch"
-            else Nothing
-        revision =
-          if kind == Just "revision"
-            then Revision <$> get "revision"
-            else Nothing
-        exactVersion =
-          if kind == Just "exactVersion"
-            then Exact <$> get "version"
-            else Nothing
 
 toDependency :: XCRemoteSwiftPackageReference -> Dependency
 toDependency src =
