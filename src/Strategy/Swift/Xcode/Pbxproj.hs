@@ -9,7 +9,6 @@ module Strategy.Swift.Xcode.Pbxproj (
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Data.Foldable (asum)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
