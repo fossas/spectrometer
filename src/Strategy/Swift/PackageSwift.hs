@@ -1,13 +1,15 @@
 module Strategy.Swift.PackageSwift (
   analyzePackageSwift,
+  SwiftPackageGitDep (..),
+  SwiftPackageGitDepRequirement (..),
+  toConstraint,
+  isGitRefConstraint,
 
   -- * for testing,
   buildGraph,
   parsePackageSwiftFile,
   SwiftPackage (..),
   SwiftPackageDep (..),
-  SwiftPackageGitDep (..),
-  SwiftPackageGitDepRequirement (..),
 ) where
 
 import Control.Applicative (Alternative ((<|>)), optional)
@@ -209,7 +211,7 @@ analyzePackageSwift manifestFile resolvedFile = do
 
   packageResolvedContent <- case resolvedFile of
     Nothing -> pure Nothing
-    Just packageResolved -> context "Identifying dependencies in Package.swift" $ readContentsJson packageResolved
+    Just packageResolved -> context "Identifying dependencies in Package.resolved" $ readContentsJson packageResolved
 
   context "Building dependency graph" $ pure $ buildGraph manifestContent packageResolvedContent
 
