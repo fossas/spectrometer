@@ -7,6 +7,7 @@ import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
 import GraphUtil (expectDeps, expectDirect, expectEdges)
+import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile (..), SwiftResolvedPackage (..))
 import Strategy.Swift.PackageSwift (
   SwiftPackage (..),
   SwiftPackageDep (..),
@@ -82,7 +83,7 @@ spec = do
         Left failCode -> expectationFailure $ show failCode
         Right result -> result `shouldBe` expectedSwiftPackage
 
-  describe "buildGraph" $ do
+  describe "buildGraph, when no resolved content is discovered" $ do
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
       let expectedDeps =
             [ Dependency GitType "some-url" (CEq <$> Just "some-ref") [] [] Map.empty
@@ -90,29 +91,34 @@ spec = do
             , Dependency GitType "some-url" (CEq <$> Just "1.0.0") [] [] Map.empty
             ]
       let graph =
-            buildGraph $
-              SwiftPackage
-                "5.3"
-                [ GitSource $ gitDepWithRevision "some-url" "some-ref"
-                , GitSource $ gitDepWithBranch "some-url" "some-branch"
-                , GitSource $ gitDepExactly "some-url" "1.0.0"
-                ]
+            buildGraph
+              ( SwiftPackage
+                  "5.3"
+                  [ GitSource $ gitDepWithRevision "some-url" "some-ref"
+                  , GitSource $ gitDepWithBranch "some-url" "some-branch"
+                  , GitSource $ gitDepExactly "some-url" "1.0.0"
+                  ]
+              )
+              Nothing
+
       expectDirect expectedDeps graph
       expectDeps expectedDeps graph
       expectEdges [] graph
 
     it "should use swift dependency type, when constraint uses follows, range, upToNextMajor, or upToNextMinor" $ do
       let graph =
-            buildGraph $
-              SwiftPackage
-                "5.3"
-                [ GitSource $ gitDepWithoutConstraint "some-url-dep"
-                , GitSource $ gitDepFrom "some-url-dep" "3.0.0"
-                , GitSource $ gitDepUpToNextMajor "some-url-dep" "2.0.0"
-                , GitSource $ gitDepUpToNextMinor "some-url-dep" "1.0.0"
-                , GitSource $ gitDepWithRhsHalfOpenInterval "some-url-dep" "2.5.0" "2.5.6"
-                , GitSource $ gitDepWithClosedRange "some-url-dep" "3.0.5" "3.0.7"
-                ]
+            buildGraph
+              ( SwiftPackage
+                  "5.3"
+                  [ GitSource $ gitDepWithoutConstraint "some-url-dep"
+                  , GitSource $ gitDepFrom "some-url-dep" "3.0.0"
+                  , GitSource $ gitDepUpToNextMajor "some-url-dep" "2.0.0"
+                  , GitSource $ gitDepUpToNextMinor "some-url-dep" "1.0.0"
+                  , GitSource $ gitDepWithRhsHalfOpenInterval "some-url-dep" "2.5.0" "2.5.6"
+                  , GitSource $ gitDepWithClosedRange "some-url-dep" "3.0.5" "3.0.7"
+                  ]
+              )
+              Nothing
       let expectedDeps =
             [ Dependency SwiftType "some-url-dep" Nothing [] [] Map.empty
             , Dependency SwiftType "some-url-dep" (CEq <$> Just "^3.0.0") [] [] Map.empty
@@ -123,4 +129,49 @@ spec = do
             ]
       expectDirect expectedDeps graph
       expectDeps expectedDeps graph
+      expectEdges [] graph
+
+  describe "buildGraph, when resolved content is discovered" $ do
+    it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
+      let expectedDirectDeps =
+            [ Dependency GitType "dep-A" (CEq <$> Just "some-rev-A") [] [] Map.empty
+            , Dependency GitType "dep-B" (CEq <$> Just "some-rev-B") [] [] Map.empty
+            ]
+      let expectedDeepDeps = [Dependency GitType "dep-A-C" (CEq <$> Just "5.1.0") [] [] Map.empty]
+
+      let graph =
+            buildGraph
+              ( SwiftPackage "5.3" $
+                  map
+                    GitSource
+                    [ gitDepFrom "dep-A" "1.2.2"
+                    , gitDepFrom "dep-B" "1.2.2"
+                    ]
+              )
+              ( Just $
+                  SwiftPackageResolvedFile
+                    1
+                    [ SwiftResolvedPackage
+                        "depA"
+                        "dep-A"
+                        Nothing
+                        (Just "some-rev-A")
+                        (Just "1.2.5")
+                    , SwiftResolvedPackage
+                        "depB"
+                        "dep-B"
+                        Nothing
+                        (Just "some-rev-B")
+                        (Just "1.2.6")
+                    , SwiftResolvedPackage
+                        "depAC"
+                        "dep-A-C"
+                        Nothing
+                        Nothing
+                        (Just "5.1.0")
+                    ]
+              )
+
+      expectDirect expectedDirectDeps graph
+      expectDeps (expectedDirectDeps ++ expectedDeepDeps) graph
       expectEdges [] graph

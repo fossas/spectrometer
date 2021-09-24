@@ -1,13 +1,15 @@
 module Strategy.Swift.PackageSwift (
   analyzePackageSwift,
+  SwiftPackageGitDep (..),
+  SwiftPackageGitDepRequirement (..),
+  toConstraint,
+  isGitRefConstraint,
 
   -- * for testing,
   buildGraph,
   parsePackageSwiftFile,
   SwiftPackage (..),
   SwiftPackageDep (..),
-  SwiftPackageGitDep (..),
-  SwiftPackageGitDepRequirement (..),
 ) where
 
 import Control.Applicative (Alternative ((<|>)), optional)
@@ -15,12 +17,14 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Monad (void)
 import Data.Foldable (asum)
 import Data.Map.Strict qualified as Map
+import Data.Set (Set, fromList, member)
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
-import Effect.ReadFS (Has, ReadFS, readContentsParser)
-import Graphing (Graphing, directs, induceJust)
+import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
+import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
 import Path
+import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
 import Text.Megaparsec (
   MonadParsec (takeWhile1P, try),
   Parsec,
@@ -201,20 +205,38 @@ parsePackageSwiftFile = do
 
 -- | Analysis
 -- *
-analyzePackageSwift :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing.Graphing Dependency)
-analyzePackageSwift manifestFile =
-  do
-    manifestContent <-
-      context
-        "Identifying dependencies in Package.swift"
-        $ readContentsParser parsePackageSwiftFile manifestFile
-    context "Building dependency graph" $
-      pure $ buildGraph manifestContent
+analyzePackageSwift :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Maybe (Path Abs File) -> m (Graphing.Graphing Dependency)
+analyzePackageSwift manifestFile resolvedFile = do
+  manifestContent <- context "Identifying dependencies in Package.swift" $ readContentsParser parsePackageSwiftFile manifestFile
+
+  packageResolvedContent <- case resolvedFile of
+    Nothing -> pure Nothing
+    Just packageResolved -> context "Identifying dependencies in Package.resolved" $ readContentsJson packageResolved
+
+  context "Building dependency graph" $ pure $ buildGraph manifestContent packageResolvedContent
 
 -- | Graph Building
 -- *
-buildGraph :: SwiftPackage -> Graphing.Graphing Dependency
-buildGraph pkg = induceJust $ directs (map toDependency $ packageDependencies pkg)
+buildGraph :: SwiftPackage -> Maybe SwiftPackageResolvedFile -> Graphing.Graphing Dependency
+buildGraph manifestContent maybeResolvedContent =
+  case maybeResolvedContent of
+    Nothing -> induceJust $ directs (map toDependency $ packageDependencies manifestContent)
+    -- If dependency (url) is present in the manifest, promote them to direct dependency
+    -- Otherwise, keep them as deep dependencies. Since Package.resolved does not include
+    -- dependencies sourced from local path, we do not need to do any filtering.
+    Just resolvedContent ->
+      promoteToDirect (isDirect depInManifest) $
+        deeps $ resolvedDependenciesOf resolvedContent
+  where
+    isDirect :: Set Text -> Dependency -> Bool
+    isDirect s dep = (dependencyName dep) `member` s
+
+    depInManifest :: Set Text
+    depInManifest = fromList $ map getName $ packageDependencies manifestContent
+
+    getName :: SwiftPackageDep -> Text
+    getName (PathSource path) = path
+    getName (GitSource pkg) = srcOf pkg
 
 toDependency :: SwiftPackageDep -> Maybe Dependency
 toDependency (PathSource _) = Nothing
