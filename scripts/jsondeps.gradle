@@ -171,9 +171,9 @@ allprojects {
                 project.configurations.each { config ->
                     println "DEBUG: Trying to resolve configuration"
                     println config
-                    def data = getResolvedConfigDepsOrEmptyOf config
-                    if (data != null) {
-                        jsonConfigs << data
+                    def jsonConfigWithDeps = getResolvedConfigDepsOrEmptyOf config
+                    if (jsonConfigWithDeps != null) {
+                        jsonConfigs << jsonConfigWithDeps
                     }
                 }
                 def combined = jsonConfigs.join(",")
