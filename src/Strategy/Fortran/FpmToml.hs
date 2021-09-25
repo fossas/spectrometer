@@ -29,7 +29,7 @@ import Toml (TomlCodec, (.=))
 import Toml qualified
 
 -- | Represents the content of the fpm manifest.
--- Reference: https://github.com/fortran-lang/fpm/blob/main/manifest-reference.md#specifying-dependencies
+-- Reference: https://github.com/fortran-lang/fpm/blob/main/manifest-reference.md
 data FpmToml = FpmToml
   { fpmName :: Text
   , fpmDependencies :: Map Text FpmDependency
