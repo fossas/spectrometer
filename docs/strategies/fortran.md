@@ -1,5 +1,7 @@
 # Fortran Analysis
 
+Currently, we only support analysis of fortran project which are using [fortran package manager](https://github.com/fortran-lang/fpm).
+
 | Strategy | Direct Deps        | Deep Deps | Edges | Classifies Dev & Test Deps |
 | -------- | ------------------ | --------- | ----- | -------------------------- |
 | fpm      | :heavy_check_mark: | :x:       | :x:   | :heavy_check_mark:         |
