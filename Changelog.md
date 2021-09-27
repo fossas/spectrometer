@@ -1,7 +1,7 @@
 # Spectrometer Changelog
 
 ## v2.15.22
-- The Scan URL from `fossa analyze --experimental-enable-monorepo` command was missing the branch and revisionId ([#378](https://github.com/fossas/spectrometer/pull/378))
+- Adds branch and revision information to the URL reported at the end of a `fossa analyze --experimental-enable-monorepo` scan. ([#378](https://github.com/fossas/spectrometer/pull/378))
 
 ## v2.15.21
 
