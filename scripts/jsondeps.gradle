@@ -144,16 +144,14 @@ allprojects {
                 try {
                     // We know that we are working against gradle version greater or equal to v3.3
                     // So, configuration has resolvable property. If the configuration is not resolvable return null.
-                    if (config.respondsTo("isCanBeResolved")) {
-                        if (config.isCanBeResolved() == false) {
-                            println "DEBUG: Configuration is not resolvable"
-                            return null
-                        }
+                    if (config.respondsTo("isCanBeResolved") && !config.isCanBeResolved()) {
+                        println "DEBUG: Configuration is not resolvable"
+                        return null
                     }
 
-                    // At this point, we are working against gradle: 
-                    // - v3.3 or greater, and configuration is resolvable.
-                    // - v3.2.1 or lower, and configuration does not have canResolve property and are inherently resolvable.
+                    // At this point, we know one of these must be true: 
+                    // - We are on Gradle v3.3 or newer (because isCanBeResolved is present) and the configuration is resolvable (isCanBeResolved() == true, therefore did not exit early above).
+                    // - We are on Gradle v3.2.1 or older (because isCanBeResolved is not present). Configurations in Gradle v3.2.1 or older are always resolvable.
                     configsDeps = configToKeyValue config
                     println configsDeps
                     println "DEBUG: Configuration is resolved"
