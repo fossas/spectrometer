@@ -26,7 +26,7 @@ data Dependency = Dependency
   , dependencyName :: Text
   , dependencyVersion :: Maybe VerConstraint
   , dependencyLocations :: [Text]
-  , dependencyEnvironments :: Set DepEnvironment -- FIXME: this should be a Set
+  , dependencyEnvironments :: Set DepEnvironment
   , dependencyTags :: Map Text [Text]
   }
   deriving (Eq, Ord, Show)
