@@ -65,10 +65,6 @@ keyBy f = Map.fromList . map (\v -> (f v, v))
 convertFromJournal :: Replayable e => Journal e -> Map (e Void) (EffectResult e)
 convertFromJournal (Journal mapping) =
   case parse id (fmap (keyBy unsafeEffectResultToKey) . traverse (uncurry replayDecode) $ Map.toList mapping) of
-    -- FIXME: this error happens when we're not able to deserialize effect
-    -- constructors/results from a journal. Because replay mode is only used
-    -- by spectrometer contributors locally, plumbing the error through
-    -- our normal error machinery is not worth the effort
     Error str -> error $ "Unable to deserialize effect Journal: the Journal was likely created on a different spectrometer version. Error: " <> str
     Success a -> a
 
