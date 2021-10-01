@@ -127,7 +127,42 @@ import Control.Monad.Trans
 
 ---------- The Simple effect
 
--- | Simple effects.. as an effect
+-- | First-order effects.. wrapped into @fused-effects@
+--
+-- First-order effect constructors are not allowed to contain effectful
+-- sub-expressions as arguments.
+--
+-- Consider the @Error@ effect:
+--
+-- @
+--     data Error e m a where
+--       Throw :: e -> Error e m a
+--       Catch :: m a -> (e -> m a) -> Error e m a
+-- @
+--
+-- The @Catch@ constructor here takes effectful sub-expressions as arguments:
+-- both of its arguments mention @m@.
+--
+-- In contrast, @Throw@ only takes the error type as an argument, with no
+-- mention of @m@
+--
+-- As such, we can hypothetically break @Error@ out into two effects, one
+-- first-order and one not.
+--
+-- @
+--     ---- Throw
+--     data ThrowF e a where
+--       Throw :: e -> Throw e a
+--
+--     type Throw e = Simple (ThrowF e)
+--
+--     ---- Catch
+--     data Catch e m a where
+--       Catch :: m a -> (e -> m a) -> Error e m a
+--
+--     ---- Combining them
+--     type Error e = Throw e :+: Catch e
+-- @
 data Simple e m a where
   Simple :: e a -> Simple e m a
 
