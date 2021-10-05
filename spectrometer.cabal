@@ -350,6 +350,7 @@ test-suite unit-tests
 
   -- cabal-fmt: expand test
   other-modules:
+    AdjacencyMapSpec
     Android.UtilSpec
     App.DocsSpec
     App.Fossa.API.BuildLinkSpec
