@@ -283,10 +283,13 @@ library
     Strategy.Maven.Pom.PomFile
     Strategy.Maven.Pom.Resolver
     Strategy.Mix
-    Strategy.Node.NpmList
-    Strategy.Node.NpmLock
+    Strategy.Node
+    Strategy.Node.Npm.PackageLock
     Strategy.Node.PackageJson
-    Strategy.Npm
+    Strategy.Node.YarnV1.YarnLock
+    Strategy.Node.YarnV2.Lockfile
+    Strategy.Node.YarnV2.Resolvers
+    Strategy.Node.YarnV2.YarnLock
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
@@ -422,9 +425,9 @@ test-suite unit-tests
     System.CGroup.CPUSpec
     System.CGroup.TypesSpec
     Test.Effect
+    Yarn.V1.YarnLockV1Spec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
-    Yarn.YarnLockV1Spec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:

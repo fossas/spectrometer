@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module App.Fossa.Analyze (
   analyzeMain,
@@ -89,7 +90,7 @@ import Strategy.Haskell.Stack qualified as Stack
 import Strategy.Leiningen qualified as Leiningen
 import Strategy.Maven qualified as Maven
 import Strategy.Mix qualified as Mix
-import Strategy.Npm qualified as Npm
+import Strategy.Node qualified as Node
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import Strategy.NuGet.PackageReference qualified as PackageReference
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
@@ -104,7 +105,7 @@ import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
-import Strategy.Yarn qualified as Yarn
+import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 

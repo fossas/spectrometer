@@ -1,14 +1,25 @@
-module Yarn.YarnLockV1Spec (
+{-# LANGUAGE TemplateHaskell #-}
+
+module Yarn.V1.YarnLockV1Spec (
   spec,
 ) where
 
-import Data.ByteString qualified as BS
+import Control.Effect.Diagnostics
+import Control.Effect.Lift
+import Data.Functor (($>))
 import Data.Map.Strict qualified as Map
-import Data.Text.Encoding
-import DepTypes
-import GraphUtil
-import Strategy.Yarn.V1.YarnLock
-import Test.Hspec
+import Data.String.Conversion (decodeUtf8)
+import DepTypes (
+  DepType (NodeJSType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Effect.ReadFS (ReadFS, readContentsBS)
+import GraphUtil (expectDeps', expectDirect', expectEdges')
+import Path
+import Strategy.Node.YarnV1.YarnLock (buildGraph)
+import Test.Effect (expectationFailure', it')
+import Test.Hspec (Spec, describe)
 import Yarn.Lock qualified as YL
 
 packageOne :: Dependency
@@ -66,19 +77,27 @@ packageFive =
     , dependencyTags = Map.empty
     }
 
+parseFile :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Rel File -> m YL.Lockfile
+parseFile name = do
+  let testdataRoot = $(mkRelDir "test/Yarn/V1/testdata/")
+  testFile <- readContentsBS (testdataRoot </> name)
+  case YL.parse "test/Yarn/testdata/yarn.lock" (decodeUtf8 testFile) of
+    Left _ -> expectationFailure' "failed to parse" $> error "no possible value"
+    Right lockfile -> pure lockfile
+
 spec :: Spec
 spec = do
-  testFile <- runIO (BS.readFile "test/Yarn/testdata/yarn.lock")
-  describe "buildGraph" $ do
-    it "should produce expected output" $ do
-      case YL.parse "test/Yarn/testdata/yarn.lock" (decodeUtf8 testFile) of
-        Left _ -> expectationFailure "failed to parse"
-        Right lockfile -> do
-          let graph = buildGraph lockfile
-          expectDeps [packageOne, packageTwo, packageThree, packageFour, packageFive] graph
-          expectDirect [] graph
-          expectEdges
-            [ (packageOne, packageTwo)
-            , (packageTwo, packageThree)
-            ]
-            graph
+  describe "buildGraph without package.json info" $ do
+    it' "should produce expected structure" $ do
+      yarnLock <- parseFile $(mkRelFile "simple-yarn-lock.txt")
+      graph <- buildGraph yarnLock mempty
+      expectDeps' [packageOne, packageTwo, packageThree, packageFour, packageFive] graph
+      expectDirect' [] graph
+      expectEdges'
+        [ (packageOne, packageTwo)
+        , (packageTwo, packageThree)
+        ]
+        graph
+
+-- describe "buildGraph with promotions" $
+-- it' "Should apply the correct dep environments" $ do

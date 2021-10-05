@@ -5,8 +5,8 @@ module Yarn.V2.ResolversSpec (
 import Data.Foldable (for_)
 import Data.String.Conversion (toString)
 import Data.Text
-import Strategy.Yarn.V2.Lockfile
-import Strategy.Yarn.V2.Resolvers
+import Strategy.Node.YarnV2.Lockfile
+import Strategy.Node.YarnV2.Resolvers
 import Test.Hspec
 
 spec :: Spec

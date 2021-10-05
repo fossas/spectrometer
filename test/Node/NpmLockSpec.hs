@@ -6,7 +6,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
-import Strategy.Node.NpmLock
+import Strategy.Node.Npm.PackageLock
 import Test.Hspec
 
 mockInput :: NpmPackageJson

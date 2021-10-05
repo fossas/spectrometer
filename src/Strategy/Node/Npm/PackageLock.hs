@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Strategy.Node.NpmLock (
-  analyze',
+module Strategy.Node.Npm.PackageLock (
+  analyze,
   buildGraph,
   NpmPackageJson (..),
   NpmDep (..),
@@ -52,8 +52,8 @@ instance FromJSON NpmDep where
       <*> obj .:? "requires"
       <*> obj .:? "dependencies"
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = do
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze file = do
   packageJson <- readContentsJson @NpmPackageJson file
   context "Building dependency graph" $ pure (buildGraph packageJson)
 
@@ -80,6 +80,9 @@ buildGraph packageJson = run . withLabeling toDependency $ do
     addDep :: Has NpmGrapher sig m => Text -> NpmDep -> m ()
     addDep name NpmDep{..} = do
       let pkg = NpmPackage name depVersion
+
+      -- Allow entry of orphan deps.  We may prune these later.
+      deep pkg
 
       case depDev of
         Just True -> label pkg (NpmPackageEnv EnvDevelopment)

@@ -9,9 +9,9 @@ import Data.Map.Strict qualified as Map
 import Data.Yaml (decodeFileThrow)
 import DepTypes
 import GraphUtil
-import Strategy.Yarn.V2.Lockfile
-import Strategy.Yarn.V2.Resolvers
-import Strategy.Yarn.V2.YarnLock (buildGraph, stitchLockfile)
+import Strategy.Node.YarnV2.Lockfile
+import Strategy.Node.YarnV2.Resolvers
+import Strategy.Node.YarnV2.YarnLock (buildGraph, stitchLockfile)
 import Test.Hspec hiding (expectationFailure, shouldBe)
 import Test.Hspec.Expectations.Pretty
 
@@ -37,7 +37,7 @@ spec = do
 
   describe "buildGraph" $ do
     it "should work on the example from the dev docs" $ do
-      let graph = buildGraph exampleResolved
+      let graph = buildGraph exampleResolved mempty
       expectDeps [underscoreFromGitDep, underscoreFromNpmDep] graph
       expectDirect [underscoreFromGitDep, underscoreFromNpmDep] graph
       expectEdges [] graph
