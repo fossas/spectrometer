@@ -40,7 +40,7 @@ import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, Rel, parseRelDir)
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
-
+-- TODO: type FoundTargets = Maybe (NonEmptySet BuildTarget)
 data FoundTargets = ProjectWithoutTargets | FoundTargets (NonEmptySet BuildTarget)
   deriving (Eq, Ord, Show, Generic)
 
