@@ -38,7 +38,8 @@ lint:
 	@hlint src test
 	@echo "No linter errors found"
 
-# Docker doesn't always check for new versions
+# Docker doesn't always check for new versions during build, so pulling ensures
+# that we always have the latest.
 check-ci:
 	docker pull ghcr.io/fossas/haskell-dev-tools:8.10.4
 	docker build --tag delete-me -f docker/Dockerfile.lint .
