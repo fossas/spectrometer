@@ -12,10 +12,15 @@ module App.Fossa.Configuration (
   ConfigPaths (..),
 ) where
 
+import App.Docs (fossaYmlDocUrl)
 import App.Types
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Effect.Lift (Lift)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
+import Data.Functor (($>))
 import Data.Text (Text)
+import Data.Text.Prettyprint.Doc (Doc, Pretty (pretty), vsep)
+import Effect.Logger (Severity (SevWarn), logWarn, withDefaultLogger)
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
@@ -103,7 +108,7 @@ instance FromJSON ConfigPaths where
 defaultFile :: Path Rel File
 defaultFile = $(mkRelFile ".fossa.yml")
 
-readConfigFile :: (Has ReadFS sig m, Has Diag.Diagnostics sig m) => Path Abs File -> m (Maybe ConfigFile)
+readConfigFile :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diag.Diagnostics sig m) => Path Abs File -> m (Maybe ConfigFile)
 readConfigFile file = do
   exists <- doesFileExist file
   if not exists
@@ -111,8 +116,19 @@ readConfigFile file = do
     else do
       readConfig <- readContentsYaml @ConfigFile file
       if configVersion readConfig < 3
-        then pure Nothing
+        then withDefaultLogger SevWarn (logWarn warnMsgForOlderConfig) $> Nothing
         else pure $ Just readConfig
+  where
+    warnMsgForOlderConfig :: Doc ann
+    warnMsgForOlderConfig =
+      vsep
+        [ ""
+        , "Incompatible [.fossa.yml] found!"
+        , "Preferences from incompatible [.fossa.yml] will not be considered!"
+        , "Please make sure [.fossa.yml] follows specifications of:"
+        , "    " <> pretty fossaYmlDocUrl
+        , ""
+        ]
 
 readConfigFileIO :: IO (Maybe ConfigFile)
 readConfigFileIO = do
