@@ -17,6 +17,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Graphing.Hydrate (Hydrateable (..))
 
 -- FIXME: this needs a smart constructor with empty tags/environments/etc.
 -- We've historically relied on the compile error for making sure we fill all
@@ -47,6 +48,10 @@ data DepEnvironment
   | -- | Other environments -- specifically for things like gradle configurations
     EnvOther Text
   deriving (Eq, Ord, Show)
+
+instance Hydrateable Dependency DepEnvironment where
+  extractList = Set.toList . dependencyEnvironments
+  update = insertEnvironment
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType
