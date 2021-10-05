@@ -6,7 +6,6 @@ module Yarn.V1.YarnLockV1Spec (
 
 import Control.Effect.Diagnostics
 import Control.Effect.Lift
-import Data.Functor (($>))
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (decodeUtf8, toString)
 import DepTypes (
@@ -19,7 +18,7 @@ import GraphUtil (expectDeps', expectDirect', expectEdges')
 import Path
 import Path.IO (getCurrentDir)
 import Strategy.Node.YarnV1.YarnLock (buildGraph, mangleParseErr)
-import Test.Effect (expectationFailure', it')
+import Test.Effect (it')
 import Test.Hspec (Spec, describe)
 import Yarn.Lock qualified as YL
 
