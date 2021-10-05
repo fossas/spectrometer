@@ -4,16 +4,33 @@ module Yarn.V2.LockfileSpec (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
-import Control.Carrier.Diagnostics
 import Data.Map.Strict qualified as Map
 import Data.Yaml (decodeFileThrow)
-import DepTypes
-import GraphUtil
-import Strategy.Node.YarnV2.Lockfile
-import Strategy.Node.YarnV2.Resolvers
+import DepTypes (
+  DepType (GitType, NodeJSType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import GraphUtil (expectDeps, expectDirect, expectEdges)
+import Strategy.Node.YarnV2.Lockfile (
+  Descriptor (Descriptor),
+  Locator (Locator),
+  PackageDescription (
+    PackageDescription,
+    descDependencies,
+    descResolution,
+    descVersion
+  ),
+  YarnLockfile (..),
+ )
+import Strategy.Node.YarnV2.Resolvers (
+  Package (GitPackage, NpmPackage, WorkspacePackage),
+  resolveLocatorToPackage,
+ )
 import Strategy.Node.YarnV2.YarnLock (buildGraph, stitchLockfile)
-import Test.Hspec hiding (expectationFailure, shouldBe)
-import Test.Hspec.Expectations.Pretty
+import Test.Effect (it', shouldBe')
+import Test.Hspec (Spec, describe, it)
+import Test.Hspec.Expectations.Pretty (shouldBe)
 
 -- End-to-end test on the example project from the dev docs
 spec :: Spec
@@ -24,16 +41,14 @@ spec = do
       lockfile `shouldBe` exampleLockfile
 
   describe "stitchLockfile" $ do
-    it "should work on the example from the dev docs" $ do
-      case run (runDiagnostics (stitchLockfile exampleLockfile)) of
-        Left err -> expectationFailure (show (renderFailureBundle err))
-        Right stitched -> stitched `shouldBe` exampleStitched
+    it' "should work on the example from the dev docs" $ do
+      stitched <- stitchLockfile exampleLockfile
+      stitched `shouldBe'` exampleStitched
 
   describe "resolveLocatorToPackage" $ do
-    it "should work on the example from the dev docs" $ do
-      case run (runDiagnostics (AME.gtraverse resolveLocatorToPackage exampleStitched)) of
-        Left err -> expectationFailure (show (renderFailureBundle err))
-        Right graph -> graph `shouldBe` exampleResolved
+    it' "should work on the example from the dev docs" $ do
+      graph <- AME.gtraverse resolveLocatorToPackage exampleStitched
+      graph `shouldBe'` exampleResolved
 
   describe "buildGraph" $ do
     it "should work on the example from the dev docs" $ do
