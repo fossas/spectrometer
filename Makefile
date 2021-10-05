@@ -12,10 +12,8 @@ analyze:
 	cabal run fossa -- analyze --output --debug --filter 'cabal@./'
 
 # Copy the built binary into the local root
-fossa:
+install-local: build
 	cp $(shell cabal list-bin fossa) ./fossa
-
-install-local: fossa
 
 check: check-fmt lint
 
