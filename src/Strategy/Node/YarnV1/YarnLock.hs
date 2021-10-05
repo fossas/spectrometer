@@ -3,6 +3,7 @@
 module Strategy.Node.YarnV1.YarnLock (
   analyze,
   buildGraph,
+  mangleParseErr,
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, Has, context, tagError)
@@ -20,7 +21,8 @@ import DepTypes (
   DepType (NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
-  insertEnvironment, insertLocation
+  insertEnvironment,
+  insertLocation,
  )
 import Effect.Grapher (
   deep,

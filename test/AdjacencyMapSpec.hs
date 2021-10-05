@@ -4,7 +4,7 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Test.Hspec ( describe, it, shouldBe, Spec, Expectation )
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 
 -- 1 -> 2
 -- 3 -> 4

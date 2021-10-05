@@ -8,7 +8,7 @@ import Control.Effect.Diagnostics
 import Control.Effect.Lift
 import Data.Functor (($>))
 import Data.Map.Strict qualified as Map
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toString)
 import DepTypes (
   DepType (NodeJSType),
   Dependency (..),
@@ -17,7 +17,8 @@ import DepTypes (
 import Effect.ReadFS (ReadFS, readContentsBS)
 import GraphUtil (expectDeps', expectDirect', expectEdges')
 import Path
-import Strategy.Node.YarnV1.YarnLock (buildGraph)
+import Path.IO (getCurrentDir)
+import Strategy.Node.YarnV1.YarnLock (buildGraph, mangleParseErr)
 import Test.Effect (expectationFailure', it')
 import Test.Hspec (Spec, describe)
 import Yarn.Lock qualified as YL
@@ -80,10 +81,11 @@ packageFive =
 parseFile :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Rel File -> m YL.Lockfile
 parseFile name = do
   let testdataRoot = $(mkRelDir "test/Yarn/V1/testdata/")
-  testFile <- readContentsBS (testdataRoot </> name)
-  case YL.parse "test/Yarn/testdata/yarn.lock" (decodeUtf8 testFile) of
-    Left _ -> expectationFailure' "failed to parse" $> error "no possible value"
-    Right lockfile -> pure lockfile
+  curDir <- sendIO getCurrentDir
+  let testFilePath = (curDir </> testdataRoot </> name)
+  testFile <- readContentsBS testFilePath
+  let result = YL.parse "test/Yarn/testdata/yarn.lock" (decodeUtf8 testFile)
+  tagError (mangleParseErr (toString testFilePath)) result
 
 spec :: Spec
 spec = do

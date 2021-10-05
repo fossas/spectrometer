@@ -26,10 +26,10 @@ import Test.Hspec (
  )
 
 import Control.Carrier.Diagnostics (DiagnosticsC, renderFailureBundle, runDiagnostics)
+import Data.String.Conversion (toString)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
-import Data.String.Conversion (toString)
 
 type EffectStack a = ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC IO))) a
 
