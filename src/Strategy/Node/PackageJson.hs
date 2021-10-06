@@ -146,10 +146,10 @@ data Production
 data Development
 
 instance ConstTag Production DepEnvironment where
-  constValue = const EnvProduction
+  constValue = EnvProduction
 
 instance ConstTag Development DepEnvironment where
-  constValue = const EnvDevelopment
+  constValue = EnvDevelopment
 
 data FlatDeps = FlatDeps
   { directDeps :: Tagged (Set NodePackage) Production

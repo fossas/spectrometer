@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RoleAnnotations #-}
 
@@ -10,7 +11,6 @@ module Data.Tagged (
   readTag,
 ) where
 
-import Data.Proxy (Proxy (..))
 import GHC.Generics (Generic)
 
 -- INTERNAL NOTES
@@ -74,10 +74,7 @@ applyTag = Tagged
 -- are empty data types (types without constructors, and therefore values).  We cannot pass in a value of that
 -- type, and therefore must use a 'Proxy' to carry the type information of the tag.
 class ConstTag tag b | tag -> b where
-  constValue :: Proxy tag -> b
+  constValue :: b
 
-readTag :: ConstTag tag b => Tagged ty tag -> b
-readTag = constValue . getProxy
-
-getProxy :: Tagged ty tag -> Proxy tag
-getProxy = const Proxy
+readTag :: forall tag ty b. ConstTag tag b => Tagged ty tag -> b
+readTag _ = constValue @tag
