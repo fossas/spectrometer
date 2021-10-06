@@ -78,9 +78,7 @@ resolveSingle (YarnLockfile lockfileMap) nodePkg = do
   descriptor <-
     fromMaybeText ("Failed to parse package descriptor: " <> showT nodePkg) $
       tryParseDescriptor nodePkg
-  loc <-
-    fromMaybeText ("Didn't locate package for descriptor: " <> showT descriptor) $
-      Map.lookup descriptor $ remap lockfileMap
+  loc <- lookupPackage descriptor $ remap lockfileMap
   resolveLocatorToPackage $ descResolution loc
 
 remap :: Ord k => Map [k] a -> Map k a

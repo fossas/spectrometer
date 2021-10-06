@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Yarn.V2.LockfileSpec (
   spec,
 ) where
@@ -5,13 +7,32 @@ module Yarn.V2.LockfileSpec (
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
+import Data.Tagged (applyTag)
+import Data.Text (Text)
 import Data.Yaml (decodeFileThrow)
 import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
  )
-import GraphUtil (expectDeps, expectDirect, expectEdges)
+import GraphUtil (
+  expectDeps,
+  expectDeps',
+  expectDirect,
+  expectDirect',
+  expectEdges,
+  expectEdges',
+ )
+import Path (mkRelFile, (</>))
+import Path.IO (getCurrentDir)
+import Strategy.Node.PackageJson (
+  Development,
+  FlatDeps (..),
+  NodePackage (NodePackage),
+  Production,
+ )
 import Strategy.Node.YarnV2.Lockfile (
   Descriptor (Descriptor),
   Locator (Locator),
@@ -27,17 +48,16 @@ import Strategy.Node.YarnV2.Resolvers (
   Package (GitPackage, NpmPackage, WorkspacePackage),
   resolveLocatorToPackage,
  )
-import Strategy.Node.YarnV2.YarnLock (buildGraph, stitchLockfile)
+import Strategy.Node.YarnV2.YarnLock (analyze, buildGraph, stitchLockfile)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, describe, it)
-import Test.Hspec.Expectations.Pretty (shouldBe)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 -- End-to-end test on the example project from the dev docs
 spec :: Spec
 spec = do
   describe "YarnLockfile parser" $ do
     it "should be able to parse the example from the dev docs" $ do
-      lockfile <- decodeFileThrow "test/Yarn/V2/testdata/yarn.lock"
+      lockfile <- decodeFileThrow "test/Yarn/V2/testdata/yarn.lock-example"
       lockfile `shouldBe` exampleLockfile
 
   describe "stitchLockfile" $ do
@@ -56,6 +76,21 @@ spec = do
       expectDeps [underscoreFromGitDep, underscoreFromNpmDep] graph
       expectDirect [underscoreFromGitDep, underscoreFromNpmDep] graph
       expectEdges [] graph
+
+  describe "analyze" $
+    it' "should work from beginning to end" $ do
+      curdir <- getCurrentDir
+      let yarnfile = curdir </> $(mkRelFile "test/Yarn/V2/testdata/yarn.lock-e2e")
+      graph <- analyze yarnfile e2eFlatDeps
+      expectDeps' allE2EDeps graph
+      expectDirect' [acornJsxDep, isFqdnDep, onceDep, semverDep] graph
+      expectEdges'
+        [ (acornJsxDep, acornDep)
+        , (lruCacheDep, yallistDep)
+        , (onceDep, wrappyDep)
+        , (semverDep, lruCacheDep)
+        ]
+        graph
 
 ---------- Example: lockfile
 
@@ -209,4 +244,73 @@ underscoreFromNpmDep =
     , dependencyEnvironments = mempty
     , dependencyLocations = []
     , dependencyTags = Map.empty
+    }
+
+-- ====================== Yarn V2 with package.json data ======================
+
+mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
+mkDep name version envList =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = name
+    , dependencyVersion = Just $ CEq version
+    , dependencyLocations = mempty
+    , dependencyEnvironments = Set.fromList envList
+    , dependencyTags = mempty
+    }
+
+allE2EDeps :: [Dependency]
+allE2EDeps =
+  [ acornDep
+  , acornJsxDep
+  , isFqdnDep
+  , lruCacheDep
+  , onceDep
+  , semverDep
+  , wrappyDep
+  , yallistDep
+  ]
+
+acornDep :: Dependency
+acornDep = mkDep "acorn" "3.3.0" [EnvDevelopment]
+
+acornJsxDep :: Dependency
+acornJsxDep = mkDep "acorn-jsx" "3.0.1" [EnvDevelopment]
+
+isFqdnDep :: Dependency
+isFqdnDep = mkDep "is-fqdn" "2.0.1" [EnvDevelopment]
+
+lruCacheDep :: Dependency
+lruCacheDep = mkDep "lru-cache" "6.0.0" [EnvProduction]
+
+onceDep :: Dependency
+onceDep = mkDep "once" "1.4.0" [EnvProduction]
+
+semverDep :: Dependency
+semverDep = mkDep "semver" "7.3.5" [EnvProduction]
+
+wrappyDep :: Dependency
+wrappyDep = mkDep "wrappy" "1.0.2" [EnvProduction]
+
+yallistDep :: Dependency
+yallistDep = mkDep "yallist" "4.0.0" [EnvProduction]
+
+acornJsxNodePkg :: NodePackage
+acornJsxNodePkg = NodePackage "acorn-jsx" "^3.0.0"
+
+isFqdnNodePkg :: NodePackage
+isFqdnNodePkg = NodePackage "is-fqdn" "^2.0.1"
+
+onceNodePkg :: NodePackage
+onceNodePkg = NodePackage "once" "^1.3.0"
+
+semverNodePkg :: NodePackage
+semverNodePkg = NodePackage "semver" "^7.3.2"
+
+e2eFlatDeps :: FlatDeps
+e2eFlatDeps =
+  FlatDeps
+    { directDeps = applyTag @Production $ Set.fromList [onceNodePkg, semverNodePkg]
+    , devDeps = applyTag @Development $ Set.fromList [acornJsxNodePkg, isFqdnNodePkg]
+    , manifests = mempty
     }
