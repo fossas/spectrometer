@@ -1,6 +1,6 @@
 # Composer Analysis
 
-When developing in PHP, the [composer](https://getcomposer.org/) is most commonly used to manage dependencies.
+When developing in PHP, [composer](https://getcomposer.org/) is commonly used to manage dependencies.
 
 | Strategy      | Direct Deps        | Deep Deps          | Edges              | Classifies Dev Dependencies |
 | ------------- | ------------------ | ------------------ | ------------------ | --------------------------- |
@@ -38,7 +38,7 @@ Example composer.json:
 }
 ```
 
-3. Execute `composer update` to install and pin dependencies - this will create (or modify) composer.lock file.
+3. Execute `composer update` to install and pin dependencies - this will create (or modify) the `composer.lock` file.
 4. Execute `fossa analyze -o` on the project to print analyzed dependency graphing (this will not upload any analysis to any endpoint)
 
 ## FAQ
