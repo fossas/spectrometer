@@ -73,8 +73,8 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
       logInfo ""
 
       case issuesCount issues of
-        0 -> do 
-          logInfo "Test passed! 0 issues found" 
+        0 -> do
+          logInfo "Test passed! 0 issues found"
           case outputType of
             TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
             TestOutputPretty -> pure ()
