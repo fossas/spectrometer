@@ -322,7 +322,7 @@ baseDirArg = argument str (metavar "DIR" <> help "Set the base directory for sca
 opts :: Parser CmdOptions
 opts =
   CmdOptions
-    <$> switch (long "debug" <> help "Enable debug logging")
+    <$> switch (long "debug" <> help "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
     <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
     <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
