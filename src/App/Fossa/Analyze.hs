@@ -197,6 +197,8 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     Just rel -> do
       applyFilters filters projectType rel projectBuildTargets
 
+-- NOTE: When adding analyzers, make sure to also add them to
+-- App.Fossa.ListTargets
 runAnalyzers ::
   ( Has (Output ProjectResult) sig m
   , Has ReadFS sig m
