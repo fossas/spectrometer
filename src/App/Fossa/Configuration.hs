@@ -116,16 +116,15 @@ readConfigFile file = do
     else do
       readConfig <- readContentsYaml @ConfigFile file
       if configVersion readConfig < 3
-        then withDefaultLogger SevWarn (logWarn warnMsgForOlderConfig) $> Nothing
+        then withDefaultLogger SevWarn (logWarn $ warnMsgForOlderConfig (configVersion readConfig)) $> Nothing
         else pure $ Just readConfig
   where
-    warnMsgForOlderConfig :: Doc ann
-    warnMsgForOlderConfig =
+    warnMsgForOlderConfig :: Int -> Doc ann
+    warnMsgForOlderConfig foundVersion =
       vsep
         [ ""
-        , "Incompatible [.fossa.yml] found!"
-        , "Preferences from incompatible [.fossa.yml] will not be considered!"
-        , "Please make sure [.fossa.yml] follows specifications of:"
+        , "Incompatible [.fossa.yml] found! Expecting `version: 3`; found `version: " <> pretty foundVersion <> "`"
+        , "Documentation for the new config file format can be found here:"
         , "    " <> pretty fossaYmlDocUrl
         , ""
         ]
