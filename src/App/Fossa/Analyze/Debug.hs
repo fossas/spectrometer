@@ -152,6 +152,7 @@ type ReadFSDebugC = SimpleC ReadFSF
 readFSToDebug :: (Has ReadFS sig m, Has Debug sig m) => ReadFSDebugC m a -> m a
 readFSToDebug = interpret $ \case
   cons@ReadContentsBS'{} -> recording cons
+  cons@ReadContentsBSLimit'{} -> ignoring cons
   cons@ReadContentsText'{} -> recording cons
   cons@DoesFileExist{} -> recording cons
   cons@DoesDirExist{} -> recording cons
