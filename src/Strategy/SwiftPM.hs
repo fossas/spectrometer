@@ -8,6 +8,7 @@ module Strategy.SwiftPM (
 import App.Fossa.Analyze.Types (AnalyzeProject (..))
 import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Aeson (ToJSON)
 import Data.Functor (($>))
 import Data.Maybe (listToMaybe)
 import Discovery.Walk (
@@ -22,7 +23,6 @@ import Path
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
 import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
-import Data.Aeson (ToJSON)
 
 data SwiftProject
   = PackageProject SwiftPackageProject
