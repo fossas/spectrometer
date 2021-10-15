@@ -32,6 +32,7 @@ import App.Types (
   ProjectRevision (projectBranch, projectName, projectRevision),
  )
 import App.Util (validateDir)
+import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -48,6 +49,7 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
+import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -154,7 +156,7 @@ analyzeMain workdir logSeverity destination project unpackArchives jsonOutput mo
       SevDebug -> do
         basedir <- sendIO $ validateDir workdir
         (scope, res) <- collectDebugBundle . Diag.errorBoundaryIO $ doAnalyze basedir
-        sendIO $ Aeson.encodeFile "fossa.debug.json" scope
+        sendIO . BL.writeFile "fossa.debug.json.gz" . GZip.compress $ Aeson.encode scope
         either Diag.rethrow pure res
       _ -> do
         basedir <- sendIO $ validateDir workdir

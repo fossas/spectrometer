@@ -2,7 +2,7 @@
 
 ## v2.17.0
 
-- When running `fossa analyze` with the `--debug` flag, we now create a `fossa.debug.json` file containing detailed runtime traces for project discovery and dependency analysis
+- When running `fossa analyze` with the `--debug` flag, we now create a `fossa.debug.json.gz` file containing detailed runtime traces for project discovery and dependency analysis
 
 ## v2.16.6
 - Monorepo: Adds automatic retries to failed API calls. ([#392](https://github.com/fossas/spectrometer/pull/392))
