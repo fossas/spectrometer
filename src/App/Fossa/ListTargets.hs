@@ -4,7 +4,7 @@ module App.Fossa.ListTargets (
   listTargetsMain,
 ) where
 
---import App.Fossa.Analyze (discoverFuncs)
+import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter
 import Control.Carrier.Debug (ignoreDebug)
@@ -15,7 +15,9 @@ import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
-import Data.Foldable (for_)
+import Data.Aeson (ToJSON)
+import Data.Aeson.Extra (encodeJSONToText)
+import Data.Foldable (for_, traverse_)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty
 import Discovery.Projects (withDiscoveredProjects)
@@ -24,46 +26,14 @@ import Effect.Logger
 import Effect.ReadFS
 import Path
 import Path.IO (makeRelative)
-import Strategy.Bundler qualified as Bundler
-import Strategy.Cargo qualified as Cargo
-import Strategy.Carthage qualified as Carthage
-import Strategy.Cocoapods qualified as Cocoapods
-import Strategy.Composer qualified as Composer
-import Strategy.Conda qualified as Conda
-import Strategy.Glide qualified as Glide
-import Strategy.Godep qualified as Godep
-import Strategy.Gomodules qualified as Gomodules
-import Strategy.Googlesource.RepoManifest qualified as RepoManifest
-import Strategy.Gradle qualified as Gradle
-import Strategy.Haskell.Cabal qualified as Cabal
-import Strategy.Haskell.Stack qualified as Stack
-import Strategy.Leiningen qualified as Leiningen
-import Strategy.Maven qualified as Maven
-import Strategy.Mix qualified as Mix
-import Strategy.Npm qualified as Npm
-import Strategy.NuGet.Nuspec qualified as Nuspec
-import Strategy.NuGet.PackageReference qualified as PackageReference
-import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
-import Strategy.NuGet.Paket qualified as Paket
-import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
-import Strategy.NuGet.ProjectJson qualified as ProjectJson
-import Strategy.Pub qualified as Pub
-import Strategy.Python.Pipenv qualified as Pipenv
-import Strategy.Python.Poetry qualified as Poetry
-import Strategy.Python.Setuptools qualified as Setuptools
-import Strategy.RPM qualified as RPM
-import Strategy.Rebar3 qualified as Rebar3
-import Strategy.Scala qualified as Scala
-import Strategy.SwiftPM qualified as SwiftPM
-import Strategy.Yarn qualified as Yarn
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
-listTargetsMain :: BaseDir -> IO ()
-listTargetsMain (BaseDir basedir) = do
+listTargetsMain :: Severity -> BaseDir -> IO ()
+listTargetsMain logSeverity (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
   ignoreDebug
-    . withDefaultLogger SevInfo
+    . withDefaultLogger logSeverity
     . runStickyLogger SevInfo
     . runFinally
     . withTaskPool capabilities updateProgress
@@ -84,43 +54,11 @@ runAll ::
   ) =>
   Path Abs Dir ->
   m ()
-runAll basedir = do
-  single Bundler.discover
-  single Cabal.discover
-  single Cargo.discover
-  single Carthage.discover
-  single Cocoapods.discover
-  single Composer.discover
-  single Conda.discover
-  single Glide.discover
-  single Godep.discover
-  single Gomodules.discover
-  single Gradle.discover
-  single Leiningen.discover
-  single Maven.discover
-  single Mix.discover
-  single Npm.discover
-  single Nuspec.discover
-  single PackageReference.discover
-  single PackagesConfig.discover
-  single Paket.discover
-  single Pipenv.discover
-  single Poetry.discover
-  single ProjectAssetsJson.discover
-  single ProjectJson.discover
-  single Pub.discover
-  single RPM.discover
-  single Rebar3.discover
-  single RepoManifest.discover
-  single Scala.discover
-  single Setuptools.discover
-  single Stack.discover
-  single SwiftPM.discover
-  single Yarn.discover
+runAll basedir = traverse_ single discoverFuncs
   where
-    single f = withDiscoveredProjects f basedir (printSingle basedir)
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (printSingle basedir)
 
-printSingle :: Has Logger sig m => Path Abs Dir -> DiscoveredProject a -> m ()
+printSingle :: (ToJSON a, Has Logger sig m) => Path Abs Dir -> DiscoveredProject a -> m ()
 printSingle basedir project = do
   let maybeRel = makeRelative basedir (projectPath project)
 
@@ -132,6 +70,8 @@ printSingle basedir project = do
           <> pretty (projectType project)
           <> "@"
           <> pretty (toFilePath rel)
+
+      logDebug . pretty . encodeJSONToText $ projectData project
 
       case projectBuildTargets project of
         ProjectWithoutTargets -> do

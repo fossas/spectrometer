@@ -1,5 +1,6 @@
 module App.Fossa.Analyze.Types (
   AnalyzeProject (..),
+  AnalyzeTaskEffs,
 ) where
 
 import Control.Carrier.Diagnostics
@@ -11,7 +12,7 @@ import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Types
 
-type TaskEffs sig m =
+type AnalyzeTaskEffs sig m =
   ( Has (Lift IO) sig m
   , MonadIO m
   , Has ReadFS sig m
@@ -22,4 +23,4 @@ type TaskEffs sig m =
   )
 
 class AnalyzeProject a where
-  analyzeProject :: TaskEffs sig m => FoundTargets -> a -> m DependencyResults
+  analyzeProject :: AnalyzeTaskEffs sig m => FoundTargets -> a -> m DependencyResults

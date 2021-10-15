@@ -9,6 +9,8 @@ module App.Fossa.Analyze (
   IATAssertionMode (..),
   BinaryDiscoveryMode (..),
   ModeOptions (..),
+  DiscoverFunc (..),
+  discoverFuncs,
 ) where
 
 import App.Docs (userGuideUrl)
@@ -197,57 +199,73 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     Just rel -> do
       applyFilters filters projectType rel projectBuildTargets
 
--- NOTE: When adding analyzers, make sure to also add them to
--- App.Fossa.ListTargets
 runAnalyzers ::
-  ( Has (Output ProjectResult) sig m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  , Has Logger sig m
+  ( AnalyzeTaskEffs sig m
+  , Has (Output ProjectResult) sig m
   , Has TaskPool sig m
   , Has AtomicCounter sig m
-  , Has (Lift IO) sig m
-  , Has Debug sig m
-  , MonadIO m
   ) =>
   Path Abs Dir ->
   AllFilters ->
   m ()
-runAnalyzers basedir filters = do
-  single Bundler.discover
-  single Cabal.discover
-  single Cargo.discover
-  single Carthage.discover
-  single Cocoapods.discover
-  single Composer.discover
-  single Conda.discover
-  single Glide.discover
-  single Godep.discover
-  single Gomodules.discover
-  single Gradle.discover
-  single Leiningen.discover
-  single Maven.discover
-  single Mix.discover
-  single Npm.discover
-  single Nuspec.discover
-  single PackageReference.discover
-  single PackagesConfig.discover
-  single Paket.discover
-  single Pipenv.discover
-  single Poetry.discover
-  single ProjectAssetsJson.discover
-  single ProjectJson.discover
-  single Pub.discover
-  single RPM.discover
-  single Rebar3.discover
-  single RepoManifest.discover
-  single Scala.discover
-  single Setuptools.discover
-  single Stack.discover
-  single SwiftPM.discover
-  single Yarn.discover
+runAnalyzers basedir filters = traverse_ single discoverFuncs
   where
-    single f = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
+
+discoverFuncs :: AnalyzeTaskEffs sig m => [DiscoverFunc m]
+discoverFuncs =
+  [ DiscoverFunc Bundler.discover
+  , DiscoverFunc Cabal.discover
+  , DiscoverFunc Cargo.discover
+  , DiscoverFunc Carthage.discover
+  , DiscoverFunc Cocoapods.discover
+  , DiscoverFunc Composer.discover
+  , DiscoverFunc Conda.discover
+  , DiscoverFunc Glide.discover
+  , DiscoverFunc Godep.discover
+  , DiscoverFunc Gomodules.discover
+  , DiscoverFunc Gradle.discover
+  , DiscoverFunc Leiningen.discover
+  , DiscoverFunc Maven.discover
+  , DiscoverFunc Mix.discover
+  , DiscoverFunc Npm.discover
+  , DiscoverFunc Nuspec.discover
+  , DiscoverFunc PackageReference.discover
+  , DiscoverFunc PackagesConfig.discover
+  , DiscoverFunc Paket.discover
+  , DiscoverFunc Pipenv.discover
+  , DiscoverFunc Poetry.discover
+  , DiscoverFunc ProjectAssetsJson.discover
+  , DiscoverFunc ProjectJson.discover
+  , DiscoverFunc Pub.discover
+  , DiscoverFunc RPM.discover
+  , DiscoverFunc Rebar3.discover
+  , DiscoverFunc RepoManifest.discover
+  , DiscoverFunc Scala.discover
+  , DiscoverFunc Setuptools.discover
+  , DiscoverFunc Stack.discover
+  , DiscoverFunc SwiftPM.discover
+  , DiscoverFunc Yarn.discover
+  ]
+
+-- DiscoverFunc is a workaround for the lack of impredicative types.
+--
+-- @discoverFuncs@ is a heterogenous list of discover functions that produce
+-- different types of projects we can analyze for dependencies.
+--
+-- This GADT allows us to say that we don't care about the specific type of
+-- projects produced by a discover function; we only care that each project type
+-- implements ToJSON and AnalyzeProject
+--
+-- With impredicative types, we could shift the @forall@ inside the list,
+-- avoiding the need for this GADT
+--
+--     discoverFuncs ::
+--       AnalyzeTaskEffs sig m =>
+--       [forall a. (AnalyzeProject a, ToJSON a) =>
+--          Path Abs Dir -> m [DiscoveredProject a]]
+data DiscoverFunc m where
+  DiscoverFunc :: (AnalyzeProject a, Aeson.ToJSON a) => (Path Abs Dir -> m [DiscoveredProject a]) -> DiscoverFunc m
 
 analyze ::
   ( Has (Lift IO) sig m

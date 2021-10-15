@@ -222,7 +222,7 @@ appMain = do
     --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
-      listTargetsMain baseDir
+      listTargetsMain logSeverity baseDir
     --
     VPSCommand VPSOptions{..} -> do
       apikey <- requireKey maybeApiKey
