@@ -1,6 +1,7 @@
 module Path.Extra (
   tryMakeRelative,
   renderRelative,
+  renderSomeBase,
 ) where
 
 import Data.String.Conversion (toText)
@@ -18,6 +19,10 @@ tryMakeRelative absDir absFile =
 -- | Render the relative path between a Path Abs Dir and a Path Abs File that is supposed to be in that dir.
 -- Intended for convenience when displaying the newly relative path; to interact with it use `tryMakeRelative` instead.
 renderRelative :: Path Abs Dir -> Path Abs File -> Text
-renderRelative absDir absFile = case tryMakeRelative absDir absFile of
+renderRelative absDir absFile = renderSomeBase $ tryMakeRelative absDir absFile
+
+-- | Render the file regardless of the kind of base.
+renderSomeBase :: SomeBase f -> Text
+renderSomeBase path = case path of
   Abs p -> toText . toFilePath $ p
   Rel p -> toText . toFilePath $ p
