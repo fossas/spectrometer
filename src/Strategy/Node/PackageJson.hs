@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Strategy.Node.PackageJson (
   buildGraph,
@@ -52,6 +53,7 @@ import Effect.Grapher (
  )
 import Graphing (Graphing)
 import Path (Abs, File, Path, Rel)
+import GHC.Generics (Generic)
 
 analyze :: (Has Diagnostics sig m) => [PackageJson] -> m (Graphing Dependency)
 analyze manifests = do
@@ -139,7 +141,10 @@ data PkgJsonGraph = PkgJsonGraph
   { jsonGraph :: FileGraph
   , jsonLookup :: Map Manifest PackageJson
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PkgJsonGraph
+instance ToJSON FileGraph
 
 -- Tag types for the sets in FlatDeps
 data Production

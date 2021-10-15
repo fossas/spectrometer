@@ -31,6 +31,7 @@ import Data.String.Conversion (decodeUtf8)
 import Data.Tagged (applyTag)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Yaml.Aeson (ToJSON)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
@@ -46,6 +47,7 @@ import Effect.ReadFS (
   readContentsBSLimit,
   readContentsJson,
  )
+import GHC.Generics (Generic)
 import Path (Abs, Dir, Path, Rel, mkRelFile, parent, (</>))
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.PackageJson (
@@ -68,20 +70,18 @@ import Types (
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
  )
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 
 skipJsFolders :: WalkStep
 skipJsFolders = WalkSkipSome ["node_modules", "bower_components", ".yarn"]
 
 discover ::
-  ( Has Diagnostics rsig run
-  , Has Logger rsig run
-  , Has ReadFS rsig run
-  , Has Diagnostics sig m
+  ( Has Diagnostics sig m
   , Has Logger sig m
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  m [DiscoveredProject run]
+  m [DiscoveredProject NodeProject]
 discover dir = context "NodeJS" $ do
   manifestList <- context "Finding nodejs projects" $ collectManifests dir
   manifestMap <- context "Reading package.json files" $ Map.fromList <$> traverse loadPackage manifestList
@@ -96,14 +96,11 @@ collectManifests = walk' $ \_ _ files ->
     Just jsonFile -> pure ([jsonFile], skipJsFolders)
 
 mkProject ::
-  ( Has ReadFS rsig run
-  , Has Diagnostics rsig run
-  , Has Logger rsig run
-  , Has Diagnostics sig m
+  ( Has Diagnostics sig m
   , Has Logger sig m
   ) =>
   NodeProject ->
-  m (DiscoveredProject run)
+  m (DiscoveredProject NodeProject)
 mkProject project = do
   let graph = case project of
         Yarn _ g -> g
@@ -121,9 +118,12 @@ mkProject project = do
       { projectType = "nodejs"
       , projectPath = parent rootManifest
       , projectBuildTargets = ProjectWithoutTargets
-      , projectDependencyResults = const $ getDeps project
-      , projectLicenses = pure []
+      , projectData = project
       }
+
+instance AnalyzeProject NodeProject where
+  analyzeProject _ = getDeps
+
 
 -- Since we don't natively support workspaces, we don't attempt to preserve them from this point on.
 -- In the future, if you're adding generalized workspace support, start here.
@@ -279,6 +279,9 @@ data NodeProject
   = Yarn Manifest PkgJsonGraph
   | NPMLock Manifest PkgJsonGraph
   | NPM PkgJsonGraph
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON NodeProject
 
 findWorkspaceRootManifest :: PkgJsonGraph -> Either String Manifest
 findWorkspaceRootManifest PkgJsonGraph{jsonGraph} =

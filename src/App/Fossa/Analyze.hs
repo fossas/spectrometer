@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module App.Fossa.Analyze (
   analyzeMain,
@@ -105,7 +104,6 @@ import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
-import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 
@@ -244,7 +242,7 @@ discoverFuncs =
   , DiscoverFunc Leiningen.discover
   , DiscoverFunc Maven.discover
   , DiscoverFunc Mix.discover
-  , DiscoverFunc Npm.discover
+  , DiscoverFunc Node.discover
   , DiscoverFunc Nuspec.discover
   , DiscoverFunc PackageReference.discover
   , DiscoverFunc PackagesConfig.discover
@@ -261,7 +259,6 @@ discoverFuncs =
   , DiscoverFunc Setuptools.discover
   , DiscoverFunc Stack.discover
   , DiscoverFunc SwiftPM.discover
-  , DiscoverFunc Yarn.discover
   ]
 
 -- DiscoverFunc is a workaround for the lack of impredicative types.
