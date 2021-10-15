@@ -70,12 +70,12 @@ Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
 $ErrorActionPreference = $OldEAP
 
 $fossa = "$extractDir\fossa.exe"
-$env:Path += ";$extractDir"
+$env:Path = "$extractDir;" + $env:Path
 Write-Host "The fossa-cli installation directory has been added to the PATH for this session."
 
 Write-Host "Installed fossa at: $fossa"
 Write-Host "Get started by running: fossa.exe --help"
 
-Write-Host "Running fossa.exe --version"
+Write-Host "Running $fossa --version"
 # Doesn't run without '&', seems to tell PS to treat the output as a command
 & $fossa --version
