@@ -4,7 +4,6 @@ module App.Fossa.BinaryDeps.JarSpec (spec) where
 
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import Control.Carrier.Diagnostics (runDiagnostics)
-import Data.String.Conversion (toText)
 import Effect.Logger (Severity (SevError), withDefaultLogger)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
