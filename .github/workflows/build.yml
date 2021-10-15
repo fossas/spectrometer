@@ -2,7 +2,10 @@
 #
 # Binaries on each platform are stripped. This removes debug symbols.
 name: Build
-on: [push, pull_request_target]
+on: 
+  push:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
 
 jobs:
   build-all:
