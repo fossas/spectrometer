@@ -25,9 +25,12 @@ import Control.Carrier.Simple (SimpleC, interpret, sendSimple)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Record (Journal, RecordC, runRecord)
 import Control.Effect.Sum (Member, inj)
+import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.String.Conversion (toText)
+import Data.Text (Text)
+import Data.Text.IO qualified as TIO
 import Data.Word (Word64)
 import Effect.Exec (Exec, ExecF (..))
 import Effect.Logger (Logger, LoggerF (..))
@@ -50,12 +53,16 @@ collectDebugBundle ::
 collectDebugBundle act = do
   (scope, (execJournal, (readFSJournal, res))) <- runDebug . runRecord @ExecF . runRecord @ReadFSF . debugEverything $ act
   sysInfo <- sendIO collectSystemInfo
+  -- TODO: collect the config file in command entrypoint and emit "effective
+  -- config", which is config overlayed with CLI options
+  fossaYml <- eitherToMaybe <$> sendIO (try @IOException (TIO.readFile ".fossa.yml"))
   args <- sendIO Environment.getFullArgs
   let bundle =
         DebugBundle
           { bundleScope = scope
           , bundleSystem = sysInfo
           , bundleArgs = args
+          , bundleFossaYml = fossaYml
           , bundleJournals =
               BundleJournals
                 { bundleJournalReadFS = readFSJournal
@@ -63,6 +70,9 @@ collectDebugBundle act = do
                 }
           }
   pure (bundle, res)
+
+eitherToMaybe :: Either e a -> Maybe a
+eitherToMaybe = either (const Nothing) Just
 
 collectSystemInfo :: IO SystemInfo
 collectSystemInfo = do
@@ -87,6 +97,7 @@ data DebugBundle = DebugBundle
   { bundleScope :: Scope
   , bundleSystem :: SystemInfo
   , bundleArgs :: [String]
+  , bundleFossaYml :: Maybe Text
   , bundleJournals :: BundleJournals
   }
   deriving (Show, Generic)
