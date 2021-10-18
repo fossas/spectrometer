@@ -1,15 +1,3 @@
-package main
-
-import (
-	"encoding/json"
-	"errors"
-	"io"
-	"log"
-	"os"
-
-	"github.com/fossas/fossa-cli/api/fossa"
-)
-
 // Using this program
 //
 // This program is meant to be a quick compatibility layer between the output of
@@ -23,6 +11,22 @@ import (
 // 2. Run `fossa report attribution --json`, piping its output to this script.
 //    For example, `fossa report attribution --json | /usr/local/bin/compat-attribution`
 // 3. Parse the resulting output as you would have from FOSSAv1.
+//
+// Support
+//
+// This compatibility script will be supported for six months, and will reach end-of-life on April 30, 2022.
+//
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"log"
+	"os"
+
+	"github.com/fossas/fossa-cli/api/fossa"
+)
 
 func main() {
 	stat, err := os.Stdin.Stat()
