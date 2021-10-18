@@ -9,7 +9,7 @@ dist-newstyle/
 *.hp
 
 # Development files/directories
-vendor/
+vendor-bins/
 .vscode/
 
 # Executables
