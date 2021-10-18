@@ -4,10 +4,11 @@ module App.Fossa.BinaryDeps.JarSpec (spec) where
 
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Data.String.Conversion (toText)
 import Effect.Logger (Severity (SevError), withDefaultLogger)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
-import Path.Extra (renderSomeBase, tryMakeRelative)
+import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
 import Srclib.Types (SourceUserDefDep (..))
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
@@ -57,16 +58,16 @@ expectedMultiplePoms :: Path Abs Dir -> SourceUserDefDep
 expectedMultiplePoms root = do
   let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "jruby-complete-1.7.12.jar")
   let rel = tryMakeRelative root path
-  SourceUserDefDep (renderSomeBase rel) "1.0" "" (Just "org.jruby:yecht") Nothing (Just rel)
+  SourceUserDefDep (toText rel) "1.0" "" (Just "org.jruby:yecht") Nothing (Just rel)
 
 expectedLicenseInPom :: Path Abs Dir -> SourceUserDefDep
 expectedLicenseInPom root = do
   let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "json-simple-1.1.1.7.jar")
   let rel = tryMakeRelative root path
-  SourceUserDefDep (renderSomeBase rel) "1.1.1" "The Apache Software License, Version 2.0" (Just "com.googlecode.json-simple:json-simple") Nothing (Just rel)
+  SourceUserDefDep (toText rel) "1.1.1" "The Apache Software License, Version 2.0" (Just "com.googlecode.json-simple:json-simple") Nothing (Just rel)
 
 expectedMetaInfManifest :: Path Abs Dir -> SourceUserDefDep
 expectedMetaInfManifest root = do
   let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "micrometer-registry-prometheus-1.5.4.jar")
   let rel = tryMakeRelative root path
-  SourceUserDefDep (renderSomeBase rel) "1.5.4" "" (Just "io.micrometer#micrometer-registry-prometheus;1.5.4") Nothing (Just rel)
+  SourceUserDefDep (toText rel) "1.5.4" "" (Just "io.micrometer#micrometer-registry-prometheus;1.5.4") Nothing (Just rel)
