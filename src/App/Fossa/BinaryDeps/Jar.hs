@@ -20,7 +20,7 @@ import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS, readContentsText, readContentsXML)
 import GHC.Base ((<|>))
 import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, (</>))
-import Path.Extra (renderRelative, renderSomeBase, tryMakeRelative)
+import Path.Extra (renderRelative, tryMakeRelative)
 import Srclib.Types (SourceUserDefDep (..))
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), RawPom, pomLicenseName, validatePom)
 
@@ -102,4 +102,4 @@ fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file
 toUserDefDep :: Path Abs Dir -> Path Abs File -> JarMetadata -> SourceUserDefDep
 toUserDefDep root file JarMetadata{..} = do
   let rel = tryMakeRelative root file
-  SourceUserDefDep (renderSomeBase rel) jarVersion jarLicense (Just jarName) Nothing (Just rel)
+  SourceUserDefDep (toText rel) jarVersion jarLicense (Just jarName) Nothing (Just rel)

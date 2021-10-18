@@ -14,10 +14,10 @@ module Srclib.Types (
 
 import Data.Aeson
 import Data.Maybe (fromMaybe)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, SomeBase)
-import Path.Extra (renderSomeBase)
 import Types (GraphBreadth (..))
 
 data SourceUnit = SourceUnit
@@ -135,7 +135,7 @@ instance ToJSON SourceUserDefDep where
       , "License" .= srcUserDepLicense
       , "Description" .= srcUserDepDescription
       , "Homepage" .= srcUserDepHomepage
-      , "Origin" .= fmap renderSomeBase srcUserDepOrigin
+      , "Origin" .= fmap toText srcUserDepOrigin
       ]
 
 instance ToJSON SourceRemoteDep where

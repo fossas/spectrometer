@@ -9,6 +9,7 @@ import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
 import Control.Monad (filterM)
 import Data.ByteString qualified as BS
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
@@ -16,7 +17,7 @@ import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsBSLimit)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
-import Path.Extra (renderSomeBase, tryMakeRelative)
+import Path.Extra (tryMakeRelative)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
 import Types (GraphBreadth (Complete))
@@ -106,4 +107,4 @@ strategyRawFingerprint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path A
 strategyRawFingerprint root file = do
   fp <- fingerprintRaw file
   let rel = tryMakeRelative root file
-  pure $ SourceUserDefDep (renderSomeBase rel) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing (Just rel)
+  pure $ SourceUserDefDep (toText rel) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing (Just rel)
