@@ -1,6 +1,6 @@
 # Spectrometer Changelog
 
-## Unreleased
+## 2.17.1
 
 - Adds support for reporting origin path for binaries discovered via `--experimental-enable-binary-discovery` ([#396](https://github.com/fossas/spectrometer/pull/396))
 
