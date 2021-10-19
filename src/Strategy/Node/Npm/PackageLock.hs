@@ -13,18 +13,18 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isNothing)
 import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Tagged (unTag)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import Strategy.Node.PackageJson (FlatDeps (directDeps), Production, NodePackage (pkgName))
-import Data.Maybe (isNothing)
-import Data.Tagged (unTag)
-import qualified Data.Set as Set
-import qualified Data.Text as Text
+import Strategy.Node.PackageJson (FlatDeps (directDeps), NodePackage (pkgName), Production)
 
 data NpmPackageJson = NpmPackageJson
   { packageName :: Text
@@ -54,7 +54,7 @@ instance FromJSON NpmDep where
     NpmDep <$> obj .: "version"
       <*> obj .:? "dev" .!= False
       <*> obj .:? "resolved"
-      <*> obj .:? "requires" .!= mempty 
+      <*> obj .:? "requires" .!= mempty
       <*> obj .:? "dependencies" .!= mempty
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FlatDeps -> m (Graphing Dependency)
@@ -78,7 +78,7 @@ buildGraph packageJson directSet = run . withLabeling toDependency $ do
   void $ Map.traverseWithKey (maybeAddDep False) (packageDependencies packageJson)
   where
     -- Skip adding deps if we think it's a workspace package.
-    maybeAddDep isRecursive name dep@NpmDep{..} = 
+    maybeAddDep isRecursive name dep@NpmDep{..} =
       if isNothing depResolved || "file:" `Text.isPrefixOf` depVersion
         then pure ()
         else addDep isRecursive name dep
@@ -97,7 +97,7 @@ buildGraph packageJson directSet = run . withLabeling toDependency $ do
         then direct pkg
         else pure ()
 
-      label pkg $ NpmPackageEnv $ if depDev then EnvDevelopment else EnvProduction 
+      label pkg $ NpmPackageEnv $ if depDev then EnvDevelopment else EnvProduction
 
       traverse_ (label pkg . NpmPackageLocation) depResolved
 

@@ -8,6 +8,7 @@ module Strategy.Node (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -71,7 +72,6 @@ import Types (
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
  )
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 
 skipJsFolders :: WalkStep
 skipJsFolders = WalkSkipSome ["node_modules", "bower_components", ".yarn"]
@@ -124,7 +124,6 @@ mkProject project = do
 
 instance AnalyzeProject NodeProject where
   analyzeProject _ = getDeps
-
 
 -- Since we don't natively support workspaces, we don't attempt to preserve them from this point on.
 -- In the future, if you're adding generalized workspace support, start here.
