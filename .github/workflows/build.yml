@@ -57,6 +57,12 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
 
+    # Set up Go.
+    - uses: actions/setup-go@v2
+      name: Set up Go 1.17.1
+      with:
+        go-version: '1.17.1'
+
     - name: Debugging information
       run: |
         ghc --version || echo "no ghc"
@@ -90,6 +96,16 @@ jobs:
       run: |
         cabal update
         $RUN_CMD || $RUN_CMD
+    
+    - name: Build attribution report compatability script (non-Windows)
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: |
+        go build -o release/compat-attribution scripts/compat-attribution/main.go
+
+    - name: Build attribution report compatability script (Windows)
+      if: ${{ contains(matrix.os, 'windows') }}
+      run: |
+        go build -o release/compat-attribution.exe scripts/compat-attribution/main.go
 
     - name: Run tests
       run: |
@@ -109,21 +125,6 @@ jobs:
         mkdir release
         find . -type f -path '*/fossa/fossa' -exec cp {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec cp {} release \;
-
-    - name: Set up Go 1.17.1
-      uses: actions/setup-go@v2
-      with:
-        go-version: '1.17.1'
-
-    - name: Build attribution report compatability script (non-Windows)
-      if: ${{ !contains(matrix.os, 'windows') }}
-      run: |
-        go build -o release/compat-attribution scripts/compat-attribution/main.go
-
-    - name: Build attribution report compatability script (Windows)
-      if: ${{ contains(matrix.os, 'windows') }}
-      run: |
-        go build -o release/compat-attribution.exe scripts/compat-attribution/main.go
 
     - name: Strip binaries
       run: |
