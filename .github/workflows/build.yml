@@ -34,9 +34,9 @@ jobs:
     
     - name: Build attribution-compat
       run: |
-      GOOS=windows go build -o release/windows/compat-attribution.exe scripts/compat-attribution/main.go
-      GOOS=linux go build -o release/linux/compat-attribution scripts/compat-attribution/main.go
-      GOOS=darwin go build -o release/darwin/compat-attribution scripts/compat-attribution/main.go
+        GOOS=windows go build -o release/windows/compat-attribution.exe scripts/compat-attribution/main.go
+        GOOS=linux go build -o release/linux/compat-attribution scripts/compat-attribution/main.go
+        GOOS=darwin go build -o release/darwin/compat-attribution scripts/compat-attribution/main.go
 
     - name: Strip binaries
       run: |
