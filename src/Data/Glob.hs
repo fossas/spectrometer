@@ -18,7 +18,8 @@ module Data.Glob (
   -- * Types
 
   -- Exporting the constuctor would make this interface unsafe
-  Glob (unGlob),
+  Glob,
+  unGlob,
 
   -- * Unsafe Constructors
   unsafeGlobAbs,
@@ -26,13 +27,22 @@ module Data.Glob (
 ) where
 
 import Data.Aeson.Types (FromJSON, ToJSON)
-import Data.String.Conversion (toString)
+import Data.String.Conversion (ToString (..), ToText (..))
 import Path (Abs, Dir, Path, Rel)
 import System.FilePath qualified as FP
 import System.FilePattern qualified as Match
 
 -- | A typed glob pattern.
-newtype Glob a = Glob {unGlob :: String} deriving (Eq, Ord, Show, ToJSON, FromJSON)
+newtype Glob a = Glob String deriving (Eq, Ord, Show, ToJSON, FromJSON)
+
+unGlob :: Glob a -> String
+unGlob (Glob s) = s
+
+instance ToString (Glob a) where
+  toString = unGlob
+
+instance ToText (Glob a) where
+  toText = toText . toString
 
 -- | Safely promote a relative glob to an absolute glob.
 prefixWith :: Path Abs Dir -> Glob Rel -> Glob Abs
