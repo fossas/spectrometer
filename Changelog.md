@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## Unreleased
+
+- Adds compatibility script for `fossa report attribution --json` ([#397](https://github.com/fossas/spectrometer/pull/397))
+
 ## 2.17.1
 
 - Adds support for reporting origin path for binaries discovered via `--experimental-enable-binary-discovery` ([#396](https://github.com/fossas/spectrometer/pull/396))
