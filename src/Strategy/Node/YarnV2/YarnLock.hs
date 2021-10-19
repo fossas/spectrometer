@@ -30,12 +30,12 @@ import DepTypes (
   DepType (GitType, NodeJSType, URLType),
   Dependency (..),
   VerConstraint (CEq),
+  hydrateDepEnvs,
   insertEnvironment,
  )
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing)
 import Graphing qualified
-import Graphing.Hydrate (hydrate)
 import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (
   Development,
@@ -156,7 +156,7 @@ instance Monoid FlatPackages where
 -- Because workspaces are top-level projects, we set their dependencies as
 -- direct in the dependency graph
 buildGraph :: AM.AdjacencyMap Package -> FlatPackages -> Graphing Dependency
-buildGraph gr FlatPackages{..} = hydrate convertedGraphing
+buildGraph gr FlatPackages{..} = hydrateDepEnvs convertedGraphing
   where
     isWorkspace WorkspacePackage{} = True
     isWorkspace _ = False

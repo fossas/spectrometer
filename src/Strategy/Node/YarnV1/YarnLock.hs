@@ -21,6 +21,7 @@ import DepTypes (
   DepType (NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
+  hydrateDepEnvs,
   insertEnvironment,
   insertLocation,
  )
@@ -41,7 +42,6 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), readContentsText)
 import Graphing (Graphing)
-import Graphing.Hydrate (hydrate)
 import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (FlatDeps (..), NodePackage (..))
 import Yarn.Lock qualified as YL
@@ -84,7 +84,7 @@ buildGraph ::
   YL.Lockfile ->
   FlatDeps ->
   m (Graphing Dependency)
-buildGraph lockfile FlatDeps{..} = fmap hydrate . withLabeling toDependency $
+buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependency $
   for_ (map firstKey $ MKM.toList lockfile) $ \(key, pkg) -> do
     let parent :: YarnV1Package
         parent = pairToPackage key pkg

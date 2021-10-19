@@ -4,8 +4,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Graphing qualified
-import Graphing.Hydrate (Hydrateable (..), hydrate)
-import Test.Hspec
+import Graphing.Hydrate (hydrate)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 data SimpleDep = SimpleDep
   { name :: Text
@@ -13,9 +13,8 @@ data SimpleDep = SimpleDep
   }
   deriving (Eq, Ord, Show)
 
-instance Hydrateable SimpleDep Text where
-  extractList = Set.toList . envs
-  update env dep = dep{envs = Set.insert env $ envs dep}
+hydrateSimple :: Graphing.Graphing SimpleDep -> Graphing.Graphing SimpleDep
+hydrateSimple = hydrate (Set.toList . envs) (\env dep -> dep{envs = Set.insert env $ envs dep})
 
 topProd :: SimpleDep
 topProd = SimpleDep "topProd" $ Set.singleton "prod"
@@ -89,4 +88,4 @@ spec =
   describe "Graphing Hydrator" $
     it "Should hydrate items in the graphing" $
       -- See devdocs/graph-hydration.md for explanation
-      hydrate initialGraphing `shouldBe` expectedGraphing
+      hydrateSimple initialGraphing `shouldBe` expectedGraphing

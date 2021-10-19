@@ -1,7 +1,4 @@
-{-# LANGUAGE FunctionalDependencies #-}
-
 module Graphing.Hydrate (
-  Hydrateable (..),
   hydrate,
 ) where
 
@@ -17,8 +14,8 @@ import Graphing qualified
 -- | Given some 'Graphing a' with an instance of @Hydrateable a b@, update the
 -- nodes such that all items (which are type @b@) of a node are copied down to
 -- all of its successor nodes.
-hydrate :: forall a b. Hydrateable a b => Graphing a -> Graphing a
-hydrate gr = Graphing.gmap doPromotion gr
+hydrate :: forall a b. (Ord a, Ord b) => (a -> [b]) -> (b -> a -> a) -> Graphing a -> Graphing a
+hydrate extractList update gr = Graphing.gmap doPromotion gr
   where
     adjMap = Graphing.toAdjacencyMap gr
     -- Get all current nodes which contain a specified subitem
@@ -48,7 +45,3 @@ hydrate gr = Graphing.gmap doPromotion gr
 
     doPromotion :: a -> a
     doPromotion item = foldr update item $ Map.findWithDefault [] item promotionMap
-
-class (Ord a, Ord b) => Hydrateable a b | a -> b where
-  extractList :: a -> [b]
-  update :: b -> a -> a

@@ -5,19 +5,27 @@ module DepTypes (
   insertEnvironment,
   insertTag,
   insertLocation,
+  hydrateDepEnvs,
   DepEnvironment (..),
   DepType (..),
   VerConstraint (..),
 ) where
 
-import Data.Aeson
+import Data.Aeson (
+  FromJSON,
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value,
+  object,
+ )
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Graphing.Hydrate (Hydrateable (..))
+import Graphing (Graphing)
+import Graphing.Hydrate (hydrate)
 
 -- FIXME: this needs a smart constructor with empty tags/environments/etc.
 -- We've historically relied on the compile error for making sure we fill all
@@ -49,9 +57,8 @@ data DepEnvironment
     EnvOther Text
   deriving (Eq, Ord, Show)
 
-instance Hydrateable Dependency DepEnvironment where
-  extractList = Set.toList . dependencyEnvironments
-  update = insertEnvironment
+hydrateDepEnvs :: Graphing Dependency -> Graphing Dependency
+hydrateDepEnvs = hydrate (Set.toList . dependencyEnvironments) insertEnvironment
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType
