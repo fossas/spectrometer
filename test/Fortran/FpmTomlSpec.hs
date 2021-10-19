@@ -42,7 +42,6 @@ mkGitFpmDep = FpmGitDependency "git-url" Nothing Nothing Nothing
 expectedFpmToml :: FpmToml
 expectedFpmToml =
   FpmToml
-    "example"
     ( fromList
         [ ("my-utils", mkPathFpmDep "utils")
         , ("dep-head", FpmGitDep mkGitFpmDep)

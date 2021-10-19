@@ -73,7 +73,7 @@ Now you can call `fpm run` to execute the built application, here is an example 
  tomlf's patch version is:            1
 ```
 
-To analyze this project using fossa CLI, execute `fossa analyze --output --debug`. This will print identified dependency graphs, and debug logs only. It will not upload performed analysis to any endpoint.
+To analyze this project using fossa CLI, execute `fossa analyze --output --debug`. This will print identified dependency graphs and debug logs only. It will not upload the performed analysis to any endpoint.
 
 ## References
 

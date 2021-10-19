@@ -31,8 +31,7 @@ import Toml qualified
 -- | Represents the content of the fpm manifest.
 -- Reference: https://github.com/fortran-lang/fpm/blob/main/manifest-reference.md
 data FpmToml = FpmToml
-  { fpmName :: Text
-  , fpmDependencies :: Map Text FpmDependency
+  { fpmDependencies :: Map Text FpmDependency
   , fpmDevDependencies :: Map Text FpmDependency
   , fpmExecutables :: [Map Text FpmDependency]
   }
@@ -41,8 +40,7 @@ data FpmToml = FpmToml
 fpmTomlCodec :: TomlCodec FpmToml
 fpmTomlCodec =
   FpmToml
-    <$> Toml.text "name" .= fpmName
-    <*> Toml.tableMap Toml._KeyText fpmDependenciesCodec "dependencies" .= fpmDependencies
+    <$> Toml.tableMap Toml._KeyText fpmDependenciesCodec "dependencies" .= fpmDependencies
     <*> Toml.tableMap Toml._KeyText fpmDependenciesCodec "dev-dependencies" .= fpmDevDependencies
     <*> Toml.list fpmExecutableDependenciesCodec "executable" .= fpmExecutables
 
