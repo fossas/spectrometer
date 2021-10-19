@@ -45,9 +45,7 @@ func main() {
 		log.Fatalf("Failed to parse attribution report from stdin: %v", err)
 	}
 
-	w := json.NewEncoder(os.Stdout)
-	w.SetIndent("", "  ")
-	if err := w.Encode(attribution); err != nil {
+	if err := json.NewEncoder(os.Stdout).Encode(attribution); err != nil {
 		log.Fatalf("Failed to render attribution report to stdout: %v", err)
 	}
 }
