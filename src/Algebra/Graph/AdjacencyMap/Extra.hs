@@ -7,7 +7,7 @@ module Algebra.Graph.AdjacencyMap.Extra (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
-import Data.Map.Strict qualified as Map
+import Data.Set (Set)
 import Data.Set qualified as Set
 
 -- | It's 'traverse', but for graphs
@@ -68,7 +68,7 @@ splitAcyclicGraph gr =
     tops -> map (`takeReachable` gr) tops
 
 takeReachable :: forall a. Ord a => a -> AM.AdjacencyMap a -> AM.AdjacencyMap a
-takeReachable x gr = AM.induce (`elem` vertices) gr
+takeReachable x gr = AM.induce (`Set.member` vertices) gr
   where
-    vertices :: [a]
-    vertices = filter (`elem` AMA.reachable x gr) $ Map.keys $ AM.adjacencyMap gr
+    vertices :: Set a
+    vertices = Set.fromList $ AMA.reachable x gr
