@@ -24,7 +24,7 @@ import Data.Glob (Glob)
 import Data.Glob qualified as Glob
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (decodeUtf8)
@@ -40,6 +40,7 @@ import Discovery.Walk (
 import Effect.Logger (
   Logger,
   logError,
+  logWarn,
  )
 import Effect.ReadFS (
   ReadFS,
@@ -84,7 +85,7 @@ discover ::
   m [DiscoveredProject NodeProject]
 discover dir = context "NodeJS" $ do
   manifestList <- context "Finding nodejs projects" $ collectManifests dir
-  manifestMap <- context "Reading package.json files" $ Map.fromList <$> traverse loadPackage manifestList
+  manifestMap <- context "Reading package.json files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
   globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
   graphs <- context "Splitting global graph into chunks" $ fromMaybeText "" $ splitGraph globalGraph
   context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
@@ -195,10 +196,12 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
         (applyTag @Development $ mapToSet packageDevDeps)
         (Map.keysSet jsonLookup)
 
-loadPackage :: (Has ReadFS sig m, Has Diagnostics sig m) => Manifest -> m (Manifest, PackageJson)
+loadPackage :: (Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Manifest -> m (Maybe (Manifest, PackageJson))
 loadPackage file = do
-  contents <- readContentsJson file
-  pure (file, contents)
+  result <- errorBoundary $ readContentsJson @PackageJson file
+  case result of
+    Left err -> logWarn (renderFailureBundle err) >> pure Nothing
+    Right contents -> pure $ Just (file, contents)
 
 buildManifestGraph :: Map Manifest PackageJson -> PkgJsonGraph
 buildManifestGraph manifestMap = PkgJsonGraph adjmap manifestMap
