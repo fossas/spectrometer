@@ -135,13 +135,13 @@ getDeps ::
   NodeProject ->
   m DependencyResults
 getDeps (Yarn yarnLockFile graph) = analyzeYarn yarnLockFile graph
-getDeps (NPMLock packageLockFile _) = analyzeNpmLock packageLockFile
+getDeps (NPMLock packageLockFile graph) = analyzeNpmLock packageLockFile graph
 getDeps (NPM graph) = analyzeNpm graph
 
-analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> m DependencyResults
-analyzeNpmLock file = do
-  graph <- PackageLock.analyze file
-  pure $ DependencyResults graph Complete [file]
+analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
+analyzeNpmLock file graph = do
+  result <- PackageLock.analyze file $ extractDepLists graph
+  pure $ DependencyResults result Complete [file]
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
 analyzeNpm wsGraph = do
