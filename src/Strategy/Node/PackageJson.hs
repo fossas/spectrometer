@@ -51,9 +51,9 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, File, Path, Rel)
-import GHC.Generics (Generic)
 
 analyze :: (Has Diagnostics sig m) => [PackageJson] -> m (Graphing Dependency)
 analyze manifests = do
@@ -157,8 +157,8 @@ instance ConstTag Development DepEnvironment where
   constValue = EnvDevelopment
 
 data FlatDeps = FlatDeps
-  { directDeps :: Tagged (Set NodePackage) Production
-  , devDeps :: Tagged (Set NodePackage) Development
+  { directDeps :: Tagged Production (Set NodePackage)
+  , devDeps :: Tagged Development (Set NodePackage)
   , manifests :: Set Manifest
   }
   deriving (Eq, Ord, Show)

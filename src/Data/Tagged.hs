@@ -40,7 +40,7 @@ import GHC.Generics (Generic)
 --   myInt :: Int
 --   myInt = unTag @SomeOtherTag $ coerce $ applyTag @SomeTag (3 :: Int)
 -- @
-newtype Tagged ty tag = Tagged {inner :: ty}
+newtype Tagged tag ty = Tagged {inner :: ty}
   deriving
     ( Eq
     , Ord
@@ -61,11 +61,11 @@ enforceTag :: forall tag ty. Tagged ty tag -> Tagged ty tag
 enforceTag = id
 
 -- | Same as 'enforceTag', but extracts the inner @ty@.
-unTag :: forall tag ty. Tagged ty tag -> ty
+unTag :: forall tag ty. Tagged tag ty -> ty
 unTag = inner
 
 -- | @applyTag ty@ tags a @ty@ with the given tag.  With type applications, this can be enforced more easily.
-applyTag :: forall tag ty. ty -> Tagged ty tag
+applyTag :: forall tag ty. ty -> Tagged tag ty
 applyTag = Tagged
 
 -- | 'ConstTag' allows the @tag@ type of a 'Tagged' to provide a constant value, accessible through 'readTag'.
@@ -76,5 +76,5 @@ applyTag = Tagged
 class ConstTag tag b | tag -> b where
   constValue :: b
 
-readTag :: forall tag ty b. ConstTag tag b => Tagged ty tag -> b
+readTag :: forall tag ty b. ConstTag tag b => Tagged tag ty -> b
 readTag _ = constValue @tag

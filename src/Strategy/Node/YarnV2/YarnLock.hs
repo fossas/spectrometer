@@ -69,8 +69,8 @@ resolveFlatDeps lockfile FlatDeps{..} = FlatPackages <$> converter @Production d
     converter ::
       forall tag sig m.
       Has Diagnostics sig m =>
-      Tagged (Set NodePackage) tag ->
-      m (Tagged (Set Package) tag)
+      Tagged tag (Set NodePackage) ->
+      m (Tagged tag (Set Package))
     converter = fmap (applyTag . Set.fromList) . traverse (resolveSingle lockfile) . Set.toList . unTag
 
 resolveSingle :: Has Diagnostics sig m => YarnLockfile -> NodePackage -> m Package
@@ -140,8 +140,8 @@ lookupPackage desc mapping =
     identMatches one two = descriptorScope one == descriptorScope two && descriptorName one == descriptorName two
 
 data FlatPackages = FlatPackages
-  { directSet :: Tagged (Set Package) Production
-  , devSet :: Tagged (Set Package) Development
+  { directSet :: Tagged Production (Set Package)
+  , devSet :: Tagged Development (Set Package)
   }
   deriving (Eq, Ord, Show)
 
@@ -189,7 +189,7 @@ buildGraph gr FlatPackages{..} = hydrateDepEnvs convertedGraphing
 
     promoteSet ::
       ConstTag tag DepEnvironment =>
-      Tagged (Set Package) tag ->
+      Tagged tag (Set Package) ->
       Package ->
       Dependency ->
       Dependency
