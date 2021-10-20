@@ -14,10 +14,10 @@ import Data.MultiKeyedMap qualified as MKM
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
-import Data.Tagged (readTag, unTag)
+import Data.Tagged (unTag)
 import Data.Text (Text)
 import DepTypes (
-  DepEnvironment,
+  DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
@@ -43,7 +43,7 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), readContentsText)
 import Graphing (Graphing)
 import Path (Abs, File, Path)
-import Strategy.Node.PackageJson (FlatDeps (..), NodePackage (..))
+import Strategy.Node.PackageJson (Development, FlatDeps (..), NodePackage (..), Production)
 import Yarn.Lock qualified as YL
 import Yarn.Lock.Types qualified as YL
 
@@ -105,16 +105,16 @@ buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependen
     traverse_ (label parent . NodeLocation) $ getLocations $ YL.remote pkg
     -- Add edges from current parent
     traverse_ (edge parent) children
-    let promote taggedSet =
-          if keyAsNodePackage `Set.member` (unTag taggedSet)
+    let promote env pkgSet =
+          if keyAsNodePackage `Set.member` pkgSet
             then do
               direct parent
-              label parent . NodeEnvironment $ readTag taggedSet
+              label parent $ NodeEnvironment env
             else pure ()
     -- Mark as direct if present in any relevant package.json direct list
     -- Mark as dev if present in any relevant package.json dev list
-    promote directDeps
-    promote devDeps
+    promote EnvProduction $ unTag @Production directDeps
+    promote EnvDevelopment $ unTag @Development devDeps
 
 getLocations :: YL.Remote -> [Text]
 getLocations = \case

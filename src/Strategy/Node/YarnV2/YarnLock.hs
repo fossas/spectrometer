@@ -22,11 +22,11 @@ import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
-import Data.Tagged (ConstTag, Tagged, applyTag, readTag, unTag)
+import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Text qualified as Text
 import Data.Text.Extra (showT)
 import DepTypes (
-  DepEnvironment,
+  DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType),
   Dependency (..),
   VerConstraint (CEq),
@@ -185,17 +185,19 @@ buildGraph gr FlatPackages{..} = hydrateDepEnvs convertedGraphing
     convertPackage pkg = promote pkg <$> packageToDependency pkg
 
     promote :: Package -> Dependency -> Dependency
-    promote pkg = promoteSet devSet pkg . promoteSet directSet pkg
+    promote pkg =
+      promoteSet @Development EnvDevelopment devSet pkg
+        . promoteSet @Production EnvProduction directSet pkg
 
     promoteSet ::
-      ConstTag tag DepEnvironment =>
+      DepEnvironment ->
       Tagged tag (Set Package) ->
       Package ->
       Dependency ->
       Dependency
-    promoteSet taggedSet pkg =
+    promoteSet env taggedSet pkg =
       if Set.member pkg $ unTag taggedSet
-        then insertEnvironment $ readTag taggedSet
+        then insertEnvironment env
         else id
 
 -- | Convert a yarn package to a fossa Dependency
