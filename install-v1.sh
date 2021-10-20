@@ -97,8 +97,9 @@ tag_to_version() {
   VERSION=${TAG#v}
 
   # Ensure script only installs fossa-cli less than v2.0.0
-  if [[ "${VERSION:0:1}" != "0" && "${VERSION:0:1}" != "1" ]]; then
-    log_crit "Provided release tag: ${VERSION} is greater than 1. You should use install-v2.sh script instead!"
+  MAJOR_VERSION=$(printf %.1s "$VERSION")
+  if [ "$MAJOR_VERSION" != "0" ] && [ "$MAJOR_VERSION" != "1" ]; then
+    log_crit "Provided release tag: ${VERSION} is greater than or equal to v2.0.0. You should use install-v2.sh script instead!"
     exit 1
   fi
 }
