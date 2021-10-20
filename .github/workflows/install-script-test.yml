@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       
-      - name: install-v1 script does not install v2 version
+      - name: install-v1 script does not install v2 or greater version
         if: startsWith(matrix.os,'ubuntu') || startsWith(matrix.os,'macOS') 
         shell: bash
         run: |
@@ -20,7 +20,7 @@ jobs:
           ./fossa --version | cut -d " " -f 3 | head -c 1 | grep -q '1' || exit 1
           rm fossa
 
-      - name: install-v1 script does not install v2 version
+      - name: install-v1 script does not install v2 or greater version
         if: startsWith(matrix.os,'windows')
         shell: pwsh
         run: |
@@ -30,5 +30,6 @@ jobs:
           Write-Output $cliVersionCmdOutput
           $cliVersionMajor = $cliVersionCmdOutput.Split(" ")[2][0]
           if (-Not $cliVersionMajor -eq "1") {
+            Write-Output "Got: $cliVersionMajor instead!"
             exit 1
           }
