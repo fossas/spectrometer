@@ -5,14 +5,14 @@ module Strategy.Node.PackageJson (
   buildGraph,
   analyze,
   Development,
-  FileGraph,
   FlatDeps (..),
-  Manifest,
+  Manifest (..),
   NodePackage (..),
   PackageJson (..),
   PkgJsonGraph (..),
   PkgJsonWorkspaces (..),
   Production,
+  pkgFileList,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -26,6 +26,7 @@ import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
   ToJSON (toJSON),
+  ToJSONKey,
   Value (Array, Object),
   object,
   withObject,
@@ -36,7 +37,7 @@ import Data.Glob (Glob)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
-import Data.Tagged (ConstTag (constValue), Tagged)
+import Data.Tagged (Tagged)
 import Data.Text (Text)
 import DepTypes (
   DepEnvironment (..),
@@ -134,27 +135,27 @@ instance ToJSON PackageJson where
       , "devDependencies" .= packageDevDeps
       ]
 
-type Manifest = Path Abs File
-type FileGraph = AM.AdjacencyMap Manifest
+newtype Manifest = Manifest {unManifest :: Path Abs File} deriving (Eq, Show, Ord, Generic, ToJSONKey, ToJSON)
 
 data PkgJsonGraph = PkgJsonGraph
-  { jsonGraph :: FileGraph
+  { jsonGraph :: AM.AdjacencyMap Manifest
   , jsonLookup :: Map Manifest PackageJson
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON PkgJsonGraph
-instance ToJSON FileGraph
+pkgFileList :: PkgJsonGraph -> [Path Abs File]
+pkgFileList (PkgJsonGraph _ mapping) = map unManifest $ Map.keys mapping
+
+instance ToJSON PkgJsonGraph where
+  toJSON PkgJsonGraph{..} =
+    object
+      [ "jsonGraph" .= AM.adjacencyMap jsonGraph
+      , "jsonLookup" .= toJSON jsonLookup
+      ]
 
 -- Tag types for the sets in FlatDeps
 data Production
 data Development
-
-instance ConstTag Production DepEnvironment where
-  constValue = EnvProduction
-
-instance ConstTag Development DepEnvironment where
-  constValue = EnvDevelopment
 
 data FlatDeps = FlatDeps
   { directDeps :: Tagged Production (Set NodePackage)
