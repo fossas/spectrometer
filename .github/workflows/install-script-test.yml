@@ -25,11 +25,8 @@ jobs:
         shell: pwsh
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
-          ./install-v1.ps1
-
-          $extractedExe = "env:ALLUSERPROFILE\fossa-cli\fossa.exe"
-          $cliVersionCmdOutput = cmd /c $extractedExe '--version'
-
+          .\install-v1.ps1
+          $cliVersionCmdOutput = cmd /c 'C:\ProgramData\fossa-cli\fossa.exe' '--version'
           Write-Output $cliVersionCmdOutput
           $cliVersionMajor = $cliVersionCmdOutput.Split(" ")[2][0]
           if (-Not $cliVersionMajor -eq "1") {
