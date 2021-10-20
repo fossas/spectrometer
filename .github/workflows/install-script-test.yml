@@ -18,6 +18,7 @@ jobs:
         run: |
           ./install.sh -b .
           ./fossa --version
+          rm fossa
 
       - name: install-v1 script does not install v2 or greater version in linux and macOs
         if: startsWith(matrix.os,'ubuntu') || startsWith(matrix.os,'macOS') 
@@ -33,8 +34,7 @@ jobs:
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
           .\install.ps1
-          $cliVersionCmdOutput = cmd /c 'C:\ProgramData\fossa-cli\fossa.exe' '--version'
-          Write-Output $cliVersionCmdOutput
+          fossa.exe --version
 
       - name: install-v1 script does not install v2 or greater version in windows
         if: startsWith(matrix.os,'windows')
