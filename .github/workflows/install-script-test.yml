@@ -1,0 +1,38 @@
+name: installation-script-test
+on: push
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: install-v1 script does not install v2 version (on linux and macOS)
+        if: startsWith(matrix.os,'ubuntu') || startsWith(matrix.os,'macOS') 
+        shell: bash
+        run: |
+          chmod +x install-v1.sh
+          ./install-v1.sh -b
+          ./fossa --version | cut -d " " -f 3 | head -c 1 | grep -q '1' || exit 1
+          rm fossa
+
+      - name: install-v1 script does not install v2 version (on windows)
+        if: startsWith(matrix.os,'windows')
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
+          ./install-v1.ps1
+
+          $extractedExe = "env:ALLUSERPROFILE\fossa-cli\fossa.exe"
+          $cliVersionCmdOutput = cmd /c $extractedExe '--version'
+
+          Write-Output $cliVersionCmdOutput
+          $cliVersionMajor = $cliVersionCmdOutput.Split(" ")[2][0]
+          if (-Not $cliVersionMajor -eq "1") {
+            exit 1
+          }
