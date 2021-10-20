@@ -38,6 +38,12 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.W
 **NOTE**: You may need to add the executable to your PATH. The installer
 reports the installation path of the executable.
 
+Alternatively, install using [Scoop](https://scoop.sh/):
+
+```
+scoop install fossa
+```
+
 ## Using Spectrometer
 
 See the [User Guide](docs/userguide.md) for detailed instructions.
