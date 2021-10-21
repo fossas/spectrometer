@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module System.CGroup.Types (
   -- * CGroup Controllers
   Controller (..),
@@ -11,57 +13,56 @@ module System.CGroup.Types (
 
   -- * Exported for testing
   findMatchingCGroup,
-  findMatchingMount,
+  resolveControllerMountPath,
+  tryResolveMount,
   parseMountInfo,
   parseCGroups,
 ) where
 
-import Control.Applicative ((<|>))
 import Control.Exception (throwIO)
+import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.Foldable (find)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import Data.Void (Void)
-import System.Directory (getSymbolicLinkTarget)
-import System.FilePath ((</>))
+import Path
 import Text.Megaparsec (Parsec, eof, manyTill, optional, parse, skipMany, some, takeWhile1P, takeWhileP)
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 -- | A CGroup controller path for a specific subsystem
-newtype Controller a = Controller {unController :: FilePath}
+newtype Controller a = Controller {unController :: Path Abs Dir}
   deriving (Show)
 
--- | Resolve a CGroup controller by the given name
+-- | Resolve a CGroup controller's filepath, as viewed by the current process
 resolveCGroupController :: Text -> IO (Controller a)
-resolveCGroupController controllerName = do
-  cgroups <- parseFile parseCGroups cgroupPath
-  mounts <- parseFile parseMountInfo mountinfoPath
-  procRoot <- getSymbolicLinkTarget procRootPath
-
-  cgroup <- maybe (fail "Couldn't find cgroup for controller") pure (findMatchingCGroup controllerName cgroups)
-  mount <- maybe (fail "Couldn't find mount for cgroup") pure (findMatchingMount controllerName cgroup mounts)
-
-  pure (Controller (procRoot </> toString (mountPoint mount)))
-
--- | see proc(5): filepath to a symbolic link that points to the filesystem root as viewed by this process
-procRootPath :: FilePath
-procRootPath = "/proc/self/root"
+resolveCGroupController = resolveCGroupController' procCGroupPath procMountinfoPath
 
 -- | see cgroups(7): filepath to a file that contains information about control groups applied to this process
-cgroupPath :: FilePath
-cgroupPath = "/proc/self/cgroup"
+procCGroupPath :: Path Abs File
+procCGroupPath = $(mkAbsFile "/proc/self/cgroup")
 
 -- | see proc(5): filepath to a file that contains information about mounts available to this process
-mountinfoPath :: FilePath
-mountinfoPath = "/proc/self/mountinfo"
+procMountinfoPath :: Path Abs File
+procMountinfoPath = $(mkAbsFile "/proc/self/mountinfo")
+
+-- | Resolve a CGroup controller's filepath, under the given cgroup and mountinfo paths
+resolveCGroupController' :: Path Abs File -> Path Abs File -> Text -> IO (Controller a)
+resolveCGroupController' cgroupPath mountinfoPath controllerName = do
+  cgroups <- parseFile parseCGroups cgroupPath
+  mounts <- parseFile parseMountInfo mountinfoPath
+  cgroup <- maybe (fail "Couldn't find cgroup for controller") pure (findMatchingCGroup controllerName cgroups)
+  resolved <- maybe (fail "Couldn't find mount for cgroup") pure (resolveControllerMountPath controllerName cgroup mounts)
+
+  pure (Controller resolved)
 
 -- | Parse a file
-parseFile :: Parser a -> FilePath -> IO a
-parseFile parser file = either throwIO pure . parse parser file =<< TIO.readFile file
+parseFile :: Parser a -> Path b File -> IO a
+parseFile parser file = either throwIO pure . parse parser (toFilePath file) =<< TIO.readFile (toFilePath file)
 
 -- | Find a CGroup matching a controller name
 --
@@ -79,34 +80,42 @@ findMatchingCGroup controllerName = find (\group -> containsController group || 
     emptyControllers :: CGroup -> Bool
     emptyControllers = null . controlGroupControllers
 
--- | Find a Mount matching a controller name and cgroup
---
--- Per cgroups(7), the cgroup path is relative to the process filesystem root,
--- so it will match exactly with a mount root parsed from /proc/self/mountinfo
---
--- We're also looking for two cgroups-specific pieces of data in the mount:
--- - A filesystem type of "cgroup"
--- - The controller name within the "super options" or "mount source" for the mount.
---
--- The "super options" are more specific than the "mount source" within a
--- process. System-level cgroups will have controller types as "mount source",
--- and process-level cgroups put controller types in "super options"
-findMatchingMount :: Text -> CGroup -> [Mount] -> Maybe Mount
-findMatchingMount controllerName cgroup mounts =
-  find (\mount -> matchingMountRoot mount && matchingFilesystemType mount && matchingControllerSuperOptions mount) mounts
-    <|> find (\mount -> matchingMountRoot mount && matchingFilesystemType mount && matchingControllerMountSource mount) mounts
-  where
-    matchingMountRoot :: Mount -> Bool
-    matchingMountRoot = (== controlGroupPath cgroup) . mountRoot
+-- | Find a Mount matching a controller name and cgroup, returning the absolute
+-- resolved path of a controller
+resolveControllerMountPath :: Text -> CGroup -> [Mount] -> Maybe (Path Abs Dir)
+resolveControllerMountPath controllerName cgroup = firstMaybe (tryResolveMount controllerName cgroup)
 
-    matchingFilesystemType :: Mount -> Bool
-    matchingFilesystemType = (== "cgroup") . mountFilesystemType
+firstMaybe :: (a -> Maybe b) -> [a] -> Maybe b
+firstMaybe f = listToMaybe . mapMaybe f
 
-    matchingControllerSuperOptions :: Mount -> Bool
-    matchingControllerSuperOptions = (controllerName `elem`) . mountSuperOptions
-
-    matchingControllerMountSource :: Mount -> Bool
-    matchingControllerMountSource = (== controllerName) . mountSource
+-- | Attempt to match a cgroup controller to a mount, returning the absolute
+-- resolved path of the controller
+--
+-- Returns Nothing if the mount does not match the cgroup controller
+--
+-- A matching mount must have a filesystem type of "cgroup" and contain the
+-- controller name within its "super options".
+--
+-- Per cgroups(7), the cgroup path is relative to a mount root in the process's
+-- mount hierarchy. Notably, a mount root /is not the same as its mount point/.
+-- A mount point is the path at which the mount is visible to the process.
+--
+-- As such, we need to look for a mount whose mount root either..
+--
+-- - ..exactly matches our cgroup's path, in which case we directly return the
+--   mount's mount path; OR
+--
+-- - ..is a prefix of our cgroup's path, in which case we return the relative
+--   path from the mount root appended to the mount's mount path
+tryResolveMount :: Text -> CGroup -> Mount -> Maybe (Path Abs Dir)
+tryResolveMount controllerName cgroup mount = do
+  guard ("cgroup" == mountFilesystemType mount)
+  guard (controllerName `elem` mountSuperOptions mount)
+  if controlGroupPath cgroup == mountRoot mount
+    then Just (mountPoint mount)
+    else do
+      rel <- stripProperPrefix (mountRoot mount) (controlGroupPath cgroup)
+      Just (mountPoint mount </> rel)
 
 -----
 
@@ -115,7 +124,7 @@ findMatchingMount controllerName cgroup mounts =
 -- see cgroups(7): /proc/[pid]/cgroup section
 data CGroup = CGroup
   { controlGroupControllers :: [Text]
-  , controlGroupPath :: Text
+  , controlGroupPath :: Path Abs Dir
   }
   deriving (Show)
 
@@ -137,7 +146,7 @@ parseSingleCGroup =
   CGroup
     <$ takeUntil1P ':' -- ignore hierarchy ID number
     <*> (splitOnIgnoreEmpty "," <$> takeUntilP ':') -- comma-separated list of controllers
-    <*> takeUntil1P '\n' -- path
+    <*> (parseIntoAbsDir =<< takeUntil1P '\n') -- path
 
 -- return the prefix of the input until reaching the supplied character.
 -- the character is also consumed as part of this parser.
@@ -170,8 +179,8 @@ data Mount = Mount
   { mountId :: Text
   , mountParentId :: Text
   , mountStDev :: Text
-  , mountRoot :: Text
-  , mountPoint :: Text
+  , mountRoot :: Path Abs Dir
+  , mountPoint :: Path Abs Dir
   , mountOptions :: Text
   , mountTags :: [Text]
   , mountFilesystemType :: Text
@@ -195,8 +204,8 @@ parseSingleMount =
     <$> field -- id
     <*> field -- parent id
     <*> field -- st_dev
-    <*> field -- mount root
-    <*> field -- mount point
+    <*> (parseIntoAbsDir =<< field) -- mount root
+    <*> (parseIntoAbsDir =<< field) -- mount point
     <*> field -- mount options
     <*> field `manyTill` separator -- optional mount tags, terminated by "-"
     <*> field -- filesystem type
@@ -216,3 +225,6 @@ separator = lexeme $ char '-'
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme (skipMany (char ' '))
+
+parseIntoAbsDir :: Text -> Parser (Path Abs Dir)
+parseIntoAbsDir = either (fail . show) pure . parseAbsDir . toString

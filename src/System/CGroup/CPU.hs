@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module System.CGroup.CPU (
   -- * The CPU cgroup controller
   CPU,
@@ -9,8 +11,8 @@ module System.CGroup.CPU (
 ) where
 
 import Control.Monad ((<=<))
+import Path
 import System.CGroup.Types (Controller (..), resolveCGroupController)
-import System.FilePath ((</>))
 
 -- | The "cpu" cgroup controller
 data CPU
@@ -43,8 +45,8 @@ data CPUQuota
   deriving (Show)
 
 -- | Read a CGroup configuration value from its file
-readCGroupInt :: FilePath -> IO Int
-readCGroupInt = readIO <=< readFile
+readCGroupInt :: Path b File -> IO Int
+readCGroupInt = readIO <=< (readFile . toFilePath)
 
 -- | Get the process CPU quota
 getCPUQuota :: Controller CPU -> IO CPUQuota
@@ -57,9 +59,9 @@ getCPUQuota (Controller root) = do
 -- Path to the "cpu quota" file
 --
 -- When this file contains "-1", there is no quota set
-cpuQuotaPath :: FilePath
-cpuQuotaPath = "cpu.cfs_quota_us"
+cpuQuotaPath :: Path Rel File
+cpuQuotaPath = $(mkRelFile "cpu.cfs_quota_us")
 
 -- Path to the "cpu period" file
-cpuPeriodPath :: FilePath
-cpuPeriodPath = "cpu.cfs_period_us"
+cpuPeriodPath :: Path Rel File
+cpuPeriodPath = $(mkRelFile "cpu.cfs_period_us")
