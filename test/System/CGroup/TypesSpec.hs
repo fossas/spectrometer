@@ -45,6 +45,7 @@ spec = do
       controller <- resolveCGroupController' cgroup mountinfo "cpu"
       controller `shouldBe` Controller $(mkAbsDir "/sys/fs/cgroup/cpu")
 #else
+import Test.Hspec (Spec)
 
 -- Windows: do nothing
 spec :: Spec
