@@ -3,16 +3,21 @@
 module App.Fossa.SubCommand (
   runSubCommand,
   SubCommand (..),
+
+  -- Only exported here for prototyping
+  ConfigFile (..),
+  Envs (..),
 ) where
 
 import Control.Monad ((<=<))
-import Options.Applicative (Parser, command, info, subparser)
+import Options.Applicative (Parser, command, info, subparser, InfoMod)
 
 data ConfigFile = ConfigFile
 data Envs = Envs
 
 data SubCommand init prepared = SubCommand
   { commandName :: String
+  , commandInfo :: InfoMod init
   , parser :: Parser init
   , optMerge :: ConfigFile -> Envs -> init -> IO prepared
   , perform :: prepared -> IO ()
@@ -31,4 +36,4 @@ runSubCommand SubCommand{..} = mergeAndRun <$> subCommandParser
 
     -- We may want to also include sub-program descriptions instead of just 'mempty'
     subCommandParser :: Parser a
-    subCommandParser = subparser $ command commandName $ info parser mempty
+    subCommandParser = subparser $ command commandName $ info parser commandInfo

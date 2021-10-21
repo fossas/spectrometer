@@ -2,10 +2,10 @@ module App.Fossa.NewAnalyze (
   analyzeCommand,
 ) where
 
+import App.Fossa.SubCommand
 import Data.Flag
 import Data.Text (Text)
 import Options.Applicative
-import App.Fossa.SubCommand
 
 -- API key
 -- --output
@@ -14,22 +14,26 @@ import App.Fossa.SubCommand
 
 data NoUpload = NoUpload
 
-data AnalyzeConfig = AnalyzeConfig
+data AnalyzePreConfig = AnalyzePreConfig
   { analyzeBranch :: Maybe Text
   , outputMode :: Flag NoUpload
   }
   deriving (Show)
 
-analyzeCommand :: SubCommand AnalyzeConfig AnalyzeConfig
-analyzeCommand = SubCommand "analyze" analyzeParse analyzeMerge analyze
+newtype AnalyzeConfig = AnalyzeConfig AnalyzePreConfig deriving (Show)
 
-analyzeParse :: Parser AnalyzeConfig
-analyzeParse = AnalyzeConfig
-  <$> optional (strOption (long "branch" <> help "hfosicsaduibcesjbfew"))
-  <*> flagOpt NoUpload (long "output" <> help "-----------------555--------------")
+analyzeCommand :: SubCommand AnalyzePreConfig AnalyzeConfig
+analyzeCommand = SubCommand "analyze" mempty analyzeParse analyzeMerge analyze
 
-analyzeMerge :: Applicative f => p1 -> p2 -> a -> f a
-analyzeMerge _ _ = pure
+analyzeParse :: Parser AnalyzePreConfig
+analyzeParse = AnalyzePreConfig
+    <$> optional (strOption (long "branch" <> help "hfosicsaduibcesjbfew"))
+    <*> flagOpt NoUpload (long "output" <> help "-----------------555--------------")
+
+-- We can do things like setting up scan destination, validating basedir,
+-- checking VCS values like branch and revision, etc.
+analyzeMerge :: ConfigFile -> Envs -> AnalyzePreConfig -> IO AnalyzeConfig
+analyzeMerge _ _ a = putStrLn "run pre-analyze" >> pure (AnalyzeConfig a)
 
 analyze :: AnalyzeConfig -> IO ()
 analyze = print
