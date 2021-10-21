@@ -9,18 +9,27 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v2
+
       - name: install script performs installation
         shell: bash
         run: |
           ./install.sh -b .
           ./fossa --version
           rm fossa
+
+      - name: install latest script performs installation
+        shell: bash
+        run: |
+          ./install-latest.sh -b .
+          ./fossa --version
+          rm fossa
+
       - name: install-v1 script does not install v2 or greater version
         shell: bash
         run: |
           ./install-v1.sh -b .
           ./fossa --version | cut -d " " -f 3 | head -c 1 | grep -q '1' || exit 1
-          rm fossa
+      
 
   test-windows:
     runs-on: 'windows-latest'
@@ -33,14 +42,50 @@ jobs:
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
           .\install.ps1
 
+          # Remove fossa.exe
+          Remove-Item -Path (Get-Command "fossa.exe").Path
+          
+
+      - name: install latest script performs installation
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
+          .\install-latest.ps1
+          
+          $cliVersionCmdOutput = cmd /c 'C:\ProgramData\fossa-cli\fossa.exe' '--version'
+          $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
+          $cliVersionMajor = $cliVersion.Split(".")[0]
+
+          if ($cliVersionMajor -eq "1") {
+            Write-Output "Got: $cliVersionMajor instead!"
+            exit 1
+          }
+
+          # Remove fossa.exe
+          Remove-Item -Path (Get-Command "fossa.exe").Path
+
+      - name: scoop installs latest version
+        shell: pwsh
+        run: |
+          # Get Scoop
+          iwr -useb get.scoop.sh | iex
+
+          # Use Scoop to install fossa
+          # Reference: https://github.com/ScoopInstaller/Main/pull/2778/files
+          scoop install fossa
+
+          fossa.exe --version
+
       - name: install-v1 script does not install v2 or greater version
         shell: pwsh
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
           .\install-v1.ps1
+
           $cliVersionCmdOutput = cmd /c 'C:\ProgramData\fossa-cli\fossa.exe' '--version'
-          Write-Output $cliVersionCmdOutput
-          $cliVersionMajor = $cliVersionCmdOutput.Split(" ")[2][0]
+          $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
+          $cliVersionMajor = $cliVersion.Split(".")[0]
+
           if (-Not $cliVersionMajor -eq "1") {
             Write-Output "Got: $cliVersionMajor instead!"
             exit 1
