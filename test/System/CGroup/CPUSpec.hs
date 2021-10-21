@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module System.CGroup.CPUSpec (
   spec,
 ) where
