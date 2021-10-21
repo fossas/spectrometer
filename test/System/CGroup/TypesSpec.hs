@@ -1,9 +1,12 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module System.CGroup.TypesSpec (
   spec,
 ) where
 
+-- This test won't work on Windows (mingw32), because paths starting with `/` are invalid
+#ifndef mingw32_HOST_OS
 import Path
 import Path.IO (getCurrentDir, resolveFile)
 import System.CGroup.Types
@@ -41,3 +44,9 @@ spec = do
 
       controller <- resolveCGroupController' cgroup mountinfo "cpu"
       controller `shouldBe` Controller $(mkAbsDir "/sys/fs/cgroup/cpu")
+#else
+
+-- Windows: do nothing
+spec :: Spec
+spec = pure ()
+#endif
