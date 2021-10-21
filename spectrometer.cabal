@@ -33,6 +33,7 @@ common lang
     GADTSyntax
     GeneralizedNewtypeDeriving
     HexFloatLiterals
+    ImportQualifiedPost
     InstanceSigs
     KindSignatures
     LambdaCase
@@ -46,13 +47,12 @@ common lang
     RankNTypes
     ScopedTypeVariables
     StandaloneDeriving
+    StandaloneKindSignatures
     StrictData
     TupleSections
     TypeApplications
     TypeOperators
     TypeSynonymInstances
-    ImportQualifiedPost
-    StandaloneKindSignatures
 
   ghc-options:
     -Wall -Wincomplete-uni-patterns -Wcompat
@@ -131,8 +131,6 @@ library
   exposed-modules:
     Algebra.Graph.AdjacencyMap.Extra
     App.Docs
-    App.Fossa.API.BuildLink
-    App.Fossa.API.BuildWait
     App.Fossa.Analyze
     App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Graph
@@ -141,6 +139,8 @@ library
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
     App.Fossa.Analyze.Types
+    App.Fossa.API.BuildLink
+    App.Fossa.API.BuildWait
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
@@ -155,9 +155,13 @@ library
     App.Fossa.Main
     App.Fossa.ManualDeps
     App.Fossa.Monorepo
+    App.Fossa.NewAnalyze
+    App.Fossa.NewMain
+    App.Fossa.NewTest
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
+    App.Fossa.SubCommand
     App.Fossa.Test
     App.Fossa.VPS.AOSPNotice
     App.Fossa.VPS.NinjaGraph
@@ -296,16 +300,16 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
-    Strategy.RPM
     Strategy.Rebar3
+    Strategy.RPM
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
-    Strategy.SwiftPM
     Strategy.Swift.PackageResolved
     Strategy.Swift.PackageSwift
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
+    Strategy.SwiftPM
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock
     Strategy.Yarn.V2.Lockfile
@@ -359,8 +363,8 @@ test-suite unit-tests
     Control.Carrier.DiagnosticsSpec
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
-    Discovery.ArchiveSpec
     Dart.PubSpecSpec
+    Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec
@@ -376,8 +380,8 @@ test-suite unit-tests
     Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
-    GraphUtil
     GraphingSpec
+    GraphUtil
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.DepTreeSpec
@@ -404,8 +408,8 @@ test-suite unit-tests
     Ruby.GemfileLockSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
-    Swift.Xcode.PbxprojSpec
     Swift.Xcode.PbxprojParserSpec
+    Swift.Xcode.PbxprojSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec
