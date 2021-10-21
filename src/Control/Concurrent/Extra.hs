@@ -2,7 +2,8 @@ module Control.Concurrent.Extra (
   initCapabilities,
 ) where
 
-import Control.Exception (IOException, catch)
+import Control.Exception (SomeException)
+import Control.Exception.Extra (safeCatch)
 import GHC.Conc (getNumProcessors, setNumCapabilities)
 import System.CGroup
 
@@ -16,7 +17,7 @@ import System.CGroup
 initCapabilities :: IO ()
 initCapabilities =
   initCapabilitiesFromCGroup
-    `catch` (\(_ :: IOException) -> defaultInitCapabilities)
+    `safeCatch` (\(_ :: SomeException) -> defaultInitCapabilities)
 
 initCapabilitiesFromCGroup :: IO ()
 initCapabilitiesFromCGroup = do
