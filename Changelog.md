@@ -1,8 +1,9 @@
 # Spectrometer Changelog
 
-## Unreleased
+## v2.17.3
 
-- Adds compatibility script for `fossa report attribution --json` ([#397](https://github.com/fossas/spectrometer/pull/397))
+ - Monorepo: adds some optimizations to reduce the amount of file buffering in memory during a scan, resulting in less memory pressure and faster scans. ([#402](https://github.com/fossas/spectrometer/pull/402))
+ - Adds compatibility script for `fossa report attribution --json` ([#397](https://github.com/fossas/spectrometer/pull/397))
 
 ## v2.17.2
 
