@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module System.CGroup.Types (
   -- * CGroup Controllers
   Controller (..),
@@ -40,16 +38,19 @@ newtype Controller a = Controller {unController :: Path Abs Dir}
   deriving (Eq, Ord, Show)
 
 -- | Resolve a CGroup controller's filepath, as viewed by the current process
+--
+-- see cgroups(7): /proc/self/cgroup is a file that contains information about
+-- control groups applied to this process
+--
+-- see proc(5): /proc/self/mountinfo is a file that contains information about
+-- mounts available to this process
+--
+-- Because these aren't valid paths on Windows, we have to parse them into @Path Abs File@ at runtime
 resolveCGroupController :: Text -> IO (Controller a)
-resolveCGroupController = resolveCGroupController' procCGroupPath procMountinfoPath
-
--- | see cgroups(7): filepath to a file that contains information about control groups applied to this process
-procCGroupPath :: Path Abs File
-procCGroupPath = $(mkAbsFile "/proc/self/cgroup")
-
--- | see proc(5): filepath to a file that contains information about mounts available to this process
-procMountinfoPath :: Path Abs File
-procMountinfoPath = $(mkAbsFile "/proc/self/mountinfo")
+resolveCGroupController controller = do
+  cgroupPath <- parseAbsFile "/proc/self/cgroup"
+  mountinfoPath <- parseAbsFile "/proc/self/mountinfo"
+  resolveCGroupController' cgroupPath mountinfoPath controller
 
 -- | Resolve a CGroup controller's filepath, under the given cgroup and mountinfo paths
 resolveCGroupController' :: Path Abs File -> Path Abs File -> Text -> IO (Controller a)
