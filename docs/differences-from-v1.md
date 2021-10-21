@@ -124,11 +124,11 @@ Following CLI commands are not supported with 2.x:
 - 2.x uses a new plugin-based strategy to perform discovery and analysis, it analyses all resolvable Gradle configurations. 
 - 2.x does not accept any options: `cmd`, `task`, `timeout`, `all-configurations`, `configuration`, `retries`, `online`, `all-submodules`, and any other option supported in 1.x for Gradle analysis.
 - In 2.x, 
- - There is no timeout (analysis may run for a long time)
- - All resolvable configurations are analyzed
- - There are no retries (CLI will attempt to analyze the project once)
- - Specific command and Gradle tasks can not be used in the analysis
- - `$FOSSA_GRADLE_COMMAND` environment variable cannot be configured. 2.x uses Gradle executable in `$PATH`.
+   - There is no timeout (analysis may run for a long time)
+   - All resolvable configurations are analyzed
+   - There are no retries (CLI will attempt to analyze the project once)
+   - Specific command and Gradle tasks can not be used in the analysis
+   - `$FOSSA_GRADLE_COMMAND` environment variable cannot be configured. 2.x uses Gradle executable in `$PATH`.
 - Refer to [FOSSA 2.x gradle docs](strategies/gradle.md) for more information for gradle.
 
 #### Clojure 
@@ -142,8 +142,8 @@ Following CLI commands are not supported with 2.x:
 - Refer to [FOSSA 2.x golang docs](strategies/golang.md) for more information on how 2.x performs analysis for golang.
 
 #### Haskell 
--2.x will apply stack strategy when a project is discovered having stack.yaml file
--2.x will apply cabal-install strategy for projects using cabal.project or file with .cabal extension
+- 2.x will apply stack strategy when a project is discovered having stack.yaml file
+- 2.x will apply cabal-install strategy for projects using cabal.project or file with .cabal extension
 - 2.x does not support `strategy` option for Haskell analysis
 - Refer to [FOSSA 2.x haskell docs](strategies/haskell.md) for more information on how 2.x performs analysis for haskell.
 
