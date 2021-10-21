@@ -253,8 +253,8 @@ library
     Strategy.Elixir.MixTree
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
-    Strategy.Fpm
     Strategy.Fortran.FpmToml
+    Strategy.Fpm
     Strategy.Glide
     Strategy.Go.GlideLock
     Strategy.Go.GoList
@@ -373,8 +373,8 @@ test-suite unit-tests
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
     Extra.TextSpec
-    Fossa.API.TypesSpec
     Fortran.FpmTomlSpec
+    Fossa.API.TypesSpec
     Go.GlideLockSpec
     Go.GoListSpec
     Go.GomodSpec
@@ -413,6 +413,7 @@ test-suite unit-tests
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec
     Swift.Xcode.PbxprojSpec
+    System.CGroup.TypesSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec

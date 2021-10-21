@@ -4,6 +4,7 @@ module System.CGroup.Types (
   -- * CGroup Controllers
   Controller (..),
   resolveCGroupController,
+  resolveCGroupController',
 
   -- * CGroups
   CGroup (..),
@@ -36,7 +37,7 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 -- | A CGroup controller path for a specific subsystem
 newtype Controller a = Controller {unController :: Path Abs Dir}
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 -- | Resolve a CGroup controller's filepath, as viewed by the current process
 resolveCGroupController :: Text -> IO (Controller a)
