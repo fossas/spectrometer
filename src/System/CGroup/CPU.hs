@@ -42,7 +42,7 @@ data CPUQuota
   = NoQuota
   | -- | cpu.cfs_quota_us, cpu.cfs_period_us
     CPUQuota Int Int
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 -- | Read a CGroup configuration value from its file
 readCGroupInt :: Path b File -> IO Int

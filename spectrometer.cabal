@@ -413,6 +413,7 @@ test-suite unit-tests
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec
     Swift.Xcode.PbxprojSpec
+    System.CGroup.CPUSpec
     System.CGroup.TypesSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
