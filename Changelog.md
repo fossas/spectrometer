@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.17.3
+
+ - Monorepo: Optimization during Scan to avoid passing the whole file content through the code. ([#402](https://github.com/fossas/spectrometer/pull/402))
+
 ## v2.17.2
 
 - Fortran: Supports fortran package manager. ([#377](https://github.com/fossas/spectrometer/pull/377))
