@@ -11,9 +11,9 @@ There are several different methods of .NET analysis, that use both the `NuGet` 
 | [project.assets.json][projectassetsjson] | ✅          | ✅        | ✅    |
 | [project.json][projectjson]              | ✅          | ❌        | ❌    |
 
-[nuspec]: dotnet/nuspec.md
-[packagereference]: dotnet/packagereference.md
-[packagesconfig]: dotnet/packagesconfig.md
-[paket]: dotnet/paket.md
-[projectassetsjson]: dotnet/projectassetsjson.md
-[projectjson]: dotnet/projectjson.md
+[nuspec](nuspec.md)
+[packagereference](packagereference.md)
+[packagesconfig](packagesconfig.md)
+[paket](paket.md)
+[projectassetsjson](projectassetsjson.md)
+[projectjson](projectjson.md)

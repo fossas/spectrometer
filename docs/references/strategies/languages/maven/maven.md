@@ -7,8 +7,8 @@ For maven projects, we offer a more-accurate strategy (mavenplugin), and a strat
 | [mavenplugin][mavenplugin] | ✅          | ✅        | ✅    |
 | [pomxml][pomxml]           | ✅          | ❌        | ❌    |
 
-[mavenplugin]: maven/mavenplugin.md
-[pomxml]: maven/pomxml.md
+[mavenplugin](mavenplugin.md)
+[pomxml](pomxml.md)
 
 <!--
 

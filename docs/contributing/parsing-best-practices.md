@@ -1,6 +1,6 @@
 # Writing good parsers
 
-[Back to development doc homepage](index.md)
+[Back to development doc homepage](README.md)
 
 We use `megaparsec` for text parsing.  There are [several][tut1] [good][tut2] [tutorials][tut3] out there, and those are just the top 3
 [google results](https://www.google.com/search?q=megaparsec+tutorial).  *Note: FOSSA employees can also talk to the analysis team directly, we can walk you through this.*

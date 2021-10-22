@@ -4,12 +4,12 @@ This is a collection of development-related docs for working on the spectrometer
 
 ## Building and Running the project
 
-The [HACKING](../../HACKING.md) doc describes our current dev tools and build practices, as well
+The [HACKING](HACKING.md) doc describes our current dev tools and build practices, as well
 as providing som info about our CI setup.
 
 ## Style Guide
 
-Our [Style Guide](../STYLE-GUIDE.md) las out stylistic and idiomatic standards for all contributions.
+Our [Style Guide](STYLE-GUIDE.md) las out stylistic and idiomatic standards for all contributions.
 We are in the process of fully aligning to that guide, but any new contributions should follow the style guide.
 
 ## Parsing and best practices

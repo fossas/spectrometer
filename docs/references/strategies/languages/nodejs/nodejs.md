@@ -9,6 +9,6 @@ The nodejs buildtool ecosystem consists of two major toolchains: the `npm` cli a
 | [npmlist][npm] (npmcli)    | ✅                       | ✅        | ✅    |
 | [packagejson][packagejson] | ✅                       | ❌        | ❌    |
 
-[yarn]: nodejs/yarn.md
-[npm]: nodejs/npmcli.md
-[packagejson]: nodejs/packagejson.md
+[yarn](yarn.md)
+[npm](npmcli.md)
+[packagejson](packagejson.md)

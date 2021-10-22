@@ -1,6 +1,6 @@
 # Hacking
 
-[Back to development doc homepage](devdocs/index.md)
+[Back to development doc homepage](README.md)
 
 ## Quickstart
 

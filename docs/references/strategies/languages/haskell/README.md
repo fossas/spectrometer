@@ -7,5 +7,5 @@ The haskell buildtool ecosystem consists of two major toolchains: the `cabal`-th
 | [cabal][cabal] | ✅ | ✅ | ✅ |
 | [stack][stack] | ✅ | ✅ | ✅ |
 
-[cabal]: haskell/cabal.md
-[stack]: haskell/stack.md
+[cabal](cabal.md)
+[stack](stack.md)

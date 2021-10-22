@@ -78,11 +78,11 @@ Note: Only a few pins are shown above for brevity.
 
 When the analysis is performed (e.g. `fossa analyze -o`), we will identify the following as direct dependencies:
 
-- https://github.com/grpc/grpc-swift.git@1.3.0
+- https://github.com/grpc/grpc-swift.git with version 1.3.0
 
 If `Package.resolved` is discovered, the following deep dependencies will be identified, however, we will not identify the edges in the dependency graph:
 
-- https://github.com/apple/swift-log.git@1.4.2
+- https://github.com/apple/swift-log.git with version 1.4.2
 
 If `Package.resolved` is not discovered, only direct dependencies will be reported. 
 
@@ -152,7 +152,7 @@ vendored-dependencies:
 ```
 
 Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
-Refer to [User guide](../../userguide.md) for more details. 
+Refer to [vendored dependencies](../../../../features/vendored-dependencies.md) for more details. 
 
 ### When performing `fossa list-targets`, Xcode project using swift packages are not getting discovered.
 

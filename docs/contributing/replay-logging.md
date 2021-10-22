@@ -1,6 +1,6 @@
 # Replay Logging
 
-[Back to development doc homepage](index.md)
+[Back to development doc homepage](README.md)
 
 Replay Logging is a feature of `fossa analyze` that can aid in reproducing/resolving analysis issues.
 

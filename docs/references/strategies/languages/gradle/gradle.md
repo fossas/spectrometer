@@ -157,7 +157,7 @@ If you'd like to make a bug report about incorrect dependencies, make sure to in
 
 ### Debugging the "Gradle build plugin" tactic
 
-The Gradle build plugin is a Gradle [init script](https://docs.gradle.org/current/userguide/init_scripts.html) implemented [here](../../scripts/jsondeps.gradle).
+The Gradle build plugin is a Gradle [init script](https://docs.gradle.org/current/userguide/init_scripts.html) implemented [here](../../../../../scripts/jsondeps.gradle).
 
 If this tactic doesn't appear to be working (e.g. is giving you incorrect dependencies or is missing dependencies), you can run the init script directly using:
 
@@ -191,7 +191,7 @@ referenced-dependencies:
 
 Notice that the `name` field follows Maven conventions: `groupId:artifactId`.
 
-For more details, see the [manual dependencies](../userguide.md#manually-specifying-dependencies) documentation.
+For more details, see the [manual dependencies](../../../../features/manual-dependencies.md) documentation.
 
 ## Configurations For Development and Testing
 

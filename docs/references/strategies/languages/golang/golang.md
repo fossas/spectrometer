@@ -20,9 +20,9 @@ for Glide is also included, because it's still commonly used.
 | [gopkgtoml][godep] (dep)             | ✅          | 🔶        | 🔶    |
 | [glide][glide]                       | ✅          | ✅        | ❌    |
 
-[gomodules]: golang/gomodules.md
-[godep]: golang/godep.md
-[glide]: golang/glide.md
+[gomodules](gomodules.md)
+[godep](godep.md)
+[glide](glide.md)
 
 ## 🔶 Edges and deep dependencies
 

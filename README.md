@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/fossas/spectrometer/actions/workflows/build.yml/badge.svg)](https://github.com/fossas/spectrometer/actions/workflows/build.yml)
 [![Dependency scan](https://github.com/fossas/spectrometer/actions/workflows/dependency-scan.yml/badge.svg)](https://github.com/fossas/spectrometer/actions/workflows/dependency-scan.yml)
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Fspectrometer.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgithub.com%2Ffossas%2Fspectrometer?ref=badge_shield)
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Fspectrometer.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Fspectrometer?ref=badge_shield)
 
 Spectrometer is a zero-configuration polyglot dependency analysis tool. You can point Spectrometer at any codebase or build, and it will automatically detect dependencies being used by your project.
 
@@ -138,8 +138,8 @@ For most users, Spectrometer will work out-of-the-box without any configuration.
 Users who need more advanced customizations or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
 - [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
-- [Specifying vendored dependencies](./docs/walkthroughs/specifying-vendored-deps.md)
-- [Adding manual dependencies](./docs/walkthroughs/integrating-with-custom-tools.md)
+- [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
+- [Adding manual dependencies](docs/features/manual-dependencies.md)
 
 ## Reporting Issues
 

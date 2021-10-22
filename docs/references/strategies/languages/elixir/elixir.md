@@ -14,10 +14,10 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 
 1. Run `mix deps.tree --format plain --only prod` and generate output similar to:
 ```
-├─ one─1.0.0 (https://github.com/dep/one)
+├─ one─1.0.0 (github.com/dep/one)
 │  ├─ two─2.0.0 (hex package)
 │  │  └─ three─3.0.0 (hex package)
-│  └─ four─4.0.0 (https://github.com/dep/four)
+│  └─ four─4.0.0 (github.com/dep/four)
 └─ five─5.0.0 (hex package)
 ```
 2. Run `mix deps --all` and generate output similar to:
@@ -34,7 +34,7 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 * four 1.0.0 (Hex package) (mix)
   locked at 1.0.0 (four) 08eb32d6
   ok
-* four 4.0.0 (https://github.com/dep/four) (mix)
+* four 4.0.0 (github.com/dep/four) (mix)
   locked at 9554589
   ok
 * five 1.0.0 (Hex package) (mix)

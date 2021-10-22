@@ -1,6 +1,6 @@
 # Spectrometer style guide
 
-[Back to development doc homepage](devdocs/index.md)
+[Back to development doc homepage](README.md)
 
 Through a number of pull requests, reviews, and discussions, a codebase style
 has emerged.  This document is an attempt to capture that, and prevent further
@@ -68,7 +68,7 @@ parser is one of the areas where having less power makes a significant
 difference in reasoning about the code.  For this reason, we are willing to
 sacrifice some readability (in the form of operator-heavy functions).
 
-See our [best practices](devdocs/parsing-best-practices.md) doc for more info
+See our [best practices](parsing-best-practices.md) doc for more info
 on writing good parsers.
 
 ### Use leading commas for records, exports, and lists

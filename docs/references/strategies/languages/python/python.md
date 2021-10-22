@@ -17,8 +17,8 @@ The python buildtool ecosystem consists of three major toolchains: setuptools
 * :white_check_mark: - Supported only when relevant data is available (e.g. lockfiles are present)
 * :x: - Not Supported
 
-[pipenv]: python/pipenv.md
-[setuptools]: python/setuptools.md
-[piplist]: python/piplist.md
-[conda]: python/conda.md
-[poetry]: python/poetry.md
+[pipenv](pipenv.md)
+[setuptools](setuptools.md)
+[piplist](piplist.md)
+[conda](conda.md)
+[poetry](poetry.md)

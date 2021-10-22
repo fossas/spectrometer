@@ -56,8 +56,8 @@ Reference guides provide an exhaustive listing of all CLI functionality. If you 
   - [`fossa test`](./references/subcommands/test.md)
   - [`fossa report`](./references/subcommands/report.md)
   - [`fossa list-targets`](./references/subcommands/list-targets.md)
-  <!-- TODO Write this README file-->
-  - [Common flags and options](./references/subcommands/README.md)
+  <!-- TODO Write this README file
+  - [Common flags and options](./references/subcommands/README.md) -->
 - CLI configuration files
   - [`.fossa.yml`](./references/files/fossa-yml.md)
   - [`fossa-deps.{yml,json}`](./references/files/fossa-deps.md)

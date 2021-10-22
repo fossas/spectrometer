@@ -8,5 +8,5 @@ The iOS buildtool ecosystem consists of two major toolchains: `Carthage` and `Co
 | [Podfile.lock][coco] | ✅ | ✅ | ✅ |
 | [Podfile][coco] | ✅ | ❌ | ❌ |
 
-[cart]: ios/carthage.md
-[coco]: ios/cocoapods.md
+[cart](carthage.md)
+[coco](cocoapods.md)
