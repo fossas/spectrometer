@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.18.1
+
+- Special cases scans with a single VSI only filter to skip other analysis strategies ([$407](https://github.com/fossas/spectrometer/pull/407))
+
 ## v2.18.0
 
 - When applicable, fossa-cli uses the cgroup CPU quota (under cfs) to determine the number of runtime threads to use. This dramatically improves runtime speed when we're running within a cpu-limited container on a large machine with many physical processors.
