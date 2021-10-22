@@ -316,11 +316,6 @@ library
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
-    Strategy.Yarn
-    Strategy.Yarn.V1.YarnLock
-    Strategy.Yarn.V2.Lockfile
-    Strategy.Yarn.V2.Resolvers
-    Strategy.Yarn.V2.YarnLock
     System.CGroup
     System.CGroup.CPU
     System.CGroup.Types
