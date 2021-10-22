@@ -175,7 +175,7 @@ Providing this output with a bug report will help us debug issues with the analy
 
 ## Manually specifying Gradle dependencies
 
-If the CLI doesn't natively integrate with your build tool (e.g. if you have a homegrown tool), and your build tool uses Gradle dependencies, you can still manually add Gradle dependencies to an uploaded build. This feature is generally known as [manual dependencies](../userguide.md#manually-specifying-dependencies).
+If the CLI doesn't natively integrate with your build tool (e.g. if you have a homegrown tool), and your build tool uses Gradle dependencies, you can still manually add Gradle dependencies to an uploaded build. This feature is generally known as [manual dependencies](../../../../features/manual-dependencies.md)
 
 Gradle in particular actually uploads _Maven_ dependencies, since most Gradle builds use Gradle's Maven interoperability to get dependencies from Maven repositories.
 
