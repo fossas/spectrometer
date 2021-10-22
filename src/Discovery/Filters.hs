@@ -31,8 +31,7 @@ import Text.Megaparsec (
 import Text.Megaparsec.Char (alphaNumChar, char)
 import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
 
--- | filterIsVSIOnly is a very naive check for whether the user provided a filter for the VSI target *only*, at the root of the project or with no path specified.
--- Does not detect cases like "user excluded everything but VSI" or "user excluded VSI at the non-root of the project".
+-- | filterIsVSIOnly is a very naive check for whether the user provided a filter for the VSI target *only*, at the root of the project with no path specified.
 -- This decision was made because predicating VSI only scans is a stopgap until we have more broad support for *preemptive* analysis filtering.
 -- VSI supports very large scans that the rest of our analysis may not.
 filterIsVSIOnly :: AllFilters -> Bool
@@ -41,7 +40,6 @@ filterIsVSIOnly AllFilters{..} = do
   where
     matches f = case f of
       TypeTarget name -> name == "vsi"
-      TypeDirTarget name path -> name == "vsi" && (toText path) == "."
       _ -> False
 
 data AllFilters = AllFilters
