@@ -88,7 +88,7 @@ Follow [the installation instructions](#installation) above to install Spectrome
 
 #### Generating an API key
 
-To get started with integrating your project into FOSSA, you'll need to [generate an API key](TODO). You'll get this API key from the FOSSA web application ([app.fossa.com](https://app.fossa.com)). You can follow the instructions [here](TODO) to generate your API key.
+To get started with integrating your project into FOSSA, you'll need to [generate an API key](TODO). You'll get this API key from the FOSSA web application ([app.fossa.com](https://app.fossa.com)). You can follow the instructions [here](https://docs.fossa.com/docs/api-reference) to generate your API key.
 
 Once you have your API key:
 
