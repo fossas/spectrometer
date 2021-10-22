@@ -36,7 +36,7 @@ import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTarget
 -- VSI supports very large scans that the rest of our analysis may not.
 filterIsVSIOnly :: AllFilters -> Bool
 filterIsVSIOnly AllFilters{..} = do
-  any matches legacyFilters || any matches (combinedTargets includeFilters)
+  any matches (combinedTargets includeFilters)
   where
     matches f = case f of
       TypeTarget name -> name == "vsi"
