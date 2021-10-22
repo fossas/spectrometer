@@ -9,7 +9,6 @@ Upgrading from FOSSA CLI 1.x to 2.x is a major breaking change. For most users, 
     - [New Build Manager Supports](#new-build-manager-supports)
     - [Automatic analysis target discovery](#automatic-analysis-target-discovery)
     - [New fossa-deps configuration support](#new-fossa-deps-configuration-support)
-    - [Automatic analysis target strategy selection](#automatic-analysis-target-strategy-selection)
     - [Improved correctness](#improved-correctness)
     - [Improved debug logging](#improved-debug-logging)
     - ["Modules" are now "analysis targets"](#modules-are-now-analysis-targets)
@@ -39,7 +38,7 @@ Upgrading from FOSSA CLI 1.x to 2.x is a major breaking change. For most users, 
     - [Migrate "fossa report" commands](#migrate-fossa-report-commands)
   - [Frequently Asked Questions](#frequently-asked-questions)
       - [Until when CLI v1 will be supported by FOSSA?](#until-when-cli-v1-will-be-supported-by-fossa)
-      - [I'm getting a poor result with CLI v2 compared to CLI v1.](#im-getting-a-poor-result-with-cli-v2-compared-to-cli-v1)
+      - [I'm getting a poor result with latest version compared 1.x.](#im-getting-a-poor-result-with-latest-version-compared-1x)
       - [How do I run only a specific analyzer for my project?](#how-do-i-run-only-a-specific-analyzer-for-my-project)
     - [How do I identify which version of CLI I have installed?](#how-do-i-identify-which-version-of-cli-i-have-installed)
       - [I'm running into an error - how do I debug?](#im-running-into-an-error---how-do-i-debug)
@@ -62,22 +61,22 @@ FOSSA 2.x supports following new build managers and languages:
 
 FOSSA CLI 2.x now does automatic analysis target discovery when you run `fossa analyze`. This means that `fossa init` is no longer required. `fossa init` is now a no-op that emits a warning, and will be removed in a future release.
 
+In 1.x, modules could be manually configured with "strategies" that specified _how_ a module should be analyzed. While `fossa init` attempted to choose the best strategy, manual intervention was sometimes required depending on the project's setup. 
+
+In 2.x, the CLI now automatically selects the optimal strategy for analysis targets given the current environment (e.g. whether a build tool is available). This is possible because discovery and analysis are now one step, so we can check the suitability of analysis strategies while discovering targets.
+
 ### New fossa-deps configuration support
 
-With .fossa-deps.yml file, 2.x supports:
+With [`.fossa-deps.{yml,json}` file](userguide.md#manually-specifying-dependencies), 2.x supports:
 
 - License scanning vendor dependencies 
-- Manually specifying dependency for analysis by its source code archive web address (e.g. https://my-deps-source/v1.zip)
-- Manually specifying dependency for analysis by it's name and license (e.g. my-custom-dep with MIT licence)
+- Analyzing archives that are located at a specific web address (e.g. https://my-deps-source/v1.zip)
+- Manually specifying dependency by it's name and license (e.g. my-custom-dep with MIT licence)
 - Manually specifying dependency for analysis by its name and dependency type (e.g. pip dependency: request)
 
 This is very useful when working with a package manager that is not supported, or when you have a custom and nonstandard dependency management solution. The FOSSA CLI will automatically read a fossa-deps.yml or a fossa-deps.json file in the root directory (usually the current working directory) when fossa analyze is run and parse dependencies from it. These dependencies will be added to the dependencies that are normally found when fossa analysis is run in the directory.
 
 Please refer to [fossa-deps](userguide.md#manually-specifying-dependencies) documentation for more details.
-
-### Automatic analysis target strategy selection
-
-In 1.x, modules could be manually configured with "strategies" that specified _how_ a module should be analyzed. While `fossa init` attempted to choose the best strategy, manual intervention was sometimes required depending on the project's setup. In 2.x, the CLI now automatically selects the optimal strategy for analysis targets given the current environment (e.g. whether a build tool is available). This is possible because discovery and analysis are now one step, so we can check the suitability of analysis strategies while discovering targets.
 
 ### Improved correctness
 
@@ -97,12 +96,13 @@ In 1.x, the CLI was configured by "modules", which were entrypoints to user prog
 FOSSA 2.x does not support following build managers:
 
 - Bazel
-- RPM
 - Debian
 - Ant
 - Bower
 - Okbuck
 - Buck
+
+For these managers, you can write a custom integration by creating `.fossa-deps.{yml,json}` file which is more representative of your project's dependencies usage.
 
 ### CLI commands
 
@@ -114,8 +114,8 @@ Following CLI commands are not supported with 2.x:
 - `fossa analyze --options`
 - `fossa test --config`
 - `fossa test --suppress-issues`
-- `fossa upload` (this is supplemented by .fossa-deps.yml file now, refer to "Migrate archive upload targets" section)
-- `fossa report licences`
+- `fossa upload` (this is supplemented by `.fossa-deps.{yml,json}` file now, refer to "Migrate archive upload targets" section)
+- `fossa report licences` (supplemented by `fossa report attribution --json`)
 - `fossa report dependencies`
 
 ### Language Specific Changes
@@ -197,7 +197,7 @@ Since analysis targets are now automatically discovered during analysis, `fossa 
 
 ### Migrate your .fossa.yml file
 
-We've made major breaking changes in the `.fossa.yml` file format for CLI 2.x to improve clarity. You'll need to migrate your 1.x `.fossa.yml` to the new 2.x format for their configurations to apply. `.fossa.yml` for 1.x will be ignored when running 2.x. We determine whether a configuration file is for 1.x by examining its `version` field. 
+We've made major breaking changes in the `.fossa.yml` file format for CLI 2.x to improve clarity. You'll need to migrate your 1.x `.fossa.yml` to the new 2.x format for their configurations to apply. `.fossa.yml` for 1.x will be ignored when running cli with version greater than 1.x. We determine whether a configuration file is compatible by examining its `version` field. 
 
 - .fossa.yml with version field value of `1` and `2` are for 1.x.
 - .fossa.yml with version field value of `3` are for 2.x.
@@ -228,11 +228,11 @@ For more information, including usage information, see [FOSSAv1 report compatibi
 
 #### Until when CLI v1 will be supported by FOSSA?
 
-FOSSA 1.x CLI is available and can be used indefinitely. 
+FOSSA 1.x CLI is available and can be used indefinitely. We intend to make 2.x the default target for our installation scripts (as previously described in our documentation) in July 2022. If you wish to continue using 1.x, please migrate to using `install-v1` scripts.
 
-FOSSA will only patch 1.x for security fixes. Any bug and patch development work will occur in 2.x moving forth. 
+FOSSA will only patch 1.x for security fixes. Any feature and patch development work will occur in 2.x moving forth. 
 
-#### I'm getting a poor result with CLI v2 compared to CLI v1.
+#### I'm getting a poor result with latest version compared 1.x.
 
 If you run into poor dependency results with 2.x, you can get support by opening a ticket in this repository.
 
