@@ -19,72 +19,81 @@
 
 ### clojure
 
-- [leiningen](quickreference/leiningen.md)
+- [leiningen](languages/clojure/leiningen.md)
 
 ### dart
 
-- [pub](quickreference/pub.md)
+- [pub](languages/dart/pub.md)
 
 ### erlang
 
-- [rebar3](quickreference/rebar3.md)
+- [rebar3](languages/erlang/erlang.md)
 
 ### elixir
 
-- [mix](quickreference/mix.md)
+- [mix](languages/elixir/mix.md)
+
+### fortran
+
+- [fortran](languages/fortran/fortran.md)
 
 ### golang
 
-- [gomodules (`go mod`)](quickreference/gomodules.md)
-- [dep](quickreference/godep.md)
-- [glide](quickreference/glide.md)
+- [gomodules (`go mod`)](languages/golang/gomodules.md)
+- [dep](languages/golang/godep.md)
+- [glide](languages/golang/glide.md)
 
 ### haskell
 
-- [cabal](quickreference/cabal.md)
-- [stack](quickreference/stack.md)
+- [cabal](languages/haskell/cabal.md)
+- [stack](languages/haskell/stack.md)
 
 ### java
 
-- [maven](quickreference/maven.md)
-- [gradle](strategies/gradle.md)
+- [maven](languages/maven/maven.md)
+- [gradle](languages/gradle/gradle.md)
 
 ### javascript/typescript
 
-- [yarn](quickreference/yarn.md)
-- [npm](quickreference/npm.md)
+- [yarn](languages/nodejs/yarn.md)
+- [npm](languages/nodejs/npm.md)
 
 ### .NET
 
-- [NuGet](quickreference/nuget.md)
-- [Paket](quickreference/paket.md)
+- [NuGet](languages/dotnet/nuget.md)
+- [Paket](languages/dotnet/paket.md)
 
 ### objective-c
 
-- [carthage](quickreference/carthage.md)
-- [cocoapods](quickreference/cocoapods.md)
+- [carthage](platforms/ios/carthage.md)
+- [cocoapods](platforms/ios/cocoapods.md)
+
+### php
+
+- [php](languages/php/composer.md)
 
 ### python
 
-- [conda](quickreference/conda.md)
-- [`requirements.txt`/`setup.py`](quickreference/setuptools.md)
-- [pipenv](quickreference/pipenv.md)
+- [conda](platforms/conda/conda.md)
+- [`requirements.txt`/`setup.py`](languages/python/python.md)
+- [pipenv](languages/python/pipenv.md)
 
 ### ruby
 
-- [bundler](quickreference/bundler.md)
+- [bundler](languages/ruby/bundler.md)
 
 ### rust
 
-- [cargo](quickreference/cargo.md)
+- [cargo](languages/rust/cargo.md)
 
 ### scala
 
-- [sbt](quickreference/sbt.md)
-- [gradle](quickreference/gradle.md)
-- [maven](quickreference/maven.md)
+- [sbt](languages/scala/sbt.md)
+- [gradle](languages/gradle/gradle.md)
+- [maven](languages/maven/maven.md)
 
 ### swift
 
-- [carthage](quickreference/carthage.md)
-- [cocoapods](quickreference/cocoapods.md)
+- [carthage](platforms/ios/carthage.md)
+- [cocoapods](platforms/ios/cocoapods.md)
+- [swiftPM](platforms/ios/swift.md)

@@ -35,6 +35,18 @@ fossa report attribtion --json
 *NOTE: Currently, text reports are not supported, and the report will be*
 *printed as JSON.  It is recommended to use the `--json` flag anyway, since*
 *the behavior of the command without the flag will change in the future.*
+### FOSSAv1 report compatibility
+
+FOSSA supports a compatibility script that converts FOSSAv2 attribution report output to the same format as that in FOSSAv1.
+
+This script will be supported until the end of April 2022 and is included in the release assets, under the name `compat-attribution`.
+
+To use this compatibility script:
+
+1. Download and extract `compat-attribution` for your platform to the same place as the `fossa` binary.
+2. Run `fossa report attribution --json`, piping its output to `compat-attribution`.
+   For example, `fossa report attribution --json | compat-attribution`
+3. Parse the resulting output as you would have from FOSSAv1.
 
 ## Common FOSSA Project Flags
 
