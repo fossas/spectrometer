@@ -6,8 +6,7 @@
 
 Spectrometer is a zero-configuration polyglot dependency analysis tool. You can point Spectrometer at any codebase or build, and it will automatically detect dependencies being used by your project.
 
-<!-- TODO: Flesh out X and Y. Ideally, link to reference documentation. -->
-Spectrometer currently supports automatic dependency analysis for X+ languages and Y+ build tools. It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make Spectrometer a single, universal tool for all kinds of dependency analysis.
+Spectrometer currently supports automatic dependency analysis for 15 languages and 27 build tools. It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make Spectrometer a single, universal tool for all kinds of dependency analysis.
 
 Spectrometer integrates deeply with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more. You can also use Spectrometer as a standalone dependency analysis tool, although some features (such as vendored dependency detection) may not work without a FOSSA integration.
 
@@ -55,7 +54,7 @@ You can install Spectrometer releases manually by downloading the latest release
 
 ### Integrating your project with FOSSA
 
-#### TL;DR, Linux, Mac, *nix-like
+#### TL;DR, Linux, Mac, \*nix-like
 
 ```sh
 # Download FOSSA.
@@ -132,26 +131,13 @@ Now that your analysis is complete, there are a couple things you might want to 
 
 - **Set up FOSSA in your CI.** You can also use your issue scan results as inputs to CI scripts. For GitHub repositories, you can use FOSSA's [native GitHub integration](TODO) to report a status check on your PRs. For other CI integrations, you can also [use `fossa test`](TODO) to get programmatic issue status in CI.
 
-### Using Spectrometer as a standalone tool
-
-You can also use Spectrometer as a standalone tool for dependency analysis. Note that some features (like vendored dependency identification) won't work without a full FOSSA account and integration, since they rely on backend services.
-
-You can get the output of `fossa` using the `--output` flag:
-
-```sh
-fossa analyze --output
-```
-
-Note that Spectrometer's `--output` format is **not considered stable**. While we will try our best to maintain backwards compatibility, this output format may change without warning between releases.
-
 ## User Manual
 
-For most users, Spectrometer should work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
+For most users, Spectrometer will work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
 
 Users who need more advanced customizations or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
 - [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
-- [Excluding developer tools from your dependencies](./docs/walkthroughs/excluding-test-dev-deps.md)
 - [Specifying vendored dependencies](./docs/walkthroughs/specifying-vendored-deps.md)
 - [Adding manual dependencies](./docs/walkthroughs/integrating-with-custom-tools.md)
 
@@ -159,7 +145,7 @@ Users who need more advanced customizations or features should see the [User Man
 
 If you've found a bug or need support, the best way to get support is to email [support@fossa.com](mailto:support@fossa.com).
 
-Make sure to include reproduction steps and any relevant project files (e.g. `pom.xml`s, `package.json`s, etc.).
+Make sure to include reproduction steps and any relevant project files (e.g. `pom.xml`s, `package.json`s, etc.). Including the output from `fossa analyze --debug` in the email as well as any relevant fossa files (`fossa-deps.json`, `.fossa.yml`) will help expedite a solution.
 
 We'll try to respond to issues opened in this repository on a best-effort basis, but we mostly provide support via our [`support@`](mailto:support@fossa.com) email.
 

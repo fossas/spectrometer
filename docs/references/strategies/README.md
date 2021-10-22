@@ -1,6 +1,6 @@
 # strategies
 
-add table here
+<!-- add table here
 
 - Analyzers
   - By language
@@ -13,9 +13,7 @@ add table here
   - System deps
   - Others
     - Docker
-
-
-
+-->
 
 ## Supported Languages
 

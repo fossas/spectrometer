@@ -1,8 +1,0 @@
-- What is a dependency?
-  - Dependency as compilation unit
-  - Dependency as license tuple
-  - Dependency as runtime component
-- Language package managers vs. System package managers
-
-
-- referenced vs. vendored deps
