@@ -88,7 +88,7 @@ Follow [the installation instructions](#installation) above to install Spectrome
 
 #### Generating an API key
 
-To get started with integrating your project into FOSSA, you'll need to [generate an API key](TODO). You'll get this API key from the FOSSA web application ([app.fossa.com](https://app.fossa.com)). You can follow the instructions [here](https://docs.fossa.com/docs/api-reference) to generate your API key.
+To get started with integrating your project into FOSSA, you'll need to [generate an API key](https://docs.fossa.com/docs/api-reference). You'll get this API key from the FOSSA web application ([app.fossa.com](https://app.fossa.com)).
 
 Once you have your API key:
 
@@ -127,9 +127,9 @@ Now that your analysis is complete, there are a couple things you might want to 
 
 - **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](./docs/walkthroughs/debugging-your-integration.md) can help you diagnose and debug your integration.
 
-- **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. If you want to try out different issue scanning configurations, you can [change your policy](TODO) or [run a manual issue scan](TODO). Once an issue scan is complete, you can also [generate a report](TODO) from the web application.
+- **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. Once an issue scan is complete, you can also [generate a report](https://docs.fossa.com/docs/running-a-scan) from the web application.
 
-- **Set up FOSSA in your CI.** You can also use your issue scan results as inputs to CI scripts. For GitHub repositories, you can use FOSSA's [native GitHub integration](TODO) to report a status check on your PRs. For other CI integrations, you can also [use `fossa test`](TODO) to get programmatic issue status in CI.
+- **Set up FOSSA in your CI.** You can also use your issue scan results as inputs to CI scripts. For GitHub repositories, you can use FOSSA's [native GitHub integration](https://docs.fossa.com/docs/automatic-updates#pull-request--commit-statuses-github-only) to report a status check on your PRs. For other CI integrations, you can also [use `fossa test`](docs/references/subcommands/test.md) to get programmatic issue status in CI.
 
 ## User Manual
 
