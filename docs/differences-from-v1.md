@@ -67,7 +67,7 @@ In 2.x, the CLI now automatically selects the optimal strategy for analysis targ
 
 ### New fossa-deps configuration support
 
-With [`.fossa-deps.{yml,json}` file](userguide.md#manually-specifying-dependencies), 2.x supports:
+With [`fossa-deps.{yml,json}` file](userguide.md#manually-specifying-dependencies), 2.x supports:
 
 - License scanning vendor dependencies 
 - Analyzing archives that are located at a specific web address (e.g. https://my-deps-source/v1.zip)
@@ -102,7 +102,7 @@ FOSSA 2.x does not support following build managers:
 - Okbuck
 - Buck
 
-For these managers, you can write a custom integration by creating `.fossa-deps.{yml,json}` file which is more representative of your project's dependencies usage.
+For these managers, you can write a custom integration by creating `fossa-deps.{yml,json}` file which is more representative of your project's dependencies usage.
 
 ### CLI commands
 
@@ -114,7 +114,7 @@ Following CLI commands are not supported with 2.x:
 - `fossa analyze --options`
 - `fossa test --config`
 - `fossa test --suppress-issues`
-- `fossa upload` (this is supplemented by `.fossa-deps.{yml,json}` file now, refer to "Migrate archive upload targets" section)
+- `fossa upload` (this is supplemented by `fossa-deps.{yml,json}` file now, refer to "Migrate archive upload targets" section)
 - `fossa report licences` (supplemented by `fossa report attribution --json`)
 - `fossa report dependencies`
 
