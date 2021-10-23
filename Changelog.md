@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.18.1
+- Monorepo: Send eror state to UI if the CLI crashes, so scans won't appear to hang forever.
+- Monorepo: Fix parsing nomos output bug where files contain newlines.
+
 ## v2.18.0
 
 - When applicable, fossa-cli uses the cgroup CPU quota (under cfs) to determine the number of runtime threads to use. This dramatically improves runtime speed when we're running within a cpu-limited container on a large machine with many physical processors.
