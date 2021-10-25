@@ -20,8 +20,8 @@ import Graphing qualified
 import Path (toFilePath)
 import Srclib.Types
 
-toSourceUnit :: ProjectResult -> SourceUnit
-toSourceUnit ProjectResult{..} =
+toSourceUnit :: Bool -> ProjectResult -> SourceUnit
+toSourceUnit leaveUnfiltered ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath
     , sourceUnitType = projectResultType
@@ -42,7 +42,12 @@ toSourceUnit ProjectResult{..} =
     renderedPath = toText (toFilePath projectResultPath)
 
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.shrink (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
+    filteredGraph = Graphing.shrink ff projectResultGraph
+      where
+        ff = 
+          if leaveUnfiltered
+            then isSupportedType
+            else (\d -> shouldPublishDep d && isSupportedType d)
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph
