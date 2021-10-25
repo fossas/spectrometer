@@ -5,7 +5,7 @@ approach to dependency management in python projects.
 
 ## Project Discovery
 
-`requirements.txt`: Find all files matching the glob: `*req*.txt`
+`requirements.txt`: Find all files matching the glob: `req*.txt`
 
 `setup.py`: Find all files named `setup.py`
 

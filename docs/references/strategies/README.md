@@ -1,4 +1,4 @@
-# strategies
+# Strategies
 
 <!-- add table here
 

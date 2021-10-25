@@ -1,6 +1,6 @@
 ### `fossa analyze`: Why wasn't my project found?
 
-If your project wasn't found, make sure you meet the requirements in the [relevant language/build-tool's quick reference](#supported-languages)
+If your project wasn't found, make sure you meet the requirements in the [relevant language/build-tool's quick reference](../references/strategies/README.md)
 
 If your project meets the requirements, it's very likely `fossa analyze` found your project, but dependency analysis failed. To show the failure reason, use the `--debug` flag:
 
