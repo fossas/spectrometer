@@ -4,7 +4,17 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain, IncludeAll (IncludeAll))
+import App.Fossa.Analyze (
+  BinaryDiscoveryMode (..),
+  IATAssertionMode (..),
+  IncludeAll (IncludeAll),
+  JsonOutput (..),
+  ModeOptions (ModeOptions),
+  ScanDestination (..),
+  UnpackArchives (..),
+  VSIAnalysisMode (..),
+  analyzeMain,
+ )
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -27,7 +37,11 @@ import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
 import App.Fossa.ListTargets (listTargetsMain)
-import App.Fossa.Monorepo
+import App.Fossa.Monorepo (
+  PathFilters,
+  monorepoMain,
+  toPathFilters,
+ )
 import App.Fossa.Report qualified as Report
 import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)

@@ -9,16 +9,38 @@ module Srclib.Converter (
 import Prelude
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import App.Fossa.Analyze.Project
+import App.Fossa.Analyze.Project (ProjectResult (..))
 import Control.Applicative ((<|>))
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import DepTypes
+import DepTypes (
+  DepEnvironment (EnvOther, EnvProduction),
+  DepType (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyName,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (..),
+ )
 import Graphing (Graphing)
 import Graphing qualified
 import Path (toFilePath)
-import Srclib.Types
+import Srclib.Types (
+  Locator (..),
+  SourceUnit (..),
+  SourceUnitBuild (
+    SourceUnitBuild,
+    buildArtifact,
+    buildDependencies,
+    buildImports,
+    buildSucceeded
+  ),
+  SourceUnitDependency (..),
+ )
 
 toSourceUnit :: Bool -> ProjectResult -> SourceUnit
 toSourceUnit leaveUnfiltered ProjectResult{..} =
@@ -44,7 +66,7 @@ toSourceUnit leaveUnfiltered ProjectResult{..} =
     filteredGraph :: Graphing Dependency
     filteredGraph = Graphing.shrink ff projectResultGraph
       where
-        ff = 
+        ff =
           if leaveUnfiltered
             then isSupportedType
             else (\d -> shouldPublishDep d && isSupportedType d)
