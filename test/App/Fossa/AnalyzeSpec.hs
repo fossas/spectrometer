@@ -6,7 +6,7 @@ import Control.Carrier.Diagnostics (DiagnosticsC)
 import Effect.Exec (ExecIOC)
 import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
-import Test.Hspec (Spec, describe, xit, shouldBe)
+import Test.Hspec (Spec, describe, shouldBe, xit)
 
 type SomeMonad = DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC IO))))
 
