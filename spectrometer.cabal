@@ -351,6 +351,7 @@ test-suite unit-tests
     AdjacencyMapSpec
     Android.UtilSpec
     App.DocsSpec
+    App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Configuration.ConfigurationSpec
