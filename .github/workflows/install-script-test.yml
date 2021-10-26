@@ -52,7 +52,7 @@ jobs:
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
           .\install-latest.ps1
           
-          $cliVersionCmdOutput = cmd /c 'C:\ProgramData\fossa-cli\fossa.exe' '--version'
+          $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
           $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
           $cliVersionMajor = $cliVersion.Split(".")[0]
 
