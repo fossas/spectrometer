@@ -46,10 +46,6 @@ else
     $extractDir = "$userExtractDir"
 }
 
-$headers = @{
-    'Accept' = 'application/json'
-}
-
 Write-Verbose "Looking up release ($releaseTag)..."
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
