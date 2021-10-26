@@ -12,6 +12,7 @@ type SomeMonad = DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC IO))))
 
 spec :: Spec
 spec =
+  -- this test only exists to prevent merging the commented out analyzers
   describe "Discovery function list" $
     xit "should be 32" $
       length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 32
