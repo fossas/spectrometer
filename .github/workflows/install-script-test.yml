@@ -41,7 +41,7 @@ jobs:
         run: |
           Write-Host $Env:GITHUB_REF
           $headers = @{
-            'Accept' = 'application/json',
+            'Accept' = 'application/json';
             'Cache-Control' = 'no-cache'
           }
           $release = Invoke-RestMethod -Uri "https://github.com/fossas/spectrometer/releases/latest" -Method Get -Headers $headers
