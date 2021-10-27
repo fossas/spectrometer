@@ -8,6 +8,7 @@ module Strategy.Node.Npm.PackageLock (
 ) where
 
 import Control.Effect.Diagnostics
+import Control.Monad (when)
 import Data.Aeson
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -25,7 +26,6 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Path
 import Strategy.Node.PackageJson (FlatDeps (directDeps), NodePackage (pkgName), Production)
-import Control.Monad (when)
 
 data NpmPackageJson = NpmPackageJson
   { packageName :: Text

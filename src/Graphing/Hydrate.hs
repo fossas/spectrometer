@@ -6,10 +6,10 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Graphing (Graphing)
 import Graphing qualified
-import Data.Set (Set)
 
 -- | Given some 'Graphing a' with an instance of @Hydrateable a b@, update the
 -- nodes such that all items (which are type @b@) of a node are copied down to
