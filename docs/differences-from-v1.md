@@ -70,6 +70,7 @@ In 2.x, the CLI now automatically selects the optimal strategy for analysis targ
 With [`fossa-deps.{yml,json}` file](features/manual-dependencies.md), 2.x supports:
 
 - License scanning vendor dependencies 
+<!-- markdown-link-check-disable-next-line -->
 - Analyzing archives that are located at a specific web address (e.g. https://my-deps-source/v1.zip)
 - Manually specifying dependency by it's name and license (e.g. my-custom-dep with MIT licence)
 - Manually specifying dependency for analysis by its name and dependency type (e.g. pip dependency: request)
@@ -129,7 +130,7 @@ Following CLI commands are not supported with 2.x:
    - There are no retries (CLI will attempt to analyze the project once)
    - Specific command and Gradle tasks can not be used in the analysis
    - `$FOSSA_GRADLE_COMMAND` environment variable cannot be configured. 2.x uses Gradle executable in `$PATH`.
-- Refer to [FOSSA 2.x gradle docs](strategies/gradle.md) for more information for gradle.
+- Refer to [FOSSA 2.x gradle docs](references/strategies/languages/gradle/gradle.md) for more information for gradle.
 
 #### Clojure 
 - 2.x performs the `lein deps :tree` strategy by default. 
