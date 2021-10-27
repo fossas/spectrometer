@@ -58,7 +58,8 @@ data DepEnvironment
   deriving (Eq, Ord, Show)
 
 hydrateDepEnvs :: Graphing Dependency -> Graphing Dependency
-hydrateDepEnvs = hydrate (Set.toList . dependencyEnvironments) insertEnvironment
+hydrateDepEnvs = hydrate dependencyEnvironments $ \envs dep ->
+  dep{dependencyEnvironments = envs}
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType

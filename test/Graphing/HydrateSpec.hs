@@ -14,7 +14,7 @@ data SimpleDep = SimpleDep
   deriving (Eq, Ord, Show)
 
 hydrateSimple :: Graphing.Graphing SimpleDep -> Graphing.Graphing SimpleDep
-hydrateSimple = hydrate (Set.toList . envs) (\env dep -> dep{envs = Set.insert env $ envs dep})
+hydrateSimple = hydrate (envs) (\envSet dep -> dep{envs = envSet})
 
 topProd :: SimpleDep
 topProd = SimpleDep "topProd" $ Set.singleton "prod"
