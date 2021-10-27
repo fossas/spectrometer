@@ -4,7 +4,7 @@ module App.Docs (
   fossaYmlDocUrl,
 ) where
 
-import App.Version (versionNumber, currentBranch)
+import App.Version (currentBranch, versionNumber)
 import Data.Text (Text)
 
 sourceCodeUrl :: Text
@@ -14,7 +14,7 @@ guidePathOf :: Text -> Text -> Text
 guidePathOf revision repoRelUrl = sourceCodeUrl <> "/blob/" <> revision <> repoRelUrl
 
 userGuideUrl :: Text
-userGuideUrl = guidePathOf (maybe currentBranch  ("v" <>) versionNumber) "/docs/README.md"
+userGuideUrl = guidePathOf (maybe currentBranch ("v" <>) versionNumber) "/docs/README.md"
 
 fossaYmlDocUrl :: Text
 fossaYmlDocUrl = guidePathOf (maybe currentBranch ("v" <>) versionNumber) "/docs/references/files/fossa-yml.md"
