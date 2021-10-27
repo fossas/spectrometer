@@ -58,7 +58,7 @@ import Path (Abs, File, Path, Rel)
 
 analyze :: (Has Diagnostics sig m) => [PackageJson] -> m (Graphing Dependency)
 analyze manifests = do
-  context "Building dependency graph" $ pure $ mconcat $ map buildGraph manifests
+  context "Building dependency graph" . pure $ foldMap buildGraph manifests
 
 type NodeGrapher = LabeledGrapher NodePackage NodePackageLabel
 

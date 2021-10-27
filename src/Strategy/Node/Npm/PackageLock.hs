@@ -25,6 +25,7 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Path
 import Strategy.Node.PackageJson (FlatDeps (directDeps), NodePackage (pkgName), Production)
+import Control.Monad (when)
 
 data NpmPackageJson = NpmPackageJson
   { packageName :: Text
@@ -58,8 +59,8 @@ instance FromJSON NpmDep where
       <*> obj .:? "dependencies" .!= mempty
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FlatDeps -> m (Graphing Dependency)
-analyze file flatdeps = do
-  packageJson <- readContentsJson @NpmPackageJson file
+analyze file flatdeps = context "Analyzing Npm Lockfile" $ do
+  packageJson <- context "Parsing package-lock.json" $ readContentsJson @NpmPackageJson file
   context "Building dependency graph" $ pure $ buildGraph packageJson $ Set.map pkgName $ unTag @Production $ directDeps flatdeps
 
 data NpmPackage = NpmPackage
@@ -93,9 +94,8 @@ buildGraph packageJson directSet = run . withLabeling toDependency $ do
       deep pkg
 
       -- Try marking non-recursively-discovered deps as direct
-      if not isRecursive && Set.member name directSet
-        then direct pkg
-        else pure ()
+      when (not isRecursive && Set.member name directSet) $
+        direct pkg
 
       label pkg $ NpmPackageEnv $ if depDev then EnvDevelopment else EnvProduction
 
