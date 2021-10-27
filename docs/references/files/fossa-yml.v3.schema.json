@@ -80,7 +80,7 @@
                 }
             }
         },
-        "target": {
+        "targetFilter": {
             "type": "object",
             "properties": {
                 "type": {
@@ -246,14 +246,14 @@
                     "type": "array",
                     "description": "The list of `only` targets that should be scanned.",
                     "items": {
-                        "$ref": "#/$defs/target"
+                        "$ref": "#/$defs/targetFilter"
                     }
                 },
                 "exclude": {
                     "type": "array",
                     "description": "The list of `exclude` targets which should be excluded from scanning. The targets listed in the exclude section will override the targets listed in the only sections.\n\nThis feature is used most effectively to remove specific targets from a directory.",
                     "items": {
-                        "$ref": "#/$defs/target"
+                        "$ref": "#/$defs/targetFilter"
                     }
                 }
             }
