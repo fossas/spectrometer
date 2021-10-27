@@ -29,6 +29,7 @@ import App.Fossa.Configuration (
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
   ConfigTargets (targetsExclude, targetsOnly),
+  defaultConfigFile,
   mergeFileCmdMetadata,
   readConfigFileIO,
  )
@@ -69,6 +70,7 @@ import App.Types (
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
 import Control.Concurrent.Extra (initCapabilities)
+import Control.Effect.Lift (sendIO)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
@@ -122,7 +124,8 @@ import Options.Applicative (
   value,
   (<**>),
  )
-import Path (Abs, Dir, File, Path, Rel, parseAbsDir, parseRelDir)
+import Path (Abs, Dir, File, Path, Rel, parseAbsDir, parseRelDir, (</>))
+import Path.IO (getCurrentDir)
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import System.Info qualified as SysInfo
@@ -150,6 +153,7 @@ mergeFileCmdConfig cmd file =
     , optProjectName = optProjectName cmd <|> (configProject file >>= configProjID)
     , optProjectRevision = optProjectRevision cmd <|> (configRevision file >>= configCommit)
     , optAPIKey = optAPIKey cmd <|> configApiKey file
+    , optConfig = optConfig cmd
     , optCommand = optCommand cmd
     }
 
@@ -157,7 +161,22 @@ appMain :: IO ()
 appMain = do
   initCapabilities
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
-  fileConfig <- readConfigFileIO
+
+  fileConfigPath <-
+    case (optConfig cmdConfig) of
+      Just userProvidedFile -> do sendIO $ validateFile userProvidedFile
+      Nothing ->
+        case optCommand cmdConfig of
+          AnalyzeCommand AnalyzeOptions{analyzeBaseDir} -> do
+            baseDir <- sendIO $ validateDir analyzeBaseDir
+            pure (unBaseDir baseDir </> defaultConfigFile)
+          TestCommand TestOptions{testBaseDir} -> do
+            baseDir <- sendIO $ validateDir testBaseDir
+            pure (unBaseDir baseDir </> defaultConfigFile)
+          _ -> do
+            cwd <- getCurrentDir
+            pure (cwd </> defaultConfigFile)
+  fileConfig <- readConfigFileIO fileConfigPath
 
   let CmdOptions{..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
 
@@ -343,6 +362,7 @@ opts =
     <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
+    <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
     <*> (commands <|> hiddenCommands)
     <**> infoOption (toString fullVersionDescription) (long "version" <> short 'V' <> help "show version text")
 
@@ -672,6 +692,7 @@ data CmdOptions = CmdOptions
   , optProjectName :: Maybe Text
   , optProjectRevision :: Maybe Text
   , optAPIKey :: Maybe Text
+  , optConfig :: Maybe FilePath
   , optCommand :: Command
   }
 
