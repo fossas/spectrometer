@@ -103,10 +103,10 @@ mkProject ::
   NodeProject ->
   m (DiscoveredProject NodeProject)
 mkProject project = do
-  let graph = case project of
-        Yarn _ g -> g
-        NPMLock _ g -> g
-        NPM g -> g
+  let (graph, typename) = case project of
+        Yarn _ g -> (g, "yarn")
+        NPMLock _ g -> (g, "npm")
+        NPM g -> (g, "npm")
   result <- errorBoundary $ fromEitherShow $ findWorkspaceRootManifest graph
   Manifest rootManifest <- case result of
     Left bundle -> do
@@ -116,7 +116,7 @@ mkProject project = do
       pure manifest
   pure $
     DiscoveredProject
-      { projectType = "nodejs"
+      { projectType = typename
       , projectPath = parent rootManifest
       , projectBuildTargets = ProjectWithoutTargets
       , projectData = project
