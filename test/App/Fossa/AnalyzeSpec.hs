@@ -6,7 +6,7 @@ import Control.Carrier.Diagnostics (DiagnosticsC)
 import Effect.Exec (ExecIOC)
 import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
-import Test.Hspec (Spec, describe, shouldBe, xit)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 type SomeMonad = DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC IO))))
 
@@ -14,5 +14,5 @@ spec :: Spec
 spec =
   -- this test only exists to prevent merging the commented out analyzers
   describe "Discovery function list" $
-    xit "should be 32" $
+    it "should be length 32" $
       length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 32
