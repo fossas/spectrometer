@@ -1,10 +1,5 @@
 # Spectrometer Changelog
 
-## v2.19.1
-
-- Monorepo: Chunk AOSP files when uploading ([#421](https://github.com/fossas/spectrometer/pull/421)).
-- Monorepo: Don't fail on files that are filtered during expansion ([#421](https://github.com/fossas/spectrometer/pull/421)).
-
 ## v2.19.0
 
 - Adds support for `fossa analyze --include-unused-deps`, which prevents filtering out non-production dependencies. ([#412](https://github.com/fossas/spectrometer/pull/412))
@@ -12,6 +7,8 @@
 - Npm: Adds support for workspaces. ([#374](https://github.com/fossas/spectrometer/pull/374))
 - Npm: Removes unreliable `npm ls`-based analysis tactic. ([#374](https://github.com/fossas/spectrometer/pull/374))
 - `fossa-deps`: Adds support for `bower`-type in `referenced-dependencies`. ([#406](https://github.com/fossas/spectrometer/pull/406))
+- Monorepo: Chunk AOSP files when uploading ([#421](https://github.com/fossas/spectrometer/pull/421)).
+- Monorepo: Don't fail on files that are filtered during expansion ([#421](https://github.com/fossas/spectrometer/pull/421)).
 
 ## v2.18.1
 
