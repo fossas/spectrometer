@@ -2,8 +2,8 @@
 
 ## v2.19.1
 
-- Monorepo: Chunk AOSP files when uploading.
-- Monorepo: Don't fail on files that are filtered during expansion.
+- Monorepo: Chunk AOSP files when uploading ([#421](https://github.com/fossas/spectrometer/pull/421)).
+- Monorepo: Don't fail on files that are filtered during expansion ([#421](https://github.com/fossas/spectrometer/pull/421)).
 
 ## v2.19.0
 
