@@ -1,5 +1,10 @@
 # Spectrometer Changelog
 
+## v2.19.1
+
+- Monorepo: Chunk AOSP files when uploading.
+- Monorepo: Don't fail on files that are filtered during expansion.
+
 ## v2.19.0
 
 - Adds support for `fossa analyze --include-unused-deps`, which prevents filtering out non-production dependencies. ([#412](https://github.com/fossas/spectrometer/pull/412))
