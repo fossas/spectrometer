@@ -40,6 +40,7 @@ import Discovery.Walk (
  )
 import Effect.Logger (
   Logger,
+  logDebug,
   logError,
   logWarn,
  )
@@ -83,7 +84,22 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NodeProject]
-discover dir = context "NodeJS" $ do
+discover dir = do
+  result <- errorBoundary $ discoverInner dir
+  case result of
+    Left err -> do
+      logDebug $ renderFailureBundle err
+      pure []
+    Right projList -> pure projList
+
+discoverInner ::
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  m [DiscoveredProject NodeProject]
+discoverInner dir = context "NodeJS" $ do
   manifestList <- context "Finding nodejs projects" $ collectManifests dir
   manifestMap <- context "Reading package.json files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
   globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
