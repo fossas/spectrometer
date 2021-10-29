@@ -40,7 +40,6 @@ import Discovery.Walk (
  )
 import Effect.Logger (
   Logger,
-  logDebug,
   logError,
   logWarn,
  )
@@ -84,27 +83,16 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NodeProject]
-discover dir = do
-  result <- errorBoundary $ discoverInner dir
-  case result of
-    Left err -> do
-      logDebug $ renderFailureBundle err
-      pure []
-    Right projList -> pure projList
-
-discoverInner ::
-  ( Has Diagnostics sig m
-  , Has Logger sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject NodeProject]
-discoverInner dir = context "NodeJS" $ do
+discover dir = context "NodeJS" $ do
   manifestList <- context "Finding nodejs projects" $ collectManifests dir
   manifestMap <- context "Reading package.json files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
-  globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
-  graphs <- context "Splitting global graph into chunks" $ fromMaybeText "" $ splitGraph globalGraph
-  context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
+  if Map.null manifestMap
+    then -- If the map is empty, we found no JS projects, we return early.
+      pure []
+    else do
+      globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
+      graphs <- context "Splitting global graph into chunks" $ fromMaybeText "" $ splitGraph globalGraph
+      context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
 
 collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Manifest]
 collectManifests = walk' $ \_ _ files ->
