@@ -29,7 +29,6 @@ import App.Fossa.Configuration (
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
   ConfigTargets (targetsExclude, targetsOnly),
-  defaultConfigFile,
   mergeFileCmdMetadata,
   readConfigFileIO,
  )
@@ -124,8 +123,7 @@ import Options.Applicative (
   value,
   (<**>),
  )
-import Path (Abs, Dir, File, Path, Rel, parseAbsDir, parseRelDir, (</>))
-import Path.IO (getCurrentDir)
+import Path (Abs, Dir, File, Path, Rel, parseAbsDir, parseRelDir)
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import System.Info qualified as SysInfo
@@ -164,18 +162,9 @@ appMain = do
 
   fileConfigPath <-
     case (optConfig cmdConfig) of
-      Just userProvidedFile -> do sendIO $ validateFile userProvidedFile
-      Nothing ->
-        case optCommand cmdConfig of
-          AnalyzeCommand AnalyzeOptions{analyzeBaseDir} -> do
-            baseDir <- sendIO $ validateDir analyzeBaseDir
-            pure (unBaseDir baseDir </> defaultConfigFile)
-          TestCommand TestOptions{testBaseDir} -> do
-            baseDir <- sendIO $ validateDir testBaseDir
-            pure (unBaseDir baseDir </> defaultConfigFile)
-          _ -> do
-            cwd <- getCurrentDir
-            pure (cwd </> defaultConfigFile)
+      Just userProvidedConfigFile -> do Just <$> sendIO (validateFile userProvidedConfigFile)
+      Nothing -> pure Nothing
+
   fileConfig <- readConfigFileIO fileConfigPath
 
   let CmdOptions{..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig

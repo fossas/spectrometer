@@ -22,7 +22,7 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 | `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build                                                                                                                            |
 | `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization                                                                                                                       |
 | `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project                                                                                                                      |
-| `--config .fossa.dev.yml`             | `-c`  | Path to a [configuration file](/docs/references/files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in target directory of analyze command. |
+| `--config /path/to/file`              | `-c`  | Path to a [configuration file](/docs/references/files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in target directory of analyze command. |
 
 ### Printing results without uploading to FOSSA
 

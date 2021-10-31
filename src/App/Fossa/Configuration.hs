@@ -10,7 +10,6 @@ module App.Fossa.Configuration (
   ConfigRevision (..),
   ConfigTargets (..),
   ConfigPaths (..),
-  defaultConfigFile,
 ) where
 
 import App.Docs (fossaYmlDocUrl)
@@ -19,11 +18,13 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.Functor (($>))
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (Doc, Pretty (pretty), vsep)
 import Effect.Logger (Severity (SevWarn), logWarn, withDefaultLogger)
 import Effect.ReadFS
 import Path
+import Path.IO (getCurrentDir)
 import System.Exit (die)
 import Text.Megaparsec
 import Types
@@ -105,8 +106,8 @@ instance FromJSON ConfigPaths where
     ConfigPaths <$> (obj .:? "only" .!= [])
       <*> (obj .:? "exclude" .!= [])
 
-defaultConfigFile :: Path Rel File
-defaultConfigFile = $(mkRelFile ".fossa.yml")
+defaultFile :: Path Rel File
+defaultFile = $(mkRelFile ".fossa.yml")
 
 readConfigFile :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diag.Diagnostics sig m) => Path Abs File -> m (Maybe ConfigFile)
 readConfigFile file = do
@@ -129,9 +130,12 @@ readConfigFile file = do
         , ""
         ]
 
-readConfigFileIO :: Path Abs File -> IO (Maybe ConfigFile)
+readConfigFileIO :: Maybe (Path Abs File) -> IO (Maybe ConfigFile)
 readConfigFileIO configFile = do
-  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile configFile
+  -- FIXME: we probably want to read from the target directory of analysis, not
+  -- the current directory
+  dir <- getCurrentDir
+  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
   case config of
     Left err -> die $ show $ Diag.renderFailureBundle err
     Right a -> pure a
