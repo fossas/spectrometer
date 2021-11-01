@@ -288,9 +288,7 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
 
   onlyConfigurations <- do
     configs <- asks gradleOnlyConfigsAllowed
-    case (Set.map ConfigName) <$> configs of
-      Nothing -> pure Set.empty
-      Just c -> pure c
+    pure $ maybe Set.empty (Set.map ConfigName) configs
 
   let text = decodeUtf8 $ BL.toStrict stdout
 
@@ -344,16 +342,12 @@ buildGraph projectsAndDeps onlyConfigs = run . withLabeling toDependency $ Map.t
         mkRecursiveEdges dep envLabel
 
     -- Infers environment label based on the name of configuration.
-    -- When, we are only including set of configurations, as provided by users
-    -- We mark all of them as other environment titled by configuration, so that
-    -- user's selected configuration will not be removed due to having been unused,
-    -- and subsequently will be submitted to server.
     -- Ref: https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
     configNameToLabel :: ConfigName -> GradleLabel
     configNameToLabel conf =
       if (not . Set.null $ onlyConfigs)
-        then Env $ EnvOther (unConfigName conf)
-        else case unConfigName conf of
+        then Env $ EnvOther (unConfigName conf) -- We only have specified configs, so we mark them all as Other
+        else case unConfigName conf of -- We have no specified configs, so we have to guess the correct Env.
           "compileOnly" -> Env EnvDevelopment
           x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly", "testCompileClasspath", "testRuntimeClasspath"] -> Env EnvTesting
           x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
