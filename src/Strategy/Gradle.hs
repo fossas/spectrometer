@@ -346,7 +346,7 @@ buildGraph projectsAndDeps onlyConfigs = run . withLabeling toDependency $ Map.t
     -- Infers environment label based on the name of configuration.
     -- When, we are only including set of configurations, as provided by users
     -- We mark all of them as other environment titled by configuration, so that
-    -- user's selected configuration will not be removed due to having been unused, 
+    -- user's selected configuration will not be removed due to having been unused,
     -- and subsequently will be submitted to server.
     -- Ref: https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
     configNameToLabel :: ConfigName -> GradleLabel
