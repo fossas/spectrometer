@@ -116,6 +116,18 @@ Default:
 - No VCS: The CLI will leave the branch field empty.
 
 
+### `experimental.gradle.configurations-only:`
+
+Set of gradle configurations to filter for in the analysis. Any configurations not listed will be excluded from analysis.
+
+```yaml
+experimental:
+  gradle:
+    configurations-only:
+      - example-1-config-to-include
+      - example-2-config-to-include
+```
+
 ### `targets:`
 The targets filtering section allows you to specify the exact targets which be should be scanned. 
 
