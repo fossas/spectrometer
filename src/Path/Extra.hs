@@ -6,8 +6,7 @@ module Path.Extra (
 
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Path (Abs, Dir, File, Path, SomeBase (..), stripProperPrefix)
-import Path.Posix (fileExtension)
+import Path (Abs, Dir, File, Path, SomeBase (..), stripProperPrefix, fileExtension)
 
 -- tryMakeRelative returns the path of an absolute file (Path Abs File) relative to an absolute directory (Path Abs Dir).
 -- If the file is not within the directory, then the absolute file path will be returned
