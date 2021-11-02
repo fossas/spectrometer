@@ -42,15 +42,22 @@ resolveRevision apiOpts locator =
       then Fossa.resolveProjectDependencies apiOpts locator
       else pure []
 
-resolveGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> [VSI.Locator] -> m (Graphing VSI.Locator)
-resolveGraph apiOpts locators = context ("Resolving graph for " <> toText (show $ fmap VSI.renderLocator locators)) $ do
-  subgraphs <- traverse (resolveSubgraph apiOpts) locators
+resolveGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> [VSI.Locator] -> VSI.SkipResolution -> m (Graphing VSI.Locator)
+resolveGraph apiOpts locators skipResolving = context ("Resolving graph for " <> toText (show $ fmap VSI.renderLocator locators)) $ do
+  subgraphs <- traverse (resolveSubgraph apiOpts skipResolving) locators
   pure $ mconcat subgraphs
 
-resolveSubgraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.Locator -> m (Graphing VSI.Locator)
-resolveSubgraph apiOpts locator = do
-  resolved <- resolveRevision apiOpts locator
-  pure $ direct locator <> edges (map edge resolved)
+resolveSubgraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.SkipResolution -> VSI.Locator -> m (Graphing VSI.Locator)
+resolveSubgraph apiOpts skip locator = do
+  -- Pass through the list of skipped locators all the way here because we want to still record the direct dependency,
+  -- we just don't want to resolve it.
+  -- While this is an inefficient comparison since we're not making this list into a map or similar for quick lookups,
+  -- we expect the list of ignored locators to be very small.
+  if locator `elem` (VSI.unVSISkipResolution skip)
+    then pure $ direct locator
+    else do
+      resolved <- resolveRevision apiOpts locator
+      pure $ direct locator <> edges (map edge resolved)
   where
     edge dep = (locator, dep)
 
