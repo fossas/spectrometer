@@ -73,7 +73,7 @@ vendored-dependencies:
 ```
 > Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
 
-For more details, please refer to the [feature](./../features/vendored-dependencies.md) walk through. 
+For more details, please refer to the [feature](../../features/vendored-dependencies.md) walk through. 
 
 ## Errors in the `fossa-deps` file
 
