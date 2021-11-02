@@ -17,4 +17,4 @@ spec =
   -- this test only exists to prevent merging the commented out analyzers
   describe "Discovery function list" $
     it "should be length 33" $
-      length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 32
+      length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 33
