@@ -10,16 +10,15 @@ module Strategy.Perl (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Data.Aeson (Object, ToJSON, decodeFileStrict', eitherDecodeFileStrict')
+import Data.Aeson (Object, ToJSON)
 import Data.Aeson.Types (FromJSONKey, Parser, withObject)
 import Data.Aeson.Types qualified as AesonTypes
 import Data.Foldable (asum)
 import Data.Map (Map, toList)
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
-import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Yaml (FromJSON (parseJSON), decodeFileEither, (.:), (.:?))
+import Data.Yaml (FromJSON (parseJSON), (.:), (.:?))
 import DepTypes (
   DepEnvironment (..),
   DepType (CpanType),
@@ -53,7 +52,7 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [
 findProjects = walk' $ \dir _ files -> do
   -- We prefer MYMETA over META.
   -- Reference: https://metacpan.org/dist/App-mymeta_requires/view/bin/mymeta-requires
-  case asum $ map (`findFileNamed` files) (["MYMETA.json", "MYMETA.yml", "META.json", "META.yml"]) of
+  case asum $ map (`findFileNamed` files) ["MYMETA.json", "MYMETA.yml", "META.json", "META.yml"] of
     Nothing -> pure ([], WalkContinue)
     Just f -> pure ([PerlProject dir f], WalkContinue)
 
