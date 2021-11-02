@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.19.4
+
+- Fixes an issue observed during VSI analysis where fingerprinting files with lines longer than 64KiB would fail. ([#427](https://github.com/fossas/spectrometer/pull/427))
+
 ## v2.19.3
 
 - Removes `fossa compatibility` command. ([#383](https://github.com/fossas/spectrometer/pull/383))
