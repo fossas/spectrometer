@@ -19,8 +19,8 @@ Find a file named `MYMETA.json` or `MYMETA.yml` or `META.json` or `META.yml`.
 
 ## Example 
 
-1. Build using: `perl Makefile.PL`. When you do this, you'll see that `MYMETA.yml` and `MYMETA.json` are generated.
-4. Execute `fossa analyze -o` on the project to print analyzed dependency graphing (this will not upload any analysis to any endpoint)
+1. Build your perl target. When you do this, you should have `MYMETA.yml` and `MYMETA.json`.
+2. Execute `fossa analyze -o` on the project to print analyzed dependency graphing (this will not upload any analysis to any endpoint)
 
 ## FAQ
 

@@ -125,9 +125,9 @@ instance FromJSON PerlMeta where
     specVersion :: Double <-
       (o .: "meta-spec" |> "version")
         <|> ( do
-                s <- o .: "meta-spec" |> "version"
-                case readMaybe s of
-                  Nothing -> fail "not a number"
+                v <- o .: "meta-spec" |> "version"
+                case readMaybe v of
+                  Nothing -> fail ("Expected numeric value for version field, but got: " <> show v)
                   Just x -> pure x
             )
 
