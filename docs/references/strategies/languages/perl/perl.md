@@ -10,13 +10,12 @@ Find a file named `MYMETA.json` or `MYMETA.yml` or `META.json` or `META.yml`.
 
 ## Analysis
 
-1. Parse `*META.{yml, json}` to identify dependencies.
+1. Parse `MYMETA.{yml, json}` or `META.{yml, json}` to identify dependencies.
 
 ## Limitation
 
-- Dependency required for `runtime` will be reported.
-- Dependency will not be classified as direct, or deep, but will be reported.
-- Dependency will not have any edge information.
+- Dependency required for `runtime` only will be reported.
+- Reported analysis will not have any edges.
 
 ## Example 
 
