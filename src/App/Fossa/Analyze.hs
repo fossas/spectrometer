@@ -20,7 +20,7 @@ import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Types (
-  AnalyzePreferences (..),
+  AnalyzeExperimentalPreferences (..),
   AnalyzeProject (..),
   AnalyzeTaskEffs,
  )
@@ -184,7 +184,7 @@ analyzeMain ::
   Flag IncludeAll ->
   ModeOptions ->
   AllFilters ->
-  AnalyzePreferences ->
+  AnalyzeExperimentalPreferences ->
   IO ()
 analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters preferences =
   withDefaultLogger logSeverity
@@ -215,7 +215,7 @@ runDependencyAnalysis ::
   , Has ReadFS sig m
   , Has Exec sig m
   , Has (Output ProjectResult) sig m
-  , Has (Reader AnalyzePreferences) sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   , MonadIO m
   ) =>
   -- | Analysis base directory
@@ -318,7 +318,7 @@ analyze ::
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
-  , Has (Reader AnalyzePreferences) sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   , MonadIO m
   ) =>
   BaseDir ->

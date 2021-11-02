@@ -1,7 +1,7 @@
 module App.Fossa.Analyze.Types (
   AnalyzeProject (..),
   AnalyzeTaskEffs,
-  AnalyzePreferences (..),
+  AnalyzeExperimentalPreferences (..),
 ) where
 
 import Control.Carrier.Diagnostics
@@ -16,7 +16,7 @@ import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Types
 
-newtype AnalyzePreferences = AnalyzePreferences
+newtype AnalyzeExperimentalPreferences = AnalyzeExperimentalPreferences
   {gradleOnlyConfigsAllowed :: Maybe (Set Text)}
   deriving (Show, Eq, Ord)
 
@@ -28,7 +28,7 @@ type AnalyzeTaskEffs sig m =
   , Has Logger sig m
   , Has Diagnostics sig m
   , Has Debug sig m
-  , Has (Reader AnalyzePreferences) sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   )
 
 class AnalyzeProject a where

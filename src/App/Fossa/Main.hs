@@ -15,7 +15,7 @@ import App.Fossa.Analyze (
   VSIAnalysisMode (..),
   analyzeMain,
  )
-import App.Fossa.Analyze.Types (AnalyzePreferences (..))
+import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..))
 import App.Fossa.Configuration (
   ConfigFile (
     configApiKey,
@@ -172,7 +172,7 @@ appMain = do
 
   let CmdOptions{..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
 
-  let analyzePreferences = AnalyzePreferences (gradleConfigsOnly <$> (gradle =<< configExperimental =<< fileConfig))
+  let analyzePreferences = AnalyzeExperimentalPreferences (gradleConfigsOnly <$> (gradle =<< configExperimental =<< fileConfig))
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey

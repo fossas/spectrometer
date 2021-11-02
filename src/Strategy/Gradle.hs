@@ -21,7 +21,7 @@ module Strategy.Gradle (
   ConfigName (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzePreferences (..), AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
 import Control.Algebra (Has, run)
 import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (
@@ -245,7 +245,7 @@ getDeps ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has (Reader AnalyzePreferences) sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   ) =>
   FoundTargets ->
   GradleProject ->
@@ -270,7 +270,7 @@ analyze ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has (Reader AnalyzePreferences) sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   ) =>
   FoundTargets ->
   Path Abs Dir ->
