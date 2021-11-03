@@ -62,7 +62,7 @@ resolveGraphFailureBundle subgraphs =
   "Failed to resolve dependencies for the following FOSSA projects:\n\t"
     <> intercalate "\n\t" (renderFailed subgraphs)
     <> "\n\n"
-    <> "You may not have access to the projects, or they may not exist.\n"
+    <> "You may not have access to the projects, or they may not exist (see the warnings below for details).\n"
     <> "If desired you can use --experimental-skip-vsi-graph to skip resolving the dependencies of these projects."
   where
     renderFailed [] = []
