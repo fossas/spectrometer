@@ -1,6 +1,6 @@
 # Analyze only set of targets
 
-FOSSA CLI can be configured to discover and analyze, based on the target type (g.g. gradle, rebar3, etc.) and by its path. This can be very useful when multiple targets exist in the analysis directory, but we are only interested in a select few. This can be handy when you have useful auxiliary or test projects, which are used in development stages, but ultimately are not used in your distribution. 
+FOSSA CLI can be configured to discover and analyze, based on the target type (g.g. gradle, rebar3, etc.) and by its path. This can be useful when multiple targets exist in the directory, but we are only interested in a select few. 
 
 To do so, we will use the following:
 
@@ -9,7 +9,7 @@ To do so, we will use the following:
 
 ## Example
 
-Here is an example scenario, where our repository is structured in the following manner (simplified for brevity):
+For an example scenario, presume our source code is structured in the following manner (simplified for brevity):
 
 ```bash
 .
@@ -37,16 +37,16 @@ Here is an example scenario, where our repository is structured in the following
         └── requirements.txt
 ```
 
-For this use case, we are only interested in analyzing:
+And we are only interested in analyzing:
 
-- any targets under `src/back-end/` and `src/front-end/v2/` directory
-- any targets under `utils/` directory, 
-  - but, excluding only setuptools targets found in `utils/scripts` directory. 
-  - but, excluding any targets under `utils/migration-tests` directory
+- Any targets under `src/back-end/` and `src/front-end/v2/` directory
+- Any targets under `utils/` directory, 
+  - But excluding only setuptools targets found in `utils/scripts` directory. 
+  - But excluding any targets under `utils/migration-tests` directory
 
-To identify, target and its path discovered by fossa CLI, execute: `fossa list-targets` at the root of the project. 
+To identify, target and its path discovered by fossa CLI, we can use: `fossa list-targets` command. 
 
-When done, it would produce a list of target and their path:
+When command is executed, it would produce a list of target and their path:
 
 ```bash
 [ INFO] Found project: yarn@test-suite/browser/
@@ -81,7 +81,6 @@ paths:
         - src/back-end/
         - src/front-end/v2/
 ```
-
 
 2. We want to scan for targets in the `utils` directory. Let's add that to the paths to scan for targets.
 
@@ -134,8 +133,7 @@ targets:
       path: utils/scripts/
 ```
 
-Likewise, we can also use [`targets.only`](./../references/files/fossa-yml.md#`targets.only`) directive to explicitly indicate which targets we are interested, to achieve the same behavior.
-
+Likewise, we can also use [`targets.only`](./../references/files/fossa-yml.md#`targets.only`) directive to explicitly indicate which targets we are interested. This will achieve the same the behavior.
 
 ```yaml
 version: 3
