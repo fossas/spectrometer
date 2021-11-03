@@ -49,11 +49,9 @@ resolveGraph apiOpts locators skipResolving = context ("Resolving graph for " <>
 
 resolveSubgraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.SkipResolution -> VSI.Locator -> m (Graphing VSI.Locator)
 resolveSubgraph apiOpts skip locator = do
-  -- Pass through the list of skipped locators all the way here because we want to still record the direct dependency,
-  -- we just don't want to resolve it.
-  -- While this is an inefficient comparison since we're not making this list into a map or similar for quick lookups,
-  -- we expect the list of ignored locators to be very small.
-  if locator `elem` (VSI.unVSISkipResolution skip)
+  -- Pass through the list of skipped locators all the way here:
+  -- we want to still record the direct dependency, we just don't want to resolve it.
+  if VSI.shouldSkipResolving skip locator
     then pure $ direct locator
     else do
       resolved <- resolveRevision apiOpts locator

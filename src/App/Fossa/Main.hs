@@ -80,6 +80,7 @@ import Data.Bool (bool)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
+import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -220,7 +221,7 @@ appMain = do
 
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
-          modeOptions = ModeOptions analyzeVSIMode (VSI.SkipResolution analyzeSkipVSIGraphResolution) assertionMode analyzeBinaryDiscoveryMode
+          modeOptions = ModeOptions analyzeVSIMode (VSI.SkipResolution $ Set.fromList analyzeSkipVSIGraphResolution) assertionMode analyzeBinaryDiscoveryMode
           doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeIncludeAllDeps modeOptions combinedFilters analyzePreferences
 
       if analyzeOutput

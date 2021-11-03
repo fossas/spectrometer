@@ -4,7 +4,7 @@ module App.Fossa.VSI.Types (
   Locator (..),
   LocatorParseError (..),
   SkipResolution (..),
-  filterSkipped,
+  shouldSkipResolving,
   parseLocator,
   renderLocator,
   isUserDefined,
@@ -15,6 +15,8 @@ module App.Fossa.VSI.Types (
 
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
@@ -60,10 +62,10 @@ instance ToDiagnostic LocatorParseError where
 -- we can't perform this resolution.
 -- To handle this case we provide users with an escape hatch, which is an argument allowing them to skip resolving some of their dependencies.
 -- This type canonicalizes that request.
-newtype SkipResolution = SkipResolution {unVSISkipResolution :: [Locator]}
+newtype SkipResolution = SkipResolution {unVSISkipResolution :: Set Locator}
 
-filterSkipped :: [Locator] -> SkipResolution -> [Locator]
-filterSkipped locs skip = filter (`notElem` unVSISkipResolution skip) locs
+shouldSkipResolving :: SkipResolution -> Locator -> Bool
+shouldSkipResolving skip loc = loc `Set.member` (unVSISkipResolution skip)
 
 toDependency :: Locator -> Either ToDependencyError Dependency
 toDependency locator =
