@@ -2,7 +2,7 @@
 
 ## v2.18.1
 
-- Special cases scans with a single VSI only filter to skip other analysis strategies ([$407](https://github.com/fossas/spectrometer/pull/407))
+- Special cases scans with a single VSI only filter to skip other analysis strategies ([#407](https://github.com/fossas/spectrometer/pull/407))
 
 ## v2.18.0
 
