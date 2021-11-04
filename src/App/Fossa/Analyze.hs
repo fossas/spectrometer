@@ -70,7 +70,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters, applyFilters)
+import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
