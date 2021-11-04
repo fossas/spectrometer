@@ -2,7 +2,6 @@
 
 ## v2.19.6
 
-- Improves performance in scenarios where cgroups are used to limit the amount of CPU time available, such as K8S containers ([#416](https://github.com/fossas/spectrometer/pull/416))
 - Special cases scans with a single VSI only filter to skip other analysis strategies ([#407](https://github.com/fossas/spectrometer/pull/407))
 - Adds the ability to skip resolving dependencies from FOSSA projects discovered during VSI scans ([#435](https://github.com/fossas/spectrometer/pull/435))
 
