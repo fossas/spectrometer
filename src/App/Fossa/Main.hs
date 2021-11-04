@@ -4,11 +4,22 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
-import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
+import App.Fossa.Analyze (
+  BinaryDiscoveryMode (..),
+  IATAssertionMode (..),
+  IncludeAll (IncludeAll),
+  JsonOutput (..),
+  ModeOptions (ModeOptions),
+  ScanDestination (..),
+  UnpackArchives (..),
+  VSIAnalysisMode (..),
+  analyzeMain,
+ )
+import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..))
 import App.Fossa.Configuration (
   ConfigFile (
     configApiKey,
+    configExperimental,
     configPaths,
     configProject,
     configRevision,
@@ -19,6 +30,8 @@ import App.Fossa.Configuration (
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
   ConfigTargets (targetsExclude, targetsOnly),
+  ExperimentalConfigs (gradle),
+  ExperimentalGradleConfigs (gradleConfigsOnly),
   mergeFileCmdMetadata,
   readConfigFileIO,
  )
@@ -27,7 +40,11 @@ import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
 import App.Fossa.ListTargets (listTargetsMain)
-import App.Fossa.Monorepo
+import App.Fossa.Monorepo (
+  PathFilters,
+  monorepoMain,
+  toPathFilters,
+ )
 import App.Fossa.Report qualified as Report
 import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
@@ -54,7 +71,8 @@ import App.Types (
  )
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
-import Control.Concurrent.Extra (initCapabilities)
+import Control.Concurrent.CGroup (initRTSThreads)
+import Control.Effect.Lift (sendIO)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
@@ -136,17 +154,25 @@ mergeFileCmdConfig cmd file =
     , optProjectName = optProjectName cmd <|> (configProject file >>= configProjID)
     , optProjectRevision = optProjectRevision cmd <|> (configRevision file >>= configCommit)
     , optAPIKey = optAPIKey cmd <|> configApiKey file
+    , optConfig = optConfig cmd
     , optCommand = optCommand cmd
     }
 
 appMain :: IO ()
 appMain = do
-  initCapabilities
+  initRTSThreads
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
-  fileConfig <- readConfigFileIO
+
+  fileConfigPath <-
+    case (optConfig cmdConfig) of
+      Just userProvidedConfigFile -> do Just <$> sendIO (validateFile userProvidedConfigFile)
+      Nothing -> pure Nothing
+
+  fileConfig <- readConfigFileIO fileConfigPath
 
   let CmdOptions{..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
 
+  let analyzePreferences = AnalyzeExperimentalPreferences (gradleConfigsOnly <$> (gradle =<< configExperimental =<< fileConfig))
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey
@@ -194,7 +220,7 @@ appMain = do
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
           modeOptions = ModeOptions analyzeVSIMode assertionMode analyzeBinaryDiscoveryMode
-          doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput modeOptions combinedFilters
+          doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeIncludeAllDeps modeOptions combinedFilters analyzePreferences
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -224,7 +250,7 @@ appMain = do
     --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
-      listTargetsMain logSeverity baseDir
+      listTargetsMain analyzePreferences logSeverity baseDir
     --
     VPSCommand VPSOptions{..} -> do
       apikey <- requireKey maybeApiKey
@@ -278,9 +304,6 @@ appMain = do
       let apiOpts = ApiOpts optBaseUrl apikey
       assertUserDefinedBinariesMain logSeverity baseDir apiOpts assertionMeta
     --
-    CompatibilityCommand args -> do
-      compatibilityMain args
-    --
     DumpBinsCommand dir -> do
       basedir <- validateDir dir
       for_ Embed.allBins $ Embed.dumpEmbeddedBinary $ unBaseDir basedir
@@ -329,6 +352,7 @@ opts =
     <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
+    <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
     <*> (commands <|> hiddenCommands)
     <**> infoOption (toString fullVersionDescription) (long "version" <> short 'V' <> help "show version text")
 
@@ -390,12 +414,6 @@ hiddenCommands =
               (progDesc "Output all embedded binaries to specified path")
           )
         <> command
-          "compatibility"
-          ( info
-              (CompatibilityCommand <$> compatibilityOpts)
-              (progDesc "Run fossa cli v1 analyze. Supply arguments as \"fossa compatibility -- --project test\"")
-          )
-        <> command
           "experimental-link-user-defined-dependency-binary"
           ( info
               (AssertUserDefinedBinariesCommand <$> assertUserDefinedBinariesOpts)
@@ -409,6 +427,7 @@ analyzeOpts =
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
+    <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
@@ -630,10 +649,6 @@ containerDumpScanOptions =
     <$> optional (strOption (short 'o' <> long "output-file" <> help "File to write the scan data (omit for stdout)"))
     <*> imageTextArg
 
-compatibilityOpts :: Parser [Argument]
-compatibilityOpts =
-  many argumentParser
-
 assertUserDefinedBinariesOpts :: Parser AssertUserDefinedBinariesOptions
 assertUserDefinedBinariesOpts =
   AssertUserDefinedBinariesOptions
@@ -657,6 +672,7 @@ data CmdOptions = CmdOptions
   , optProjectName :: Maybe Text
   , optProjectRevision :: Maybe Text
   , optAPIKey :: Maybe Text
+  , optConfig :: Maybe FilePath
   , optCommand :: Command
   }
 
@@ -667,7 +683,6 @@ data Command
   | VPSCommand VPSOptions
   | ContainerCommand ContainerOptions
   | AssertUserDefinedBinariesCommand AssertUserDefinedBinariesOptions
-  | CompatibilityCommand [Argument]
   | ListTargetsCommand FilePath
   | InitCommand
   | DumpBinsCommand FilePath
@@ -697,6 +712,7 @@ data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool
   , analyzeUnpackArchives :: Flag UnpackArchives
   , analyzeJsonOutput :: Flag JsonOutput
+  , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
   , analyzeBuildTargetFilters :: [TargetFilter]

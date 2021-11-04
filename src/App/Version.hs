@@ -4,6 +4,7 @@ module App.Version (
   versionNumber,
   fullVersionDescription,
   isDirty,
+  currentBranch,
 ) where
 
 import App.Version.TH (getCurrentTag)
@@ -50,7 +51,7 @@ fullVersionDescription = Text.concat items
     dirty = if isDirty then " (dirty)" else ""
     items :: [Text]
     items =
-      [ "spectrometer: "
+      [ "fossa-cli "
       , version
       , " (revision "
       , shortCommit

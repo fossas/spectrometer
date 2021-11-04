@@ -10,6 +10,8 @@ module App.Fossa.Configuration (
   ConfigRevision (..),
   ConfigTargets (..),
   ConfigPaths (..),
+  ExperimentalConfigs (..),
+  ExperimentalGradleConfigs (..),
 ) where
 
 import App.Docs (fossaYmlDocUrl)
@@ -18,12 +20,15 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.Functor (($>))
+import Data.Maybe (fromMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (Doc, Pretty (pretty), vsep)
 import Effect.Logger (Severity (SevWarn), logWarn, withDefaultLogger)
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
+import Prettyprinter (Doc, Pretty (pretty), vsep)
 import System.Exit (die)
 import Text.Megaparsec
 import Types
@@ -36,6 +41,7 @@ data ConfigFile = ConfigFile
   , configRevision :: Maybe ConfigRevision
   , configTargets :: Maybe ConfigTargets
   , configPaths :: Maybe ConfigPaths
+  , configExperimental :: Maybe ExperimentalConfigs
   }
   deriving (Eq, Ord, Show)
 
@@ -69,6 +75,14 @@ data ConfigPaths = ConfigPaths
   }
   deriving (Eq, Ord, Show)
 
+newtype ExperimentalConfigs = ExperimentalConfigs
+  {gradle :: Maybe ExperimentalGradleConfigs}
+  deriving (Eq, Ord, Show)
+
+newtype ExperimentalGradleConfigs = ExperimentalGradleConfigs
+  {gradleConfigsOnly :: Set (Text)}
+  deriving (Eq, Ord, Show)
+
 instance FromJSON ConfigFile where
   parseJSON = withObject "ConfigFile" $ \obj ->
     ConfigFile <$> obj .: "version"
@@ -78,6 +92,7 @@ instance FromJSON ConfigFile where
       <*> obj .:? "revision"
       <*> obj .:? "targets"
       <*> obj .:? "paths"
+      <*> obj .:? "experimental"
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->
@@ -105,6 +120,14 @@ instance FromJSON ConfigPaths where
     ConfigPaths <$> (obj .:? "only" .!= [])
       <*> (obj .:? "exclude" .!= [])
 
+instance FromJSON ExperimentalConfigs where
+  parseJSON = withObject "ExperimentalConfigs" $ \obj ->
+    ExperimentalConfigs <$> obj .:? "gradle"
+
+instance FromJSON ExperimentalGradleConfigs where
+  parseJSON = withObject "ExperimentalGradleConfigs" $ \obj ->
+    ExperimentalGradleConfigs <$> (obj .: "configurations-only" .!= Set.fromList [])
+
 defaultFile :: Path Rel File
 defaultFile = $(mkRelFile ".fossa.yml")
 
@@ -129,12 +152,12 @@ readConfigFile file = do
         , ""
         ]
 
-readConfigFileIO :: IO (Maybe ConfigFile)
-readConfigFileIO = do
+readConfigFileIO :: Maybe (Path Abs File) -> IO (Maybe ConfigFile)
+readConfigFileIO configFile = do
   -- FIXME: we probably want to read from the target directory of analysis, not
   -- the current directory
   dir <- getCurrentDir
-  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> defaultFile)
+  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
   case config of
     Left err -> die $ show $ Diag.renderFailureBundle err
     Right a -> pure a

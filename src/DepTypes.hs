@@ -5,18 +5,27 @@ module DepTypes (
   insertEnvironment,
   insertTag,
   insertLocation,
+  hydrateDepEnvs,
   DepEnvironment (..),
   DepType (..),
   VerConstraint (..),
 ) where
 
-import Data.Aeson
+import Data.Aeson (
+  FromJSON,
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value,
+  object,
+ )
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Graphing (Graphing)
+import Graphing.Hydrate (hydrate)
 
 -- FIXME: this needs a smart constructor with empty tags/environments/etc.
 -- We've historically relied on the compile error for making sure we fill all
@@ -48,10 +57,16 @@ data DepEnvironment
     EnvOther Text
   deriving (Eq, Ord, Show)
 
+hydrateDepEnvs :: Graphing Dependency -> Graphing Dependency
+hydrateDepEnvs = hydrate dependencyEnvironments $ \envs dep ->
+  dep{dependencyEnvironments = envs}
+
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType
   = -- | An archive upload dependency.
     ArchiveType
+  | -- | Bower dependency
+    BowerType
   | -- | A first-party subproject
     SubprojectType
   | -- | Dependency found from the composer fetcher.

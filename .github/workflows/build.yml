@@ -182,6 +182,16 @@ jobs:
       run: |
         make lint
 
+    - name: Check Markdown links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        config-file: '.markdown-link-check.json'
+
+    - name: Disallow empty Markdown links
+      run: |
+        ! grep ']()' **/*.md
+
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
@@ -235,6 +245,18 @@ jobs:
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
         zip -j release/compat-attribution_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/compat-attribution.exe
+
+    - name: Create checksums
+      # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.
+      run: |
+        cd release
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
+
+        echo "Sanity-checking the checksums."
+
+        cat *.sha256 | sha256sum --check --status
 
     - name: Release
       uses: softprops/action-gh-release@v1

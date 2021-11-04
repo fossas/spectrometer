@@ -27,6 +27,8 @@ module Control.Effect.Diagnostics (
   fromEitherShow,
   fromMaybe,
   fromMaybeText,
+  warnMaybe,
+  warnMaybeText,
   tagError,
   (<||>),
   combineSuccessful,
@@ -46,8 +48,8 @@ import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal
+import Prettyprinter
+import Prettyprinter.Render.Terminal
 import Prelude
 
 data Diagnostics m k where
@@ -141,6 +143,12 @@ fromMaybe msg = maybe (fatal msg) pure
 -- | Lift a Maybe result into Diagnostics, with a Text error message for @Nothing@
 fromMaybeText :: Has Diagnostics sig m => Text -> Maybe a -> m a
 fromMaybeText = fromMaybe
+
+warnMaybe :: (ToDiagnostic err, Has Diagnostics sig m) => err -> Maybe a -> m (Maybe a)
+warnMaybe msg = recover . maybe (fatal msg) pure
+
+warnMaybeText :: Has Diagnostics sig m => Text -> Maybe a -> m (Maybe a)
+warnMaybeText = warnMaybe
 
 -- | Lift an Either result into the Diagnostics effect, given a function from the error type to another type that implements 'ToDiagnostic'
 tagError :: (ToDiagnostic e', Has Diagnostics sig m) => (e -> e') -> Either e a -> m a
