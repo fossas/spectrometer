@@ -5,6 +5,11 @@ build:
 	cabal build
 
 test:
+	@echo "Testing against unit tests"
+	cabal test unit-tests
+
+test-all:
+	@echo "Testing against unit tests and integration tests"
 	cabal test
 
 # Dogfood the dev version
