@@ -19,12 +19,20 @@ import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CEq),
  )
 import Effect.ReadFS (Has, ReadFS, readContentsToml)
 import Graphing (Graphing, directs, induceJust)
-import Path
+import Path (Abs, File, Path)
 import Toml (TomlCodec, (.=))
 import Toml qualified
 

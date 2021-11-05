@@ -9,20 +9,31 @@ module Strategy.Go.GopkgToml (
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  recover,
+ )
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import DepTypes
-import Effect.Exec
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (Dependency)
+import Effect.Exec (Exec)
+import Effect.Grapher (direct, label)
+import Effect.ReadFS (ReadFS, readContentsToml)
 import Graphing (Graphing)
-import Path
+import Path (Abs, File, Path, parent)
 import Strategy.Go.Transitive (fillInTransitive)
-import Strategy.Go.Types
+import Strategy.Go.Types (
+  GolangGrapher,
+  GolangLabel (GolangLabelLocation),
+  graphingGolang,
+  mkGolangPackage,
+  mkGolangVersion,
+ )
 import Toml (TomlCodec, (.=))
 import Toml qualified
 

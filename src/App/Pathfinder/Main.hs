@@ -3,12 +3,31 @@ module App.Pathfinder.Main (
 ) where
 
 import App.Pathfinder.Scan (scanMain)
-import App.Types (BaseDir (..))
+import App.Types (BaseDir (unBaseDir))
 import App.Util (validateDir)
 import Control.Concurrent.CGroup (initRTSThreads)
 import Data.Maybe (fromMaybe)
-import Options.Applicative
-import Path.IO
+import Options.Applicative (
+  Parser,
+  ParserInfo,
+  command,
+  execParser,
+  fullDesc,
+  header,
+  help,
+  helper,
+  hsubparser,
+  info,
+  long,
+  metavar,
+  optional,
+  progDesc,
+  short,
+  strOption,
+  switch,
+  (<**>),
+ )
+import Path.IO (getCurrentDir)
 
 appMain :: IO ()
 appMain = do

@@ -9,10 +9,15 @@ module Discovery.Walk (
   findFileNamed,
 ) where
 
-import Control.Carrier.Writer.Church
-import Control.Effect.Diagnostics
-import Control.Monad.Trans
-import Control.Monad.Trans.Maybe
+import Control.Carrier.Writer.Church (
+  Has,
+  WriterC,
+  runWriter,
+  tell,
+ )
+import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Monad.Trans (MonadTrans (lift))
+import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Foldable (find)
 import Data.Functor (void)
 import Data.List ((\\))
@@ -20,8 +25,17 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Effect.ReadFS
-import Path
+import Effect.ReadFS (ReadFS, listDir)
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  dirname,
+  filename,
+  parseRelDir,
+  toFilePath,
+ )
 
 data WalkStep
   = -- | Continue walking subdirectories

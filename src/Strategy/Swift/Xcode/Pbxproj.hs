@@ -14,17 +14,42 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set (fromList, member)
 import Data.Text (Text)
-import DepTypes (DepType (GitType, SwiftType), Dependency (..))
+import DepTypes (
+  DepType (GitType, SwiftType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+ )
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, promoteToDirect)
-import Path
+import Path (Abs, File, Path)
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
 import Strategy.Swift.PackageSwift (
-  SwiftPackageGitDepRequirement (..),
+  SwiftPackageGitDepRequirement (
+    Branch,
+    ClosedInterval,
+    Exact,
+    Revision,
+    UpToNextMajor,
+    UpToNextMinor
+  ),
   isGitRefConstraint,
   toConstraint,
  )
-import Strategy.Swift.Xcode.PbxprojParser (AsciiValue (..), PbxProj (..), lookupText, objectsFromIsa, parsePbxProj, textOf)
+import Strategy.Swift.Xcode.PbxprojParser (
+  AsciiValue,
+  PbxProj (objects),
+  lookupText,
+  objectsFromIsa,
+  parsePbxProj,
+  textOf,
+ )
 
 -- | Represents the version rules for a Swift Package as defined in Xcode project file.
 data XCRemoteSwiftPackageReference = XCRemoteSwiftPackageReference

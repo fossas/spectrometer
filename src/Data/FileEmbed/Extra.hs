@@ -3,10 +3,14 @@ module Data.FileEmbed.Extra (
 ) where
 
 import Data.FileEmbed (embedFile)
-import Language.Haskell.TH
-import Path
-import Path.IO
-import Prelude
+import Language.Haskell.TH (
+  Exp (LitE),
+  Lit (StringL),
+  Q,
+  reportWarning,
+ )
+import Path (parseRelFile)
+import Path.IO (doesFileExist)
 
 embedFileIfExists :: FilePath -> Q Exp
 embedFileIfExists inputPath = do

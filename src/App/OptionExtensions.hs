@@ -1,9 +1,17 @@
 module App.OptionExtensions (uriOption, jsonOption) where
 
-import Data.Aeson
-import Data.String
+import Data.Aeson (FromJSON, eitherDecode)
+import Data.String (IsString (fromString))
 import Data.String.Conversion (toText)
-import Options.Applicative
+import Options.Applicative (
+  Mod,
+  OptionFields,
+  Parser,
+  ReadM,
+  eitherReader,
+  maybeReader,
+  option,
+ )
 import Text.URI (URI, mkURI)
 
 uriOption :: Mod OptionFields URI -> Parser URI

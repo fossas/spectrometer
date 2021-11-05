@@ -8,13 +8,31 @@ module Strategy.Rebar3 (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Aeson (ToJSON)
-import Discovery.Walk
-import Effect.Exec
-import Effect.ReadFS
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (Exec, Has)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Erlang.Rebar3Tree qualified as Rebar3Tree
-import Types
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject RebarProject]
 discover dir = context "Rebar3" $ do

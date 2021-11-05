@@ -8,11 +8,25 @@ import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
-import Types (DependencyResults (..), DiscoveredProject (..))
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
 discover dir = context "Pub" $ do

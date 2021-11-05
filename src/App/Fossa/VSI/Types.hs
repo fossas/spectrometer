@@ -14,7 +14,7 @@ module App.Fossa.VSI.Types (
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.Text (Text)
-import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
+import DepTypes (DepType (CustomType), Dependency (Dependency), VerConstraint (CEq))
 import Effect.Logger (Pretty (pretty), viaShow)
 import Srclib.Converter (depTypeToFetcher, fetcherToDepType)
 import Srclib.Types qualified as Srclib

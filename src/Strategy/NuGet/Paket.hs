@@ -11,7 +11,12 @@ module Strategy.NuGet.Paket (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
 import Control.Monad (guard)
 import Data.Aeson (ToJSON)
 import Data.Char qualified as C
@@ -22,17 +27,63 @@ import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import DepTypes
-import Discovery.Walk
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  VerConstraint (CEq),
+ )
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk',
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path
-import Text.Megaparsec hiding (label)
-import Text.Megaparsec.Char
+import Path (Abs, Dir, File, Path, parent)
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhile1P, takeWhileP, try),
+  Parsec,
+  between,
+  chunk,
+  empty,
+  many,
+  some,
+  (<|>),
+ )
+import Text.Megaparsec.Char (char, eol, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
-import Types
+import Types (
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+ )
 
 type Parser = Parsec Void Text
 

@@ -18,20 +18,34 @@ import App.Docs (userGuideUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
-import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
+import App.Fossa.Analyze.Project (
+  ProjectResult (projectResultGraph, projectResultPath, projectResultType),
+  mkResult,
+ )
 import App.Fossa.Analyze.Types (
-  AnalyzeExperimentalPreferences (..),
-  AnalyzeProject (..),
+  AnalyzeExperimentalPreferences,
+  AnalyzeProject (analyzeProject),
   AnalyzeTaskEffs,
  )
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
-import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
+import App.Fossa.FossaAPIV1 (
+  UploadResponse (uploadError, uploadLocator),
+  getProject,
+  projectIsMonorepo,
+  uploadAnalysis,
+  uploadContributors,
+ )
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
-import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
+import App.Fossa.ProjectInference (
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+  saveRevision,
+ )
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
-  BaseDir (..),
+  BaseDir (BaseDir, unBaseDir),
   OverrideProject,
   ProjectMetadata,
   ProjectRevision (projectBranch, projectName, projectRevision),
@@ -47,7 +61,7 @@ import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
-  Progress (..),
+  Progress (Progress, pCompleted, pQueued, pRunning),
   TaskPool,
   forkTask,
   withTaskPool,
@@ -75,7 +89,7 @@ import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
   Logger,
-  Severity (..),
+  Severity (SevDebug, SevError, SevInfo, SevWarn),
   logDebug,
   logError,
   logInfo,
@@ -83,7 +97,7 @@ import Effect.Logger (
   withDefaultLogger,
  )
 import Effect.ReadFS (ReadFS, runReadFSIO)
-import Fossa.API.Types (ApiOpts (..))
+import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -99,7 +113,11 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
+import Srclib.Types (
+  Locator (locatorProject, locatorRevision),
+  SourceUnit,
+  parseLocator,
+ )
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -132,7 +150,16 @@ import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
-import Types (DiscoveredProject (..), FoundTargets)
+import Types (
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  FoundTargets,
+ )
 import VCS.Git (fetchGitContributors)
 
 data ScanDestination

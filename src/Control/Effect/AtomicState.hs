@@ -11,8 +11,8 @@ module Control.Effect.AtomicState (
   put,
 ) where
 
-import Control.Algebra
-import Data.Kind
+import Control.Algebra (Has, send)
+import Data.Kind (Type)
 
 data AtomicState s (m :: Type -> Type) a where
   Modify :: (s -> (s, a)) -> AtomicState s m a

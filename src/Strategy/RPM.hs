@@ -12,7 +12,7 @@ module Strategy.RPM (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
 import Data.List (isSuffixOf)
@@ -21,14 +21,42 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (splitOnceOn)
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepEnvironment,
+  DepType (RPMType),
+  VerConstraint (CEq, CGreater, CGreaterOrEq, CLess, CLessOrEq),
+ )
+import Discovery.Walk (WalkStep (WalkContinue), fileName, walk')
+import Effect.ReadFS (ReadFS, readContentsText)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
-import Path
-import Types
+import Path (Abs, Dir, File, Path)
+import Types (
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Partial),
+ )
 
 newtype SpecFileLabel
   = RequiresType DepEnvironment

@@ -9,9 +9,24 @@ module Control.Carrier.AtomicCounter (
   module X,
 ) where
 
-import Control.Carrier.AtomicState
-import Control.Effect.AtomicCounter as X
-import Control.Effect.Lift
+import Control.Carrier.AtomicState (
+  AtomicStateC,
+  getSet,
+  runAtomicState,
+ )
+import Control.Effect.AtomicCounter as X (
+  Algebra (alg),
+  AtomicCounter (GenerateId),
+  Handler,
+  Has,
+  generateId,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (MonadTrans)
 

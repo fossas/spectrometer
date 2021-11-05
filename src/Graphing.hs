@@ -55,7 +55,25 @@ import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Data.Bifunctor (bimap)
 import Data.Set qualified as Set
-import Prelude hiding (filter)
+import Prelude (
+  Applicative (pure),
+  Bool (False, True),
+  Eq,
+  Foldable (foldMap, foldr, length),
+  Functor (fmap),
+  Int,
+  Maybe (Just, Nothing),
+  Monoid (mempty),
+  Ord,
+  Semigroup ((<>)),
+  Show,
+  Traversable (sequenceA, traverse),
+  map,
+  ($),
+  (++),
+  (.),
+  (<$>),
+ )
 import Prelude qualified
 
 -- | A @Graphing ty@ is a graph of nodes with type @ty@.

@@ -22,12 +22,25 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (
-  DepEnvironment (..),
+  DepEnvironment (EnvOther, EnvProduction, EnvTesting),
   DepType (MavenType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CEq),
  )
-import Effect.Exec (AllowErr (..), Command (..), Exec, exec)
+import Effect.Exec (
+  AllowErr (Always),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  exec,
+ )
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)

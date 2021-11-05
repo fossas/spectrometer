@@ -7,11 +7,35 @@ module Control.Carrier.Output.IO (
   module X,
 ) where
 
-import Control.Carrier.Reader
-import Control.Carrier.Simple
+import Control.Carrier.Reader (Algebra, Has, run)
+import Control.Carrier.Simple (
+  Handler,
+  SimpleC,
+  interpret,
+  send,
+  thread,
+  (~<~),
+ )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Output as X
-import Data.IORef
+import Control.Effect.Output as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  Output,
+  OutputF (Output),
+  output,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Data.IORef (
+  IORef,
+  atomicModifyIORef',
+  newIORef,
+  readIORef,
+ )
 
 type OutputC o = SimpleC (OutputF o)
 

@@ -8,14 +8,32 @@ module Strategy.Gomodules (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Data.Aeson (ToJSON)
-import Discovery.Walk
-import Effect.Exec
-import Effect.ReadFS
+import Discovery.Walk (
+  WalkStep (WalkSkipSome),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (Exec, Has)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.Gomod qualified as Gomod
-import Types
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
 discover dir = context "Gomodules" $ do

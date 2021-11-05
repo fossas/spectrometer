@@ -5,21 +5,36 @@ module Strategy.Go.GoList (
   Require (..),
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  recover,
+ )
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Effect.Exec
-import Effect.Grapher
+import DepTypes (Dependency)
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execThrow,
+ )
+import Effect.Grapher (direct, label)
 import Graphing (Graphing)
-import Path
+import Path (Abs, Dir, Path)
 import Strategy.Go.Transitive (fillInTransitive)
-import Strategy.Go.Types
-import Types (GraphBreadth (..))
+import Strategy.Go.Types (
+  GolangGrapher,
+  graphingGolang,
+  mkGolangPackage,
+  mkGolangVersion,
+ )
+import Types (GraphBreadth (Complete))
 
 data Require = Require
   { reqPackage :: Text

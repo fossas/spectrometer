@@ -40,9 +40,17 @@ import Data.Set (Set)
 import Data.Tagged (Tagged)
 import Data.Text (Text)
 import DepTypes (
-  DepEnvironment (..),
+  DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CCompatible),
   insertEnvironment,
  )

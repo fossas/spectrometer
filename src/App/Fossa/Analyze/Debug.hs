@@ -18,10 +18,23 @@ module App.Fossa.Analyze.Debug (
   debugEverything,
 ) where
 
-import Control.Carrier.Debug
-import Control.Carrier.Diagnostics (Diagnostics (Context, Fatal))
+import Control.Carrier.Debug (
+  Algebra (alg),
+  Debug,
+  DebugC,
+  Has,
+  Scope,
+  debugError,
+  debugLog,
+  debugScope,
+  ignoring,
+  recording,
+  runDebug,
+  type (:+:) (L, R),
+ )
 import Control.Carrier.Lift (sendIO)
 import Control.Carrier.Simple (SimpleC, interpret, sendSimple)
+import Control.Effect.Diagnostics (Diagnostics (Context, Fatal))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Record (Journal, RecordC, runRecord)
 import Control.Effect.Sum (Member, inj)
@@ -32,9 +45,21 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Word (Word64)
-import Effect.Exec (Exec, ExecF (..))
-import Effect.Logger (Logger, LoggerF (..))
-import Effect.ReadFS (ReadFS, ReadFSF (..))
+import Effect.Exec (Exec, ExecF (Exec))
+import Effect.Logger (Logger, LoggerF (Log, LogStdout))
+import Effect.ReadFS (
+  ReadFS,
+  ReadFSF (
+    DoesDirExist,
+    DoesFileExist,
+    ListDir,
+    ReadContentsBS',
+    ReadContentsBSLimit',
+    ReadContentsText',
+    ResolveDir',
+    ResolveFile'
+  ),
+ )
 import GHC.Conc qualified as Conc
 import GHC.Environment qualified as Environment
 import GHC.Generics (Generic)

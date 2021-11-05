@@ -4,8 +4,14 @@
 module App.Fossa.BinaryDeps.Jar (resolveJar) where
 
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, context, fromMaybeText, recover, (<||>))
 import Control.Carrier.Finally (runFinally)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  context,
+  fromMaybeText,
+  recover,
+  (<||>),
+ )
 import Control.Effect.Lift (Lift)
 import Data.List (isSuffixOf, sortOn)
 import Data.Map (Map)
@@ -21,8 +27,14 @@ import Effect.ReadFS (ReadFS, readContentsText, readContentsXML)
 import GHC.Base ((<|>))
 import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
-import Srclib.Types (SourceUserDefDep (..))
-import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), RawPom, pomLicenseName, validatePom)
+import Srclib.Types (SourceUserDefDep (SourceUserDefDep))
+import Strategy.Maven.Pom.PomFile (
+  MavenCoordinate (coordArtifact, coordGroup, coordVersion),
+  Pom (Pom, pomCoord, pomLicenses),
+  RawPom,
+  pomLicenseName,
+  validatePom,
+ )
 
 data JarMetadata = JarMetadata
   { jarName :: Text

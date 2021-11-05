@@ -6,18 +6,42 @@ module Strategy.Maven.Pom.Resolver (
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import Control.Algebra
-import Control.Carrier.State.Strict
-import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Algebra (Has)
+import Control.Carrier.State.Strict (
+  State,
+  get,
+  modify,
+  runState,
+ )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  context,
+  fatal,
+  recover,
+  (<||>),
+ )
 import Control.Monad (unless)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Effect.ReadFS
-import Path
-import Strategy.Maven.Pom.PomFile
+import Effect.ReadFS (
+  ReadFS,
+  ReadFSErr (FileReadError),
+  doesFileExist,
+  readContentsXML,
+  resolveDir,
+  resolveFile,
+ )
+import Path (Abs, Dir, File, Path, mkRelFile, parent, (</>))
+import Strategy.Maven.Pom.PomFile (
+  MavenCoordinate,
+  Pom (pomCoord, pomParentCoord),
+  RawParent (rawParentRelativePath),
+  RawPom (rawPomModules, rawPomParent),
+  validatePom,
+ )
 
 data GlobalClosure = GlobalClosure
   { globalGraph :: AM.AdjacencyMap MavenCoordinate

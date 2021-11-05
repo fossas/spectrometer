@@ -13,28 +13,49 @@ module App.Fossa.VPS.Scan.RunWiggins (
   PathFilters (..),
 ) where
 
-import App.Fossa.EmbeddedBinary
+import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath)
 import App.Fossa.VPS.Types (
   FilterExpressions (FilterExpressions),
   NinjaFilePaths (unNinjaFilePaths),
   NinjaScanID (unNinjaScanID),
   encodeFilterExpressions,
  )
-import App.Types
-import Control.Carrier.Error.Either
-import Control.Effect.Diagnostics
-import Data.Aeson
+import App.Types (
+  MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
+  ProjectMetadata (
+    ProjectMetadata,
+    projectJiraKey,
+    projectLink,
+    projectPolicy,
+    projectTeam,
+    projectTitle,
+    projectUrl
+  ),
+  ProjectRevision (ProjectRevision, projectBranch, projectName, projectRevision),
+ )
+import Control.Carrier.Error.Either (Has)
+import Control.Effect.Diagnostics (Diagnostics)
+import Data.Aeson (FromJSON)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
-import Discovery.Filters
-import Effect.Exec
-import Effect.Logger
-import Fossa.API.Types
-import Path
-import Text.URI
+import Discovery.Filters (
+  AllFilters (AllFilters, excludeFilters, includeFilters),
+  FilterCombination (combinedPaths),
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execJson,
+  execThrow,
+ )
+import Effect.Logger (Severity (SevDebug))
+import Fossa.API.Types (ApiKey (unApiKey), ApiOpts (ApiOpts, apiOptsApiKey, apiOptsUri))
+import Path (Abs, Dir, Path, Rel, fromAbsFile, toFilePath)
+import Text.URI (render)
 
 data ScanType = ScanType
   { followSymlinks :: Bool

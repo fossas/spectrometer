@@ -18,19 +18,25 @@ import Data.Set qualified as Set
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Data.Void (Void)
-import DepTypes (Dependency (..))
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
+import DepTypes (Dependency)
+import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, execParser)
 import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS, readContentsYaml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, deeps, directs, edges, gmap, shrink)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Dart.PubSpecLock (
-  PackageName (..),
-  PubDepSource (..),
-  PubLockContent (..),
-  PubLockPackageHostedSource (..),
-  PubLockPackageMetadata (..),
+  PackageName (PackageName),
+  PubDepSource (HostedSource),
+  PubLockContent (packages),
+  PubLockPackageHostedSource (PubLockPackageHostedSource),
+  PubLockPackageMetadata (
+    PubLockPackageMetadata,
+    pubLockPackageEnvironment,
+    pubLockPackageIsDirect,
+    pubLockPackageSource,
+    pubLockPackageVersion
+  ),
   isSupported,
   logIgnoredPackages,
   toDependency,
@@ -49,7 +55,7 @@ import Text.Megaparsec (
 import Text.Megaparsec qualified as Megaparsec
 import Text.Megaparsec.Char (alphaNumChar, char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
-import Types (GraphBreadth (..))
+import Types (GraphBreadth (Complete))
 
 type Parser = Parsec Void Text
 

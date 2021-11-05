@@ -26,10 +26,22 @@ import Data.Functor (($>))
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Void
+import Data.Void (Void)
 import GHC.Generics (Generic)
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (
+  MonadParsec (takeWhile1P, takeWhileP, try),
+  Parsec,
+  between,
+  empty,
+  endBy1,
+  manyTill,
+  satisfy,
+  sepBy,
+  sepBy1,
+  some,
+  (<|>),
+ )
+import Text.Megaparsec.Char (alphaNumChar, char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = Parsec Void Text

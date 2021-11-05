@@ -12,18 +12,48 @@ module Control.Carrier.Debug (
   module X,
 ) where
 
-import Control.Carrier.AtomicState
-import Control.Carrier.Diagnostics
-import Control.Carrier.Output.IO
+import Control.Carrier.AtomicState (
+  AtomicStateC,
+  modify,
+  runAtomicState,
+ )
+import Control.Carrier.Diagnostics (errorBoundaryIO)
+import Control.Carrier.Output.IO (OutputC, output, runOutput)
 import Control.Carrier.Simple (Simple, sendSimple)
-import Control.Effect.Debug as X
-import Control.Effect.Lift
+import Control.Effect.Debug as X (
+  Algebra (alg),
+  Debug (DebugEffect, DebugError, DebugLog, DebugMetadata, DebugScope),
+  Handler,
+  Has,
+  debugEffect,
+  debugError,
+  debugLog,
+  debugMetadata,
+  debugScope,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  SomeDiagnostic (SomeDiagnostic),
+  ToDiagnostic (renderDiagnostic),
+  rethrow,
+ )
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record (Recordable, SomeEffectResult (SomeEffectResult), recordEff)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (MonadTrans, lift)
-import Data.Aeson
+import Data.Aeson (
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value (String),
+  object,
+ )
 import Data.Aeson.Types (Pair)
-import Data.Fixed
+import Data.Fixed (Fixed (MkFixed), Nano)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)

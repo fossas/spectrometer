@@ -15,28 +15,58 @@ module Strategy.NuGet.Nuspec (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative (optional)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.List qualified as L
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Discovery.Walk (WalkStep (WalkContinue), fileName, walk')
+import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
-import Parse.XML
-import Path
+import Parse.XML (
+  FromXML (parseElement),
+  attr,
+  child,
+  children,
+  content,
+  defaultsTo,
+ )
+import Path (Abs, Dir, File, Path, parent, toFilePath)
 import Types (
-  DependencyResults (..),
-  DiscoveredProject (..),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
   GraphBreadth (Partial),
   License (License),
   LicenseResult (LicenseResult),
-  LicenseType (..),
+  LicenseType (LicenseFile, LicenseSPDX, LicenseURL, UnknownType),
  )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NuspecProject]

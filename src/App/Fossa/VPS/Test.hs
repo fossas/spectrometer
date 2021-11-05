@@ -3,22 +3,42 @@ module App.Fossa.VPS.Test (
   TestOutputType (..),
 ) where
 
-import App.Fossa.API.BuildWait
+import App.Fossa.API.BuildWait (
+  timeout,
+  waitForIssues,
+  waitForSherlockScan,
+ )
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.ProjectInference
+import App.Fossa.ProjectInference (
+  inferProjectCached,
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+ )
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
-import App.Types
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import App.Types (
+  BaseDir (BaseDir),
+  OverrideProject,
+  ProjectRevision (projectName, projectRevision),
+ )
+import Control.Carrier.Diagnostics (logWithExit_, (<||>))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
-import Data.String.Conversion
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8))
 import Data.Text.IO (hPutStrLn)
 import Effect.Exec (runExecIO)
-import Effect.Logger
-import Effect.ReadFS
-import Fossa.API.Types (ApiOpts, Issues (..))
+import Effect.Logger (
+  Pretty (pretty),
+  Severity (SevInfo),
+  logError,
+  logInfo,
+  logStdout,
+  withDefaultLogger,
+ )
+import Effect.ReadFS (runReadFSIO)
+import Fossa.API.Types (ApiOpts, Issues (issuesCount, issuesIssues))
 import System.Exit (exitFailure)
 import System.IO (stderr)
 

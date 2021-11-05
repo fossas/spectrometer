@@ -13,20 +13,76 @@ module Strategy.Cargo (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
-import Data.Aeson.Types
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
+import Data.Aeson.Types (
+  FromJSON (parseJSON),
+  Parser,
+  ToJSON,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text qualified as Text
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execJson,
+  execThrow,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
-import Path
-import Types
+import Path (Abs, Dir, File, Path)
+import Types (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (CargoType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+  VerConstraint (CEq),
+  insertEnvironment,
+ )
 
 newtype CargoLabel
   = CargoDepKind DepEnvironment

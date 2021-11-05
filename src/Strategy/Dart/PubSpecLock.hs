@@ -32,7 +32,15 @@ import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, PubType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CEq),
  )
 import Effect.Exec (Exec, Has)
@@ -40,8 +48,8 @@ import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, deeps, directs)
-import Path
-import Types (GraphBreadth (..))
+import Path (Abs, File, Path)
+import Types (GraphBreadth (Partial))
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord, FromJSONKey)
 newtype PubLockContent = PubLockContent {packages :: Map PackageName PubLockPackageMetadata} deriving (Show, Eq, Ord)

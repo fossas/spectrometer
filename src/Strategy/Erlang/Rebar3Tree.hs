@@ -8,22 +8,57 @@ module Strategy.Erlang.Rebar3Tree (
   Rebar3Dep (..),
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (void)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import DepTypes
-import Effect.Exec
-import Effect.ReadFS
+import DepTypes (
+  DepType (GitType, HexType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execParser,
+ )
+import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing, unfold)
-import Path
-import Strategy.Erlang.ConfigParser (AtomText (..), ConfigValues (..), ErlValue (..), parseConfig)
-import Text.Megaparsec
-import Text.Megaparsec.Char
-import Types (GraphBreadth (..))
+import Path (Abs, Dir, File, Path, Rel, mkRelFile, (</>))
+import Strategy.Erlang.ConfigParser (
+  AtomText (AtomText),
+  ConfigValues (ConfigValues),
+  ErlValue (
+    ErlArray,
+    ErlAtom,
+    ErlString,
+    ErlTuple
+  ),
+  parseConfig,
+ )
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhileP, try),
+  Parsec,
+  chunk,
+  many,
+  satisfy,
+  sepBy,
+  (<|>),
+ )
+import Text.Megaparsec.Char (eol)
+import Types (GraphBreadth (Complete))
 
 rebar3TreeCmd :: Command
 rebar3TreeCmd =

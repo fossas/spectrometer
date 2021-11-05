@@ -39,8 +39,17 @@ module Control.Effect.Diagnostics (
   module X,
 ) where
 
-import Control.Algebra as X
-import Control.Exception (SomeException (..))
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Exception (SomeException (SomeException))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.List (intersperse)
 import Data.List.NonEmpty qualified as NE
@@ -48,9 +57,19 @@ import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Prettyprinter
-import Prettyprinter.Render.Terminal
-import Prelude
+import Prettyprinter (
+  Doc,
+  Pretty (pretty),
+  annotate,
+  indent,
+  line,
+  vsep,
+ )
+import Prettyprinter.Render.Terminal (
+  AnsiStyle,
+  Color (Cyan, Yellow),
+  color,
+ )
 
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a

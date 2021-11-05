@@ -14,7 +14,19 @@ import Data.Aeson (
 import Data.Aeson.Types (Parser)
 import Data.Foldable (asum)
 import Data.Text (Text)
-import DepTypes (DepType (GitType), Dependency (..), VerConstraint (CEq))
+import DepTypes (
+  DepType (GitType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
 
 data SwiftPackageResolvedFile = SwiftPackageResolvedFile
   { version :: Integer

@@ -15,11 +15,45 @@ import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import DepTypes
+import DepTypes (
+  DepType (PipType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (
+    CAnd,
+    CCompatible,
+    CEq,
+    CGreater,
+    CGreaterOrEq,
+    CLess,
+    CLessOrEq,
+    CNot,
+    CURI
+  ),
+ )
 import Graphing (Graphing)
 import Graphing qualified
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (
+  MonadParsec (label, takeWhile1P, takeWhileP, try),
+  Parsec,
+  between,
+  many,
+  oneOf,
+  optional,
+  satisfy,
+  sepBy,
+  sepBy1,
+  some,
+  (<|>),
+ )
+import Text.Megaparsec.Char (char, string)
 import Text.URI qualified as URI
 
 buildGraph :: [Req] -> Graphing Dependency

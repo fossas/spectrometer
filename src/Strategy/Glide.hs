@@ -5,12 +5,25 @@ module Strategy.Glide (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Aeson (ToJSON)
-import Discovery.Walk
-import Effect.ReadFS
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walk',
+ )
+import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Go.GlideLock qualified as GlideLock
-import Types
+import Types (
+  DependencyResults,
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject GlideProject]
 discover dir = context "Glide" $ do

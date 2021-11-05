@@ -3,16 +3,35 @@ module Strategy.Conda (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Data.Aeson (ToJSON)
-import Discovery.Walk
-import Effect.Exec
-import Effect.ReadFS
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (Exec, Has)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Conda.CondaList qualified as CondaList
 import Strategy.Conda.EnvironmentYml qualified as EnvironmentYml
-import Types
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
 discover dir = map mkProject <$> findProjects dir

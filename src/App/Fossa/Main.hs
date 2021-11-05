@@ -5,17 +5,19 @@ module App.Fossa.Main (
 ) where
 
 import App.Fossa.Analyze (
-  BinaryDiscoveryMode (..),
-  IATAssertionMode (..),
+  BinaryDiscoveryMode (BinaryDiscoveryDisabled, BinaryDiscoveryEnabled),
+  IATAssertionMode (IATAssertionDisabled, IATAssertionEnabled),
   IncludeAll (IncludeAll),
-  JsonOutput (..),
+  JsonOutput (JsonOutput),
   ModeOptions (ModeOptions),
-  ScanDestination (..),
-  UnpackArchives (..),
-  VSIAnalysisMode (..),
+  ScanDestination (OutputStdout, UploadScan),
+  UnpackArchives (UnpackArchives),
+  VSIAnalysisMode (VSIAnalysisDisabled, VSIAnalysisEnabled),
   analyzeMain,
  )
-import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..))
+import App.Fossa.Analyze.Types (
+  AnalyzeExperimentalPreferences (AnalyzeExperimentalPreferences),
+ )
 import App.Fossa.Configuration (
   ConfigFile (
     configApiKey,
@@ -35,7 +37,12 @@ import App.Fossa.Configuration (
   mergeFileCmdMetadata,
   readConfigFileIO,
  )
-import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, parseSyftOutputMain)
+import App.Fossa.Container (
+  ImageText,
+  dumpSyftScanMain,
+  imageTextArg,
+  parseSyftOutputMain,
+ )
 import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
@@ -50,11 +57,20 @@ import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
 import App.Fossa.VPS.NinjaGraph (ninjaGraphMain)
 import App.Fossa.VPS.Report qualified as VPSReport
-import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
+import App.Fossa.VPS.Scan (
+  FollowSymlinks (FollowSymlinks),
+  LicenseOnlyScan (LicenseOnlyScan),
+  SkipIPRScan (SkipIPRScan),
+  scanMain,
+ )
 import App.Fossa.VPS.Test qualified as VPSTest
-import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
+import App.Fossa.VPS.Types (
+  FilterExpressions (FilterExpressions),
+  NinjaFilePaths (NinjaFilePaths),
+  NinjaScanID (NinjaScanID),
+ )
 import App.Fossa.VSI.IAT.AssertUserDefinedBinaries (assertUserDefinedBinariesMain)
-import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta (..))
+import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta (UserDefinedAssertionMeta))
 import App.OptionExtensions (jsonOption, uriOption)
 import App.Types (
   BaseDir (BaseDir, unBaseDir),
@@ -66,8 +82,8 @@ import App.Types (
     overrideName,
     overrideRevision
   ),
-  ProjectMetadata (..),
-  ReleaseGroupMetadata (..),
+  ProjectMetadata (ProjectMetadata),
+  ReleaseGroupMetadata (ReleaseGroupMetadata),
  )
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
@@ -82,13 +98,17 @@ import Data.Functor.Extra ((<$$>))
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Discovery.Filters (AllFilters (..), FilterCombination (..), targetFilterParser)
+import Discovery.Filters (
+  AllFilters (AllFilters),
+  FilterCombination (FilterCombination),
+  targetFilterParser,
+ )
 import Effect.Logger (
   Severity (SevDebug, SevInfo),
   logWarn,
   withDefaultLogger,
  )
-import Fossa.API.Types (ApiKey (..), ApiOpts (..))
+import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
 import Options.Applicative (
   Alternative (many, (<|>)),
   Parser,

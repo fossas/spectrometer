@@ -1,27 +1,58 @@
 module App.Fossa.Monorepo (
   monorepoMain,
   toPathFilters,
-  PathFilters (..),
+  PathFilters,
 ) where
 
-import App.Fossa.EmbeddedBinary
+import App.Fossa.EmbeddedBinary (BinaryPaths, withWigginsBinary)
 import App.Fossa.ProjectInference (
   inferProjectDefault,
   inferProjectFromVCS,
   mergeOverride,
   saveRevision,
  )
-import App.Fossa.VPS.Scan.RunWiggins
-import App.Types
-import Control.Carrier.Diagnostics
+import App.Fossa.VPS.Scan.RunWiggins (
+  PathFilters,
+  WigginsOpts,
+  execWiggins,
+  generateWigginsMonorepoOpts,
+  toPathFilters,
+ )
+import App.Types (
+  BaseDir (BaseDir),
+  MonorepoAnalysisOpts,
+  OverrideProject,
+  ProjectMetadata,
+ )
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  logWithExit_,
+  (<||>),
+ )
 import Control.Effect.Lift (Lift)
-import Data.Text
+import Data.Text (Text)
 import Effect.Exec (Exec, runExecIO)
-import Effect.Logger
+import Effect.Logger (
+  Logger,
+  Pretty (pretty),
+  Severity,
+  logInfo,
+  withDefaultLogger,
+ )
 import Effect.ReadFS (ReadFS, runReadFSIO)
-import Fossa.API.Types
+import Fossa.API.Types (ApiOpts)
 
-monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> PathFilters -> IO ()
+monorepoMain ::
+  BaseDir ->
+  MonorepoAnalysisOpts ->
+  Severity ->
+  ApiOpts ->
+  ProjectMetadata ->
+  OverrideProject ->
+  PathFilters ->
+  IO ()
 monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject filters = withDefaultLogger logSeverity $ do
   logWithExit_ $ runReadFSIO $ runExecIO $ withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts filters logSeverity apiOpts projectMeta overrideProject
 

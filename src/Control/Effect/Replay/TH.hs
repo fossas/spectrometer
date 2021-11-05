@@ -5,9 +5,43 @@ module Control.Effect.Replay.TH (
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Effect.Replay
+import Control.Effect.Replay (
+  EffectResult (EffectResult),
+  Replayable (replayDecode),
+  ReplayableValue (fromRecordedValue),
+ )
 import Control.Monad (replicateM)
-import Language.Haskell.TH
+import Language.Haskell.TH (
+  Con (ForallC, GadtC, InfixC, NormalC, RecC, RecGadtC),
+  Dec (DataD),
+  Exp,
+  ExpQ,
+  Info (TyConI),
+  Name,
+  PatQ,
+  Q,
+  Type (AppT),
+  TypeQ,
+  appE,
+  appT,
+  bindS,
+  clause,
+  conE,
+  conT,
+  doE,
+  funD,
+  instanceD,
+  litP,
+  newName,
+  noBindS,
+  normalB,
+  reify,
+  sigP,
+  stringL,
+  tupP,
+  varE,
+  varP,
+ )
 
 deriveReplayable :: Name -> Q [Dec]
 deriveReplayable tyName = do

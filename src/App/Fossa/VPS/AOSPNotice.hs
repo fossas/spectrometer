@@ -2,18 +2,37 @@ module App.Fossa.VPS.AOSPNotice (
   aospNoticeMain,
 ) where
 
-import App.Fossa.EmbeddedBinary
-import App.Fossa.ProjectInference
-import App.Fossa.VPS.Scan.RunWiggins
-import App.Fossa.VPS.Types
-import App.Types (BaseDir (..), OverrideProject)
-import Control.Carrier.Diagnostics
+import App.Fossa.EmbeddedBinary (BinaryPaths, withWigginsBinary)
+import App.Fossa.ProjectInference (
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+ )
+import App.Fossa.VPS.Scan.RunWiggins (
+  WigginsOpts,
+  execWiggins,
+  generateWigginsAOSPNoticeOpts,
+ )
+import App.Fossa.VPS.Types (NinjaFilePaths, NinjaScanID)
+import App.Types (BaseDir (BaseDir), OverrideProject)
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  Has,
+  logWithExit_,
+  (<||>),
+ )
 import Control.Effect.Lift (Lift)
 import Data.Text (Text)
 import Effect.Exec (Exec, runExecIO)
-import Effect.Logger
+import Effect.Logger (
+  Logger,
+  Pretty (pretty),
+  Severity,
+  logInfo,
+  withDefaultLogger,
+ )
 import Effect.ReadFS (ReadFS, runReadFSIO)
-import Fossa.API.Types (ApiOpts (..))
+import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, Path)
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()

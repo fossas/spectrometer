@@ -12,10 +12,19 @@ module App.Fossa.ProjectInference (
   InferredProject (..),
 ) where
 
-import App.Types
-import Control.Algebra
+import App.Types (
+  OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision),
+  ProjectRevision (ProjectRevision, projectRevision),
+ )
+import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  context,
+  fatal,
+  (<||>),
+ )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (unless)
 import Data.ByteString.Lazy qualified as BL
@@ -27,13 +36,39 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Effect.Exec
-import Effect.Logger
-import Effect.ReadFS
-import Path
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  ExecErr (CommandParseError),
+  execThrow,
+ )
+import Effect.Logger (Pretty (pretty))
+import Effect.ReadFS (
+  ReadFS,
+  doesDirExist,
+  doesFileExist,
+  readContentsText,
+ )
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  dirname,
+  fromAbsFile,
+  fromRelDir,
+  mkRelFile,
+  parent,
+  parseRelFile,
+  reldir,
+  relfile,
+  (</>),
+ )
 import Path.IO (getTempDir)
 import System.FilePath.Posix qualified as FP
-import Text.GitConfig.Parser (Section (..), parseConfig)
+import Text.GitConfig.Parser (Section (Section), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
 
 revisionFileName :: Path Rel File

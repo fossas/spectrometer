@@ -11,9 +11,26 @@ import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Effect.Grapher
-import Graphing
+import DepTypes (
+  DepType (GoType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Effect.Grapher (
+  Algebra,
+  LabeledGrapher,
+  LabeledGrapherC,
+  withLabeling,
+ )
+import Graphing (Graphing)
 
 -- | A golang package is uniquely identified by its import path
 newtype GolangPackage = GolangPackage {goImportPath :: Text} deriving (Eq, Ord, Show)

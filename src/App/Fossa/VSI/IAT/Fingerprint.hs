@@ -6,7 +6,7 @@ module App.Fossa.VSI.IAT.Fingerprint (
 import App.Fossa.VSI.IAT.Types (Fingerprint (Fingerprint))
 import Conduit (ConduitT, Void, await, runConduitRes, sourceFile, (.|))
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Exception (IOException, Lift, catch)
 import Control.Effect.Lift (sendIO)
 import Crypto.Hash (
@@ -18,8 +18,8 @@ import Crypto.Hash (
   hashUpdate,
  )
 import Data.ByteString qualified as B
-import Data.String.Conversion (ToText (..))
-import Discovery.Walk (WalkStep (..), walk')
+import Data.String.Conversion (toText)
+import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path, toFilePath)
 

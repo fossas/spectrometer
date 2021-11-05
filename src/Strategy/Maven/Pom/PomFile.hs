@@ -21,7 +21,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Parse.XML
+import Parse.XML (FromXML (parseElement), child, children, defaultsTo)
 
 ----- Validating POM files
 

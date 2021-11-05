@@ -9,20 +9,44 @@ module Strategy.Cocoapods.Podfile (
   PropertyType (..),
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import DepTypes
-import Effect.ReadFS
+import DepTypes (
+  DepType (PodType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing)
 import Graphing qualified
-import Path
-import Text.Megaparsec hiding (label)
-import Text.Megaparsec.Char
+import Path (Abs, File, Path)
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhileP, try),
+  Parsec,
+  choice,
+  chunk,
+  empty,
+  many,
+  manyTill,
+  optional,
+  sepBy,
+  some,
+  (<|>),
+ )
+import Text.Megaparsec.Char (char, eol)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)

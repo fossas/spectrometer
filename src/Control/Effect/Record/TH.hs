@@ -4,9 +4,33 @@ module Control.Effect.Record.TH (
   deriveRecordable,
 ) where
 
-import Control.Effect.Record
+import Control.Effect.Record (
+  Recordable (recordEff),
+  RecordableValue (toRecordedValue),
+ )
 import Control.Monad (replicateM)
-import Language.Haskell.TH
+import Language.Haskell.TH (
+  ClauseQ,
+  Con (ForallC, GadtC, InfixC, NormalC, RecC, RecGadtC),
+  Dec (DataD),
+  DecQ,
+  ExpQ,
+  Info (TyConI),
+  Name,
+  Q,
+  appT,
+  clause,
+  conP,
+  conT,
+  funD,
+  instanceD,
+  newName,
+  normalB,
+  reify,
+  tupE,
+  varE,
+  varP,
+ )
 
 -- | For the given effect type, derive an instance of 'Recordable'
 deriveRecordable :: Name -> Q [Dec]

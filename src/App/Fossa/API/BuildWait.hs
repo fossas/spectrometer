@@ -16,7 +16,7 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async qualified as Async
 import Control.Effect.Diagnostics (
   Diagnostics,
-  ToDiagnostic (..),
+  ToDiagnostic (renderDiagnostic),
   fatal,
   fatalText,
   recover,
@@ -26,7 +26,7 @@ import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Data.Functor (($>))
 import Data.Text (Text)
 import Effect.Logger (Logger, pretty, viaShow)
-import Fossa.API.Types (ApiOpts, Issues (..))
+import Fossa.API.Types (ApiOpts, Issues (issuesStatus))
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8

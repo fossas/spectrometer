@@ -31,10 +31,29 @@ module Effect.Grapher (
   module X,
 ) where
 
-import Control.Algebra as X
-import Control.Carrier.Diagnostics (ToDiagnostic (..))
-import Control.Carrier.Simple
-import Control.Carrier.State.Strict
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Carrier.Simple (
+  Simple,
+  SimpleStateC,
+  interpretState,
+  sendSimple,
+ )
+import Control.Carrier.State.Strict (
+  State,
+  StateC,
+  modify,
+  runState,
+ )
+import Control.Effect.Diagnostics (ToDiagnostic (renderDiagnostic))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)

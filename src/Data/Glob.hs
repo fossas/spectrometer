@@ -27,7 +27,7 @@ module Data.Glob (
 ) where
 
 import Data.Aeson.Types (FromJSON, ToJSON)
-import Data.String.Conversion (ToString (..), ToText (..))
+import Data.String.Conversion (ToString (toString), ToText (toText))
 import Path (Abs, Dir, Path, Rel)
 import System.FilePath qualified as FP
 import System.FilePattern qualified as Match

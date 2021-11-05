@@ -11,11 +11,16 @@ module Control.Effect.ConsoleRegion (
   module X,
 ) where
 
-import Control.Effect.Lift
+import Control.Effect.Lift (Has, Lift, liftWith, sendIO)
 import Data.Text (Text)
 import System.Console.Concurrent as X (Outputable)
 import System.Console.Concurrent qualified as C
-import System.Console.Regions as X (ConsoleRegion, RegionContent, RegionLayout (..), ToRegionContent (..))
+import System.Console.Regions as X (
+  ConsoleRegion,
+  RegionContent,
+  RegionLayout (Linear),
+  ToRegionContent,
+ )
 import System.Console.Regions qualified as R
 
 -- | See @"System.Console.Regions".'R.displayConsoleregions'@.

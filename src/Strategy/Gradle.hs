@@ -21,7 +21,11 @@ module Strategy.Gradle (
   ConfigName (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (
+  AnalyzeExperimentalPreferences (gradleOnlyConfigsAllowed),
+  AnalyzeProject,
+  analyzeProject,
+ )
 import Control.Algebra (Has, run)
 import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (
@@ -35,7 +39,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Reader (asks)
-import Data.Aeson (FromJSON (..), ToJSON, Value (..), decodeStrict, withObject, (.:))
+import Data.Aeson (FromJSON (parseJSON), ToJSON, Value (String), decodeStrict, withObject, (.:))
 import Data.Aeson.Types (Parser, unexpected)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -53,14 +57,27 @@ import Data.String.Conversion (decodeUtf8, encodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
-  DepEnvironment (..),
+  DepEnvironment (EnvDevelopment, EnvOther, EnvTesting),
   DepType (MavenType, SubprojectType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CEq),
   insertEnvironment,
  )
-import Discovery.Walk (WalkStep (..), fileName, walk')
-import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
+import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), fileName, walk')
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execThrow,
+ )
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS, doesFileExist)
@@ -69,7 +86,24 @@ import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
 import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
 import System.FilePath qualified as FilePath
-import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
+import Types (
+  BuildTarget (BuildTarget, unBuildTarget),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  FoundTargets (FoundTargets, ProjectWithoutTargets),
+  GraphBreadth (Complete),
+ )
 
 newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)

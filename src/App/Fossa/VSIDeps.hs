@@ -21,7 +21,7 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, Path)
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
+import Srclib.Types (AdditionalDepData (AdditionalDepData), SourceUnit (additionalData), SourceUserDefDep)
 import Types (GraphBreadth (Complete))
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.

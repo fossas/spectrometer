@@ -38,17 +38,37 @@ module Effect.ReadFS (
   module X,
 ) where
 
-import Control.Algebra as X
-import Control.Carrier.Simple
-import Control.Effect.Diagnostics
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Carrier.Simple (
+  Simple,
+  SimpleC,
+  interpret,
+  sendSimple,
+ )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  context,
+  fatal,
+  fromEither,
+ )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Record
+import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
-import Control.Effect.Replay
+import Control.Effect.Replay (ReplayableValue)
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception qualified as E
 import Control.Monad ((<=<))
-import Data.Aeson
+import Data.Aeson (FromJSON, ToJSON, eitherDecodeStrict)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.String.Conversion (decodeUtf8, toString, toText)
@@ -57,7 +77,17 @@ import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  SomeBase (Abs),
+  fromAbsFile,
+  fromSomeDir,
+  fromSomeFile,
+  toFilePath,
+ )
 import Path.IO qualified as PIO
 import Prettyprinter (indent, line, pretty, vsep)
 import System.Directory qualified as Directory

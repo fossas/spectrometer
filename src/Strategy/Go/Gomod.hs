@@ -24,7 +24,10 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.SemVer qualified as SemVer
-import Data.SemVer.Internal (Identifier (..), Version (..))
+import Data.SemVer.Internal (
+  Identifier (INum, IText),
+  Version (_versionMeta, _versionRelease),
+ )
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -37,7 +40,7 @@ import Path (Abs, File, Path, parent)
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types (
   GolangGrapher,
-  GolangLabel (..),
+  GolangLabel (GolangLabelVersion),
   graphingGolang,
   mkGolangPackage,
  )
@@ -56,7 +59,7 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
-import Types (GraphBreadth (..))
+import Types (GraphBreadth (Partial))
 
 -- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
 --

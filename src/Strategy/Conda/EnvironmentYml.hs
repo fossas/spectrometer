@@ -7,17 +7,29 @@ module Strategy.Conda.EnvironmentYml (
   EnvironmentYmlFile (..),
 ) where
 
-import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Data.Aeson
+import Control.Effect.Diagnostics (Diagnostics)
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.List.Extra ((!?))
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Effect.ReadFS
+import DepTypes (
+  DepType (CondaType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Effect.ReadFS (Has, ReadFS, readContentsYaml)
 import Graphing (Graphing, fromList)
-import Path
-import Types
+import Path (Abs, File, Path)
 
 buildGraph :: EnvironmentYmlFile -> Graphing Dependency
 buildGraph envYmlFile = Graphing.fromList (map toDependency allDeps)

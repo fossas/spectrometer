@@ -7,18 +7,41 @@ module Strategy.Ruby.BundleShow (
   bundleShowParser,
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (void)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Void (Void)
-import DepTypes
-import Effect.Exec
+import DepTypes (
+  DepType (GemType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execParser,
+ )
 import Graphing (Graphing)
 import Graphing qualified
-import Path
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Path (Abs, Dir, Path)
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhileP),
+  Parsec,
+  chunk,
+  sepBy,
+  (<|>),
+ )
+import Text.Megaparsec.Char (char, eol)
 
 bundleShowCmd :: Command
 bundleShowCmd =

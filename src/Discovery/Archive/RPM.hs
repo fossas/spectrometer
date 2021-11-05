@@ -5,10 +5,23 @@ module Discovery.Archive.RPM (
 import Codec.RPM.Conduit qualified as RPM
 import Codec.RPM.Tags qualified as Tags
 import Codec.RPM.Types qualified as RPMTypes
-import Conduit
-import Control.Effect.Lift
+import Conduit (
+  ConduitT,
+  MonadIO (liftIO),
+  MonadThrow,
+  PrimMonad,
+  awaitForever,
+  filterC,
+  mapM_C,
+  runConduit,
+  runResourceT,
+  sourceFileBS,
+  yield,
+  (.|),
+ )
+import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Exception (throwIO)
-import Control.Monad.Except
+import Control.Monad.Except (runExceptT)
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BS8
 import Data.ByteString.Lazy qualified as BL
@@ -16,9 +29,18 @@ import Data.CPIO qualified as CPIO
 import Data.Conduit.Lzma qualified as Lzma
 import Data.Conduit.Zlib qualified as Zlib
 import Data.Foldable (asum)
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  fromAbsFile,
+  parent,
+  parseRelFile,
+  toFilePath,
+  (</>),
+ )
 import Path.IO qualified as PIO
-import Prelude
 
 extractRpm :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractRpm dir rpmFile = do

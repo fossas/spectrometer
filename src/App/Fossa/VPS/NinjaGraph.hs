@@ -7,13 +7,64 @@ module App.Fossa.VPS.NinjaGraph (
   scanNinjaDeps,
 ) where
 
-import App.Fossa.ProjectInference
-import App.Fossa.VPS.Scan.Core
-import App.Fossa.VPS.Scan.ScotlandYard
-import App.Fossa.VPS.Types
-import App.Types (BaseDir (..), NinjaGraphCLIOptions (..), OverrideProject (..), ProjectRevision (..))
+import App.Fossa.ProjectInference (
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+ )
+import App.Fossa.VPS.Scan.Core (
+  SherlockInfo (
+    SherlockInfo,
+    sherlockClientId,
+    sherlockClientToken,
+    sherlockOrgId,
+    sherlockUrl
+  ),
+  createLocator,
+  getSherlockInfo,
+ )
+import App.Fossa.VPS.Scan.ScotlandYard (
+  ScotlandYardNinjaOpts (ScotlandYardNinjaOpts),
+  uploadBuildGraph,
+ )
+import App.Fossa.VPS.Types (
+  DepsDependency (DepsDependency, dependencyPath),
+  DepsTarget (
+    DepsTarget,
+    targetDependencies,
+    targetInputs,
+    targetPath
+  ),
+  NinjaGraphOpts (
+    NinjaGraphOpts,
+    lunchTarget,
+    ninjaFossaOpts,
+    ninjaGraphNinjaPath,
+    ninjaProjectName
+  ),
+ )
+import App.Types (
+  BaseDir (BaseDir),
+  NinjaGraphCLIOptions (
+    NinjaGraphCLIOptions,
+    ninjaBaseDir,
+    ninjaBuildName,
+    ninjaDepsFile,
+    ninjaLunchTarget,
+    ninjaScanId
+  ),
+  OverrideProject,
+  ProjectRevision (ProjectRevision, projectName),
+ )
 import App.Util (validateDir)
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  Has,
+  ToDiagnostic (renderDiagnostic),
+  fatal,
+  logWithExit_,
+  (<||>),
+ )
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -22,13 +73,23 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
-import Effect.Exec
-import Effect.Logger hiding (line)
-import Effect.ReadFS
+import Effect.Exec (ExitCode (ExitSuccess), runExecIO)
+import Effect.Logger (
+  Logger,
+  Pretty (pretty),
+  Severity,
+  logDebug,
+  withDefaultLogger,
+ )
+import Effect.ReadFS (ReadFS, readContentsBS, runReadFSIO)
 import Fossa.API.Types (ApiOpts)
-import Path
+import Path (Abs, Dir, Path, fromAbsDir, parseAbsFile)
 import System.FilePath qualified as FP
-import System.Process.Typed as PROC
+import System.Process.Typed as PROC (
+  readProcess,
+  setWorkingDir,
+  shell,
+ )
 
 data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   { ninjaCmdBasedir :: FilePath

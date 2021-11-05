@@ -9,13 +9,24 @@ module Control.Carrier.AtomicState (
   module X,
 ) where
 
-import Control.Algebra
-import Control.Carrier.Lift
-import Control.Carrier.Reader
-import Control.Effect.AtomicState as X
+import Control.Algebra (Algebra (alg), Has, type (:+:) (L, R))
+import Control.Carrier.Lift (Lift, sendIO)
+import Control.Carrier.Reader (ReaderC, ask, runReader)
+import Control.Effect.AtomicState as X (
+  AtomicState (Modify),
+  get,
+  getSet,
+  modify,
+  put,
+ )
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (MonadTrans)
-import Data.IORef
+import Data.IORef (
+  IORef,
+  atomicModifyIORef',
+  newIORef,
+  readIORef,
+ )
 
 newtype AtomicStateC s m a = AtomicStateC {runAtomicStateC :: ReaderC (IORef s) m a}
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)

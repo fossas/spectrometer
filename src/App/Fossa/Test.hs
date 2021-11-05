@@ -36,7 +36,7 @@ import Effect.Logger (
   withDefaultLogger,
  )
 import Effect.ReadFS (runReadFSIO)
-import Fossa.API.Types (ApiOpts, Issues (..))
+import Fossa.API.Types (ApiOpts, Issues (issuesCount, issuesIssues))
 import System.Exit (exitFailure)
 import System.IO (stderr)
 

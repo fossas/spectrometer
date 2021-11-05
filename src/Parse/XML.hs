@@ -61,12 +61,20 @@ module Parse.XML (
   xmlErrorPretty,
 ) where
 
-import Prelude
-
-import Control.Algebra
-import Control.Carrier.Error.Either
-import Control.Carrier.NonDet.Church
-import Control.Carrier.Reader
+import Control.Algebra (run)
+import Control.Carrier.Error.Either (
+  ErrorC,
+  catchError,
+  runError,
+  throwError,
+ )
+import Control.Carrier.NonDet.Church (Alternative (empty, (<|>)))
+import Control.Carrier.Reader (
+  ReaderC,
+  ask,
+  local,
+  runReader,
+ )
 import Data.Functor.Identity (Identity)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)

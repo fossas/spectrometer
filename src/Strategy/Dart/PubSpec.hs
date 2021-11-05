@@ -24,15 +24,23 @@ import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, PubType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CEq),
  )
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (Has, ReadFS, readContentsYaml)
 import Graphing (Graphing, directs, induceJust)
-import Path
-import Strategy.Dart.PubSpecLock (PackageName (..))
-import Types (GraphBreadth (..))
+import Path (Abs, File, Path)
+import Strategy.Dart.PubSpecLock (PackageName (unPackageName))
+import Types (GraphBreadth (Partial))
 
 data PubSpecContent = PubSpecContent
   { pubSpecDependencies :: Maybe (Map PackageName PubSpecDepSource)

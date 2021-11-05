@@ -5,7 +5,7 @@ module Strategy.SwiftPM (
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (..))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Aeson (ToJSON)
@@ -19,10 +19,25 @@ import Discovery.Walk (
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path, dirname, reldir)
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Partial),
+ )
 
 data SwiftProject
   = PackageProject SwiftPackageProject

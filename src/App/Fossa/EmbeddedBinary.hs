@@ -16,12 +16,30 @@ module App.Fossa.EmbeddedBinary (
 
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Monad.IO.Class
-import Data.ByteString (ByteString, writeFile)
-import Data.FileEmbed.Extra
-import Path
-import Path.IO
-import Prelude hiding (writeFile)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
+import Data.FileEmbed.Extra (embedFileIfExists)
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  fromAbsFile,
+  mkRelDir,
+  mkRelFile,
+  parent,
+  (</>),
+ )
+import Path.IO (
+  Permissions (executable),
+  ensureDir,
+  getPermissions,
+  getTempDir,
+  removeDirRecur,
+  setPermissions,
+ )
 
 data PackagedBinary
   = Syft
@@ -90,7 +108,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
   ensureDir $ parent path
-  writeFile (fromAbsFile path) content
+  BS.writeFile (fromAbsFile path) content
   makeExecutable path
 
 extractedPath :: PackagedBinary -> Path Rel File

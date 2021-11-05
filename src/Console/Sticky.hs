@@ -6,9 +6,20 @@ module Console.Sticky (
 ) where
 
 import Control.Effect.ConsoleRegion qualified as R
-import Control.Effect.Lift
+import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.Text (Text)
-import Effect.Logger
+import Effect.Logger (
+  AnsiStyle,
+  Doc,
+  Logger,
+  Pretty (pretty),
+  Severity,
+  defaultLayoutOptions,
+  layoutPretty,
+  log,
+  logDebug,
+  renderStrict,
+ )
 import System.Console.ANSI (hSupportsANSI)
 import System.IO (stdout)
 

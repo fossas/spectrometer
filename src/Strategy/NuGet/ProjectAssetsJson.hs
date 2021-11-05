@@ -10,19 +10,57 @@ module Strategy.NuGet.ProjectAssetsJson (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
-import Data.Aeson
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  ToJSON,
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Map.Strict qualified as Map
-import Data.Maybe
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  VerConstraint (CEq),
+ )
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk',
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
-import Path
-import Types
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ProjectAssetsJsonProject]
 discover dir = context "ProjectAssetsJson" $ do

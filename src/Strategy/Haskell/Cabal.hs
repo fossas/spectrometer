@@ -15,9 +15,21 @@ module Strategy.Haskell.Cabal (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  fatal,
+ )
 import Control.Monad (when)
-import Data.Aeson.Types
+import Data.Aeson.Types (
+  FromJSON (parseJSON),
+  ToJSON,
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (for_)
 import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
@@ -27,15 +39,56 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
-import Effect.ReadFS
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  fileName,
+  walk',
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execThrow,
+ )
+import Effect.Grapher (
+  MappedGrapher,
+  direct,
+  edge,
+  mapping,
+  withMapping,
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
-import Path
-import Types
+import Path (Abs, Dir, File, Path, Rel, mkRelFile, (</>))
+import Types (
+  DepType (HackageType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+  VerConstraint (CEq),
+ )
 
 newtype BuildPlan = BuildPlan {installPlans :: [InstallPlan]} deriving (Eq, Ord, Show)
 newtype Component = Component {componentDeps :: Set PlanId} deriving (Eq, Ord, Show)

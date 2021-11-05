@@ -8,9 +8,9 @@ module Strategy.Maven.Pom.Closure (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AM
-import Control.Algebra
-import Control.Carrier.State.Strict
-import Control.Effect.Diagnostics
+import Control.Algebra (Has)
+import Control.Carrier.State.Strict (execState, modify)
+import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
@@ -19,13 +19,16 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Discovery.Walk
-import Effect.ReadFS
+import Discovery.Walk (WalkStep (WalkSkipSome), fileName, walk)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Path.IO qualified as PIO
-import Strategy.Maven.Pom.PomFile
-import Strategy.Maven.Pom.Resolver
+import Strategy.Maven.Pom.PomFile (MavenCoordinate, Pom)
+import Strategy.Maven.Pom.Resolver (
+  GlobalClosure (globalGraph, globalPoms),
+  buildGlobalClosure,
+ )
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do

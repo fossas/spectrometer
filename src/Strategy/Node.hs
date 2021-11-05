@@ -55,10 +55,10 @@ import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.PackageJson (
   Development,
   FlatDeps (FlatDeps),
-  Manifest (..),
+  Manifest (Manifest),
   NodePackage (NodePackage),
-  PackageJson (..),
-  PkgJsonGraph (..),
+  PackageJson (PackageJson, packageWorkspaces),
+  PkgJsonGraph (PkgJsonGraph, jsonLookup),
   PkgJsonWorkspaces (unWorkspaces),
   Production,
   pkgFileList,
@@ -68,7 +68,13 @@ import Strategy.Node.YarnV1.YarnLock qualified as V1
 import Strategy.Node.YarnV2.YarnLock qualified as V2
 import Types (
   DependencyResults (DependencyResults),
-  DiscoveredProject (..),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
  )

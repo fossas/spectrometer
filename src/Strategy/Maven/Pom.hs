@@ -8,7 +8,7 @@ module Strategy.Maven.Pom (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics (Has, run)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -17,14 +17,60 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove)
-import DepTypes
-import Effect.Grapher
+import DepTypes (
+  DepEnvironment (EnvTesting),
+  DepType (MavenType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+  insertEnvironment,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
 import Graphing (Graphing)
-import Path
+import Path (File, Path, Rel, toFilePath)
 import Path.IO qualified as Path
-import Strategy.Maven.Pom.Closure
-import Strategy.Maven.Pom.PomFile
-import Types
+import Strategy.Maven.Pom.Closure (
+  MavenProjectClosure (
+    closureAnalysisRoot,
+    closureGraph,
+    closurePoms,
+    closureRootCoord,
+    closureRootPom
+  ),
+ )
+import Strategy.Maven.Pom.PomFile (
+  Artifact,
+  Group,
+  MavenCoordinate (coordArtifact, coordGroup, coordVersion),
+  MvnDepBody (depClassifier, depOptional, depScope, depVersion),
+  Pom (
+    pomCoord,
+    pomDependencies,
+    pomDependencyManagement,
+    pomLicenses,
+    pomParentCoord,
+    pomProperties
+  ),
+  PomLicense (pomLicenseName, pomLicenseUrl),
+ )
+import Types (
+  License (License),
+  LicenseResult (LicenseResult),
+  LicenseType (LicenseSPDX, LicenseURL),
+ )
 
 data MavenStrategyOpts = MavenStrategyOpts
   { strategyPath :: Path Rel File

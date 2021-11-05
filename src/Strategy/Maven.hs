@@ -20,7 +20,22 @@ import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Partial),
+ )
 
 discover ::
   ( MonadIO m

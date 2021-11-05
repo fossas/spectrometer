@@ -4,9 +4,9 @@ module App.Fossa.Analyze.Types (
   AnalyzeExperimentalPreferences (..),
 ) where
 
-import Control.Carrier.Diagnostics
 import Control.Effect.Debug (Debug)
-import Control.Effect.Lift
+import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Lift (Has, Lift)
 import Control.Effect.Reader (Reader)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Set (Set)
@@ -14,7 +14,7 @@ import Data.Text (Text)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
-import Types
+import Types (DependencyResults, FoundTargets)
 
 newtype AnalyzeExperimentalPreferences = AnalyzeExperimentalPreferences
   {gradleOnlyConfigsAllowed :: Maybe (Set Text)}

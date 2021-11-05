@@ -8,8 +8,17 @@ module App.Fossa.Analyze.Record (
 ) where
 
 import App.Version (fullVersionDescription)
-import Control.Effect.Record
-import Data.Aeson
+import Control.Effect.Record (Journal)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  eitherDecodeFileStrict',
+  encodeFile,
+  object,
+  withObject,
+  (.:),
+ )
 import Data.Text (Text)
 import Effect.Exec (ExecF)
 import Effect.ReadFS (ReadFSF)

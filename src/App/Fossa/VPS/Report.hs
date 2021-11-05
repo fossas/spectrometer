@@ -3,13 +3,26 @@ module App.Fossa.VPS.Report (
   ReportType (..),
 ) where
 
-import App.Fossa.API.BuildWait
+import App.Fossa.API.BuildWait (
+  timeout,
+  waitForIssues,
+  waitForSherlockScan,
+ )
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.ProjectInference
+import App.Fossa.ProjectInference (
+  inferProjectCached,
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+ )
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
-import App.Types
-import Control.Carrier.Diagnostics
+import App.Types (
+  BaseDir (BaseDir),
+  OverrideProject,
+  ProjectRevision (projectName, projectRevision),
+ )
+import Control.Carrier.Diagnostics (logWithExit_, (<||>))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
@@ -17,8 +30,12 @@ import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
 import Effect.Exec (runExecIO)
-import Effect.Logger
-import Effect.ReadFS
+import Effect.Logger (
+  Severity (SevInfo),
+  logStdout,
+  withDefaultLogger,
+ )
+import Effect.ReadFS (runReadFSIO)
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure)
 import System.IO (stderr)

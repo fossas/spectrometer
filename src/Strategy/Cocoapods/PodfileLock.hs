@@ -27,12 +27,24 @@ import Data.Text (Text)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
 import Data.Yaml qualified as Yaml
-import DepTypes (DepType (GitType, PodType), Dependency (..), VerConstraint (CEq))
+import DepTypes (
+  DepType (GitType, PodType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing)
 import Options.Applicative (Alternative ((<|>)))
-import Path
+import Path (Abs, File, Path)
 import Text.Megaparsec (MonadParsec (takeWhileP), Parsec, between, empty, errorBundlePretty, parse, some, takeWhile1P)
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L

@@ -6,13 +6,21 @@ module Strategy.Go.Transitive (
   Package (..),
 ) where
 
-import Control.Algebra
+import Control.Algebra (Has)
 import Control.Applicative (many)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, context, fatal)
 import Control.Monad (unless)
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  JSONPath,
+  Value (Array),
+  json,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Aeson.Internal (formatError, iparse)
-import Data.Aeson.Parser
+import Data.Aeson.Parser (eitherDecodeWith)
 import Data.Attoparsec.ByteString qualified as A
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
@@ -22,10 +30,21 @@ import Data.Maybe qualified as Maybe
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Vector qualified as V
-import Effect.Exec
-import Effect.Grapher
-import Path
-import Strategy.Go.Types
+import Effect.Exec (
+  AllowErr (NonEmptyStdout),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  ExecErr (CommandParseError),
+  execThrow,
+ )
+import Effect.Grapher (edge, label)
+import Path (Abs, Dir, Path)
+import Strategy.Go.Types (
+  GolangGrapher,
+  GolangPackage,
+  mkGolangPackage,
+  mkGolangVersion,
+ )
 
 goListCmd :: Command
 goListCmd =

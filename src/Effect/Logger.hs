@@ -22,10 +22,27 @@ module Effect.Logger (
   module X,
 ) where
 
-import Control.Algebra as X
-import Control.Carrier.Simple
-import Control.Effect.ConsoleRegion
-import Control.Effect.Exception
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Carrier.Simple (
+  Simple,
+  SimpleC,
+  interpret,
+  sendSimple,
+ )
+import Control.Effect.ConsoleRegion (
+  displayConsoleRegions,
+  withConcurrentOutput,
+ )
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
@@ -33,12 +50,29 @@ import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prettyprinter as X
-import Prettyprinter.Render.Terminal as X
+import Prettyprinter as X (
+  Doc,
+  Pretty (pretty),
+  annotate,
+  defaultLayoutOptions,
+  hang,
+  hcat,
+  hsep,
+  layoutPretty,
+  line,
+  unAnnotate,
+  viaShow,
+ )
+import Prettyprinter.Render.Terminal as X (
+  AnsiStyle,
+  Color (Cyan, Green, Red, White, Yellow),
+  color,
+  renderStrict,
+ )
 import System.Console.ANSI (hSupportsANSI)
 import System.Console.Concurrent (errorConcurrent, outputConcurrent)
 import System.IO (stderr)
-import Prelude hiding (log)
+import Prelude (Applicative, Eq, IO, Ord, Show, String, pure, ($), (.), (<=), (<>))
 
 data LogCtx m = LogCtx
   { logCtxSeverity :: Severity

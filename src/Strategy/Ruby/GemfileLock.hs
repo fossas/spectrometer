@@ -8,7 +8,12 @@ module Strategy.Ruby.GemfileLock (
   Section (..),
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -18,13 +23,39 @@ import Data.Set (Set)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Void (Void)
-import DepTypes
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepType (GemType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing)
-import Path
-import Text.Megaparsec hiding (label)
-import Text.Megaparsec.Char
+import Path (Abs, File, Path)
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhile1P, takeWhileP, try),
+  Parsec,
+  chunk,
+  empty,
+  manyTill,
+  some,
+  (<|>),
+ )
+import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 type Remote = Text

@@ -10,20 +10,40 @@ module Strategy.Maven.Plugin (
   Edge (..),
 ) where
 
-import Control.Algebra
-import Control.Effect.Diagnostics
-import Control.Effect.Exception
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
 import Data.Functor (void)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Effect.Exec
-import Effect.ReadFS
-import Path
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execThrow,
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  fromAbsDir,
+  mkRelFile,
+  (</>),
+ )
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import System.FilePath qualified as FP
 

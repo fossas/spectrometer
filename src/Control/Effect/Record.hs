@@ -14,26 +14,36 @@ module Control.Effect.Record (
   SomeEffectResult (..),
 ) where
 
-import Control.Algebra
-import Control.Carrier.AtomicState
-import Control.Carrier.Simple
-import Control.Effect.Lift
-import Control.Effect.Sum
-import Control.Monad.Trans
-import Data.Aeson
+import Control.Algebra (Algebra (alg), Has, send, type (:+:) (L, R))
+import Control.Carrier.AtomicState (
+  AtomicStateC,
+  modify,
+  runAtomicState,
+ )
+import Control.Carrier.Simple (Simple (Simple))
+import Control.Effect.Lift (Lift)
+import Control.Effect.Sum (Member)
+import Control.Monad.Trans (MonadIO, MonadTrans (lift))
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toEncoding, toJSON),
+  Value (Null),
+  object,
+ )
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.Kind
+import Data.Kind (Type)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (decodeUtf8)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Void (Void)
-import Path
+import Path (Path, SomeBase)
 import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Text (renderStrict)
-import System.Exit
+import System.Exit (ExitCode (ExitFailure, ExitSuccess))
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors

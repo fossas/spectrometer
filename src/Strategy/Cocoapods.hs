@@ -10,13 +10,32 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
-import Discovery.Walk
-import Effect.ReadFS
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk',
+ )
+import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
-import Types
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete, Partial),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
 discover dir = context "Cocoapods" $ do

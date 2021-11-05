@@ -5,19 +5,40 @@ module App.Fossa.VPS.Scan (
   LicenseOnlyScan (..),
 ) where
 
-import App.Fossa.EmbeddedBinary
-import App.Fossa.ProjectInference
-import App.Fossa.VPS.Scan.RunWiggins
-import App.Fossa.VPS.Types
-import App.Types (BaseDir (..), OverrideProject (..), ProjectMetadata (..))
-import Control.Carrier.Diagnostics
+import App.Fossa.EmbeddedBinary (BinaryPaths, withWigginsBinary)
+import App.Fossa.ProjectInference (
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+  saveRevision,
+ )
+import App.Fossa.VPS.Scan.RunWiggins (
+  ScanType (ScanType),
+  WigginsOpts,
+  execWiggins,
+  generateWigginsScanOpts,
+ )
+import App.Fossa.VPS.Types (FilterExpressions)
+import App.Types (BaseDir (BaseDir), OverrideProject, ProjectMetadata)
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  Has,
+  logWithExit_,
+  (<||>),
+ )
 import Control.Effect.Lift (Lift)
 import Data.Flag (Flag, fromFlag)
-import Data.Text
+import Data.Text (Text)
 import Effect.Exec (Exec, runExecIO)
-import Effect.Logger
+import Effect.Logger (
+  Logger,
+  Pretty (pretty),
+  Severity,
+  logInfo,
+  withDefaultLogger,
+ )
 import Effect.ReadFS (ReadFS, runReadFSIO)
-import Fossa.API.Types (ApiOpts (..))
+import Fossa.API.Types (ApiOpts)
 
 -- | FollowSymlinks bool flag
 data FollowSymlinks = FollowSymlinks

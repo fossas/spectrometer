@@ -12,14 +12,13 @@ module App.Fossa.Analyze.Graph (
   graphDirect,
 ) where
 
-import Data.Aeson
+import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.Bifunctor (bimap)
 import Data.Function ((&))
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.Sequence qualified as S
-
-import DepTypes
+import DepTypes (Dependency)
 
 -- | Opaque reference to a dependency in the graph. Used for adding edges to the graph (See: 'addEdge')
 newtype DepRef = DepRef {unDepRef :: Int} deriving (Eq, Ord, Show)

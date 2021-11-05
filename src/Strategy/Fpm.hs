@@ -6,9 +6,24 @@ import Data.Aeson (ToJSON)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walk')
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Fortran.FpmToml (analyzeFpmToml)
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (Partial))
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Partial),
+ )
 
 discover ::
   ( Has ReadFS sig m

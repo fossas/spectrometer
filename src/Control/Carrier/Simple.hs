@@ -119,11 +119,20 @@ module Control.Carrier.Simple (
   module X,
 ) where
 
-import Control.Algebra as X
-import Control.Applicative
-import Control.Carrier.Reader
-import Control.Carrier.State.Strict
-import Control.Monad.Trans
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Applicative (Alternative)
+import Control.Carrier.Reader (ReaderC (ReaderC), runReader)
+import Control.Carrier.State.Strict (StateC, runState)
+import Control.Monad.Trans (MonadIO, MonadTrans (lift))
 
 ---------- The Simple effect
 

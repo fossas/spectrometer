@@ -4,12 +4,20 @@ module App.Fossa.Analyze.Project (
 ) where
 
 import Data.Text (Text)
-import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
-import Path
+import Path (Abs, Dir, File, Path, SomeBase)
 import Path.Extra (tryMakeRelative)
-import Types
+import Types (
+  Dependency,
+  DependencyResults (
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (projectPath, projectType),
+  GraphBreadth,
+ )
 
 mkResult :: Path Abs Dir -> DiscoveredProject n -> (DependencyResults) -> ProjectResult
 mkResult basedir project dependencyResults =

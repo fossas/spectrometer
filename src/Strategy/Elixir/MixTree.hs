@@ -20,7 +20,7 @@ module Strategy.Elixir.MixTree (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (void)
-import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
+import Control.Monad.Combinators.Expr (Operator (InfixL), makeExprParser)
 import Data.Aeson (ToJSON)
 import Data.Foldable (asum)
 import Data.Functor (($>))
@@ -32,7 +32,15 @@ import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes (
   DepType (GitType, HexType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (
     CAnd,
     CCompatible,
@@ -45,11 +53,16 @@ import DepTypes (
     COr
   ),
  )
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execParser,
+ )
 import Effect.Logger (Logger, logWarn)
 import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
-import Path
+import Path (Abs, Dir, File, Path)
 import Prettyprinter (pretty)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, takeWhileP, try),
@@ -70,7 +83,15 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-import Types (DependencyResults (..), GraphBreadth (..))
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  GraphBreadth (Complete),
+ )
 
 missingDepVersionsMsg :: Text
 missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"

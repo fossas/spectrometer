@@ -6,16 +6,38 @@ module Control.Carrier.Diagnostics.StickyContext (
 ) where
 
 import Console.Sticky qualified as Sticky
-import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.Reader
-import Control.Effect.AtomicCounter
-import Control.Effect.Lift
+import Control.Carrier.Reader (
+  Algebra,
+  Has,
+  ReaderC,
+  asks,
+  local,
+  runReader,
+ )
+import Control.Effect.AtomicCounter (
+  Algebra (alg),
+  AtomicCounter,
+  generateId,
+  type (:+:) (L, R),
+ )
+import Control.Effect.Diagnostics qualified as Diag (
+  Diagnostics (Context),
+ )
+import Control.Effect.Lift (Lift)
 import Control.Effect.Sum (Member (inj))
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.Class (MonadTrans (..))
+import Control.Monad.Trans.Class (MonadTrans)
 import Data.List (intersperse)
 import Data.Text qualified as Text
-import Effect.Logger
+import Effect.Logger (
+  Color (Green, Yellow),
+  Logger,
+  Pretty (pretty),
+  Severity (SevDebug),
+  annotate,
+  color,
+  hcat,
+ )
 
 stickyDiag :: (Has AtomicCounter sig m, Has (Lift IO) sig m) => StickyDiagC m a -> m a
 stickyDiag act = do

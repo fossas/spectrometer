@@ -20,10 +20,22 @@ import Data.Map.Strict qualified as Map
 import Data.Set (Set, fromList, member)
 import Data.Text (Text)
 import Data.Void (Void)
-import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
+import DepTypes (
+  DepType (GitType, SwiftType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
-import Path
+import Path (Abs, File, Path)
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
 import Text.Megaparsec (
   MonadParsec (takeWhile1P, try),

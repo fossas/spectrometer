@@ -15,7 +15,19 @@ module App.Fossa.Configuration (
 ) where
 
 import App.Docs (fossaYmlDocUrl)
-import App.Types
+import App.Types (
+  ProjectMetadata (
+    ProjectMetadata,
+    projectJiraKey,
+    projectLink,
+    projectPolicy,
+    projectReleaseGroup,
+    projectTeam,
+    projectTitle,
+    projectUrl
+  ),
+  ReleaseGroupMetadata,
+ )
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
@@ -25,13 +37,19 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Effect.Logger (Severity (SevWarn), logWarn, withDefaultLogger)
-import Effect.ReadFS
-import Path
+import Effect.ReadFS (
+  Has,
+  ReadFS,
+  doesFileExist,
+  readContentsYaml,
+  runReadFSIO,
+ )
+import Path (Abs, Dir, File, Path, Rel, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Prettyprinter (Doc, Pretty (pretty), vsep)
 import System.Exit (die)
-import Text.Megaparsec
-import Types
+import Text.Megaparsec ((<|>))
+import Types (TargetFilter)
 
 data ConfigFile = ConfigFile
   { configVersion :: Int

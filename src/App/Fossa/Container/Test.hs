@@ -5,19 +5,40 @@ module App.Fossa.Container.Test (
   testMain,
 ) where
 
-import App.Fossa.API.BuildWait
-import App.Fossa.Container
-import App.Types (OverrideProject (..), ProjectRevision (..))
-import Control.Carrier.Diagnostics
+import App.Fossa.API.BuildWait (
+  timeout,
+  waitForBuild,
+  waitForIssues,
+ )
+import App.Fossa.Container (
+  ImageText,
+  extractRevision,
+  runSyft,
+  toContainerScan,
+ )
+import App.Types (OverrideProject, ProjectRevision (projectName, projectRevision))
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  Has,
+  logWithExit_,
+ )
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
-import Control.Effect.Lift
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
-import Effect.Logger
-import Fossa.API.Types (ApiOpts (..), Issues (..))
+import Effect.Logger (
+  Logger,
+  Pretty (pretty),
+  Severity (SevInfo),
+  logError,
+  logInfo,
+  logStdout,
+  withDefaultLogger,
+ )
+import Fossa.API.Types (ApiOpts, Issues (issuesCount, issuesIssues))
 import System.Exit (exitFailure)
 import System.IO (stderr)
 

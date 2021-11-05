@@ -10,10 +10,20 @@ module Text.URI.Builder (
   setQuery,
 ) where
 
-import Control.Effect.Diagnostics
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.Text
-import Text.URI
+import Control.Effect.Diagnostics (Diagnostics, Has, fromEither)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.Text (Text)
+import Text.URI (
+  QueryParam (QueryFlag, QueryParam),
+  RText,
+  RTextLabel (PathPiece),
+  URI (uriAuthority, uriPath, uriQuery),
+  emptyURI,
+  mkPathPiece,
+  mkQueryKey,
+  mkQueryValue,
+  render,
+ )
 
 newtype PathComponent = PathComponent {unPathComponent :: Text} deriving (Eq, Ord, Show)
 

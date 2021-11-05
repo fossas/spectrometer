@@ -4,15 +4,20 @@ module App.Fossa.Analyze.GraphMangler (
 
 import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import Algebra.Graph.AdjacencyMap qualified as AM
-import Control.Algebra
+import App.Fossa.Analyze.Graph qualified as G
+import App.Fossa.Analyze.GraphBuilder (
+  GraphBuilder,
+  addDirect,
+  addEdge,
+  addNode,
+  evalGraphBuilder,
+ )
+import Control.Algebra (Has, run)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-
-import App.Fossa.Analyze.Graph qualified as G
-import App.Fossa.Analyze.GraphBuilder
-import DepTypes
+import DepTypes (Dependency)
 import Graphing (Graphing)
 import Graphing qualified
 

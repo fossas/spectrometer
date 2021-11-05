@@ -9,15 +9,55 @@ module Control.Carrier.TaskPool (
   module X,
 ) where
 
-import Control.Carrier.Reader
-import Control.Carrier.Threaded
-import Control.Concurrent.STM
-import Control.Effect.Exception
+import Control.Algebra (Algebra (alg), type (:+:) (L, R))
+import Control.Carrier.Reader (
+  Has,
+  ReaderC,
+  ask,
+  run,
+  runReader,
+ )
+import Control.Carrier.Threaded (fork, kill)
+import Control.Concurrent.STM (
+  STM,
+  TMVar,
+  TVar,
+  atomically,
+  check,
+  modifyTVar,
+  modifyTVar',
+  newEmptyTMVarIO,
+  newTVarIO,
+  readTVar,
+  retry,
+  tryPutTMVar,
+  tryReadTMVar,
+  writeTVar,
+ )
+import Control.Effect.Exception (
+  Lift,
+  SomeException,
+  bracket,
+  mask,
+  throwIO,
+  try,
+ )
 import Control.Effect.Lift (sendIO)
-import Control.Effect.TaskPool as X
+import Control.Effect.TaskPool as X (
+  Algebra,
+  Handler,
+  Has,
+  TaskPool (ForkTask),
+  forkTask,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:),
+ )
 import Control.Monad (join, replicateM)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans (MonadTrans (..))
+import Control.Monad.Trans (MonadTrans (lift))
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 

@@ -10,20 +10,19 @@ module Discovery.Archive (
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.GZip qualified as GZip
-import Control.Carrier.Diagnostics
-import Control.Effect.Finally
-import Control.Effect.Lift
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Effect.Finally (Finally, onExit)
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.String.Conversion (toText)
 import Discovery.Archive.RPM (extractRpm)
-import Discovery.Walk
+import Discovery.Walk (WalkStep (WalkContinue), fileName, walk)
 import Effect.ReadFS (ReadFS)
-import Path
+import Path (Abs, Dir, File, Path, fromAbsDir, fromAbsFile)
 import Path.IO qualified as PIO
-import Prelude hiding (zip)
 
 -- | Given a function to run over unarchived contents, recursively unpack archives
 discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()

@@ -11,20 +11,47 @@ module Strategy.NuGet.PackagesConfig (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  VerConstraint (CEq),
+ )
+import Discovery.Walk (WalkStep (WalkContinue), fileName, walk')
+import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
-import Parse.XML
-import Path
-import Types
+import Parse.XML (FromXML (parseElement), attr, children)
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Partial),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PackagesConfigProject]
 discover dir = context "PackagesConfig" $ do

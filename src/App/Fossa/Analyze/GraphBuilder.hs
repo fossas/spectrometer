@@ -13,10 +13,15 @@ module App.Fossa.Analyze.GraphBuilder (
 ) where
 
 import App.Fossa.Analyze.Graph qualified as G
-import Control.Algebra
-import Control.Carrier.Simple
-import Control.Carrier.State.Strict
-import DepTypes
+import Control.Algebra (Algebra, Has)
+import Control.Carrier.Simple (
+  Simple,
+  SimpleStateC,
+  interpretState,
+  sendSimple,
+ )
+import Control.Carrier.State.Strict (modify, state)
+import DepTypes (Dependency)
 
 data SGraphBuilder a where
   AddNode :: Dependency -> SGraphBuilder G.DepRef

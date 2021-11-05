@@ -19,18 +19,62 @@ module Control.Carrier.Diagnostics (
   module X,
 ) where
 
-import Control.Carrier.Error.Either
-import Control.Carrier.Reader
-import Control.Carrier.Writer.Church
-import Control.Effect.Diagnostics as X
+import Control.Carrier.Error.Either (
+  Algebra,
+  ErrorC,
+  Has,
+  catchError,
+  run,
+  runError,
+  throwError,
+ )
+import Control.Carrier.Reader (
+  ReaderC,
+  ask,
+  local,
+  runReader,
+ )
+import Control.Carrier.Writer.Church (WriterC, runWriter, tell)
+import Control.Effect.Diagnostics as X (
+  Algebra (alg),
+  Diagnostics (Context, ErrorBoundary, Fatal, Recover', Rethrow),
+  FailureBundle (FailureBundle, failureCause, failureWarnings),
+  Handler,
+  Has,
+  SomeDiagnostic (SomeDiagnostic),
+  ToDiagnostic (renderDiagnostic),
+  combineSuccessful,
+  context,
+  errorBoundary,
+  fatal,
+  fatalText,
+  fromEither,
+  fromEitherShow,
+  fromMaybe,
+  fromMaybeText,
+  recover,
+  recover',
+  renderFailureBundle,
+  renderSomeDiagnostic,
+  rethrow,
+  run,
+  send,
+  tagError,
+  thread,
+  warnMaybe,
+  warnMaybeText,
+  (<||>),
+  (~<~),
+  type (:+:) (L, R),
+ )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
-import Control.Monad.Trans
+import Control.Monad.Trans (MonadIO, MonadTrans (lift))
 import Data.Foldable (traverse_)
-import Data.Monoid (Endo (..))
+import Data.Monoid (Endo (Endo, appEndo))
 import Data.Text (Text)
-import Effect.Logger
+import Effect.Logger (Logger, Severity, log, logError)
 import System.Exit (exitFailure, exitSuccess)
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}

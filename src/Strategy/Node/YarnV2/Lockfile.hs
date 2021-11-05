@@ -11,17 +11,34 @@ module Strategy.Node.YarnV2.Lockfile (
   tryParseDescriptor,
 ) where
 
-import Data.Aeson
-import Data.Aeson.Extra (TextLike (..))
+import Data.Aeson (
+  FromJSON (parseJSON),
+  FromJSONKeyFunction (FromJSONKeyTextParser),
+  Value (Object),
+  withObject,
+  withText,
+  (.!=),
+  (.:),
+  (.:?),
+ )
+import Data.Aeson.Extra (TextLike (unTextLike))
+import Data.Aeson.Types (FromJSONKey (fromJSONKey, fromJSONKeyList))
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Strategy.Node.PackageJson (NodePackage (..))
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Strategy.Node.PackageJson (NodePackage (NodePackage, pkgConstraint, pkgName))
+import Text.Megaparsec (
+  MonadParsec (takeWhile1P),
+  Parsec,
+  errorBundlePretty,
+  optional,
+  runParser,
+  takeRest,
+ )
+import Text.Megaparsec.Char (char)
 
 ---------- Types
 

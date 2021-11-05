@@ -9,21 +9,65 @@ module App.Fossa.VPS.Scan.ScotlandYard (
   ScotlandYardNinjaOpts (..),
 ) where
 
-import App.Fossa.VPS.Scan.Core
-import App.Fossa.VPS.Types
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import App.Fossa.VPS.Scan.Core (Locator (Locator, unLocator))
+import App.Fossa.VPS.Types (
+  DepsTarget,
+  NinjaGraphOpts (NinjaGraphOpts, buildName, scanId),
+  runHTTP,
+ )
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  Has,
+  runDiagnostics,
+ )
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
-import Control.Carrier.TaskPool
-import Control.Effect.Lift
-import Control.Monad.IO.Class
-import Data.Aeson
+import Control.Carrier.TaskPool (
+  Progress (Progress, pCompleted, pQueued, pRunning),
+  forkTask,
+  withTaskPool,
+ )
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON,
+  encode,
+  object,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.ByteString.Lazy qualified as BS
 import Data.Foldable (traverse_)
 import Data.Text (Text)
-import Effect.Logger
+import Effect.Logger (
+  Color (Cyan, Green, Yellow),
+  Logger,
+  Pretty (pretty),
+  Severity (SevInfo),
+  annotate,
+  color,
+ )
 import Fossa.API.Types (ApiOpts, useApiOpts)
 import GHC.Conc.Sync (getNumCapabilities)
-import Network.HTTP.Req
+import Network.HTTP.Req (
+  GET (GET),
+  NoReqBody (NoReqBody),
+  Option,
+  POST (POST),
+  PUT (PUT),
+  ReqBodyJson (ReqBodyJson),
+  Scheme (Https),
+  Url,
+  header,
+  ignoreResponse,
+  jsonResponse,
+  req,
+  responseBody,
+  (/:),
+  (=:),
+ )
 
 data ScotlandYardNinjaOpts = ScotlandYardNinjaOpts
   { syNinjaProjectId :: Locator

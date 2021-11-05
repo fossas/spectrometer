@@ -11,15 +11,37 @@ module Control.Carrier.Finally (
   module X,
 ) where
 
-import Control.Carrier.Reader
+import Control.Carrier.Reader (
+  Algebra,
+  Has,
+  ReaderC,
+  ask,
+  run,
+  runReader,
+ )
 import Control.Effect.Exception (finally)
-import Control.Effect.Finally as X
-import Control.Effect.Lift
+import Control.Effect.Finally as X (
+  Algebra (alg),
+  Finally (OnExit),
+  Handler,
+  Has,
+  onExit,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
-import Data.IORef
-import Prelude
+import Data.IORef (
+  IORef,
+  atomicModifyIORef',
+  newIORef,
+  readIORef,
+ )
 
 newtype FinallyC m a = FinallyC {runFinallyC :: ReaderC (IORef [FinallyC m ()]) m a}
   deriving (Functor, Applicative, Monad, MonadIO)

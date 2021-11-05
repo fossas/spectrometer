@@ -1,25 +1,32 @@
 module App.Fossa.BinaryDeps (analyzeBinaryDeps) where
 
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (ProjectResult))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
-import App.Fossa.VSI.IAT.Types (Fingerprint (..))
+import App.Fossa.VSI.IAT.Types (Fingerprint (unFingerprint))
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, fromEither)
+import Control.Effect.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
 import Control.Monad (filterM)
 import Data.ByteString qualified as BS
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
+import Discovery.Filters (
+  AllFilters (excludeFilters, includeFilters),
+  FilterCombination (combinedPaths),
+ )
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsBSLimit)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
+import Srclib.Types (
+  AdditionalDepData (AdditionalDepData),
+  SourceUnit (additionalData),
+  SourceUserDefDep (SourceUserDefDep),
+ )
 import Types (GraphBreadth (Complete))
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.

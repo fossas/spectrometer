@@ -22,7 +22,13 @@ module Strategy.Leiningen (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  fatal,
+  run,
+ )
 import Data.Aeson (ToJSON)
 import Data.EDN qualified as EDN
 import Data.EDN.Class.Parser (Parser)
@@ -36,14 +42,59 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Data.Vector qualified as V
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (
+  AllowErr (Always, Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  ExecErr (CommandParseError),
+  exec,
+  execThrow,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path
-import Types
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  DepEnvironment (EnvOther, EnvTesting),
+  DepType (MavenType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+  VerConstraint (CEq),
+  insertEnvironment,
+ )
 
 leinDepsCmd :: Command
 leinDepsCmd =

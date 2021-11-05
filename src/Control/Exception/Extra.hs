@@ -3,7 +3,14 @@ module Control.Exception.Extra (
   safeCatch,
 ) where
 
-import Control.Effect.Exception
+import Control.Effect.Exception (
+  Exception (fromException, toException),
+  Has,
+  Lift,
+  SomeAsyncException (SomeAsyncException),
+  catch,
+  throwIO,
+ )
 
 safeCatch :: (Exception e, Has (Lift IO) sig m) => m a -> (e -> m a) -> m a
 safeCatch act hdl = act `catch` (\e -> if isSyncException e then hdl e else throwIO e)

@@ -16,7 +16,6 @@ import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import DepTypes (DepType (..), Dependency (..))
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
@@ -28,10 +27,49 @@ import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path)
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toCanonicalName, toMap)
-import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
-import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
+import Strategy.Python.Poetry.Common (
+  getPoetryBuildBackend,
+  logIgnoredDeps,
+  pyProjectDeps,
+  toCanonicalName,
+  toMap,
+ )
+import Strategy.Python.Poetry.PoetryLock (
+  PackageName (PackageName, unPackageName),
+  PoetryLock (poetryLockPackages),
+  PoetryLockPackage (poetryLockPackageDependencies, poetryLockPackageName),
+  poetryLockCodec,
+ )
+import Strategy.Python.Poetry.PyProject (
+  PyProject (pyprojectPoetry),
+  pyProjectCodec,
+ )
+import Types (
+  DepType (PipType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete, Partial),
+ )
 
 newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
 newtype PoetryLockFile = PoetryLockFile {poetryLockPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)

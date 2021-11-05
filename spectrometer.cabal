@@ -58,6 +58,7 @@ common lang
     -Wall -Wincomplete-uni-patterns -Wcompat
     -Wincomplete-record-updates -Wmissing-home-modules
     -Wmissing-export-lists -Wredundant-constraints
+    -Wmissing-import-lists
 
 -- TODO: base16-bytestring isn't a direct dep, but we need to add version bounds because cpio-conduit fails to compile with a newer version. Remove the dependency on base16-bytestring once we fix or bump cpio-conduit
 -- TODO: Switch `semver` back to `versions` once https://github.com/fosskers/versions/issues/47 is fixed? This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.

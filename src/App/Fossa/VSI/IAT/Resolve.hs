@@ -8,7 +8,7 @@ module App.Fossa.VSI.IAT.Resolve (
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.VSI.IAT.Types (
-  UserDefinedAssertionMeta (..),
+  UserDefinedAssertionMeta (UserDefinedAssertionMeta),
   UserDep,
  )
 import App.Fossa.VSI.IAT.Types qualified as IAT
@@ -20,7 +20,15 @@ import Data.String.Conversion (toText)
 import Fossa.API.Types (ApiOpts)
 import Graphing (Graphing, direct, edges)
 import Srclib.Types (
-  SourceUserDefDep (..),
+  SourceUserDefDep (
+    SourceUserDefDep,
+    srcUserDepDescription,
+    srcUserDepHomepage,
+    srcUserDepLicense,
+    srcUserDepName,
+    srcUserDepOrigin,
+    srcUserDepVersion
+  ),
  )
 
 resolveUserDefined :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> [UserDep] -> m (Maybe [SourceUserDefDep])

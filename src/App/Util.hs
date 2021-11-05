@@ -5,7 +5,7 @@ module App.Util (
   validateFile,
 ) where
 
-import App.Types
+import App.Types (BaseDir (BaseDir))
 import Control.Monad (unless)
 import Path (Abs, File, Path)
 import Path.IO qualified as P

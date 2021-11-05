@@ -15,7 +15,7 @@ import Data.Text qualified as Text
 import Data.Versions (errorBundlePretty, semver)
 import Effect.Exec (
   AllowErr (Always),
-  Command (..),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
   Exec,
   Has,
   exec,

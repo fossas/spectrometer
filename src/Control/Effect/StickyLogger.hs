@@ -7,8 +7,17 @@ module Control.Effect.StickyLogger (
   module X,
 ) where
 
-import Control.Algebra as X
-import Control.Carrier.Simple
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Carrier.Simple (Simple, sendSimple)
 import Data.Text (Text)
 import Prettyprinter (Doc, pretty)
 import Prettyprinter.Render.Terminal (AnsiStyle)

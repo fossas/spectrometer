@@ -27,10 +27,18 @@ import Data.Set.NonEmpty (NonEmptySet)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import DepTypes (
-  DepEnvironment (..),
-  DepType (..),
-  Dependency (..),
-  VerConstraint (..),
+  DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
+  DepType (CargoType, HackageType, MavenType, PipType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
   insertEnvironment,
   insertLocation,
   insertTag,

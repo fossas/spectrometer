@@ -9,7 +9,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
-import Types
+import Types (LicenseResult)
 
 type TaskEffs sig m =
   ( Has (Lift IO) sig m

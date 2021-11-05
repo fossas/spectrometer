@@ -18,7 +18,7 @@ import Data.Text.Encoding qualified as TE
 import Data.Text.Encoding.Error qualified as TE
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
-import GHC.TypeLits
+import GHC.TypeLits (ErrorMessage (Text), TypeError)
 import Path (Path, SomeBase)
 import Path qualified
 

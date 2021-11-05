@@ -14,23 +14,80 @@ module Strategy.Python.Pipenv (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
-import Data.Aeson
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  recover,
+  run,
+ )
+import Data.Aeson (
+  FromJSON (parseJSON),
+  ToJSON,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (PipType),
+  VerConstraint (CEq),
+  insertEnvironment,
+  insertLocation,
+ )
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execJson,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path
-import Types
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
 discover dir = context "Pipenv" $ do

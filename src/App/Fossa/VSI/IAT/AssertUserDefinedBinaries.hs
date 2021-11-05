@@ -5,7 +5,7 @@ module App.Fossa.VSI.IAT.AssertUserDefinedBinaries (
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.VSI.IAT.Fingerprint (fingerprintContentsRaw)
 import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta)
-import App.Types (BaseDir (..))
+import App.Types (BaseDir (BaseDir))
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, logWithExit_)
 import Control.Effect.Lift (Lift)

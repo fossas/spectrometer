@@ -27,7 +27,13 @@ module Strategy.Node.YarnV2.Resolvers (
   patchResolver,
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  fromEither,
+  fromMaybe,
+ )
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -35,8 +41,19 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (dropPrefix, showT)
 import Data.Void (Void)
-import Strategy.Node.YarnV2.Lockfile
-import Text.Megaparsec
+import Strategy.Node.YarnV2.Lockfile (
+  Locator (locatorName, locatorReference, locatorScope),
+ )
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhileP),
+  Parsec,
+  chunk,
+  optional,
+  runParser,
+  single,
+  takeRest,
+  (<|>),
+ )
 
 data Resolver = Resolver
   { -- | Used for error messages

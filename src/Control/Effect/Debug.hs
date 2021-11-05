@@ -8,7 +8,16 @@ module Control.Effect.Debug (
   module X,
 ) where
 
-import Control.Algebra as X
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
 import Control.Effect.Diagnostics (ToDiagnostic)
 import Control.Effect.Record (Recordable)
 import Data.Aeson (ToJSON)

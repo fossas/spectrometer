@@ -12,24 +12,63 @@ module Strategy.Scala (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Carrier.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  errorBoundary,
+  fatalText,
+  renderFailureBundle,
+ )
 import Data.Aeson (ToJSON)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
-import Discovery.Walk
-import Effect.Exec
-import Effect.Logger hiding (group)
-import Effect.ReadFS
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execThrow,
+ )
+import Effect.Logger (Logger, logWarn)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  parent,
+  parseAbsFile,
+  toFilePath,
+ )
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
 import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
-import Types
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+ )
 
 discover ::
   ( Has Exec sig m

@@ -11,7 +11,12 @@ module Strategy.Carthage (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  recover,
+ )
 import Data.Aeson (ToJSON)
 import Data.Char (isSpace)
 import Data.Foldable (for_, traverse_)
@@ -21,17 +26,68 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import DepTypes
-import Discovery.Walk
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepType (CarthageType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walk',
+ )
+import Effect.Grapher (Grapher, direct, edge, evalGrapher)
+import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Graphing qualified as G
-import Path
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  mkRelDir,
+  mkRelFile,
+  parent,
+  parseRelDir,
+  (</>),
+ )
+import Text.Megaparsec (
+  MonadParsec (eof),
+  Parsec,
+  choice,
+  chunk,
+  empty,
+  many,
+  satisfy,
+  some,
+  someTill,
+ )
+import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
-import Types
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Complete),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CarthageProject]
 discover dir = context "Carthage" $ do

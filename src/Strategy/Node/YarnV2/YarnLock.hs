@@ -28,7 +28,15 @@ import Data.Text.Extra (showT)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CEq),
   hydrateDepEnvs,
   insertEnvironment,
@@ -39,19 +47,29 @@ import Graphing qualified
 import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (
   Development,
-  FlatDeps (..),
-  NodePackage (..),
+  FlatDeps (FlatDeps, devDeps, directDeps),
+  NodePackage,
   Production,
  )
 import Strategy.Node.YarnV2.Lockfile (
   Descriptor (descriptorName, descriptorRange, descriptorScope),
   Locator,
   PackageDescription (descDependencies, descResolution),
-  YarnLockfile (..),
+  YarnLockfile (YarnLockfile),
   tryParseDescriptor,
  )
 import Strategy.Node.YarnV2.Resolvers (
-  Package (..),
+  Package (
+    ExecPackage,
+    FilePackage,
+    GitPackage,
+    LinkPackage,
+    NpmPackage,
+    PatchPackage,
+    PortalPackage,
+    TarPackage,
+    WorkspacePackage
+  ),
   resolveLocatorToPackage,
  )
 

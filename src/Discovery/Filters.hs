@@ -26,7 +26,11 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
-import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
+import Types (
+  BuildTarget (BuildTarget),
+  FoundTargets (FoundTargets, ProjectWithoutTargets),
+  TargetFilter (TypeDirTarget, TypeDirTargetTarget, TypeTarget),
+ )
 
 data AllFilters = AllFilters
   { legacyFilters :: [TargetFilter]

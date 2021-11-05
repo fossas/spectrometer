@@ -7,9 +7,20 @@ module Strategy.Node.Npm.PackageLock (
   NpmDep (..),
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
 import Control.Monad (when)
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
@@ -20,11 +31,33 @@ import Data.Set qualified as Set
 import Data.Tagged (unTag)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (NodeJSType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+  insertEnvironment,
+  insertLocation,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  deep,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import Graphing (Graphing)
-import Path
+import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (FlatDeps (directDeps), NodePackage (pkgName), Production)
 
 data NpmPackageJson = NpmPackageJson

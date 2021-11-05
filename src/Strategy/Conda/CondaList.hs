@@ -7,14 +7,31 @@ module Strategy.Conda.CondaList (
   CondaListDep (..),
 ) where
 
-import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Data.Aeson
+import Control.Effect.Diagnostics (Diagnostics, Has)
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?))
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Effect.Exec
+import DepTypes (
+  DepType (CondaType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execJson,
+ )
 import Graphing (Graphing, fromList)
-import Path
-import Types
+import Path (Abs, Dir, Path)
 
 -- conda list --json will output dependency data in JSON format
 condaListCmd :: Command

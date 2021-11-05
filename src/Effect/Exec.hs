@@ -20,16 +20,43 @@ module Effect.Exec (
   module X,
 ) where
 
-import Control.Algebra as X
-import Control.Carrier.Simple
-import Control.Effect.Diagnostics
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
+import Control.Carrier.Simple (
+  Simple,
+  SimpleC,
+  interpret,
+  sendSimple,
+ )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  context,
+  fatal,
+ )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Record
+import Control.Effect.Record (RecordableValue (toRecordedValue))
 import Control.Effect.Record.TH (deriveRecordable)
-import Control.Effect.Replay
+import Control.Effect.Replay (ReplayableValue (fromRecordedValue))
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception (IOException, try)
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  eitherDecode,
+  object,
+  withObject,
+  (.:),
+ )
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
 import Data.String (fromString)
@@ -37,11 +64,11 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Path
-import Path.IO
+import Path (Abs, Dir, Path, SomeBase (Abs, Rel), fromAbsDir)
+import Path.IO (AnyPath (makeAbsolute))
 import Prettyprinter (indent, line, pretty, viaShow, vsep)
-import System.Exit (ExitCode (..))
-import System.Process.Typed
+import System.Exit (ExitCode (ExitFailure, ExitSuccess))
+import System.Process.Typed (proc, readProcess, setWorkingDir)
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 

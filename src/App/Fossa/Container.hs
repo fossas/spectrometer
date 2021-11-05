@@ -21,11 +21,31 @@ module App.Fossa.Container (
 ) where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withSyftBinary)
-import App.Types (OverrideProject (..), ProjectRevision (..))
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import App.Types (
+  OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision),
+  ProjectRevision (ProjectRevision),
+ )
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  fromEitherShow,
+  fromMaybeText,
+  logWithExit_,
+ )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Monad.IO.Class
-import Data.Aeson
+import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value,
+  encode,
+  object,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Aeson.Types (parseEither)
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor.Extra ((<$$>))
@@ -36,8 +56,22 @@ import Data.Maybe (fromMaybe, listToMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text, pack)
 import Data.Text.Extra (breakOnAndRemove)
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson, execThrow, runExecIO)
-import Effect.Logger
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  execJson,
+  execThrow,
+  runExecIO,
+ )
+import Effect.Logger (
+  Logger,
+  Severity,
+  logDebug,
+  logInfo,
+  logStdout,
+  withDefaultLogger,
+ )
 import Effect.ReadFS (ReadFS, readContentsJson, resolveFile, runReadFSIO)
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Path (toFilePath)

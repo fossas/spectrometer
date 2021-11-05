@@ -19,7 +19,15 @@ import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CEq),
   hydrateDepEnvs,
   insertEnvironment,
@@ -43,7 +51,12 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), readContentsText)
 import Graphing (Graphing)
 import Path (Abs, File, Path)
-import Strategy.Node.PackageJson (Development, FlatDeps (..), NodePackage (..), Production)
+import Strategy.Node.PackageJson (
+  Development,
+  FlatDeps (FlatDeps, devDeps, directDeps),
+  NodePackage (NodePackage),
+  Production,
+ )
 import Yarn.Lock qualified as YL
 import Yarn.Lock.Types qualified as YL
 

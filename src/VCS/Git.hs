@@ -3,8 +3,8 @@ module VCS.Git (
   fetchGitContributors,
 ) where
 
-import App.Fossa.FossaAPIV1 (Contributors (..))
-import Control.Carrier.Diagnostics qualified as Diag
+import App.Fossa.FossaAPIV1 (Contributors (Contributors))
+import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
@@ -12,10 +12,24 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (splitOnceOn)
-import Data.Time
+import Data.Time (
+  Day,
+  UTCTime (utctDay),
+  addUTCTime,
+  defaultTimeLocale,
+  getCurrentTime,
+  nominalDay,
+  parseTimeM,
+ )
 import Data.Time.Format.ISO8601 (iso8601Show)
-import Effect.Exec
-import Path
+import Effect.Exec (
+  AllowErr (Never),
+  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Exec,
+  Has,
+  execThrow,
+ )
+import Path (Abs, Dir, Path)
 
 gitLogCmd :: UTCTime -> Command
 gitLogCmd now =

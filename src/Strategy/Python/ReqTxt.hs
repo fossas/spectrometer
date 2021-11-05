@@ -3,18 +3,23 @@ module Strategy.Python.ReqTxt (
   requirementsTxtParser,
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (void)
 import Data.Foldable (asum)
 import Data.Text (Text)
 import Data.Void (Void)
-import Effect.ReadFS
+import DepTypes (Dependency)
+import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing)
-import Path
-import Strategy.Python.Util
-import Text.Megaparsec
-import Text.Megaparsec.Char
-import Types
+import Path (Abs, File, Path)
+import Strategy.Python.Util (Req, buildGraph, requirementParser)
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhileP, try),
+  Parsec,
+  manyTill,
+  (<|>),
+ )
+import Text.Megaparsec.Char (char, string)
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = do

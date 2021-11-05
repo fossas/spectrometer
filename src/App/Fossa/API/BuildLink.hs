@@ -7,17 +7,27 @@ module App.Fossa.API.BuildLink (
   samlUrlPath,
 ) where
 
-import App.Fossa.FossaAPIV1 (Organization (..), getOrganization)
-import App.Types
-import Control.Effect.Diagnostics hiding (fromMaybe)
-import Control.Effect.Lift
+import App.Fossa.FossaAPIV1 (
+  Organization (Organization, orgUsesSAML, organizationId),
+  getOrganization,
+ )
+import App.Types (ProjectRevision (ProjectRevision, projectBranch, projectRevision))
+import Control.Effect.Diagnostics (Diagnostics, Has, recover)
+import Control.Effect.Lift (Lift)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Fossa.API.Types (ApiOpts (..))
-import Srclib.Types (Locator (..))
+import Fossa.API.Types (ApiOpts (apiOptsUri))
+import Srclib.Types (Locator (Locator, locatorFetcher, locatorProject, locatorRevision))
 import Text.URI qualified as URI
-import Text.URI.Builder
+import Text.URI.Builder (
+  PathComponent (PathComponent),
+  Query (Pair),
+  TrailingSlash (TrailingSlash),
+  renderPath,
+  setPath,
+  setQuery,
+ )
 import Text.URI.QQ (uri)
 
 fossaProjectUrlPath :: Locator -> ProjectRevision -> [PathComponent]

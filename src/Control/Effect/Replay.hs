@@ -9,16 +9,27 @@ module Control.Effect.Replay (
   runReplay,
 ) where
 
-import Control.Algebra
-import Control.Applicative
-import Control.Carrier.Simple
-import Control.Effect.Record
-import Control.Effect.Sum
-import Data.Aeson
+import Control.Algebra (Algebra, send)
+import Control.Applicative (Alternative ((<|>)))
+import Control.Carrier.Simple (Simple (Simple), SimpleC, interpret)
+import Control.Effect.Record (
+  EffectResult (EffectResult),
+  Journal (Journal),
+  Recordable,
+ )
+import Control.Effect.Sum (Member)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  Result (Error, Success),
+  Value (Null),
+  withObject,
+  withText,
+  (.:),
+ )
 import Data.Aeson.Types (Parser, parse)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.Kind
+import Data.Kind (Type)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (encodeUtf8, toString)
@@ -26,9 +37,9 @@ import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Text.Lazy qualified as TL
 import Data.Void (Void)
-import Path
-import System.Exit
-import Unsafe.Coerce
+import Path (Abs, Dir, File, Path, Rel, SomeBase)
+import System.Exit (ExitCode (ExitFailure, ExitSuccess))
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | A class of "replayable" effects -- i.e. an effect whose "result values"
 -- (the @a@ in @e a@) can be deserialized from JSON values produced by

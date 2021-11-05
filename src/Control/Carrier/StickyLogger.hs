@@ -11,10 +11,30 @@ module Control.Carrier.StickyLogger (
 ) where
 
 import Console.Sticky (setSticky', withStickyRegion)
-import Control.Carrier.Reader
-import Control.Carrier.Simple
+import Control.Carrier.Reader (Algebra, Has, run)
+import Control.Carrier.Simple (
+  Handler,
+  SimpleC,
+  interpret,
+  send,
+  thread,
+  (~<~),
+ )
 import Control.Effect.Lift (Lift)
-import Control.Effect.StickyLogger as X
+import Control.Effect.StickyLogger as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  StickyLogger,
+  StickyLoggerF (LogSticky'),
+  logSticky,
+  logSticky',
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
 import Effect.Logger (Logger, Severity)
 
 runStickyLogger ::

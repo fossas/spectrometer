@@ -13,9 +13,17 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes (
-  DepEnvironment (..),
+  DepEnvironment (EnvTesting),
   DepType (MavenType),
-  Dependency (..),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
   VerConstraint (CEq),
  )
 import Effect.Exec (Exec)
@@ -24,15 +32,23 @@ import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Plugin (
-  Artifact (..),
-  Edge (..),
-  PluginOutput (..),
+  Artifact (
+    Artifact,
+    artifactArtifactId,
+    artifactGroupId,
+    artifactNumericId,
+    artifactOptional,
+    artifactScopes,
+    artifactVersion
+  ),
+  Edge (Edge, edgeFrom, edgeTo),
+  PluginOutput (PluginOutput, outArtifacts, outEdges),
   execPlugin,
   installPlugin,
   parsePluginOutput,
   withUnpackedPlugin,
  )
-import Types (GraphBreadth (..))
+import Types (GraphBreadth (Complete))
 
 analyze' ::
   ( Has (Lift IO) sig m

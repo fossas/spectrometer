@@ -5,14 +5,24 @@ module Control.Carrier.Threaded (
   Handle (..),
 ) where
 
-import Control.Carrier.Lift
+import Control.Carrier.Lift (Has, Lift, liftWith)
 import Control.Concurrent qualified as Conc
 import Control.Concurrent.Async qualified as Async
-import Control.Concurrent.STM
-import Control.Effect.Exception
-import Control.Monad.IO.Class
+import Control.Concurrent.STM (
+  STM,
+  atomically,
+  newEmptyTMVarIO,
+  putTMVar,
+  readTMVar,
+ )
+import Control.Effect.Exception (
+  SomeException,
+  mask,
+  throwTo,
+  try,
+ )
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Functor (void, ($>))
-import Prelude
 
 data Handle = Handle
   { handleTid :: Conc.ThreadId

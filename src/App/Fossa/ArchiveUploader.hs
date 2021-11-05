@@ -7,27 +7,34 @@ module App.Fossa.ArchiveUploader (
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
-import Control.Carrier.Diagnostics qualified as Diag
-import Control.Effect.Lift
+import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
+import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Crypto.Hash
+import Crypto.Hash (Digest, MD5, hashlazy)
 import Data.Aeson (
   FromJSON (parseJSON),
   withObject,
   (.:),
   (.:?),
  )
-import Data.Aeson.Extra
+import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
 import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion
+import Data.String.Conversion (
+  ToString (toString),
+  ToText (toText),
+ )
 import Data.Text (Text)
-import Fossa.API.Types
-import Path hiding ((</>))
-import Srclib.Types (Locator (..))
-import System.FilePath.Posix
+import Fossa.API.Types (
+  ApiOpts,
+  Archive (Archive, archiveName, archiveVersion),
+  ArchiveComponents (ArchiveComponents),
+ )
+import Path (Abs, Dir, Path)
+import Srclib.Types (Locator (Locator, locatorFetcher, locatorProject, locatorRevision))
+import System.FilePath.Posix (splitDirectories, (</>))
 
 data VendoredDependency = VendoredDependency
   { vendoredName :: Text

@@ -19,22 +19,48 @@ import Data.Text (Text, replace, toLower)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
   DepType (GitType, PipType, URLType),
-  Dependency (..),
-  VerConstraint (
-    CEq
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
   ),
+  VerConstraint (CEq),
  )
 import Effect.Logger (Has, Logger, Pretty (pretty), logDebug)
-import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryLockPackageSource (..))
+import Strategy.Python.Poetry.PoetryLock (
+  PackageName (PackageName, unPackageName),
+  PoetryLock (poetryLockPackages),
+  PoetryLockPackage (
+    poetryLockPackageCategory,
+    poetryLockPackageName,
+    poetryLockPackageSource,
+    poetryLockPackageVersion
+  ),
+  PoetryLockPackageSource (
+    poetryLockPackageSourceReference,
+    poetryLockPackageSourceType,
+    poetryLockPackageSourceUrl
+  ),
+ )
 import Strategy.Python.Poetry.PyProject (
-  PoetryDependency (..),
-  PyProject (..),
-  PyProjectBuildSystem (..),
-  PyProjectPoetry (..),
-  PyProjectPoetryDetailedVersionDependency (..),
-  PyProjectPoetryGitDependency (..),
-  PyProjectPoetryPathDependency (..),
-  PyProjectPoetryUrlDependency (..),
+  PoetryDependency (
+    PoetryTextVersion,
+    PyProjectPoetryDetailedVersionDependencySpec,
+    PyProjectPoetryGitDependencySpec,
+    PyProjectPoetryPathDependencySpec,
+    PyProjectPoetryUrlDependencySpec
+  ),
+  PyProject (pyprojectBuildSystem, pyprojectPoetry),
+  PyProjectBuildSystem (buildBackend),
+  PyProjectPoetry (dependencies, devDependencies),
+  PyProjectPoetryDetailedVersionDependency (poetryDependencyVersion),
+  PyProjectPoetryGitDependency (gitBranch, gitRev, gitTag, gitUrl),
+  PyProjectPoetryPathDependency (sourcePath),
+  PyProjectPoetryUrlDependency (sourceUrl),
   toDependencyVersion,
  )
 

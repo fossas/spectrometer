@@ -8,17 +8,37 @@ module Strategy.Go.GlideLock (
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics
-import Data.Aeson
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?))
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import DepTypes
-import Effect.ReadFS
+import DepTypes (
+  DepType (GoType),
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  VerConstraint (CEq),
+ )
+import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing)
 import Graphing qualified
-import Path
-import Types (DependencyResults (..), GraphBreadth (..))
+import Path (Abs, File, Path)
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  GraphBreadth (Complete),
+ )
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do

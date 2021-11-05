@@ -9,16 +9,25 @@ module App.Fossa.VPS.Scan.Core (
   SherlockInfo (..),
 ) where
 
-import App.Fossa.VPS.Types
-import Control.Carrier.Trace.Printing
-import Control.Effect.Diagnostics
+import App.Fossa.VPS.Types (runHTTP)
+import Control.Carrier.Trace.Printing (Has)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
-import Data.Aeson
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Fossa.API.Types (ApiOpts (..), useApiOpts)
-import Network.HTTP.Req
-import Prelude
+import Fossa.API.Types (ApiOpts, useApiOpts)
+import Network.HTTP.Req (
+  GET (GET),
+  NoReqBody (NoReqBody),
+  Scheme (Https),
+  Url,
+  header,
+  jsonResponse,
+  req,
+  responseBody,
+  (/:),
+ )
 
 data SherlockInfo = SherlockInfo
   { sherlockUrl :: Text

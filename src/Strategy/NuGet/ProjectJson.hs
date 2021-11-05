@@ -11,20 +11,60 @@ module Strategy.NuGet.ProjectJson (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics
-import Data.Aeson.Types
+import Control.Effect.Diagnostics (Diagnostics, Has)
+import Data.Aeson.Types (
+  FromJSON (parseJSON),
+  Parser,
+  ToJSON,
+  Value,
+  withObject,
+  withText,
+  (.:),
+  (.:?),
+ )
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  VerConstraint (CCompatible, CEq),
+ )
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk',
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
-import Path
-import Types
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  Dependency (
+    Dependency,
+    dependencyEnvironments,
+    dependencyLocations,
+    dependencyName,
+    dependencyTags,
+    dependencyType,
+    dependencyVersion
+  ),
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (
+    DiscoveredProject,
+    projectBuildTargets,
+    projectData,
+    projectPath,
+    projectType
+  ),
+  GraphBreadth (Partial),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ProjectJsonProject]
 discover dir = map mkProject <$> findProjects dir

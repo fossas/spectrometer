@@ -14,7 +14,7 @@ module Strategy.Python.Poetry.PyProject (
   toDependencyVersion,
 ) where
 
-import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
+import Control.Monad.Combinators.Expr (Operator (InfixL), makeExprParser)
 import Data.Foldable (asum)
 import Data.Functor (void)
 import Data.Map (Map)

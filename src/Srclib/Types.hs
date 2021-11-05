@@ -12,13 +12,13 @@ module Srclib.Types (
   parseLocator,
 ) where
 
-import Data.Aeson
+import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, SomeBase)
-import Types (GraphBreadth (..))
+import Types (GraphBreadth)
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text

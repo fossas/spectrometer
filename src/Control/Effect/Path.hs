@@ -3,10 +3,9 @@ module Control.Effect.Path (
   withSystemTempDir,
 ) where
 
-import Control.Effect.Lift
-import Path
+import Control.Effect.Lift (Has, Lift, liftWith)
+import Path (Abs, Dir, Path)
 import Path.IO qualified as PIO
-import Prelude
 
 withSystemTempDir ::
   Has (Lift IO) sig m =>

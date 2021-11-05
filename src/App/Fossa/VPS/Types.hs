@@ -16,17 +16,31 @@ module App.Fossa.VPS.Types (
   NinjaFilePaths (..),
 ) where
 
-import Control.Carrier.Diagnostics
+import Control.Effect.Diagnostics (
+  Algebra,
+  Diagnostics,
+  Has,
+  ToDiagnostic (renderDiagnostic),
+  fatal,
+ )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Monad.IO.Class (MonadIO (..))
-import Data.Aeson
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  encode,
+  object,
+  withObject,
+  (.:),
+ )
 import Data.ByteString.Lazy qualified as BSL
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Fossa.API.Types (ApiOpts)
-import Network.HTTP.Req
+import Network.HTTP.Req (HttpException, MonadHttp (getHttpConfig, handleHttpException))
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
-import Path
+import Path (Abs, File, Path)
 import Prettyprinter (viaShow)
 
 newtype NinjaScanID = NinjaScanID {unNinjaScanID :: Text}

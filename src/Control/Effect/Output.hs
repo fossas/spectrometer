@@ -7,7 +7,16 @@ module Control.Effect.Output (
   module X,
 ) where
 
-import Control.Algebra as X
+import Control.Algebra as X (
+  Algebra (alg),
+  Handler,
+  Has,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (L, R),
+ )
 import Control.Carrier.Simple (Simple, sendSimple)
 
 data OutputF o a where

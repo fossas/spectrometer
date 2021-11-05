@@ -15,8 +15,19 @@ module Fossa.API.Types (
   Archive (..),
 ) where
 
-import Control.Effect.Diagnostics hiding (fromMaybe)
-import Data.Aeson
+import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value (String),
+  object,
+  withObject,
+  withText,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Coerce (coerce)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
@@ -25,8 +36,21 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Network.HTTP.Req
-import Prettyprinter
+import Network.HTTP.Req (
+  Option,
+  Scheme (Https),
+  Url,
+  header,
+  useURI,
+ )
+import Prettyprinter (
+  Doc,
+  Pretty (pretty),
+  fill,
+  hsep,
+  line,
+  vsep,
+ )
 import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Unsafe.Coerce qualified as Unsafe

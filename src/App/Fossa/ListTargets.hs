@@ -6,13 +6,21 @@ module App.Fossa.ListTargets (
 
 import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences)
-import App.Types (BaseDir (..))
-import Control.Carrier.AtomicCounter
+import App.Types (BaseDir (BaseDir))
+import Control.Carrier.AtomicCounter (
+  AtomicCounter,
+  Has,
+  runAtomicCounter,
+ )
 import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.Finally
+import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
-import Control.Carrier.TaskPool
+import Control.Carrier.TaskPool (
+  Progress (Progress, pCompleted, pQueued, pRunning),
+  TaskPool,
+  withTaskPool,
+ )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Lift)
@@ -21,14 +29,28 @@ import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
 import Data.Set qualified as Set
-import Data.Set.NonEmpty
+import Data.Set.NonEmpty (toSet)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec
-import Effect.Logger
-import Effect.ReadFS
-import Path
+import Effect.Exec (Exec, runExecIO)
+import Effect.Logger (
+  Color (Cyan, Green, Yellow),
+  Logger,
+  Pretty (pretty),
+  Severity (SevInfo),
+  annotate,
+  color,
+  logDebug,
+  logInfo,
+  withDefaultLogger,
+ )
+import Effect.ReadFS (ReadFS, runReadFSIO)
+import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
-import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
+import Types (
+  BuildTarget (unBuildTarget),
+  DiscoveredProject (projectBuildTargets, projectData, projectPath, projectType),
+  FoundTargets (FoundTargets, ProjectWithoutTargets),
+ )
 
 listTargetsMain :: AnalyzeExperimentalPreferences -> Severity -> BaseDir -> IO ()
 listTargetsMain preferences logSeverity (BaseDir basedir) = do

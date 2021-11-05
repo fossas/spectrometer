@@ -8,13 +8,19 @@ module App.Fossa.ManualDeps (
   CustomDependency (..),
   RemoteDependency (..),
   DependencyMetadata (..),
-  VendoredDependency (..),
+  VendoredDependency,
   ManualDependencies (..),
   FoundDepsFile (..),
   analyzeFossaDepsFile,
 ) where
 
+import App.Fossa.ArchiveUploader (
+  VendoredDependency,
+  archiveNoUploadSourceUnit,
+  archiveUploadSourceUnit,
+ )
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
+import Control.Effect.Lift (Has, Lift)
 import Control.Monad (when)
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -23,23 +29,78 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-
-import App.Fossa.ArchiveUploader
-import Control.Effect.Lift
-import Data.Aeson.Extra
+import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import DepTypes (DepType (..))
+import DepTypes (
+  DepType (
+    BowerType,
+    CargoType,
+    CarthageType,
+    ComposerType,
+    CpanType,
+    GemType,
+    GitType,
+    GoType,
+    HackageType,
+    HexType,
+    MavenType,
+    NodeJSType,
+    NuGetType,
+    PipType,
+    PodType,
+    SwiftType,
+    URLType
+  ),
+ )
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
-import Fossa.API.Types
-import Path
+import Fossa.API.Types (ApiOpts)
+import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
-import Types (GraphBreadth (..))
+import Srclib.Types (
+  AdditionalDepData (AdditionalDepData, remoteDeps, userDefinedDeps),
+  Locator (Locator, locatorFetcher, locatorProject, locatorRevision),
+  SourceRemoteDep (
+    SourceRemoteDep,
+    srcRemoteDepDescription,
+    srcRemoteDepHomepage,
+    srcRemoteDepName,
+    srcRemoteDepUrl,
+    srcRemoteDepVersion
+  ),
+  SourceUnit (
+    SourceUnit,
+    additionalData,
+    sourceUnitBuild,
+    sourceUnitGraphBreadth,
+    sourceUnitManifest,
+    sourceUnitName,
+    sourceUnitOriginPaths,
+    sourceUnitType
+  ),
+  SourceUnitBuild (
+    SourceUnitBuild,
+    buildArtifact,
+    buildDependencies,
+    buildImports,
+    buildSucceeded
+  ),
+  SourceUnitDependency (SourceUnitDependency),
+  SourceUserDefDep (
+    SourceUserDefDep,
+    srcUserDepDescription,
+    srcUserDepHomepage,
+    srcUserDepLicense,
+    srcUserDepName,
+    srcUserDepOrigin,
+    srcUserDepVersion
+  ),
+ )
+import Types (GraphBreadth (Complete))
 
 data FoundDepsFile
   = ManualYaml (Path Abs File)

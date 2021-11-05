@@ -6,17 +6,50 @@ module Srclib.Converter (
   fetcherToDepType,
 ) where
 
-import Prelude
-
 import Algebra.Graph.AdjacencyMap qualified as AM
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (
+  ProjectResult (
+    ProjectResult,
+    projectResultGraph,
+    projectResultGraphBreadth,
+    projectResultManifestFiles,
+    projectResultPath,
+    projectResultType
+  ),
+ )
 import Control.Applicative ((<|>))
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvOther, EnvProduction),
-  DepType (..),
+  DepType (
+    ArchiveType,
+    BowerType,
+    CargoType,
+    CarthageType,
+    ComposerType,
+    CondaType,
+    CpanType,
+    CustomType,
+    GemType,
+    GitType,
+    GoType,
+    GooglesourceType,
+    HackageType,
+    HexType,
+    MavenType,
+    NodeJSType,
+    NuGetType,
+    PipType,
+    PodType,
+    PubType,
+    RPMType,
+    SubprojectType,
+    SwiftType,
+    URLType,
+    UserType
+  ),
   Dependency (
     Dependency,
     dependencyEnvironments,
@@ -24,14 +57,34 @@ import DepTypes (
     dependencyType,
     dependencyVersion
   ),
-  VerConstraint (..),
+  VerConstraint (
+    CAnd,
+    CCompatible,
+    CEq,
+    CGreater,
+    CGreaterOrEq,
+    CLess,
+    CLessOrEq,
+    CNot,
+    COr,
+    CURI
+  ),
  )
 import Graphing (Graphing)
 import Graphing qualified
 import Path (toFilePath)
 import Srclib.Types (
-  Locator (..),
-  SourceUnit (..),
+  Locator (Locator, locatorFetcher, locatorProject, locatorRevision),
+  SourceUnit (
+    SourceUnit,
+    additionalData,
+    sourceUnitBuild,
+    sourceUnitGraphBreadth,
+    sourceUnitManifest,
+    sourceUnitName,
+    sourceUnitOriginPaths,
+    sourceUnitType
+  ),
   SourceUnitBuild (
     SourceUnitBuild,
     buildArtifact,
@@ -39,7 +92,7 @@ import Srclib.Types (
     buildImports,
     buildSucceeded
   ),
-  SourceUnitDependency (..),
+  SourceUnitDependency (SourceUnitDependency, sourceDepImports, sourceDepLocator),
  )
 
 toSourceUnit :: Bool -> ProjectResult -> SourceUnit

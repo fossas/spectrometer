@@ -32,18 +32,53 @@ module App.Fossa.FossaAPIV1 (
   resolveProjectDependencies,
 ) where
 
-import App.Fossa.Container (ContainerScan (..))
+import App.Fossa.Container (ContainerScan)
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
-import App.Types
+import App.Types (
+  ProjectMetadata (
+    ProjectMetadata,
+    projectJiraKey,
+    projectLink,
+    projectPolicy,
+    projectReleaseGroup,
+    projectTeam,
+    projectTitle,
+    projectUrl
+  ),
+  ProjectRevision (
+    ProjectRevision,
+    projectBranch,
+    projectName,
+    projectRevision
+  ),
+  ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+ )
 import App.Version (versionNumber)
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  context,
+  fatal,
+  fromMaybeText,
+ )
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Monad.IO.Class (MonadIO (..))
-import Data.Aeson
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value,
+  object,
+  withObject,
+  withText,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
@@ -53,17 +88,55 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
-import Effect.Logger
-import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
+import Effect.Logger (
+  Algebra,
+  Has,
+  Pretty (pretty),
+  viaShow,
+  type (:+:),
+ )
+import Fossa.API.Types (
+  ApiOpts,
+  ArchiveComponents,
+  Issues,
+  SignedURL,
+  signedURL,
+  useApiOpts,
+ )
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
-import Network.HTTP.Req
+import Network.HTTP.Req (
+  GET (GET),
+  HttpException (JsonHttpException, VanillaHttpException),
+  MonadHttp (getHttpConfig, handleHttpException),
+  NoReqBody (NoReqBody),
+  Option,
+  POST (POST),
+  PUT (PUT),
+  ReqBodyFile (ReqBodyFile),
+  ReqBodyJson (ReqBodyJson),
+  Scheme (Https),
+  Url,
+  bsResponse,
+  ignoreResponse,
+  jsonResponse,
+  lbsResponse,
+  req,
+  reqCb,
+  responseBody,
+  useURI,
+  (/:),
+  (=:),
+ )
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
-import Srclib.Types
+import Srclib.Types (
+  Locator (Locator, locatorFetcher, locatorProject, locatorRevision),
+  SourceUnit,
+  renderLocator,
+ )
 import Text.URI (URI)
 import Text.URI qualified as URI
-import Prelude
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
