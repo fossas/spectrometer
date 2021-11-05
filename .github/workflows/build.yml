@@ -18,20 +18,20 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: '1.17.1'
-    
+
     - name: Check out commit
       uses: actions/checkout@v2
-    
+
     - uses: actions/cache@v2
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    
+
     - name: Get dependencies
       run: go get -v -t -d ./...
-    
+
     - name: Build attribution-compat
       run: |
         GOOS=windows go build -ldflags="-s -w" -o release/windows/compat-attribution.exe scripts/compat-attribution/main.go
@@ -113,9 +113,10 @@ jobs:
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
 
-    # Build Spectrometer.
+    # Cache packages.
+    # See also: https://cabal.readthedocs.io/en/3.6/nix-local-build.html#how-it-works
     - uses: actions/cache@v2
-      name: Cache cabal store
+      name: Cache external packages
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
         key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
@@ -124,6 +125,22 @@ jobs:
           ${{ runner.os }}-${{ matrix.ghc }}-
           ${{ runner.os }}-
 
+    - name: Get parent commit hash for local package caching
+      run: |
+        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
+
+    - uses: actions/cache@v2
+      name: Cache local packages
+      with:
+        path: ./dist-newstyle
+        key: ${{ runner.os }}-${{ matrix.ghc }}-local-cache-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.ghc }}-local-cache-${{ env.parent_commit }}
+          ${{ runner.os }}-${{ matrix.ghc }}-local-cache-
+          ${{ runner.os }}-${{ matrix.ghc }}-
+          ${{ runner.os }}-
+
+    # Build Spectrometer.
     - name: Update vendored binaries
       run: |
         mkdir vendor-bins
