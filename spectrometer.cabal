@@ -438,7 +438,9 @@ test-suite integration-tests
   main-is:            test.hs
 
   other-modules:
-    Analysis.ExampleTestSpec
+    Analysis.ExampleSpec
+    ExampleTestSpec
+    CommonUtils
     
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:
