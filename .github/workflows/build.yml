@@ -86,6 +86,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
     # Install tools used in `vendor_download.sh`.
     - name: Install alpine binary dependencies
