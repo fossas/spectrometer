@@ -33,7 +33,7 @@ import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Word (Word64)
 import Effect.Exec (Exec, ExecF (..))
-import Effect.FossaAPI (FossaAPI, FossaAPIC, FossaAPIFS (UploadAnalysis), runFossaAPI)
+import Effect.FossaAPI (FossaAPI, FossaAPIFS (UploadAnalysis))
 import Effect.Logger (Logger, LoggerF (..))
 import Effect.ReadFS (ReadFS, ReadFSF (..))
 import GHC.Conc qualified as Conc
