@@ -12,7 +12,9 @@ module Srclib.Types (
   parseLocator,
 ) where
 
+import Control.Effect.Record (RecordableValue)
 import Data.Aeson
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -31,6 +33,8 @@ data SourceUnit = SourceUnit
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)
+
+instance RecordableValue (NE.NonEmpty SourceUnit)
 
 data SourceUnitBuild = SourceUnitBuild
   { -- | always "default"

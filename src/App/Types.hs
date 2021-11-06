@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Types (
   BaseDir (..),
   NinjaGraphCLIOptions (..),
@@ -8,7 +10,9 @@ module App.Types (
   MonorepoAnalysisOpts (..),
 ) where
 
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
+import Control.Effect.Record (RecordableValue)
+import Data.Aeson (FromJSON (parseJSON), KeyValue ((.=)), object, withObject, (.:))
+import Data.Aeson.Types (ToJSON (toJSON))
 import Data.Text (Text)
 import Path (Abs, Dir, Path)
 
@@ -31,11 +35,32 @@ data ProjectMetadata = ProjectMetadata
   }
   deriving (Eq, Ord, Show)
 
+instance ToJSON ProjectMetadata where
+  toJSON ProjectMetadata{..} =
+    object
+      [ "projectTitle" .= projectTitle
+      , "projectUrl" .= projectUrl
+      , "projectJiraKey" .= projectJiraKey
+      , "projectLink" .= projectLink
+      , "projectTeam" .= projectTeam
+      , "projectPolicy" .= projectPolicy
+      , "projectReleaseGroup" .= projectReleaseGroup
+      ]
+
+instance RecordableValue (ProjectMetadata)
+
 data ReleaseGroupMetadata = ReleaseGroupMetadata
   { releaseGroupName :: Text
   , releaseGroupRelease :: Text
   }
   deriving (Eq, Ord, Show)
+
+instance ToJSON ReleaseGroupMetadata where
+  toJSON ReleaseGroupMetadata{..} =
+    object
+      [ "releaseGroupName" .= releaseGroupName
+      , "releaseGroupRelease" .= releaseGroupRelease
+      ]
 
 instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
@@ -52,6 +77,16 @@ data ProjectRevision = ProjectRevision
   , projectBranch :: Maybe Text
   }
   deriving (Eq, Ord, Show)
+
+instance ToJSON ProjectRevision where
+  toJSON ProjectRevision{..} =
+    object
+      [ "projectName" .= projectName
+      , "projectRevision" .= projectRevision
+      , "projectBranch" .= projectBranch
+      ]
+
+instance RecordableValue (ProjectRevision)
 
 data NinjaGraphCLIOptions = NinjaGraphCLIOptions
   { ninjaBaseDir :: FilePath

@@ -16,6 +16,7 @@ module Fossa.API.Types (
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Effect.Record (RecordableValue)
 import Data.Aeson
 import Data.Coerce (coerce)
 import Data.List.Extra ((!?))
@@ -39,6 +40,14 @@ data ApiOpts = ApiOpts
   , apiOptsApiKey :: ApiKey
   }
   deriving (Eq, Ord, Show)
+
+instance ToJSON ApiOpts where
+  toJSON ApiOpts{..} =
+    object
+      [ "apiOptsUri" .= (render <$> apiOptsUri)
+      ]
+
+instance RecordableValue (ApiOpts)
 
 newtype SignedURL = SignedURL
   { signedURL :: Text

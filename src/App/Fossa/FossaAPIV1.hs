@@ -3,7 +3,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module App.Fossa.FossaAPIV1 (
-  uploadAnalysis,
   uploadContributors,
   uploadContainerScan,
   UploadResponse (..),
@@ -30,6 +29,8 @@ module App.Fossa.FossaAPIV1 (
   assertRevisionBinaries,
   resolveUserDefinedBinary,
   resolveProjectDependencies,
+  cliVersion,
+  uploadUrl,
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
@@ -42,11 +43,11 @@ import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Record (RecordableValue)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (toText)
@@ -87,6 +88,8 @@ instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllo
     where
       allow401 :: HttpException -> EmptyC m a
       allow401 err = maybe empty fatal (allow401' err)
+
+instance RecordableValue (UploadResponse)
 
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
@@ -137,6 +140,13 @@ data UploadResponse = UploadResponse
   }
   deriving (Eq, Ord, Show)
 
+instance ToJSON UploadResponse where
+  toJSON UploadResponse{..} =
+    object
+      [ "uploadLocator" .= uploadLocator
+      , "uploadError" .= uploadError
+      ]
+
 instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
     UploadResponse <$> obj .: "locator"
@@ -179,26 +189,6 @@ uploadContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $ do
           <> mkMetadataOpts metadata projectName
   resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
   pure $ responseBody resp
-
-uploadAnalysis ::
-  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
-  ApiOpts ->
-  ProjectRevision ->
-  ProjectMetadata ->
-  NE.NonEmpty SourceUnit ->
-  m UploadResponse
-uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
-
-  let opts =
-        "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
-          <> "cliVersion" =: cliVersion
-          <> "managedBuild" =: True
-          <> mkMetadataOpts metadata projectName
-          -- Don't include branch if it doesn't exist, core may not handle empty string properly.
-          <> maybe mempty ("branch" =:) projectBranch
-  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
-  pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
 mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes

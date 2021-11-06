@@ -228,6 +228,7 @@ library
     Discovery.Projects
     Discovery.Walk
     Effect.Exec
+    Effect.FossaAPI
     Effect.Grapher
     Effect.Logger
     Effect.ReadFS

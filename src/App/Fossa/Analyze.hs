@@ -25,7 +25,7 @@ import App.Fossa.Analyze.Types (
   AnalyzeTaskEffs,
  )
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
-import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
+import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -74,6 +74,7 @@ import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
+import Effect.FossaAPI (FossaAPI, runFossaAPI, uploadAnalysis)
 import Effect.Logger (
   Logger,
   Severity (..),
@@ -194,6 +195,7 @@ analyzeMain workdir logSeverity destination project unpackArchives jsonOutput in
     . runReadFSIO
     . runReader preferences
     . runExecIO
+    . runFossaAPI
     $ case logSeverity of
       -- In --debug mode, emit a debug bundle to "fossa.debug.json"
       SevDebug -> do
@@ -326,6 +328,7 @@ analyze ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has (Reader AnalyzeExperimentalPreferences) sig m
+  , Has FossaAPI sig m
   , MonadIO m
   ) =>
   BaseDir ->
@@ -458,6 +461,7 @@ uploadSuccessfulAnalysis ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has FossaAPI sig m
   ) =>
   BaseDir ->
   ApiOpts ->

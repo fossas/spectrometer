@@ -33,6 +33,7 @@ import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Word (Word64)
 import Effect.Exec (Exec, ExecF (..))
+import Effect.FossaAPI (FossaAPI, FossaAPIC, FossaAPIFS (UploadAnalysis), runFossaAPI)
 import Effect.Logger (Logger, LoggerF (..))
 import Effect.ReadFS (ReadFS, ReadFSF (..))
 import GHC.Conc qualified as Conc
@@ -46,12 +47,13 @@ collectDebugBundle ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Logger sig m
+  , Has FossaAPI sig m
   , Has (Lift IO) sig m
   ) =>
-  DebugEverythingC (RecordC ReadFSF (RecordC ExecF (DebugC m))) a ->
+  DebugEverythingC (RecordC FossaAPIFS (RecordC ReadFSF (RecordC ExecF (DebugC m)))) a ->
   m (DebugBundle, a)
 collectDebugBundle act = do
-  (scope, (execJournal, (readFSJournal, res))) <- runDebug . runRecord @ExecF . runRecord @ReadFSF . debugEverything $ act
+  (scope, (execJournal, (readFSJournal, (readFossaAPIJournal, res)))) <- runDebug . runRecord @ExecF . runRecord @ReadFSF . runRecord @FossaAPIFS . debugEverything $ act
   sysInfo <- sendIO collectSystemInfo
   -- TODO: collect the config file in command entrypoint and emit "effective
   -- config", which is config overlayed with CLI options
@@ -67,6 +69,7 @@ collectDebugBundle act = do
               BundleJournals
                 { bundleJournalReadFS = readFSJournal
                 , bundleJournalExec = execJournal
+                , bundleJournalFossaAPI = readFossaAPIJournal
                 }
           }
   pure (bundle, res)
@@ -129,6 +132,7 @@ instance ToJSON SystemMemory where
 data BundleJournals = BundleJournals
   { bundleJournalReadFS :: Journal ReadFSF
   , bundleJournalExec :: Journal ExecF
+  , bundleJournalFossaAPI :: Journal FossaAPIFS
   }
   deriving (Show, Generic)
 
@@ -192,8 +196,14 @@ logToDebug = interpret $ \case
 
 -----------------------------------------------
 
--- | Combine all of our debug wrappers into a mega-wrapper
-type DebugEverythingC m = DiagDebugC (ReadFSDebugC (ExecDebugC (LogDebugC m)))
+type FossaAPIDebugC = SimpleC FossaAPIFS
 
-debugEverything :: (Has Debug sig m, Has Exec sig m, Has ReadFS sig m, Has Logger sig m) => DebugEverythingC m a -> m a
-debugEverything = logToDebug . execToDebug . readFSToDebug . diagToDebug
+uploadAnalysisToDebug :: (Has FossaAPI sig m, Has Debug sig m) => FossaAPIDebugC m a -> m a
+uploadAnalysisToDebug = interpret $ \case
+  cons@UploadAnalysis{} -> recording cons
+
+-- | Combine all of our debug wrappers into a mega-wrapper
+type DebugEverythingC m = FossaAPIDebugC (DiagDebugC (ReadFSDebugC (ExecDebugC (LogDebugC m))))
+
+debugEverything :: (Has Diagnostics sig m, Has Debug sig m, Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has FossaAPI sig m) => DebugEverythingC m a -> m a
+debugEverything = logToDebug . execToDebug . readFSToDebug . diagToDebug . uploadAnalysisToDebug
