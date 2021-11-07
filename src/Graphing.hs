@@ -28,6 +28,7 @@ module Graphing (
   directList,
   vertexList,
   toAdjacencyMap,
+  countEdges,
 
   -- * Manipulating a Graphing
   gmap,
@@ -49,7 +50,7 @@ module Graphing (
   unfold,
 ) where
 
-import Algebra.Graph.AdjacencyMap (AdjacencyMap)
+import Algebra.Graph.AdjacencyMap (AdjacencyMap, edgeCount)
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
@@ -276,3 +277,7 @@ fromAdjacencyMap = Graphing . AM.gmap Node
 -- Alias for 'vertexList'
 toList :: Graphing ty -> [ty]
 toList = vertexList
+
+-- | Counts number of edges.
+countEdges :: Graphing ty -> Int
+countEdges (Graphing gr) = edgeCount gr

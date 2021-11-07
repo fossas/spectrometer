@@ -40,7 +40,7 @@ check-fmt:
 lint:
 	@echo "Running hlint"
 	@hlint --version
-	@hlint src test
+	@hlint src test integration-test
 	@echo "No linter errors found"
 
 # Docker doesn't always check for new versions during build, so pulling ensures

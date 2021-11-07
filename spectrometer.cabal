@@ -438,9 +438,9 @@ test-suite integration-tests
   main-is:            test.hs
 
   other-modules:
-    Analysis.ExampleSpec
-    ExampleTestSpec
-    CommonUtils
+    Analysis.PythonSpec
+    Analysis.MixSpec
+    Analysis.Utils
     
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:
@@ -450,4 +450,5 @@ test-suite integration-tests
     , hspec-expectations-pretty-diff  ^>=0.7.2.5
     , hspec-hedgehog                  ^>=0.0.1.2
     , hspec-megaparsec                ^>=2.2
+    , req-conduit                     ^>=1.0.1
     , spectrometer

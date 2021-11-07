@@ -16,3 +16,5 @@ vendor-bins/
 # Executables
 /fossa
 /fossa-?dev
+
+integration-test/artifacts/
