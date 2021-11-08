@@ -26,8 +26,9 @@ _Example:_ Closes org/repo#123.
 
 ## Checklist
 
-- [ ] I added tests for this PR's change (or confirmed tests are not viable).
+- [ ] I added tests for this PR's change (or explained in the PR description why tests are not viable).
 - [ ] If this PR introduced a user-visible change, I added documentation into `docs/`.
-- [ ] I updated `Changelog.md` if this change is externally facing. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
-- [ ] I updated `*schema.json` if I have made changes for `.fossa.yml`, `fossa-deps.{json, yaml, yml}`. You may also need to update these if you have added/removed new dependency (e.g. pip) or analysis target type (e.g. poetry).
+- [ ] If this PR introduced a user-visible change, I updated `Changelog.md`. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
+- [ ] If this PR changed the shape of `.fossa.yml` or `fossa-deps.{json,yaml,yml}`, I updated `docs/references/files/*.schema.json`. (You may also need to update these if you have added or removed new dependency type (e.g. `pip`) or analysis target type (e.g. `poetry`).)
+- [ ] If this PR added Template Haskell that needs to re-run when external files change (e.g. for embedding files), I added those external files to the list of `extra-source-files` in `spectrometer.cabal`.
 - [ ] I linked this PR to any referenced GitHub issues, if they exist.
