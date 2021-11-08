@@ -9,6 +9,7 @@ extra-source-files:
   vendor-bins/cliv1
   vendor-bins/syft
   vendor-bins/wiggins
+  .git
 
 common lang
   build-depends:      base >=4.12 && <4.15
