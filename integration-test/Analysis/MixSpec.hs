@@ -14,9 +14,6 @@ import Strategy.Elixir.MixTree (MixProject (..))
 withElixir :: FixtureEnvironment
 withElixir = NixEnvSimpleConfig ["elixir"]
 
-withElixir_1_10 :: FixtureEnvironment
-withElixir_1_10 = NixEnvSimpleConfig ["elixir_1_10"]
-
 mkAbsintheSuite :: FixtureEnvironment -> AnalysisIntegrationCase MixProject
 mkAbsintheSuite env =
   AnalysisIntegrationCase
