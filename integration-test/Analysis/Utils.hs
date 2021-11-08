@@ -237,13 +237,13 @@ decorateCmdWith :: FixtureEnvironment -> Command -> Command
 decorateCmdWith (NixEnvSimpleConfig pkgs) cmd =
   Command
     { cmdName = "nix-shell"
-    , cmdArgs = ["-p"] <> pkgs <> ["--run"] <> [cmdName cmd <> " " <> T.intercalate " " (cmdArgs cmd)]
+    , cmdArgs = ["-p"] <> pkgs <> ["--run"] <> [cmdName cmd <> " " <> Text.intercalate " " (cmdArgs cmd)]
     , cmdAllowErr = cmdAllowErr cmd
     }
 decorateCmdWith (NixEnvRawExpression nixExpression) cmd =
   Command
     { cmdName = "nix-shell"
-    , cmdArgs = ["-I"] <> [nixExpression] <> ["--run"] <> [cmdName cmd <> " " <> T.intercalate " " (cmdArgs cmd)]
+    , cmdArgs = ["-I"] <> [nixExpression] <> ["--run"] <> [cmdName cmd <> " " <> Text.intercalate " " (cmdArgs cmd)]
     , cmdAllowErr = cmdAllowErr cmd
     }
 decorateCmdWith (LocalEnvironment) cmd = cmd
