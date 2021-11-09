@@ -7,9 +7,9 @@ With `fossa-deps.{yml, json, yaml}` file, FOSSA CLI can be integrated to support
 
 ## Example with Bower
 
-For an example, we will look at [Bower](https://bower.io/). Although, Bower team advises now, that users should migrate to npm, or yarn for new javascript based projects. We may have legacy or active projects, which are using bower. And we would like to include them in our reporting.
+For an example, we will look at [Bower](https://bower.io/). 
 
-In general, we can identify list of dependencies from our custom tool (in our case bower), by using configuration used or command provided. In bower case, we can inspect (1) `bower.json` or (2) output of `bower list` command. 
+We can usually identify a list of dependencies from our custom tool by looking at configuration files or executing a command. Bower provides both of these options, we can inspect (1) `bower.json` or (2) parse the output from the `bower list` command. 
 
 From an example `bower.json` file, lists direct dependencies:
 
@@ -68,63 +68,13 @@ We can include all listed dependencies in fossa-deps.json.
 }
 ```
 
-Likewise, you can write short script in your language of choice to translate dependency graph produced by bower to fossa-deps file. Provided below is example python script, which parses dependency graph and produces fossa-deps file.
+To programmatically add these dependencies, you can write a script in your language of choice to translate the dependency graph produced by bower to a fossa-deps file. Provided below is an example python script, which parses a dependency graph and produces a fossa-deps file.
 
-```python
-"""Converts output of `bower list --json` to fossa-deps.json.
-
-It includes, direct and deep dependencies, but *does not*, 
-include edges information or filter un-used dependency.
-
-Example:
-    bower list --json | python3 bower-to-fossa-deps.py > fossa-deps.json
-"""
-
-import sys
-import json
-
-sys.setrecursionlimit(10000)
-
-
-def report(dependency_graph):
-    resolved_deps = set()
-
-    if not dependency_graph:
-        return resolved_deps
-
-    dependencies = dependency_graph.get("dependencies")
-    if not dependencies:
-        return resolved_deps
-
-    for _, depValue in dependencies.items():
-        meta = depValue.get("pkgMeta", {})
-        name, version = meta.get("name"), meta.get("version")
-
-        if (name, version) not in resolved_deps:
-            resolved_deps.add((name, version))
-
-        transitive_deps = report(depValue)
-        resolved_deps = resolved_deps.union(transitive_deps)
-
-    return resolved_deps
-
-def to_fossa_deps(deps):
-    o = {"referenced-dependencies": []}
-    for (name, version) in deps:
-        o["referenced-dependencies"].append(
-            {"name": name, "version": version, "type": "bower"}
-        )
-    return json.dumps(o)
-
-
-bower_list_json = json.loads(sys.stdin.read())
-resolved_deps = report(bower_list_json)
-print(to_fossa_deps(resolved_deps))
-```
+[Here](./../../experimental-scripts/bower.py) is an example python script that parses bower list command, and prints fossa-deps file.
 
 ## Limitation
 
-Please note that, with fossa-deps, we can report dependencies with yet to be supported package manager, but we cannot:
+Please note that with the fossa-deps file, we can report dependencies, but we cannot:
 
-- differentiate between direct and deep dependency
+- differentiate between direct and deep dependencies
 - report edge information between dependencies
