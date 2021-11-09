@@ -1,6 +1,6 @@
 # Analyze only set of targets
 
-FOSSA CLI can be configured to discover and analyze, based on the target type (g.g. gradle, rebar3, etc.) and by its path. This can be useful when multiple targets exist in the directory, but we are only interested in a select few. 
+FOSSA CLI can be configured to discover and analyze, based on the target type (e.g. gradle, rebar3, etc.) and by its path. This can be useful when multiple targets exist in the directory, but we are only interested in a select few. 
 
 To do so, we will use the following:
 
@@ -140,20 +140,14 @@ version: 3
 
 targets:
   only:
-
     - type: npm
       path: src/front-end/v2/
-
     - type: poetry
       path: src/back-end/
-
     - type: setuptools
       path: utils/
-
     - type: setuptools
       path: utils/helpers/
-
     - type: setuptools
       path: utils/helpers/
-
 ```
