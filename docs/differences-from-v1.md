@@ -40,7 +40,7 @@ Upgrading from FOSSA CLI 1.x to 3.x is a major breaking change. For most users, 
       - [Until when CLI v1 will be supported by FOSSA?](#until-when-cli-v1-will-be-supported-by-fossa)
       - [I'm getting a poor result with latest version compared 1.x.](#im-getting-a-poor-result-with-latest-version-compared-1x)
       - [How do I run only a specific analyzer for my project?](#how-do-i-run-only-a-specific-analyzer-for-my-project)
-    - [How do I identify which version of CLI I have installed?](#how-do-i-identify-which-version-of-cli-i-have-installed)
+      - [How do I identify which version of CLI I have installed?](#how-do-i-identify-which-version-of-cli-i-have-installed)
       - [I'm running into an error - how do I debug?](#im-running-into-an-error---how-do-i-debug)
       - [What's the difference between FOSSA CLI 1.x, 2.x, and 3.x?](#whats-the-difference-between-fossa-cli-1x-2x-and-3x)
 
@@ -243,7 +243,7 @@ If you are integrating a private project and want to share more details, or if y
 
 You can configure to run specific analyzer or only analyze specific paths in `.fossa.yml` file. Please refer to documentation [here](references/files/fossa-yml.md)
 
-### How do I identify which version of CLI I have installed?
+#### How do I identify which version of CLI I have installed?
 
 You can identify your cli version by performing `fossa --version` command.
 
