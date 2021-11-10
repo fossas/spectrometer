@@ -200,7 +200,7 @@ Since analysis targets are now automatically discovered during analysis, `fossa 
 We've made major breaking changes in the `.fossa.yml` file format for CLI 3.x to improve clarity. You'll need to migrate your 1.x `.fossa.yml` to the new 3.x format for their configurations to apply. `.fossa.yml` for 1.x will be ignored when running cli with version greater than 1.x. We determine whether a configuration file is compatible by examining its `version` field. 
 
 - .fossa.yml with version field value of `1` and `2` are for 1.x.
-- .fossa.yml with version field value of `3` are for 3.x.
+- .fossa.yml with version field value of `3` are for 3.x, and 2.x.
 
 For documentation on the new configuration file format, see [here](references/files/fossa-yml.md)
 
@@ -258,11 +258,17 @@ You can add `--debug` argument to your fossa commands (e.g. `fossa analyze --deb
 2.x version, is the second major release of fossa CLI sourced at [fossas/spectrometer](https://github.com/fossas/spectrometer/). This release was not a default target of the installation script, provided on fossa's website.
 
 3.x version, is third major releases. With this release:
-  - Makes 3.x default target for installation script provided at [fossas/spectrometer](https://github.com/fossas/spectrometer/)
-  - Makes 3.x default target for install-latest script provided at [fossas/fossa-cli](https://github.com/fossas/spectrometer/)
-  - Migrates 2.x source code from [fossas/spectrometer](https://github.com/fossas/spectrometer/) to [fossas/fossa-cli](https://github.com/fossas/fossa-cli/) and releases it as 3.x.
-  - Archives [fossas/spectrometer] source code repository. 
-  
+  - 3.x becomes default target for installation script provided at [fossas/spectrometer](https://github.com/fossas/spectrometer/)
+  - 3.x becomes default target for install-latest script provided at [fossas/fossa-cli](https://github.com/fossas/spectrometer/)
+  - We migrates 2.x source code from [fossas/spectrometer](https://github.com/fossas/spectrometer/) to [fossas/fossa-cli](https://github.com/fossas/fossa-cli/) and releases it as 3.x.
+  - Archives [fossas/spectrometer] source code repository.
+
+3.x will be released on November 12, 2021.
+
 > Note: There are no breaking changes from 2.x to 3.x. The 3.x version in functional sense, continuation of 2.x version. The 3.x version was released to (1) match the `version` field of the fossa configuration file with the major release version of cli, (2) mark migration of CLI 2.x source code back into the fossa-cli repository, and (3) mark 3.x now the default target for installation for all fossa users moving forwards. 
 
-If you were previously using the installation script provided at, [fossas/spectrometer](https://github.com/fossas/spectrometer/). It is now recommended to upgrade to using installation latest script provided at [fossas/fossa-cli](https://github.com/fossas/fossa-cli/).
+<!--
+Remove this once, migration has occurred.
+
+If you were previously using the installation script provided at [fossas/spectrometer](https://github.com/fossas/spectrometer/), it is now recommended to use the installation latest script provided at [fossas/fossa-cli](https://github.com/fossas/fossa-cli/).
+!-->
