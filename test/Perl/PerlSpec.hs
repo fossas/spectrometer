@@ -21,8 +21,8 @@ import Test.Hspec (
 perl :: (PackageName, Maybe Text)
 perl = (PackageName "perl", Just "5.006")
 
-expectedContentFromJson :: PerlMeta
-expectedContentFromJson =
+expectedContentFromV2 :: PerlMeta
+expectedContentFromV2 =
   PerlMeta
     { version = 2.0
     , runtimeRequires = Just $ fromList [(PackageName "Carp", Just "0"), perl]
@@ -32,8 +32,8 @@ expectedContentFromJson =
     , configureRequires = Just $ fromList [(PackageName "ExtUtils::MakeMaker", Just "0"), perl]
     }
 
-expectedContentFromYaml :: PerlMeta
-expectedContentFromYaml =
+expectedContentFromV1_4 :: PerlMeta
+expectedContentFromV1_4 =
   PerlMeta
     { version = 1.4
     , runtimeRequires = Just $ fromList [(PackageName "Archive::Zip", Just "0"), perl]
@@ -49,19 +49,29 @@ mkDependency name version env = Dependency CpanType name (Just $ CEq version) []
 spec :: Spec
 spec = do
   describe "parse" $ do
-    it "should parse json file correctly" $ do
-      resolvedFile <- decodeFileStrict' "test/Perl/testdata/Meta.json"
-      resolvedFile `shouldBe` Just expectedContentFromJson
+    it "should parse meta json (v2) file correctly" $ do
+      resolvedFile <- decodeFileStrict' "test/Perl/testdata/MetaV2.json"
+      resolvedFile `shouldBe` Just expectedContentFromV2
 
-    it "should parse yaml file correctly" $ do
-      resolvedFile <- decodeFileEither "test/Perl/testdata/Meta.yml"
+    it "should parse meta json (v1.4) file correctly" $ do
+      resolvedFile <- decodeFileStrict' "test/Perl/testdata/MetaV1_4.json"
+      resolvedFile `shouldBe` Just expectedContentFromV1_4
+
+    it "should parse yaml file (v2) correctly" $ do
+      resolvedFile <- decodeFileEither "test/Perl/testdata/MetaV2.yml"
       case resolvedFile of
         Left err -> expectationFailure ("failed to parse yaml file" <> show (prettyPrintParseException err))
-        Right val -> val `shouldBe` Just expectedContentFromYaml
+        Right val -> val `shouldBe` Just expectedContentFromV2
+
+    it "should parse yaml file (v1.4) correctly" $ do
+      resolvedFile <- decodeFileEither "test/Perl/testdata/MetaV1_4.yml"
+      case resolvedFile of
+        Left err -> expectationFailure ("failed to parse yaml file" <> show (prettyPrintParseException err))
+        Right val -> val `shouldBe` Just expectedContentFromV1_4
 
   describe "buildGraph" $
     it "should build graph" $ do
-      let graph = buildGraph expectedContentFromJson
+      let graph = buildGraph expectedContentFromV2
       let expectedDeps =
             [ mkDependency "Carp" "0" EnvProduction
             , mkDependency "Dist::Zilla" "5" EnvDevelopment
