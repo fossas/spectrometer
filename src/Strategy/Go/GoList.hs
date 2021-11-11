@@ -62,7 +62,6 @@ instance FromJSON GoListModule where
       <*> (obj .:? "Main" .!= False)
       <*> (obj .:? "Indirect" .!= False)
 
-
 -- | Analyze using `go list`, and build dependency graph.
 --
 -- Since, sometimes go list directive includes test transitive dependencies in the listing
@@ -86,10 +85,9 @@ analyze' dir = do
   where
     toRequires :: [GoListModule] -> [Require]
     toRequires src = map (\m -> Require (path m) (fromMaybe "LATEST" $ version m) (not $ isIndirect m)) (withoutMain src)
-    
+
     withoutMain :: [GoListModule] -> [GoListModule]
     withoutMain = filter (not . isMain)
-
 
 buildGraph :: Has GolangGrapher sig m => [Require] -> m ()
 buildGraph = traverse_ go
