@@ -166,10 +166,10 @@ instance FromJSON PerlMeta where
 
       -- Reference: http://module-build.sourceforge.net/META-spec-v1.4.html
       parseBelowV1_5 obj version = do
-        runtimeRequires1 <- obj .:? "requires"
-        buildRequires1 <- obj .:? "build_requires"
+        runtimeRequires <- obj .:? "requires"
+        buildRequires <- obj .:? "build_requires"
         configureRequires1 <- obj .:? "configure_requires"
-        pure $ PerlMeta version runtimeRequires1 buildRequires1 Nothing Nothing configureRequires1
+        pure $ PerlMeta version runtimeRequires buildRequires Nothing Nothing configureRequires1
 
 buildGraph :: PerlMeta -> Graphing Dependency
 buildGraph meta =

@@ -6,7 +6,7 @@
 
 ## Project Discovery
 
-Find a file named `MYMETA.json` or `MYMETA.yml` or `META.json` or `META.yml`.
+Find a file named `MYMETA.json`, `MYMETA.yml`, `META.json`, or `META.yml`.
 
 ## Analysis
 
@@ -24,7 +24,7 @@ Find a file named `MYMETA.json` or `MYMETA.yml` or `META.json` or `META.yml`.
 
 ## FAQ
 
-### How do I *only perform analysis* for the perl?
+### How do I *only perform analysis* for Perl?
 
 You can explicitly specify an analysis target in `.fossa.yml` file. The example below will exclude all analysis targets except for the composer. 
 
