@@ -29,36 +29,6 @@ We run `go list -m -json all`, which produces, e.g.,:
         "Dir": "/Users/example/go/pkg/mod/github.com/kr/pretty@v0.1.0",
         "GoMod": "/Users/example/go/pkg/mod/cache/download/github.com/kr/pretty/@v/v0.1.0.mod"
 }
-{
-        "Path": "github.com/kr/pty",
-        "Version": "v1.1.1",
-        "Time": "2018-01-13T18:08:13Z",
-        "Indirect": true,
-        "GoMod": "/Users/example/go/pkg/mod/cache/download/github.com/kr/pty/@v/v1.1.1.mod"
-}
-{
-        "Path": "github.com/kr/text",
-        "Version": "v0.1.0",
-        "Time": "2018-05-06T08:24:08Z",
-        "Indirect": true,
-        "Dir": "/Users/example/go/pkg/mod/github.com/kr/text@v0.1.0",
-        "GoMod": "/Users/example/go/pkg/mod/cache/download/github.com/kr/text/@v/v0.1.0.mod"
-}
-{
-        "Path": "gopkg.in/check.v1",
-        "Version": "v1.0.0-20180628173108-788fd7840127",
-        "Time": "2018-06-28T17:31:08Z",
-        "Indirect": true,
-        "Dir": "/Users/example/go/pkg/mod/gopkg.in/check.v1@v1.0.0-20180628173108-788fd7840127",
-        "GoMod": "/Users/example/go/pkg/mod/cache/download/gopkg.in/check.v1/@v/v1.0.0-20180628173108-788fd7840127.mod"
-}
-{
-        "Path": "gopkg.in/yaml.v3",
-        "Version": "v3.0.0-20210107192922-496545a6307b",
-        "Time": "2021-01-07T19:29:22Z",
-        "Dir": "/Users/example/go/pkg/mod/gopkg.in/yaml.v3@v3.0.0-20210107192922-496545a6307b",
-        "GoMod": "/Users/example/go/pkg/mod/cache/download/gopkg.in/yaml.v3/@v/v3.0.0-20210107192922-496545a6307b.mod"
-}
 ```
 
 - To infer direct dependencies, we filter out any module, which has `Main` field with value of true, and `Indirect` field with value of true.
@@ -85,3 +55,12 @@ where:
 
 - `replace` rewrites `require`s. In this example, our requires resolve to
   `[github.com/example/one v1.2.3, github.com/example/other v2.0.0]`
+
+
+## FAQ
+
+### Why `go list -m -json all` is used instead of `go list -json -deps` to infer dependencies?
+
+We use `go list -m -json all` in combination with the `go list -json all`, to infer direct and transitive dependencies. The reason, we do not use solely use `go list -json -deps` command at this moment, is because it does not include transitive dependencies imported with test imports. 
+
+This go module functionality is actively being worked on, such that we can label dependencies environment (e.g. Test) correctly, for all types of golang project configurations.
