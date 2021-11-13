@@ -1,8 +1,0 @@
-cradle:
-  cabal:
-    - path: "."
-      component: "lib:spectrometer"
-    - path: "./src"
-      component: "lib:spectrometer"
-    - path: "./test"
-      component: "test:unit-tests"
