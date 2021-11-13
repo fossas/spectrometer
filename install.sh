@@ -375,7 +375,7 @@ adjust_arch
 log_info ""
 log_info "Notice:"
 log_info ""
-log_info "    Spectrometer is now migrated to fossa-cli respository at:"
+log_info "    Spectrometer has been migrated to the fossa-cli repository at:"
 log_info "        https://github.com/fossas/fossa-cli"
 log_info ""
 log_info "    Please migrate to using latest installation script provided at:"

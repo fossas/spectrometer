@@ -11,7 +11,7 @@ Param()
 Write-Host ""
 Write-Host "Notice:"
 Write-Host ""
-Write-Host "    Spectrometer is migrated to fossa-cli respository at:"
+Write-Host "    Spectrometer has been migrated to the fossa-cli repository at:"
 Write-Host "        https://github.com/fossas/fossa-cli"
 Write-Host ""
 Write-Host "    Please migrate to using latest installation script provided at:"
