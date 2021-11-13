@@ -27,11 +27,13 @@ jobs:
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
           .\install.ps1
-          $cliVersionCmdOutput = cmd /c 'C:\ProgramData\fossa-cli\fossa.exe' '--version'
+
+          $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
           $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
           $cliVersionMajor = $cliVersion.Split(".")[0]
 
           if (-Not $cliVersionMajor -eq "3") {
             Write-Output "Got: $cliVersionMajor instead!"
             exit 1
-          }          
+          }
+          Remove-Item -Path (Get-Command "fossa.exe").Path
